@@ -17,7 +17,6 @@ CONTENT_ID_BLOCK = 0x17
 CONTENT_ID_SCORE = 0x18
 
 our_score = 0
-our_height = 0
 
 def create_handshake(port):
     name = b"wavesT"
@@ -174,36 +173,6 @@ def parse_message(socket, msg):
                 #    msg = create_score_message(our_score)
                 #    print(socket.send(msg))
 
-def block_thread():
-    global our_height
-
-    while 1:
-        time.sleep(2)
-
-        # lets just get the latest headers and blocks via HTTP/REST
-        r = requests.get("http://127.0.0.1:6869/blocks/headers/last")
-        assert(r.status_code == 200)
-        new_height = r.json()["height"]
-        if our_height == 0:
-            our_height = new_height - 1
-        while our_height < new_height:
-            req_block = our_height + 1
-            print("requesting block:", req_block)
-            r = requests.get("http://127.0.0.1:6869/blocks/at/%d" % req_block)
-            assert(r.status_code == 200)
-            txs = r.json()["transactions"]
-            for tx in txs:
-                if tx["type"] == 4:
-                    print("  tx:")
-                    print("    recipient:", tx["recipient"])
-                    print("    amount:", tx["amount"])
-                    print("    fee:", tx["fee"])
-                    print("    assetId:", tx["assetId"])
-                    print("    feeAssetId:", tx["feeAssetId"])
-
-            our_height += 1
-
-
 def decode_test_msg():
     # tx msg
     comma_delim_hex = "00,00,00,A5,12,34,56,78,19,00,00,00,98,A1,D3,F9,48,04,0C,2B,4F,19,B5,09,23,F4,E5,A6,60,5C,A3,8B,E3,90,0D,A8,39,40,C6,56,FD,77,D7,10,18,2C,7A,0F,A4,B7,6C,B7,89,AC,1A,37,4F,2B,95,E8,FF,2D,B7,26,70,BF,C8,96,99,25,75,E4,E6,F1,F4,D5,CF,CF,5A,87,B1,8F,04,A9,D5,9F,EE,C5,51,43,8C,C7,43,7E,39,CD,75,32,8B,C0,C3,45,BF,C8,FC,91,88,43,C2,54,87,72,BA,26,40,00,00,00,00,01,64,15,54,57,A5,00,00,00,00,3B,9A,CA,00,00,00,00,00,00,01,86,A0,01,54,8D,98,AF,E7,34,F1,C1,88,CA,06,FB,6C,1F,C0,2B,49,FB,0C,2A,2A,E3,07,13,E9,00,00"
@@ -216,10 +185,6 @@ def decode_test_msg():
     parse_message(data)
 
 def test_p2p():
-    # start block thread
-    thread = threading.Thread(target=block_thread)
-    thread.start()
-
     # create an INET, STREAMing socket
     s = socket.socket(
         socket.AF_INET, socket.SOCK_STREAM)
