@@ -16,8 +16,6 @@ CONTENT_ID_TX = 0x19
 CONTENT_ID_BLOCK = 0x17
 CONTENT_ID_SCORE = 0x18
 
-our_score = 0
-
 def create_handshake(port):
     name = b"wavesT"
     name_len = len(name) 
@@ -37,11 +35,6 @@ def create_handshake(port):
             node_name_len, node_name, node_nonce,
             declared_address_len, declared_address, declared_address_port,
             timestamp)
-
-def create_score_message(score):
-    payload = binascii.unhexlify("%x" % score)
-    fmt = ">llBl%ds" % len(payload)
-    return struct.pack(fmt, struct.calcsize(fmt)-1, MAGIC, CONTENT_ID_SCORE, len(payload), payload) 
 
 def decode_handshake(msg):
     l = msg[0]
@@ -162,16 +155,9 @@ def parse_message(socket, msg):
 
             if content_id == CONTENT_ID_SCORE:
                 # score
-                global our_score
                 score = int(binascii.hexlify(payload), 16)
                 print("score:", len(payload))
                 print("  value:", score)
-                #if score == 0:
-                #    our_score = score
-                #elif score > our_score and our_score != 0:
-                #    # send our score (hopefully they will send us the latest blocks)
-                #    msg = create_score_message(our_score)
-                #    print(socket.send(msg))
 
 def decode_test_msg():
     # tx msg
