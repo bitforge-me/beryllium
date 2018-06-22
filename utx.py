@@ -1,14 +1,14 @@
 #!/usr/bin/python3
 
 import sys
-import socket
+import gevent
+from gevent import socket
 import struct
 import random
 import time
 import binascii
-import threading
+import logging
 
-import requests
 import base58
 
 MAGIC = 305419896
@@ -38,15 +38,16 @@ def create_handshake(port):
 
 def decode_handshake(msg):
     l = msg[0]
-    if l == 6 and msg[1:7] == b"wavesT":
+    if l == 6 and msg[1:7] in (b"wavesT", b"wavesM"):
+        chain = msg[1:7]
         msg = msg[7:]
         vmaj, vmin, vpatch = struct.unpack_from(">lll", msg)
         msg = msg[12:]
         l = msg[0]
         node_name = msg[1:1+l]
         msg = msg[1+l:]
-        nonce, decl_addr_len, decl_addr, decl_addr_port, timestamp = struct.unpack(">QlllQ", msg)
-        return ("wavesT", vmaj, vmin, vpatch, node_name, nonce, decl_addr, decl_addr_port, timestamp)
+        nonce, decl_addr_len, decl_addr, decl_addr_port, timestamp = struct.unpack_from(">QlllQ", msg)
+        return (chain, vmaj, vmin, vpatch, node_name, nonce, decl_addr, decl_addr_port, timestamp)
 
 def to_hex(data):
     s = ""
@@ -83,12 +84,21 @@ def parse_transfer_tx(payload):
 
     return offset + attachment_len, tx_type, sig, tx_type2, pubkey, asset_flag, asset_id, timestamp, amount, fee, address, attachment
 
-def parse_message(socket, msg):
+def parse_block_txs(payload):
+    pass
+
+def parse_block(payload):
+    fmt_header = ">BQ64slQ32sl"
+    fmt_header_len = struct.calcsize(fmt_header)
+    version, timestamp, parent_sig, consensus_block_len, base_target, generation_sig, txs_len = \
+        struct.unpack_from(fmt_header, payload)
+    offset = fmt_header_len
+    txs = parse_block_txs(payload[offset:offset + txs_len])
+
+def parse_message(wutx, msg, on_tranfer_tx=None):
     handshake = decode_handshake(msg)
     if handshake:
-        print("handshake:")
-        for part in handshake:
-            print("", part)
+        logging.info(f"handshake: {handshake[0]} {handshake[1]}.{handshake[2]}.{handshake[3]} {handshake[4]}")
     else:
         while msg:
             fmt = ">llBl"
@@ -100,7 +110,7 @@ def parse_message(socket, msg):
                 fmt = ">llBll"
                 fmt_size = struct.calcsize(fmt)
                 if fmt_size > len(msg):
-                    print("msg too short", len(msg), fmt_size)
+                    logging.error(f"msg too short - len {len(msg)}, fmt_size {fmt_size}")
                     break
 
                 length, magic, content_id, payload_len, payload_checksum \
@@ -109,55 +119,67 @@ def parse_message(socket, msg):
 
             msg = msg[4 + length:]
 
-            print("message:")
-            print("  length", length)
-            print("  magic", magic)
-            print("  content_id", "0x%02X" % content_id)
-            print("  payload_len", payload_len)
-            print("  payload:", to_hex(payload))
+            logging.debug(f"message: len {length:4}, magic {magic}, content_id: {content_id:#04x}, payload_len {payload_len:4}")
 
             if magic != MAGIC:
-                print("invalid magic")
+                logging.error("invalid magic")
                 break
 
             if content_id == CONTENT_ID_TX:
                 # transaction!
                 tx_type = payload[0]
-                print("transaction type:", tx_type)
+                logging.info(f"transaction type: {tx_type}")
                 if tx_type == 4:
                     # transfer
                     tx_len, tx_type, sig, tx_type2, pubkey, asset_flag, asset_id, timestamp, amount, fee, address, attachment = parse_transfer_tx(payload)
 
-                    print("  senders pubkey:", base58.b58encode(pubkey))
-                    print("  addr:", base58.b58encode(address))
-                    print("  amount:", amount)
-                    print("  fee:", fee)
-                    print("  asset id:", asset_id)
-                    print("  timestamp:", timestamp)
-                    print("  attachment:", attachment)
+                    logging.info(f"  senders pubkey: {base58.b58encode(pubkey)}, addr: {base58.b58encode(address)}, amount: {amount}, fee: {fee}, asset id: {asset_id}, timestamp: {timestamp}, attachment: {attachment}")
+                    if on_tranfer_tx:
+                        on_tranfer_tx(wutx, sig, pubkey, asset_id, timestamp, amount, fee, address, attachment)
 
             if content_id == CONTENT_ID_BLOCK:
                 # block
-                print("block:", len(payload))
-
-                while payload:
-                    tx_len, tx_type, sig, tx_type2, pubkey, asset_flag, asset_id, timestamp, amount, fee, address, attachment = parse_transfer_tx(payload)
-
-                    print("  senders pubkey:", base58.b58encode(pubkey))
-                    print("  addr:", base58.b58encode(address))
-                    print("  amount:", amount)
-                    print("  fee:", fee)
-                    print("  asset id:", asset_id)
-                    print("  timestamp:", timestamp)
-                    print("  attachment:", attachment)
-
-                    payload = payload[tx_len:]
+                logging.debug(f"block: len {len(payload)}")
+                parse_block(payload)
 
             if content_id == CONTENT_ID_SCORE:
                 # score
                 score = int(binascii.hexlify(payload), 16)
-                print("score:", len(payload))
-                print("  value:", score)
+                logging.info(f"score: value {score}")
+
+class WavesUTX():
+
+    def __init__(self, on_msg, on_tranfer_tx, addr="127.0.0.1", port=6863):
+        # create an INET, STREAMing socket
+        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # now connect to the waves node on port 6863
+        self.s.connect((addr, port))
+        logging.info(f"socket opened: {addr}:{port}")
+
+        # send handshake
+        local_port = self.s.getsockname()[1]
+        handshake = create_handshake(local_port)
+        l = self.s.send(handshake)
+        logging.info(f"handshake bytes sent: {l}")
+
+        self.on_msg = on_msg
+        self.on_tranfer_tx = on_tranfer_tx
+
+    def start(self):
+        def runloop():
+            logging.info("WavesUTX runloop started")
+            while 1:
+                data = self.s.recv(1024)
+                if data:
+                    logging.debug(f"recv: {len(data)}")
+                    self.on_msg(self, data)
+                    parse_message(self, data, self.on_tranfer_tx)
+        logging.info("spawning WavesUTX runloop...")
+        self.g = gevent.spawn(runloop)
+        self.g.run()
+
+    def stop(self):
+        self.g.kill()
 
 def decode_test_msg():
     # tx msg
@@ -168,33 +190,21 @@ def decode_test_msg():
     data = [chr(int(x, 16)) for x in comma_delim_hex.split(",")]
     data = "".join(data)
 
-    parse_message(data)
+    parse_message(None, data)
 
 def test_p2p():
-    # create an INET, STREAMing socket
-    s = socket.socket(
-        socket.AF_INET, socket.SOCK_STREAM)
-    # now connect to the waves node on port 6863
-    s.connect(("127.0.0.1", 6863))
-    local_port = s.getsockname()[1]
+    logging.basicConfig(level=logging.DEBUG)
 
-    # send handshake
-    handshake = create_handshake(local_port)
-    print(to_hex(handshake))
-    print(s.send(handshake))
+    def on_msg(wutx, msg):
+        print(to_hex(msg))
+    def on_tranfer_tx(wutx, sig, pubkey, asset_id, timestamp, amount, fee, address, attachment):
+        print(f"!transfer!: to {base58.b58encode(address)}, amount {amount}")
 
+    wutx = WavesUTX(on_msg, on_tranfer_tx)
+    wutx.start()
     while 1:
-        # read reply
-        data = s.recv(1024)
-        if data:
-            print()
-            print(len(data))
-            print(to_hex(data))
-            parse_message(s, data)
-        else:
-            sys.stdout.write(".")
-
         time.sleep(1)
+    wutx.stop()
 
 if __name__ == "__main__":
     test_p2p()
