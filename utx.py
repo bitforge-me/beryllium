@@ -1,14 +1,14 @@
 #!/usr/bin/python3
 
 import sys
-import gevent
-from gevent import socket
 import struct
 import random
 import time
 import binascii
 import logging
 
+import gevent
+from gevent import socket
 import base58
 
 MAGIC = 305419896
@@ -85,6 +85,9 @@ def parse_transfer_tx(payload):
     return offset + attachment_len, tx_type, sig, tx_type2, pubkey, asset_flag, asset_id, timestamp, amount, fee, address, attachment
 
 def parse_block_txs(payload):
+    ## Not sure if we will need to parse the block txs, it will require parsing each of the tx types
+    ## because they have variable length fields.
+    ## We could just RPC to the node and get the nicely formatted block txs as a shortcut.
     pass
 
 def parse_block(payload):
