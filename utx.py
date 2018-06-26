@@ -179,7 +179,7 @@ class WavesUTX():
                     parse_message(self, data, self.on_tranfer_tx)
         logging.info("spawning WavesUTX runloop...")
         self.g = gevent.spawn(runloop)
-        self.g.run()
+        gevent.sleep(0)
 
     def stop(self):
         self.g.kill()
@@ -206,7 +206,7 @@ def test_p2p():
     wutx = WavesUTX(on_msg, on_tranfer_tx)
     wutx.start()
     while 1:
-        time.sleep(1)
+        gevent.sleep(1)
     wutx.stop()
 
 if __name__ == "__main__":

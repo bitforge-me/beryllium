@@ -10,12 +10,17 @@ from gevent.pywsgi import WSGIServer
 from flask import Flask
 from flask_jsonrpc import JSONRPC
 import requests
+import base58
 
 import config
+from database import db_session, init_db
+import db_settings
+from models import Transaction
 
+cfg = config.read_cfg()
+init_db()
 app = Flask(__name__)
 jsonrpc = JSONRPC(app, "/api")
-cfg = config.read_cfg()
 
 @jsonrpc.method("balance")
 def balance():
@@ -25,45 +30,90 @@ def balance():
 
 @jsonrpc.method("listtransactions", validate=True)
 def listtransactions(invoice_id):
-    #TODO
-    return None
+    txs = Transaction.from_invoice_id(db_session, invoice_id)
+    txs_json = []
+    for tx in txs:
+        txs_json.append(tx.to_json())
+    return txs_json
+
+def block_height():
+    response = requests.get(cfg.node_http_base_url + "blocks/height")
+    return response.json()["height"]
+
+def block_at(num):
+    response = requests.get(cfg.node_http_base_url + f"blocks/at/{num}")
+    return response.json()
+
+def extract_invoice_id(attachment):
+    data = base58.b58decode(attachment)
+    try:
+        data = json.loads(data)
+        return data["invoice_id"]
+    except:
+        return None
 
 class ZapRPC():
 
-    def __init__(self, addr="127.0.0.1", port=5000, debug=False):
+    def __init__(self, addr="127.0.0.1", port=5000):
         self.addr = addr
         self.port = port
-        self.debug = debug
 
     def start(self):
+        # check cfg.address is one of the nodes addresses
+        response = requests.get(cfg.node_http_base_url + "addresses")
+        if not cfg.address in response.json():
+            logging.error(f"node wallet does not control {cfg.address}")
+            sys.exit(1)
+
         def runloop():
             logging.info("ZapRPC runloop started")
-            # check cfg.address is one of the nodes addresses
-            path = f"addresses"
-            response = requests.get(cfg.node_http_base_url + path)
-            if not cfg.address in response.json():
-                logging.error(f"node wallet does not control {cfg.address}")
-                sys.exit(1)
 
-            if self.debug:
-                app.run(host=self.addr, port=self.port, debug=True)
-            else:
-                http_server = WSGIServer((self.addr, self.port), app)
-                http_server.serve_forever()
+            http_server = WSGIServer((self.addr, self.port), app)
+            http_server.serve_forever()
+
+        def blockloop():
+            logging.info("ZapRPC blockloop started")
+
+            scanned_block_num = db_settings.get_scanned_block_num(cfg.start_block)
+            while 1:
+                gevent.sleep(5)
+                while block_height() > scanned_block_num:
+                    block = block_at(scanned_block_num + 1)
+                    for tx in block["transactions"]:
+                        if tx["type"] == 4:
+                            recipient = tx["recipient"]
+                            if recipient == cfg.address:
+                                txid = tx["id"]
+                                logging.info(f"new tx {txid}")
+                                attachment = tx["attachment"]
+                                invoice_id = extract_invoice_id(attachment)
+                                dbtx = Transaction(txid, tx["sender"], recipient, tx["amount"], attachment, invoice_id, block["height"])
+                                db_session.add(dbtx)
+                    scanned_block_num = block["height"]
+                    logging.debug(f"scanned block {scanned_block_num}")
+                    if scanned_block_num % 100 == 0:
+                        db_settings.set_scanned_block_num(db_session, scanned_block_num)
+                        db_session.commit()
+                    gevent.sleep(0)
+                db_session.commit()
+
         logging.info("spawning ZapRPC runloop...")
-        self.g = gevent.spawn(runloop)
-        self.g.run()
+        self.runloop_greenlet = gevent.spawn(runloop)
+        logging.info("spawning ZapRPC blockloop...")
+        self.blockloop_greenlet = gevent.spawn(blockloop)
+        gevent.sleep(0)
 
     def stop(self):
-        self.g.kill()
+        self.runloop_greenlet.kill()
+        self.blockloop_greenlet.kill()
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
 
-    zaprpc = ZapRPC(debug=True)
+    zaprpc = ZapRPC()
     zaprpc.start()
 
     while 1:
-        time.sleep(1)
+        gevent.sleep(1)
 
     zaprpc.stop()
