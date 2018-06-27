@@ -28,3 +28,7 @@ def request(method_name, params):
 
 print(request("balance", {}))
 print(request("listtransactions", {"invoice_id": 123}))
+res = request("createtransaction", {"recipient": "3NAbEPpnw2YmZ3axaPFAXW5LG9R6jJip69e", "amount": 10, "attachment": ""})
+print(res)
+if not "error" in res:
+    print(request("broadcasttransaction", {"txid": res["result"]["txid"]}))

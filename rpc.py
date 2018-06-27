@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
 import sys
-import time
 import logging
 import json
 
@@ -11,16 +10,24 @@ from flask import Flask
 from flask_jsonrpc import JSONRPC
 import requests
 import base58
+import pywaves
 
 import config
 from database import db_session, init_db
 import db_settings
-from models import Transaction
+from models import Transaction, CreatedTransaction
 
 cfg = config.read_cfg()
 init_db()
 app = Flask(__name__)
 jsonrpc = JSONRPC(app, "/api")
+
+# set pywaves to offline mode
+pywaves.setOffline()
+if cfg.testnet:
+    pywaves.setChain("testnet")
+# our address object
+pw_address = None
 
 @jsonrpc.method("balance")
 def balance():
@@ -28,13 +35,44 @@ def balance():
     response = requests.get(cfg.node_http_base_url + path)
     return response.json()
 
-@jsonrpc.method("listtransactions", validate=True)
+@jsonrpc.method("listtransactions")
 def listtransactions(invoice_id):
     txs = Transaction.from_invoice_id(db_session, invoice_id)
     txs_json = []
     for tx in txs:
         txs_json.append(tx.to_json())
     return txs_json
+
+@jsonrpc.method("createtransaction")
+def createtransaction(recipient, amount, attachment):
+    recipient = pywaves.Address(recipient)
+    signed_tx = pw_address.sendAsset(recipient, pywaves.Asset(cfg.asset_id), amount, attachment)
+    signed_tx = json.loads(signed_tx["api-data"])
+    #TODO!!!: calc txid properly
+    txid = signed_tx["timestamp"]
+    # store tx in db
+    dbtx = CreatedTransaction(txid, "created", signed_tx["amount"], json.dumps(signed_tx))
+    db_session.add(dbtx)
+    db_session.commit()
+    # return txid/state to caller
+    return {"txid": txid, "state": dbtx.state}
+
+@jsonrpc.method("broadcasttransaction")
+def broadcasttransaction(txid):
+    dbtx = CreatedTransaction.from_txid(db_session, txid)
+    signed_tx = json.loads(dbtx.json_data)
+    # broadcast
+    path = f"assets/broadcast/transfer"
+    response = requests.post(cfg.node_http_base_url + path, data=signed_tx)
+    if response.ok:
+        # update tx in db
+        dbtx.state = "broadcast"
+    else:
+        logging.error(f"broadcast tx: {response.text}")
+    db_session.add(dbtx)
+    db_session.commit()
+    # return txid/state to caller
+    return {"txid": txid, "state": dbtx.state}
 
 def block_height():
     response = requests.get(cfg.node_http_base_url + "blocks/height")
@@ -59,11 +97,28 @@ class ZapRPC():
         self.port = port
 
     def start(self):
-        # check cfg.address is one of the nodes addresses
+        # get node addresses
         response = requests.get(cfg.node_http_base_url + "addresses")
-        if not cfg.address in response.json():
+        node_addresses = response.json()
+        # check cfg.address is one of the nodes addresses
+        if not cfg.address in node_addresses:
             logging.error(f"node wallet does not control {cfg.address}")
             sys.exit(1)
+        # get private key from our node
+        headers = {"X-Api-Key": cfg.node_api_key}
+        response = requests.get(cfg.node_http_base_url + "wallet/seed", headers=headers)
+        if not response.ok:
+            logging.error(f"Wallet seed request: {response.text}")
+            sys.exit(1)
+        else:
+            # create our address object for creating transactions
+            wallet_seed = response.json()["seed"]
+            global pw_address
+            pw_address = pywaves.Address(seed=wallet_seed)
+            # check address object matches our configured address
+            if not pw_address.address != cfg.address:
+                logging.error(f"pw_address does not match {cfg.address}")
+                sys.exit(1)
 
         def runloop():
             logging.info("ZapRPC runloop started")

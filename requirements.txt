@@ -3,3 +3,4 @@ Flask-JSONRPC==0.3.1
 requests==2.19.1
 sqlalchemy==1.2.8
 marshmallow==2.15.3
+pywaves==0.8.14
