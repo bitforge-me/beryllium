@@ -11,6 +11,8 @@ import gevent
 from gevent import socket
 import base58
 
+logger = logging.getLogger(__name__)
+
 MAGIC = 305419896
 CONTENT_ID_TX = 0x19
 CONTENT_ID_BLOCK = 0x17
@@ -101,7 +103,7 @@ def parse_block(payload):
 def parse_message(wutx, msg, on_tranfer_tx=None):
     handshake = decode_handshake(msg)
     if handshake:
-        logging.info(f"handshake: {handshake[0]} {handshake[1]}.{handshake[2]}.{handshake[3]} {handshake[4]}")
+        logger.info(f"handshake: {handshake[0]} {handshake[1]}.{handshake[2]}.{handshake[3]} {handshake[4]}")
     else:
         while msg:
             fmt = ">llBl"
@@ -113,7 +115,7 @@ def parse_message(wutx, msg, on_tranfer_tx=None):
                 fmt = ">llBll"
                 fmt_size = struct.calcsize(fmt)
                 if fmt_size > len(msg):
-                    logging.error(f"msg too short - len {len(msg)}, fmt_size {fmt_size}")
+                    logger.error(f"msg too short - len {len(msg)}, fmt_size {fmt_size}")
                     break
 
                 length, magic, content_id, payload_len, payload_checksum \
@@ -122,33 +124,33 @@ def parse_message(wutx, msg, on_tranfer_tx=None):
 
             msg = msg[4 + length:]
 
-            logging.debug(f"message: len {length:4}, magic {magic}, content_id: {content_id:#04x}, payload_len {payload_len:4}")
+            logger.debug(f"message: len {length:4}, magic {magic}, content_id: {content_id:#04x}, payload_len {payload_len:4}")
 
             if magic != MAGIC:
-                logging.error("invalid magic")
+                logger.error("invalid magic")
                 break
 
             if content_id == CONTENT_ID_TX:
                 # transaction!
                 tx_type = payload[0]
-                logging.info(f"transaction type: {tx_type}")
+                logger.info(f"transaction type: {tx_type}")
                 if tx_type == 4:
                     # transfer
                     tx_len, tx_type, sig, tx_type2, pubkey, asset_flag, asset_id, timestamp, amount, fee, address, attachment = parse_transfer_tx(payload)
 
-                    logging.info(f"  senders pubkey: {base58.b58encode(pubkey)}, addr: {base58.b58encode(address)}, amount: {amount}, fee: {fee}, asset id: {asset_id}, timestamp: {timestamp}, attachment: {attachment}")
+                    logger.info(f"  senders pubkey: {base58.b58encode(pubkey)}, addr: {base58.b58encode(address)}, amount: {amount}, fee: {fee}, asset id: {asset_id}, timestamp: {timestamp}, attachment: {attachment}")
                     if on_tranfer_tx:
                         on_tranfer_tx(wutx, sig, pubkey, asset_id, timestamp, amount, fee, address, attachment)
 
             if content_id == CONTENT_ID_BLOCK:
                 # block
-                logging.debug(f"block: len {len(payload)}")
+                logger.debug(f"block: len {len(payload)}")
                 parse_block(payload)
 
             if content_id == CONTENT_ID_SCORE:
                 # score
                 score = int(binascii.hexlify(payload), 16)
-                logging.info(f"score: value {score}")
+                logger.info(f"score: value {score}")
 
 class WavesUTX():
 
@@ -157,27 +159,27 @@ class WavesUTX():
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # now connect to the waves node on port 6863
         self.s.connect((addr, port))
-        logging.info(f"socket opened: {addr}:{port}")
+        logger.info(f"socket opened: {addr}:{port}")
 
         # send handshake
         local_port = self.s.getsockname()[1]
         handshake = create_handshake(local_port)
         l = self.s.send(handshake)
-        logging.info(f"handshake bytes sent: {l}")
+        logger.info(f"handshake bytes sent: {l}")
 
         self.on_msg = on_msg
         self.on_tranfer_tx = on_tranfer_tx
 
     def start(self):
         def runloop():
-            logging.info("WavesUTX runloop started")
+            logger.info("WavesUTX runloop started")
             while 1:
                 data = self.s.recv(1024)
                 if data:
-                    logging.debug(f"recv: {len(data)}")
+                    logger.debug(f"recv: {len(data)}")
                     self.on_msg(self, data)
                     parse_message(self, data, self.on_tranfer_tx)
-        logging.info("spawning WavesUTX runloop...")
+        logger.info("spawning WavesUTX runloop...")
         self.g = gevent.spawn(runloop)
         gevent.sleep(0)
 
@@ -196,7 +198,14 @@ def decode_test_msg():
     parse_message(None, data)
 
 def test_p2p():
-    logging.basicConfig(level=logging.DEBUG)
+    # setup logging
+    logger.setLevel(logging.DEBUG)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    ch.setFormatter(logging.Formatter('[%(name)s %(levelname)s] %(message)s'))
+    logger.addHandler(ch)
+    # clear loggers set by any imported modules
+    logging.getLogger().handlers.clear()
 
     def on_msg(wutx, msg):
         print(to_hex(msg))
