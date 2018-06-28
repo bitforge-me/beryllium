@@ -3,6 +3,7 @@
 import sys
 import logging
 import json
+import struct
 
 import gevent
 from gevent.pywsgi import WSGIServer
@@ -43,13 +44,26 @@ def listtransactions(invoice_id):
         txs_json.append(tx.to_json())
     return txs_json
 
+def transfer_asset_id(tx):
+    serialized_data = b'\4' + \
+        base58.b58decode(tx["senderPublicKey"]) + \
+        (b'\1' + base58.b58decode(tx["assetId"]) if tx["assetId"] else b'\0') + \
+        (b'\1' + base58.b58decode(tx["feeAssetId"]) if tx["feeAssetId"] else b'\0') + \
+        struct.pack(">Q", tx["timestamp"]) + \
+        struct.pack(">Q", tx["amount"]) + \
+        struct.pack(">Q", tx["fee"]) + \
+        base58.b58decode(tx["recipient"]) + \
+        struct.pack(">H", len(tx["attachment"])) + \
+        pywaves.crypto.str2bytes(tx["attachment"])
+    return pywaves.crypto.id(serialized_data)
+
 @jsonrpc.method("createtransaction")
 def createtransaction(recipient, amount, attachment):
     recipient = pywaves.Address(recipient)
     signed_tx = pw_address.sendAsset(recipient, pywaves.Asset(cfg.asset_id), amount, attachment)
     signed_tx = json.loads(signed_tx["api-data"])
-    #TODO!!!: calc txid properly
-    txid = signed_tx["timestamp"]
+    # calc txid properly
+    txid = transfer_asset_id(signed_tx)
     # store tx in db
     dbtx = CreatedTransaction(txid, "created", signed_tx["amount"], json.dumps(signed_tx))
     db_session.add(dbtx)
@@ -62,13 +76,15 @@ def broadcasttransaction(txid):
     dbtx = CreatedTransaction.from_txid(db_session, txid)
     signed_tx = json.loads(dbtx.json_data)
     # broadcast
+    logging.debug(f"requesting broadcast of tx:\n\t{signed_tx}")
     path = f"assets/broadcast/transfer"
-    response = requests.post(cfg.node_http_base_url + path, data=signed_tx)
+    headers = {"Content-Type": "application/json"}
+    response = requests.post(cfg.node_http_base_url + path, headers=headers, data=signed_tx)
     if response.ok:
         # update tx in db
         dbtx.state = "broadcast"
     else:
-        logging.error(f"broadcast tx: {response.text}")
+        logging.error(f"broadcast tx ({response.status_code}, {response.request.method} {response.url}):\n\t{response.text}")
     db_session.add(dbtx)
     db_session.commit()
     # return txid/state to caller
