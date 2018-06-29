@@ -100,7 +100,7 @@ def parse_block(payload):
     offset = fmt_header_len
     txs = parse_block_txs(payload[offset:offset + txs_len])
 
-def parse_message(wutx, msg, on_tranfer_tx=None):
+def parse_message(wutx, msg, on_transfer_utx=None):
     handshake = decode_handshake(msg)
     if handshake:
         logger.info(f"handshake: {handshake[0]} {handshake[1]}.{handshake[2]}.{handshake[3]} {handshake[4]}")
@@ -139,8 +139,8 @@ def parse_message(wutx, msg, on_tranfer_tx=None):
                     tx_len, tx_type, sig, tx_type2, pubkey, asset_flag, asset_id, timestamp, amount, fee, address, attachment = parse_transfer_tx(payload)
 
                     logger.info(f"  senders pubkey: {base58.b58encode(pubkey)}, addr: {base58.b58encode(address)}, amount: {amount}, fee: {fee}, asset id: {asset_id}, timestamp: {timestamp}, attachment: {attachment}")
-                    if on_tranfer_tx:
-                        on_tranfer_tx(wutx, sig, pubkey, asset_id, timestamp, amount, fee, address, attachment)
+                    if on_transfer_utx:
+                        on_transfer_utx(wutx, sig, pubkey, asset_id, timestamp, amount, fee, address, attachment)
 
             if content_id == CONTENT_ID_BLOCK:
                 # block
@@ -154,7 +154,7 @@ def parse_message(wutx, msg, on_tranfer_tx=None):
 
 class WavesUTX():
 
-    def __init__(self, on_msg, on_tranfer_tx, addr="127.0.0.1", port=6863):
+    def __init__(self, on_msg, on_transfer_utx, addr="127.0.0.1", port=6863):
         # create an INET, STREAMing socket
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # now connect to the waves node on port 6863
@@ -168,7 +168,7 @@ class WavesUTX():
         logger.info(f"handshake bytes sent: {l}")
 
         self.on_msg = on_msg
-        self.on_tranfer_tx = on_tranfer_tx
+        self.on_transfer_utx = on_transfer_utx
 
     def start(self):
         def runloop():
@@ -177,8 +177,9 @@ class WavesUTX():
                 data = self.s.recv(1024)
                 if data:
                     logger.debug(f"recv: {len(data)}")
-                    self.on_msg(self, data)
-                    parse_message(self, data, self.on_tranfer_tx)
+                    if self.on_msg:
+                        self.on_msg(self, data)
+                    parse_message(self, data, self.on_transfer_utx)
         logger.info("spawning WavesUTX runloop...")
         self.g = gevent.spawn(runloop)
         gevent.sleep(0)
@@ -209,10 +210,10 @@ def test_p2p():
 
     def on_msg(wutx, msg):
         print(to_hex(msg))
-    def on_tranfer_tx(wutx, sig, pubkey, asset_id, timestamp, amount, fee, address, attachment):
+    def on_transfer_utx(wutx, sig, pubkey, asset_id, timestamp, amount, fee, address, attachment):
         print(f"!transfer!: to {base58.b58encode(address)}, amount {amount}")
 
-    wutx = WavesUTX(on_msg, on_tranfer_tx)
+    wutx = WavesUTX(on_msg, on_transfer_utx)
     wutx.start()
     while 1:
         gevent.sleep(1)

@@ -18,6 +18,7 @@ import config
 from database import db_session, init_db
 import db_settings
 from models import Transaction, CreatedTransaction
+import utils
 
 cfg = config.read_cfg()
 init_db()
@@ -101,14 +102,6 @@ def block_at(num):
     response = requests.get(cfg.node_http_base_url + f"blocks/at/{num}")
     return response.json()
 
-def extract_invoice_id(attachment):
-    data = base58.b58decode(attachment)
-    try:
-        data = json.loads(data)
-        return data["invoice_id"]
-    except:
-        return None
-
 class ZapRPC():
 
     def __init__(self, addr="127.0.0.1", port=5000):
@@ -160,7 +153,7 @@ class ZapRPC():
                                 txid = tx["id"]
                                 logger.info(f"new tx {txid}")
                                 attachment = tx["attachment"]
-                                invoice_id = extract_invoice_id(attachment)
+                                invoice_id = utils.extract_invoice_id(attachment)
                                 dbtx = Transaction(txid, tx["sender"], recipient, tx["amount"], attachment, invoice_id, block["height"])
                                 db_session.add(dbtx)
                     scanned_block_num = block["height"]
