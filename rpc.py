@@ -12,6 +12,7 @@ from flask_jsonrpc import JSONRPC
 import requests
 import base58
 import pywaves
+import pyblake2
 
 import config
 from database import db_session, init_db
@@ -45,7 +46,7 @@ def listtransactions(invoice_id):
         txs_json.append(tx.to_json())
     return txs_json
 
-def transfer_asset_id(tx):
+def transfer_asset_txid(tx):
     serialized_data = b'\4' + \
         base58.b58decode(tx["senderPublicKey"]) + \
         (b'\1' + base58.b58decode(tx["assetId"]) if tx["assetId"] else b'\0') + \
@@ -56,17 +57,18 @@ def transfer_asset_id(tx):
         base58.b58decode(tx["recipient"]) + \
         struct.pack(">H", len(tx["attachment"])) + \
         pywaves.crypto.str2bytes(tx["attachment"])
-    return pywaves.crypto.id(serialized_data)
+    txid = pyblake2.blake2b(serialized_data, digest_size=32).digest()
+    return base58.b58encode(txid)
 
 @jsonrpc.method("createtransaction")
 def createtransaction(recipient, amount, attachment):
     recipient = pywaves.Address(recipient)
-    signed_tx = pw_address.sendAsset(recipient, pywaves.Asset(cfg.asset_id), amount, attachment)
-    signed_tx = json.loads(signed_tx["api-data"])
+    address_data = pw_address.sendAsset(recipient, pywaves.Asset(cfg.asset_id), amount, attachment)
+    signed_tx = json.loads(address_data["api-data"])
     # calc txid properly
-    txid = transfer_asset_id(signed_tx)
+    txid = transfer_asset_txid(signed_tx)
     # store tx in db
-    dbtx = CreatedTransaction(txid, "created", signed_tx["amount"], json.dumps(signed_tx))
+    dbtx = CreatedTransaction(txid, "created", signed_tx["amount"], address_data["api-data"])
     db_session.add(dbtx)
     db_session.commit()
     # return txid/state to caller
@@ -75,7 +77,7 @@ def createtransaction(recipient, amount, attachment):
 @jsonrpc.method("broadcasttransaction")
 def broadcasttransaction(txid):
     dbtx = CreatedTransaction.from_txid(db_session, txid)
-    signed_tx = json.loads(dbtx.json_data)
+    signed_tx = dbtx.json_data
     # broadcast
     logger.debug(f"requesting broadcast of tx:\n\t{signed_tx}")
     path = f"assets/broadcast/transfer"
