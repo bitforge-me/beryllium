@@ -1,10 +1,11 @@
-import base58
+import json
 
-def extract_invoice_id(attachment):
-    data = base58.b58decode(attachment)
+def extract_invoice_id(logger, attachment):
     try:
-        data = json.loads(data)
-        return data["invoice_id"]
-    except:
-        return None
+        data = json.loads(attachment)
+        if "invoice_id" in data:
+            return data["invoice_id"]
+    except Exception as ex:
+        logger.error(f"extract_invoice_id: {ex.message}")
+    return None
 
