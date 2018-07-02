@@ -46,8 +46,8 @@ def call_webhook(logger, msg, sig):
         headers = {"Content-Type": "application/json", "Signature": sig}
         response = requests.post(cfg.webhook_url, headers=headers, data=msg)
         if response.ok:
-            logger.info(f"called {cfg.webhook} ok")
+            logger.info(f"called {cfg.webhook_url} ok")
         else:
-            logger.error(f"{cfg.webhook}: {response.status_code} - {response.text}")
+            logger.error(f"{cfg.webhook_url}: {response.status_code} - {response.text}")
     except Exception as ex:
         logger.error(f"call_webhook: {ex}")
