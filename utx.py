@@ -81,12 +81,12 @@ def parse_transfer_tx(payload):
     offset += fee_asset_id_len
     fmt_mid = ">QQQ26sH"
     fmt_mid_len = struct.calcsize(fmt_mid)
-    timestamp, amount, fee, address, attachment_len = \
+    timestamp, amount, fee, recipient, attachment_len = \
         struct.unpack_from(fmt_mid, payload[offset:])
     offset += fmt_mid_len
     attachment = payload[offset:offset+attachment_len]
 
-    return offset + attachment_len, tx_type, sig, tx_type2, pubkey, asset_flag, asset_id, timestamp, amount, fee, address, attachment
+    return offset + attachment_len, tx_type, sig, tx_type2, pubkey, asset_flag, asset_id, fee_asset_flag, fee_asset_id, timestamp, amount, fee, recipient, attachment
 
 def parse_block_txs(payload):
     ## Not sure if we will need to parse the block txs, it will require parsing each of the tx types
@@ -101,6 +101,19 @@ def parse_block(payload):
         struct.unpack_from(fmt_header, payload)
     offset = fmt_header_len
     txs = parse_block_txs(payload[offset:offset + txs_len])
+
+def transfer_asset_txid(pubkey, asset_id, fee_asset_id, timestamp, amount, fee, recipient, attachment):
+    serialized_data = b'\4' + \
+        pubkey + \
+        (b'\1' + asset_id if asset_id else b'\0') + \
+        (b'\1' + fee_asset_id if fee_asset_id else b'\0') + \
+        struct.pack(">Q", timestamp) + \
+        struct.pack(">Q", amount) + \
+        struct.pack(">Q", fee) + \
+        recipient + \
+        struct.pack(">H", len(attachment)) + \
+        attachment
+    return utils.txid_from_txdata(serialized_data)
 
 def parse_message(wutx, msg, on_transfer_utx=None):
     handshake = decode_handshake(msg)
@@ -138,12 +151,12 @@ def parse_message(wutx, msg, on_transfer_utx=None):
                 logger.info(f"transaction type: {tx_type}")
                 if tx_type == 4:
                     # transfer
-                    txid = utils.txid_from_txdata(payload)
-                    tx_len, tx_type, sig, tx_type2, pubkey, asset_flag, asset_id, timestamp, amount, fee, address, attachment = parse_transfer_tx(payload)
+                    tx_len, tx_type, sig, tx_type2, pubkey, asset_flag, asset_id, fee_asset_flag, fee_asset_id, timestamp, amount, fee, recipient, attachment = parse_transfer_tx(payload)
+                    txid = transfer_asset_txid(pubkey, asset_id, fee_asset_id, timestamp, amount, fee, recipient, attachment)
 
-                    logger.info(f"  senders pubkey: {base58.b58encode(pubkey)}, addr: {base58.b58encode(address)}, amount: {amount}, fee: {fee}, asset id: {asset_id}, timestamp: {timestamp}, attachment: {attachment}")
+                    logger.info(f"  txid: {txid}, senders pubkey: {base58.b58encode(pubkey)}, recipient: {base58.b58encode(recipient)}, amount: {amount}, fee: {fee}, asset id: {asset_id}, timestamp: {timestamp}, attachment: {attachment}")
                     if on_transfer_utx:
-                        on_transfer_utx(wutx, txid, sig, pubkey, asset_id, timestamp, amount, fee, address, attachment)
+                        on_transfer_utx(wutx, txid, sig, pubkey, asset_id, timestamp, amount, fee, recipient, attachment)
 
             if content_id == CONTENT_ID_BLOCK:
                 # block
@@ -213,8 +226,8 @@ def test_p2p():
 
     def on_msg(wutx, msg):
         print(to_hex(msg))
-    def on_transfer_utx(wutx, txid, sig, pubkey, asset_id, timestamp, amount, fee, address, attachment):
-        print(f"!transfer!: txid {txid}, to {base58.b58encode(address)}, amount {amount}")
+    def on_transfer_utx(wutx, txid, sig, pubkey, asset_id, timestamp, amount, fee, recipient, attachment):
+        print(f"!transfer!: txid {txid}, recipient {base58.b58encode(recipient)}, amount {amount}")
 
     wutx = WavesUTX(on_msg, on_transfer_utx)
     wutx.start()

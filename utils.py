@@ -11,8 +11,8 @@ import config
 
 cfg = config.read_cfg()
 
-def txid_from_txdata(payload):
-    txid = pyblake2.blake2b(payload, digest_size=32).digest()
+def txid_from_txdata(serialized_txdata):
+    txid = pyblake2.blake2b(serialized_txdata, digest_size=32).digest()
     return base58.b58encode(txid)
 
 def extract_invoice_id(logger, attachment):
