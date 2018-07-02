@@ -11,6 +11,8 @@ import gevent
 from gevent import socket
 import base58
 
+import utils
+
 logger = logging.getLogger(__name__)
 
 MAGIC = 305419896
@@ -136,11 +138,12 @@ def parse_message(wutx, msg, on_transfer_utx=None):
                 logger.info(f"transaction type: {tx_type}")
                 if tx_type == 4:
                     # transfer
+                    txid = utils.txid_from_txdata(payload)
                     tx_len, tx_type, sig, tx_type2, pubkey, asset_flag, asset_id, timestamp, amount, fee, address, attachment = parse_transfer_tx(payload)
 
                     logger.info(f"  senders pubkey: {base58.b58encode(pubkey)}, addr: {base58.b58encode(address)}, amount: {amount}, fee: {fee}, asset id: {asset_id}, timestamp: {timestamp}, attachment: {attachment}")
                     if on_transfer_utx:
-                        on_transfer_utx(wutx, sig, pubkey, asset_id, timestamp, amount, fee, address, attachment)
+                        on_transfer_utx(wutx, txid, sig, pubkey, asset_id, timestamp, amount, fee, address, attachment)
 
             if content_id == CONTENT_ID_BLOCK:
                 # block
@@ -210,8 +213,8 @@ def test_p2p():
 
     def on_msg(wutx, msg):
         print(to_hex(msg))
-    def on_transfer_utx(wutx, sig, pubkey, asset_id, timestamp, amount, fee, address, attachment):
-        print(f"!transfer!: to {base58.b58encode(address)}, amount {amount}")
+    def on_transfer_utx(wutx, txid, sig, pubkey, asset_id, timestamp, amount, fee, address, attachment):
+        print(f"!transfer!: txid {txid}, to {base58.b58encode(address)}, amount {amount}")
 
     wutx = WavesUTX(on_msg, on_transfer_utx)
     wutx.start()

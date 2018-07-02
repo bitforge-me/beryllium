@@ -26,10 +26,6 @@ app = Flask(__name__)
 jsonrpc = JSONRPC(app, "/api")
 logger = logging.getLogger(__name__)
 
-# set pywaves to offline mode
-pywaves.setOffline()
-if cfg.testnet:
-    pywaves.setChain("testnet")
 # our address object
 pw_address = None
 
@@ -58,8 +54,7 @@ def transfer_asset_txid(tx):
         base58.b58decode(tx["recipient"]) + \
         struct.pack(">H", len(tx["attachment"])) + \
         pywaves.crypto.str2bytes(tx["attachment"])
-    txid = pyblake2.blake2b(serialized_data, digest_size=32).digest()
-    return base58.b58encode(txid)
+    return utils.txid_from_txdata(serialized_data)
 
 @jsonrpc.method("createtransaction")
 def createtransaction(recipient, amount, attachment):
