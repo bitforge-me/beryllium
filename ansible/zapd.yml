@@ -1,0 +1,50 @@
+---
+- name: zapd
+  hosts: all
+  become: yes
+  become_user: root
+
+  tasks:
+    - name: ansible group
+      group: 
+        name: zapd
+        state: present
+
+    - name: ansible user
+      user:
+        name: zapd
+        shell: /usr/sbin/nologin
+        groups: zapd
+        system: yes
+        state: present
+
+    - name: copy zapd
+      copy:
+        src: ../zapd/
+        dest: /opt/zapd
+        owner: zapd
+        group: zapd
+        mode: 0755
+
+    - name: zapd dos2unix
+      shell: dos2unix /opt/zapd/*
+
+    - name: copy zapd.service
+      template:
+        src: templates/zapd.service
+        dest: /etc/systemd/system/zapd.service
+
+    - name: install python requiremnents
+      shell: pip3 install --system -r /opt/zapd/requirements.txt
+
+    - name: stop zapd service
+      service: 
+        name: zapd
+        state: stopped
+        enabled: no
+
+    - name: start zapd service
+      service: 
+        name: zapd
+        state: started
+        enabled: yes

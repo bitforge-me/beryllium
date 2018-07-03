@@ -2,4 +2,6 @@
 *.swp
 *.db
 
+/ansible/deploy.retry
 /__pycache__
+/.vagrant

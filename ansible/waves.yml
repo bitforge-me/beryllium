@@ -1,0 +1,77 @@
+---
+- name: waves
+  hosts: all
+  become: yes
+  become_user: root
+
+  vars:
+    waves_file: "{{ 'waves-all-0.13.2.jar' if TESTNET else 'waves-all-0.13.4.jar' }}"
+    waves_download_dir: "{{ 'v0.13.2' if TESTNET else 'v0.13.4' }}"
+    waves_conf_file: "{{ 'waves_testnet.conf' if TESTNET else 'waves_mainnet.conf' }}"
+  tasks:
+    - name: ansible group
+      group: 
+        name: waves
+        state: present
+
+    - name: ansible user
+      user:
+        name: waves
+        shell: /usr/sbin/nologin
+        groups: waves
+        system: yes
+        state: present
+
+    - name: download waves
+      get_url:
+        url: https://github.com/wavesplatform/Waves/releases/download/{{ waves_download_dir }}/{{ waves_file }}
+        dest: /home/waves/{{ waves_file }}
+
+    - file:
+        path: /opt/waves
+        state: directory
+        mode: 0755
+
+    - name: copy waves binary
+      copy:
+        src: /home/waves/{{ waves_file }}
+        dest: /opt/waves/{{ waves_file }}
+        remote_src: yes
+        owner: waves
+        group: waves
+        mode: 0755
+
+    - name: copy waves testnet conf
+      template:
+        src: templates/waves_testnet.conf
+        dest: /opt/waves/waves_testnet.conf
+
+    - name: copy waves conf
+      template:
+        src: templates/{{ waves_conf_file }}
+        dest: /opt/waves/{{ waves_conf_file }}
+
+    - name: copy waves.service
+      template:
+        src: templates/waves.service
+        dest: /etc/systemd/system/waves.service
+
+    - name: stop waves service
+      service: 
+        name: waves 
+        state: stopped
+        enabled: no
+
+    - name: set home dir waves data ownership
+      file: 
+        path: /home/waves/waves
+        owner: waves
+        group: waves
+        state: directory
+        recurse: yes
+
+    - name: start waves service
+      service: 
+        name: waves 
+        state: started
+        enabled: yes
