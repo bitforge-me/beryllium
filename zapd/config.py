@@ -1,10 +1,12 @@
 import os
 import configparser
 
+def get_filename():
+    return os.path.join(os.path.dirname(os.path.realpath(__file__)), "config.cfg")
+
 def read_cfg():
-    filename = os.path.join(os.path.dirname(os.path.realpath(__file__)), "config.cfg")
     cp = configparser.ConfigParser()
-    cp.read(filename)
+    cp.read(get_filename())
 
     cfg = type("cfg", (object,), {})()
 
@@ -29,3 +31,14 @@ def read_cfg():
     cfg.webhook_url = cp["webhook"]["url"]
 
     return cfg
+
+def init_wallet_address(address):
+    import re
+    pattern = "(address=)(.*)"
+    with open(get_filename()) as f:
+        data = f.read()
+    def subaddr(m):
+        return m.group(1) + address
+    data = re.sub(pattern, subaddr, data)
+    with open(get_filename(), "w") as f:
+        f.write(data)

@@ -29,6 +29,9 @@
     - name: zapd dos2unix
       shell: dos2unix /opt/zapd/*
 
+    - name: init wallet address
+      shell: /opt/zapd/init_wallet_address.py
+
     - name: copy zapd.service
       template:
         src: templates/zapd.service
