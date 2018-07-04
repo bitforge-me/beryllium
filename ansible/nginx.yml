@@ -1,0 +1,25 @@
+---
+- name: nginx
+  hosts: all
+  become: yes
+  become_user: root
+
+  vars:
+    server_name: "{{ 'testnet.zap.me' if TESTNET else 'mainnet.zap.me' }}"
+  tasks:
+
+    - name: nginx config
+      template:
+        src: templates/zap_me_reverse_proxy
+        dest: /etc/nginx/sites-enabled/zap_me_reverse_proxy
+
+    - name: stop nginx service
+      service: 
+        name: nginx 
+        state: stopped
+
+    - name: start nginx service
+      service:
+        name: nginx
+        state: started
+        enabled: yes

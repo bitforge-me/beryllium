@@ -34,6 +34,7 @@
         - python3
         - python3-pip
         - dos2unix
+        - nginx
 
     # https://github.com/ansible/ansible/issues/23914      
     - name: resize partition
@@ -46,6 +47,7 @@
       when: VAGRANT == "true"
       ignore_errors: yes
 
+- include: nginx.yml
 - include: java.yml
 - include: waves.yml
 - include: zapd.yml
