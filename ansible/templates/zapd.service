@@ -6,7 +6,8 @@ After=network.target
 User=zapd
 Group=zapd
 
-ExecStart=/opt/zap/app.py
+Type=simple
+ExecStart=/usr/bin/python3 /opt/zapd/app.py
 
 Restart=always
 PrivateTmp=true
