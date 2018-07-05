@@ -3,5 +3,5 @@
 *.db
 
 /ansible/deploy.retry
-/__pycache__
+/zapd/__pycache__
 /.vagrant

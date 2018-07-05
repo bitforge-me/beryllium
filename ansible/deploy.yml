@@ -48,6 +48,7 @@
       ignore_errors: yes
 
 - include: nginx.yml
+  when: VAGRANT == "false"
 - include: java.yml
 - include: waves.yml
 - include: zapd.yml
