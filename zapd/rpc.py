@@ -10,6 +10,8 @@ from gevent.pywsgi import WSGIServer
 from flask import Flask
 from flask_jsonrpc import JSONRPC
 import requests
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
 import base58
 import pywaves
 import pyblake2
@@ -89,12 +91,23 @@ def broadcasttransaction(txid):
     # return txid/state to caller
     return {"txid": txid, "state": dbtx.state}
 
+def get(url):
+    with requests.Session() as s:
+        retries = Retry(
+            total=10,
+            backoff_factor=0.2,
+            status_forcelist=[500, 502, 503, 504])
+        s.mount('http://', HTTPAdapter(max_retries=retries))
+        s.mount('https://', HTTPAdapter(max_retries=retries))
+        response = s.get(url)
+        return response
+
 def block_height():
-    response = requests.get(cfg.node_http_base_url + "blocks/height")
+    response = get(cfg.node_http_base_url + "blocks/height")
     return response.json()["height"]
 
 def block_at(num):
-    response = requests.get(cfg.node_http_base_url + f"blocks/at/{num}")
+    response = get(cfg.node_http_base_url + f"blocks/at/{num}")
     return response.json()
 
 class ZapRPC():
