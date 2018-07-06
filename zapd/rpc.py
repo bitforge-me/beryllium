@@ -103,7 +103,7 @@ class ZapRPC():
         self.addr = addr
         self.port = port
 
-    def start(self):
+    def start(self, group=None):
         # get node addresses
         response = requests.get(cfg.node_http_base_url + "addresses")
         node_addresses = response.json()
@@ -170,6 +170,9 @@ class ZapRPC():
         self.runloop_greenlet = gevent.spawn(runloop)
         logger.info("spawning ZapRPC blockloop...")
         self.blockloop_greenlet = gevent.spawn(blockloop)
+        if group != None:
+            group.add(self.runloop_greenlet)
+            group.add(self.blockloop_greenlet)
         gevent.sleep(0)
 
     def stop(self):

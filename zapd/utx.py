@@ -186,7 +186,7 @@ class WavesUTX():
         self.on_msg = on_msg
         self.on_transfer_utx = on_transfer_utx
 
-    def start(self):
+    def start(self, group=None):
         def runloop():
             logger.info("WavesUTX runloop started")
             while 1:
@@ -198,6 +198,8 @@ class WavesUTX():
                     parse_message(self, data, self.on_transfer_utx)
         logger.info("spawning WavesUTX runloop...")
         self.g = gevent.spawn(runloop)
+        if group != None:
+            group.add(self.g)
         gevent.sleep(0)
 
     def stop(self):

@@ -1,8 +1,10 @@
 #!/usr/bin/python3
 
 import logging
+import signal
 
 import gevent
+import gevent.pool
 import base58
 import pywaves
 
@@ -44,16 +46,25 @@ def on_transfer_utx(wutx, txid, sig, pubkey, asset_id, timestamp, amount, fee, r
         msg, sig = utils.create_signed_payment_notification(txid, timestamp, recipient, from_, amount, invoice_id)
         utils.call_webhook(logger, msg, sig)
 
+def sigint_handler(signum, frame):
+    global keep_running
+    logger.warning("SIGINT caught, attempting to exit gracefully")
+    keep_running = False
+
+keep_running = True
 if __name__ == "__main__":
     setup_logging(logging.DEBUG)
+    signal.signal(signal.SIGINT, sigint_handler)
 
+    group = gevent.pool.Group()
     zaprpc = rpc.ZapRPC()
-    zaprpc.start()
+    zaprpc.start(group)
     wutx = utx.WavesUTX(None, on_transfer_utx)
-    wutx.start()
-
-    while 1:
+    wutx.start(group)
+    while keep_running:
         gevent.sleep(1)
-
+        if len(group) < 3:
+            logger.error("one of our greenlets is dead X(")
+            break
     wutx.stop()
     zaprpc.stop()
