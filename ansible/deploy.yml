@@ -47,6 +47,7 @@
       when: VAGRANT == "true"
       ignore_errors: yes
 
+- include: updates.yml
 - include: nginx.yml
   when: VAGRANT == "false"
 - include: java.yml
