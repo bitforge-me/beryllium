@@ -54,5 +54,5 @@ if [[ $REPLY =~ ^[Yy]$ ]]
 then
     # do dangerous stuff
     echo ok lets go!!!
-    ansible-playbook --inventory "$DEPLOY_HOST," --user "$DEPLOY_USER" -vvvv --extra-vars "VAGRANT=$VAGRANT TESTNET=$TESTNET" ansible/deploy.yml
+    ansible-playbook --inventory "$DEPLOY_HOST," --user "$DEPLOY_USER" -v --extra-vars "VAGRANT=$VAGRANT TESTNET=$TESTNET" ansible/deploy.yml
 fi

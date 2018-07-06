@@ -24,7 +24,7 @@
         update_cache: yes   
 
     - name: Install Required Packages
-      action: apt pkg={{item}} state=installed
+      action: apt pkg={{item}} state=present
       with_items:
         - git
         - vim

@@ -49,6 +49,15 @@
         src: templates/nginx-le.j2
         dest: /etc/nginx/sites-enabled/le
 
+    - copy:
+        src: create_htpasswd.py
+        dest: /tmp/create_htpasswd.py
+
+    - name: Install .htpasswd file
+      shell: python3 /tmp/create_htpasswd.py /etc/nginx/htpasswd
+      args:
+          creates: /etc/nginx/htpasswd
+
     - name: Reload nginx to activate specified site
       service: name=nginx state=restarted
 

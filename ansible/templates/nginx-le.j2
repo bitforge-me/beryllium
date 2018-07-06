@@ -3,6 +3,7 @@ add_header X-Content-Type-Options nosniff;
 add_header X-XSS-Protection "1; mode=block";
 add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google-analytics.com; img-src 'self' data: https://www.google-analytics.com; style-src 'self' 'unsafe-inline'; font-src 'self'; frame-src 'none'; object-src 'none'";
 
+limit_req_zone $binary_remote_addr zone=zapd_limit:10m rate=10r/s;
 
 # HTTPS server
 #
@@ -35,6 +36,11 @@ server {
 
     # reverse proxy to our app
     location / {
+        limit_req zone=zapd_limit burst=20 nodelay;
+
+        auth_basic           "Password Required";
+        auth_basic_user_file /etc/nginx/htpasswd;
+
         proxy_set_header  Host $host;
         proxy_set_header  X-Real-IP $remote_addr;
         proxy_set_header  X-Forwarded-For $proxy_add_x_forwarded_for;
