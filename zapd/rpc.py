@@ -160,10 +160,11 @@ class ZapRPC():
                                 db_session.add(dbtx)
                     scanned_block_num = block["height"]
                     logger.debug(f"scanned block {scanned_block_num}")
-                    db_settings.set_scanned_block_num(db_session, scanned_block_num)
                     if scanned_block_num % 100 == 0:
+                        db_settings.set_scanned_block_num(db_session, scanned_block_num)
                         db_session.commit()
                     gevent.sleep(0)
+                db_settings.set_scanned_block_num(db_session, scanned_block_num)
                 db_session.commit()
 
         logger.info("spawning ZapRPC runloop...")
