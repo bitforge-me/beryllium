@@ -17,4 +17,4 @@ password = "".join(secrets.choice(alphabet) for i in range(20))
 
 # write password file
 with open(filename, "w") as f:
-    f.write(f"zapd:{{plain}}{password}\n")
+    f.write(f"zapd:{{PLAIN}}{password}\n")
