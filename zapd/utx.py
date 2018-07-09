@@ -171,20 +171,29 @@ def parse_message(wutx, msg, on_transfer_utx=None):
 class WavesUTX():
 
     def __init__(self, on_msg, on_transfer_utx, addr="127.0.0.1", port=6863):
-        # create an INET, STREAMing socket
-        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # now connect to the waves node on port 6863
-        self.s.connect((addr, port))
-        logger.info(f"socket opened: {addr}:{port}")
-
-        # send handshake
-        local_port = self.s.getsockname()[1]
-        handshake = create_handshake(local_port)
-        l = self.s.send(handshake)
-        logger.info(f"handshake bytes sent: {l}")
-
         self.on_msg = on_msg
         self.on_transfer_utx = on_transfer_utx
+        self.addr = addr
+        self.port = port
+
+    def init_socket(self):
+        while 1:
+            try:
+                # create an INET, STREAMing socket
+                self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                # now connect to the waves node on port 6863
+                self.s.connect((self.addr, self.port))
+                logger.info(f"socket opened: {self.addr}:{self.port}")
+                # send handshake
+                local_port = self.s.getsockname()[1]
+                handshake = create_handshake(local_port)
+                l = self.s.send(handshake)
+                logger.info(f"handshake bytes sent: {l}")
+                # success, exit loop!
+                break
+            except socket.error as e:
+                logger.error(f"{e}")
+                gevent.sleep(10)
 
     def start(self, group=None):
         def runloop():
@@ -196,14 +205,22 @@ class WavesUTX():
                     if self.on_msg:
                         self.on_msg(self, data)
                     parse_message(self, data, self.on_transfer_utx)
-        logger.info("spawning WavesUTX runloop...")
-        self.g = gevent.spawn(runloop)
+
+        def start_greenlet():
+            logger.info("checking p2p socket")
+            self.init_socket()
+            logger.info("starting WavesUTX runloop...")
+            self.runloop_greenlet.start()
+
+        # create greenlet
+        self.runloop_greenlet = gevent.Greenlet(runloop)
         if group != None:
-            group.add(self.g)
-        gevent.sleep(0)
+            group.add(self.runloop_greenlet)
+        # check socket and start greenlet
+        gevent.spawn(start_greenlet)
 
     def stop(self):
-        self.g.kill()
+        self.runloop_greenlet.kill()
 
 def decode_test_msg():
     # tx msg

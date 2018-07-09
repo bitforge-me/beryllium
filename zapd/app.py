@@ -56,15 +56,18 @@ if __name__ == "__main__":
     setup_logging(logging.DEBUG)
     signal.signal(signal.SIGINT, sigint_handler)
 
+    logger.info("starting greenlets")
     group = gevent.pool.Group()
     zaprpc = rpc.ZapRPC()
     zaprpc.start(group)
     wutx = utx.WavesUTX(None, on_transfer_utx)
     wutx.start(group)
+    logger.info("main loop")
     while keep_running:
         gevent.sleep(1)
         if len(group) < 3:
             logger.error("one of our greenlets is dead X(")
             break
+    logger.info("stopping greenlets")
     wutx.stop()
     zaprpc.stop()

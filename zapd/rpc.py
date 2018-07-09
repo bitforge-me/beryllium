@@ -115,31 +115,41 @@ class ZapRPC():
     def __init__(self, addr="127.0.0.1", port=5000):
         self.addr = addr
         self.port = port
+        self.runloop_greenlet = None
+        self.blockloop_greenlet = None
+
+    def check_wallet(self):
+        while 1:
+            try:
+                # get node addresses
+                response = requests.get(cfg.node_http_base_url + "addresses")
+                node_addresses = response.json()
+                # check cfg.address is one of the nodes addresses
+                if not cfg.address in node_addresses:
+                    logger.error(f"node wallet does not control {cfg.address}")
+                    sys.exit(1)
+                # get private key from our node
+                headers = {"X-Api-Key": cfg.node_api_key}
+                response = requests.get(cfg.node_http_base_url + "wallet/seed", headers=headers)
+                if not response.ok:
+                    logger.error(f"Wallet seed request: {response.text}")
+                    sys.exit(1)
+                else:
+                    # create our address object for creating transactions
+                    wallet_seed = response.json()["seed"]
+                    global pw_address
+                    pw_address = pywaves.Address(seed=wallet_seed)
+                    # check address object matches our configured address
+                    if not pw_address.address != cfg.address:
+                        logger.error(f"pw_address does not match {cfg.address}")
+                        sys.exit(1)
+                # success, exit loop!
+                break
+            except requests.exceptions.RequestException as e:
+                logger.error(f"{e}")
+                gevent.sleep(10)
 
     def start(self, group=None):
-        # get node addresses
-        response = requests.get(cfg.node_http_base_url + "addresses")
-        node_addresses = response.json()
-        # check cfg.address is one of the nodes addresses
-        if not cfg.address in node_addresses:
-            logger.error(f"node wallet does not control {cfg.address}")
-            sys.exit(1)
-        # get private key from our node
-        headers = {"X-Api-Key": cfg.node_api_key}
-        response = requests.get(cfg.node_http_base_url + "wallet/seed", headers=headers)
-        if not response.ok:
-            logger.error(f"Wallet seed request: {response.text}")
-            sys.exit(1)
-        else:
-            # create our address object for creating transactions
-            wallet_seed = response.json()["seed"]
-            global pw_address
-            pw_address = pywaves.Address(seed=wallet_seed)
-            # check address object matches our configured address
-            if not pw_address.address != cfg.address:
-                logger.error(f"pw_address does not match {cfg.address}")
-                sys.exit(1)
-
         def runloop():
             logger.info("ZapRPC runloop started")
 
@@ -180,14 +190,22 @@ class ZapRPC():
                 db_settings.set_scanned_block_num(db_session, scanned_block_num)
                 db_session.commit()
 
-        logger.info("spawning ZapRPC runloop...")
-        self.runloop_greenlet = gevent.spawn(runloop)
-        logger.info("spawning ZapRPC blockloop...")
-        self.blockloop_greenlet = gevent.spawn(blockloop)
+        def start_greenlets():
+            logger.info("checking wallet...")
+            self.check_wallet()
+            logger.info("starting ZapRPC runloop...")
+            self.runloop_greenlet.start()
+            logger.info("starting ZapRPC blockloop...")
+            self.blockloop_greenlet.start()
+
+        # create greenlets
+        self.runloop_greenlet = gevent.Greenlet(runloop)
+        self.blockloop_greenlet = gevent.Greenlet(blockloop)
         if group != None:
             group.add(self.runloop_greenlet)
             group.add(self.blockloop_greenlet)
-        gevent.sleep(0)
+        # check node/wallet and start greenlets
+        gevent.spawn(start_greenlets)
 
     def stop(self):
         self.runloop_greenlet.kill()
