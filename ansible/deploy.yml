@@ -50,6 +50,12 @@
 - include: updates.yml
 - include: nginx.yml
   when: VAGRANT == "false"
+- include: firewall.yml
+  when: VAGRANT == "false"
+- include: logwatch.yml
+  when: VAGRANT == "false"
+- include: fail2ban.yml
+  when: VAGRANT == "false"
 - include: java.yml
 - include: waves.yml
 - include: zapd.yml

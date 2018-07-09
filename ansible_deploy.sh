@@ -29,6 +29,7 @@ then
     exit 0
 fi 
 
+ADMIN_EMAIL=admin@zap.me
 VAGRANT=false
 # set deploy variables for production
 DEPLOY_HOST=mainnet.zap.me
@@ -44,6 +45,7 @@ fi
 
 # print variables
 echo ":: DEPLOYMENT DETAILS ::"
+echo "   - ADMIN_EMAIL: $ADMIN_EMAIL"
 echo "   - DEPLOY_HOST: $DEPLOY_HOST"
 echo "   - DEPLOY_USER: $DEPLOY_USER"
 
@@ -54,5 +56,5 @@ if [[ $REPLY =~ ^[Yy]$ ]]
 then
     # do dangerous stuff
     echo ok lets go!!!
-    ansible-playbook --inventory "$DEPLOY_HOST," --user "$DEPLOY_USER" -v --extra-vars "VAGRANT=$VAGRANT TESTNET=$TESTNET" ansible/deploy.yml
+    ansible-playbook --inventory "$DEPLOY_HOST," --user "$DEPLOY_USER" -v --extra-vars "ADMIN_EMAIL=$ADMIN_EMAIL VAGRANT=$VAGRANT TESTNET=$TESTNET" ansible/deploy.yml
 fi
