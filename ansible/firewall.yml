@@ -32,7 +32,7 @@
         - restart ufw
 
     - name: Enable ufw
-      ufw: state=enabled 
+      ufw: state=enabled
 
   handlers:
 

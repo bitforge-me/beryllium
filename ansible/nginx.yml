@@ -6,7 +6,7 @@
 
   vars:
     letsencrypt_email: "dnewton@redratclothing.co.nz"
-    domain_name: "{{ 'testnet.zap.me' if TESTNET else 'mainnet.zap.me' }}"
+    domain_name: "{{ DEPLOY_HOST }}"
   tasks:
 
     - name: Install nginx

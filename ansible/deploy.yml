@@ -48,6 +48,9 @@
       ignore_errors: yes
 
 - include: updates.yml
+  when: VAGRANT == "false"
+- include: postfix.yml
+  when: VAGRANT == "false"
 - include: nginx.yml
   when: VAGRANT == "false"
 - include: firewall.yml
