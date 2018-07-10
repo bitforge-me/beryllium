@@ -66,7 +66,9 @@ if __name__ == "__main__":
     while keep_running:
         gevent.sleep(1)
         if len(group) < 3:
-            logger.error("one of our greenlets is dead X(")
+            msg = "one of our greenlets is dead X("
+            logger.error(msg)
+            utils.email_death(logger, msg)
             break
     logger.info("stopping greenlets")
     wutx.stop()

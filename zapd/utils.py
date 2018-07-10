@@ -1,6 +1,8 @@
 import json
 import hmac
 import base64
+import smtplib
+from email.mime.text import MIMEText
 
 import requests
 import base58
@@ -51,3 +53,15 @@ def call_webhook(logger, msg, sig):
             logger.error(f"{cfg.webhook_url}: {response.status_code} - {response.text}")
     except Exception as ex:
         logger.error(f"call_webhook: {ex}")
+
+def email_death(logger, msg):
+    try:
+        msg = MIMEText(msg)
+        msg["Subject"] = "zapd is dead"
+        msg["From"] = cfg.email_from
+        msg["To"] = cfg.email_admin
+        s = smtplib.SMTP(cfg.email_host)
+        s.send_message(msg)
+        s.quit()
+    except Exception as ex:
+        logger.error(f"email_death: {ex}")

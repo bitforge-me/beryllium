@@ -30,6 +30,11 @@ def read_cfg():
     cfg.webhook_key = cp["webhook"]["key"]
     cfg.webhook_url = cp["webhook"]["url"]
 
+    # email
+    cfg.email_admin = cp["email"]["admin"]
+    cfg.email_from = cp["email"]["from"]
+    cfg.email_host = cp["email"]["host"]
+
     return cfg
 
 def init_wallet_address(address):

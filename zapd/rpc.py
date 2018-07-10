@@ -126,13 +126,17 @@ class ZapRPC():
                 node_addresses = response.json()
                 # check cfg.address is one of the nodes addresses
                 if not cfg.address in node_addresses:
-                    logger.error(f"node wallet does not control {cfg.address}")
+                    msg = f"node wallet does not control {cfg.address}"
+                    logger.error(msg)
+                    utils.email_death(logger, msg)
                     sys.exit(1)
                 # get private key from our node
                 headers = {"X-Api-Key": cfg.node_api_key}
                 response = requests.get(cfg.node_http_base_url + "wallet/seed", headers=headers)
                 if not response.ok:
-                    logger.error(f"Wallet seed request: {response.text}")
+                    msg = f"Wallet seed request: {response.text}"
+                    logger.error(msg)
+                    utils.email_death(logger, msg)
                     sys.exit(1)
                 else:
                     # create our address object for creating transactions
@@ -141,7 +145,9 @@ class ZapRPC():
                     pw_address = pywaves.Address(seed=wallet_seed)
                     # check address object matches our configured address
                     if not pw_address.address != cfg.address:
-                        logger.error(f"pw_address does not match {cfg.address}")
+                        msg = f"pw_address does not match {cfg.address}"
+                        logger.error(msg)
+                        utils.email_death(logger, msg)
                         sys.exit(1)
                 # success, exit loop!
                 break
