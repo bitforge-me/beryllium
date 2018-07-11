@@ -108,6 +108,12 @@ def broadcasttransaction(txid):
     # return txid/state to caller
     return {"txid": txid, "state": dbtx.state}
 
+@jsonrpc.method("expiretransactions")
+def expiretransactions(above_age=60*60*24):
+    count = CreatedTransaction.expire_transactions(db_session, above_age, CTX_CREATED, CTX_EXPIRED)
+    db_session.commit()
+    return {"count": count}
+
 def get(url):
     with requests.Session() as s:
         retries = Retry(

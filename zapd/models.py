@@ -66,6 +66,7 @@ class CreatedTransactionSchema(Schema):
 class CreatedTransaction(Base):
     __tablename__ = 'created_transactions'
     id = Column(Integer, primary_key=True)
+    date = Column(Integer, nullable=False)
     txid = Column(String, nullable=False, unique=True)
     state = Column(String, nullable=False)
     amount = Column(Integer, nullable=False)
@@ -81,6 +82,16 @@ class CreatedTransaction(Base):
     @classmethod
     def from_txid(cls, session, txid):
         return session.query(cls).filter(cls.txid == txid).first()
+
+    @classmethod
+    def expire_transactions(cls, session, above_age, from_state, to_state):
+        now = time.time()
+        txs = session.query(cls).filter(cls.date < now - above_age, cls.state == from_state).all()
+        for tx in txs:
+            tx.state = to_state
+            tx.json_data = ""
+            session.add(tx)
+        return len(txs)
 
     def __repr__(self):
         return '<CreatedTransaction %r>' % (self.txid)
