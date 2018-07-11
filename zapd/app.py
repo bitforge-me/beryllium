@@ -63,13 +63,26 @@ if __name__ == "__main__":
     wutx = utx.WavesUTX(None, on_transfer_utx)
     wutx.start(group)
     logger.info("main loop")
+    sent_start_email = False
     while keep_running:
         gevent.sleep(1)
+        # check if any essential greenlets are dead
         if len(group) < 3:
             msg = "one of our greenlets is dead X("
             logger.error(msg)
             utils.email_death(logger, msg)
             break
+        # send start email when all essential greenlets are started
+        if not sent_start_email:
+            send_start_email = True
+            for g in group:
+                if not g.started:
+                    send_start_email = False
+            if send_start_email:
+                sent_start_email = True
+                msg = "our greenlets have started :)"
+                logger.info(msg)
+                utils.email_alive(logger, msg)
     logger.info("stopping greenlets")
     wutx.stop()
     zaprpc.stop()

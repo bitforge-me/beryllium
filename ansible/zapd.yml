@@ -41,7 +41,7 @@
       shell: pip3 install --system -r /opt/zapd/requirements.txt
 
     - name: restart/enable zapd service
-      service: name=nginx state=restarted enabled=yes
+      service: name=zapd state=restarted enabled=yes
 
     - name: add cron job to expire transactions
       cron:

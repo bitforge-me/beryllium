@@ -54,14 +54,20 @@ def call_webhook(logger, msg, sig):
     except Exception as ex:
         logger.error(f"call_webhook: {ex}")
 
-def email_death(logger, msg):
+def send_email(logger, subject, msg):
     try:
         msg = MIMEText(msg)
-        msg["Subject"] = "zapd is dead"
+        msg["Subject"] = subject
         msg["From"] = cfg.email_from
         msg["To"] = cfg.email_admin
         s = smtplib.SMTP(cfg.email_host)
         s.send_message(msg)
         s.quit()
     except Exception as ex:
-        logger.error(f"email_death: {ex}")
+        logger.error(f"email '{subject}': {ex}")
+
+def email_death(logger, msg):
+    send_email(logger, "zapd is dead", msg)
+
+def email_alive(logger, msg):
+    send_email(logger, "zapd is alive", msg)
