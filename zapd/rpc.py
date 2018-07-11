@@ -9,6 +9,7 @@ import gevent
 from gevent.pywsgi import WSGIServer
 from flask import Flask
 from flask_jsonrpc import JSONRPC
+from flask_jsonrpc.exceptions import OtherError
 import requests
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
@@ -30,6 +31,16 @@ logger = logging.getLogger(__name__)
 
 # our address object
 pw_address = None
+
+# created transaction states
+CTX_CREATED = "created"
+CTX_EXPIRED = "expired"
+CTX_BROADCAST = "broadcast"
+
+# response error codes
+ERR_NO_TXID = 100
+ERR_TX_EXPIRED = 101
+ERR_FAILED_TO_BROADCAST = 101
 
 @jsonrpc.method("balance")
 def balance():
@@ -66,7 +77,7 @@ def createtransaction(recipient, amount, attachment):
     # calc txid properly
     txid = transfer_asset_txid(signed_tx)
     # store tx in db
-    dbtx = CreatedTransaction(txid, "created", signed_tx["amount"], address_data["api-data"])
+    dbtx = CreatedTransaction(txid, CTX_CREATED, signed_tx["amount"], address_data["api-data"])
     db_session.add(dbtx)
     db_session.commit()
     # return txid/state to caller
@@ -75,6 +86,10 @@ def createtransaction(recipient, amount, attachment):
 @jsonrpc.method("broadcasttransaction")
 def broadcasttransaction(txid):
     dbtx = CreatedTransaction.from_txid(db_session, txid)
+    if not dbtx:
+        raise OtherError("could not find txid", ERR_NO_TXID)
+    if dbtx.state == CTX_EXPIRED:
+        raise OtherError("tx is expired", ERR_TX_EXPIRED)
     signed_tx = dbtx.json_data
     # broadcast
     logger.debug(f"requesting broadcast of tx:\n\t{signed_tx}")
@@ -83,11 +98,13 @@ def broadcasttransaction(txid):
     response = requests.post(cfg.node_http_base_url + path, headers=headers, data=signed_tx)
     if response.ok:
         # update tx in db
-        dbtx.state = "broadcast"
+        dbtx.state = CTX_BROADCAST
+        db_session.add(dbtx)
+        db_session.commit()
     else:
-        logger.error(f"broadcast tx ({response.status_code}, {response.request.method} {response.url}):\n\t{response.text}")
-    db_session.add(dbtx)
-    db_session.commit()
+        msg = f"broadcast tx ({response.status_code}, {response.request.method} {response.url}):\n\t{response.text}"
+        logger.error(msg)
+        raise OtherError(msg, ERR_FAILED_TO_BROADCAST)
     # return txid/state to caller
     return {"txid": txid, "state": dbtx.state}
 
