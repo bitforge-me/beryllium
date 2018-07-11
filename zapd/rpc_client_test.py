@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import sys
 import json
 import random
@@ -32,3 +34,4 @@ res = request("createtransaction", {"recipient": "3NAbEPpnw2YmZ3axaPFAXW5LG9R6jJ
 print(res)
 if not "error" in res:
     print(request("broadcasttransaction", {"txid": res["result"]["txid"]}))
+print(request("expiretransactions", {}))
