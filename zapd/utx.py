@@ -205,6 +205,10 @@ class WavesUTX():
                     if self.on_msg:
                         self.on_msg(self, data)
                     parse_message(self, data, self.on_transfer_utx)
+                else:
+                    # if data is empty the other side has closed the connection
+                    logger.info("empty string from socket.recv(): the socket has been closed")
+                    break
 
         def start_greenlet():
             logger.info("checking p2p socket")
