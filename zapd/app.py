@@ -41,9 +41,9 @@ def on_transfer_utx(wutx, txid, sig, pubkey, asset_id, timestamp, amount, fee, r
     logger.info(f"!transfer!: txid {txid}, recipient {recipient}, amount {amount}, attachment {attachment}")
     if recipient == cfg.address:
         # create message
-        from_ = utils.address_from_public_key(pubkey)
+        sender = utils.address_from_public_key(pubkey)
         invoice_id = utils.extract_invoice_id(logger, attachment)
-        msg, sig = utils.create_signed_payment_notification(txid, timestamp, recipient, from_, amount, invoice_id)
+        msg, sig = utils.create_signed_payment_notification(txid, timestamp, recipient, sender, amount, invoice_id)
         utils.call_webhook(logger, msg, sig)
 
 def sigint_handler(signum, frame):

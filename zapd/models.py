@@ -14,7 +14,7 @@ cfg = config.read_cfg()
 
 class TransactionSchema(Schema):
     txid = fields.String()
-    from_ = fields.String()
+    sender = fields.String()
     recipient = fields.String()
     amount = fields.Integer()
     attachment = fields.String()
@@ -25,16 +25,16 @@ class Transaction(Base):
     __tablename__ = 'transactions'
     id = Column(Integer, primary_key=True)
     txid = Column(String, nullable=False, unique=True)
-    from_ = Column(String, nullable=False)
+    sender = Column(String, nullable=False)
     recipient = Column(String, nullable=False)
     amount = Column(Integer, nullable=False)
     attachment = Column(String, nullable=True)
     invoice_id = Column(String, nullable=True)
     block_num = Column(Integer, nullable=False)
 
-    def __init__(self, txid, from_, recipient, amount, attachment, invoice_id, block_num):
+    def __init__(self, txid, sender, recipient, amount, attachment, invoice_id, block_num):
         self.txid = txid
-        self.from_ = from_
+        self.sender = sender
         self.recipient = recipient
         self.amount = amount
         self.attachment = attachment

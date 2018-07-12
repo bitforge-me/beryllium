@@ -38,13 +38,23 @@ CTX_EXPIRED = "expired"
 CTX_BROADCAST = "broadcast"
 
 # response error codes
-ERR_NO_TXID = 100
-ERR_TX_EXPIRED = 101
-ERR_FAILED_TO_BROADCAST = 101
+ERR_FAILED_TO_BROADCAST = 0
+ERR_NO_TXID = 1
+ERR_TX_EXPIRED = 2
 
-@jsonrpc.method("balance")
-def balance():
+@jsonrpc.method("getaddress")
+def getaddress():
+    return {"address": cfg.address}
+
+@jsonrpc.method("getbalance")
+def getbalance():
     path = f"assets/balance/{cfg.address}/{cfg.asset_id}"
+    response = requests.get(cfg.node_http_base_url + path)
+    return response.json()
+
+@jsonrpc.method("gettransaction")
+def gettransaction(txid):
+    path = f"transactions/info/{txid}"
     response = requests.get(cfg.node_http_base_url + path)
     return response.json()
 
@@ -87,9 +97,9 @@ def createtransaction(recipient, amount, attachment):
 def broadcasttransaction(txid):
     dbtx = CreatedTransaction.from_txid(db_session, txid)
     if not dbtx:
-        raise OtherError("could not find txid", ERR_NO_TXID)
+        raise OtherError("transaction not found", ERR_NO_TXID)
     if dbtx.state == CTX_EXPIRED:
-        raise OtherError("tx is expired", ERR_TX_EXPIRED)
+        raise OtherError("transaction expired", ERR_TX_EXPIRED)
     signed_tx = dbtx.json_data
     # broadcast
     logger.debug(f"requesting broadcast of tx:\n\t{signed_tx}")
@@ -102,9 +112,11 @@ def broadcasttransaction(txid):
         db_session.add(dbtx)
         db_session.commit()
     else:
-        msg = f"broadcast tx ({response.status_code}, {response.request.method} {response.url}):\n\t{response.text}"
-        logger.error(msg)
-        raise OtherError(msg, ERR_FAILED_TO_BROADCAST)
+        short_msg = "failed to broadcast"
+        logger.error(f"{short_msg}: ({response.status_code}, {response.request.method} {response.url}):\n\t{response.text}")
+        err = OtherError(short_msg, ERR_FAILED_TO_BROADCAST)
+        err.data = response.text
+        raise err
     # return txid/state to caller
     return {"txid": txid, "state": dbtx.state}
 

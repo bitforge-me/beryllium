@@ -35,9 +35,9 @@ def address_from_public_key(public_key, b58encoded=False):
     addr_hash = pywaves.crypto.hashChain(pywaves.crypto.str2bytes(unhashed_address))[0:4]
     return base58.b58encode(pywaves.crypto.str2bytes(unhashed_address + addr_hash))
 
-def create_signed_payment_notification(txid, timestamp, recipient, from_, amount, invoice_id):
+def create_signed_payment_notification(txid, timestamp, recipient, sender, amount, invoice_id):
     d = {"txid": txid, "timestamp": timestamp, "recipient": recipient,\
-            "from": from_, "amount": amount, "invoice_id": invoice_id}
+            "sender": sender, "amount": amount, "invoice_id": invoice_id}
     msg = json.dumps(d)
     sig = hmac.HMAC(cfg.webhook_key.encode(), msg.encode(), "sha256").digest()
     sig = base64.b64encode(sig)

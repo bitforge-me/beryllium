@@ -28,10 +28,18 @@ def request(method_name, params):
     print(response)
     return response.json()
 
-print(request("balance", {}))
-print(request("listtransactions", {"invoice_id": 123}))
-res = request("createtransaction", {"recipient": "3NAbEPpnw2YmZ3axaPFAXW5LG9R6jJip69e", "amount": 10, "attachment": ""})
-print(res)
+def print_request(function, params={}):
+    print(f"::{function}")
+    res = request(function, params)
+    print(res)
+    print("---\n")
+    return res
+
+print_request("getaddress")
+print_request("getbalance")
+print_request("listtransactions", {"invoice_id": 123})
+res = print_request("createtransaction", {"recipient": "3NAbEPpnw2YmZ3axaPFAXW5LG9R6jJip69e", "amount": 10, "attachment": ""})
 if not "error" in res:
-    print(request("broadcasttransaction", {"txid": res["result"]["txid"]}))
-print(request("expiretransactions", {}))
+    print_request("broadcasttransaction", {"txid": res["result"]["txid"]})
+    print_request("gettransaction", {"txid": res["result"]["txid"]})
+print_request("expiretransactions", {})
