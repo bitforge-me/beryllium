@@ -11,7 +11,8 @@
 [DEFAULT]
 
 ignoreip = 127.0.0.1
-bantime  = 600
+bantime  = 3600
+findtime = 3600
 maxretry = 3
 backend = auto
 usedns = warn
@@ -59,3 +60,7 @@ port = 987
 filter   = sshd-ddos
 logpath  = /var/log/auth.log
 maxretry = 6
+
+[nginx-http-auth]
+
+enabled = true
