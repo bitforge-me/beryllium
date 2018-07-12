@@ -47,6 +47,8 @@
       when: VAGRANT == "true"
       ignore_errors: yes
 
+- include: backup.yml
+  when: VAGRANT == "false"
 - include: updates.yml
   when: VAGRANT == "false"
 - include: postfix.yml

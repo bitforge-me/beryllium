@@ -1,0 +1,43 @@
+---
+- name: backup
+  hosts: all
+  become: yes
+  become_user: root
+
+  vars:
+    backup_dir: "{{ '/home/waves/waves/testnet/wallet' if TESTNET else '/home/waves/waves/wallet' }}"
+    backup_dir_remote: "{{ 'testnet' if TESTNET else 'mainnet' }}"
+  tasks:
+
+    - name: Install duplicity
+      action: apt pkg=duplicity state=present
+
+    - name: Copy public backup key
+      copy:
+        src: "{{ BACKUP_KEY }}"
+        dest: /tmp/backup.key
+
+    - name: Install public backup key
+      shell: gpg --import /tmp/backup.key
+
+    - name: Print key info
+      shell: gpg --import --import-options show-only --with-colons /tmp/backup.key
+      register: key_info
+
+    - name: Extract key ID
+      set_fact: key_id={{ key_info.stdout | regex_search(fingerprint_pattern, '\\1') | first }}
+      vars:
+        fingerprint_pattern: "fpr:.*:.*:.*:.*:.*:.*:.*:.*:([A-Z0-9]*):"
+
+    - name: Copy ssh backup key
+      copy:
+        src: "{{ BACKUP_SSH_KEY }}"
+        dest: /root/backup_id
+
+    - name: accept new ssh fingerprints
+      shell: ssh-keyscan -H {{ BACKUP_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Make backup daily
+      template:
+        src: templates/backup_cron
+        dest: /etc/cron.daily/01waves_backup

@@ -1,0 +1,1 @@
+/usr/bin/duplicity --ssh-options="-oIdentityFile=/root/backup_id" --encrypt-key {{ key_id }} {{ backup_dir }} ssh://{{ BACKUP_HOST }}/{{ backup_dir_remote }}
