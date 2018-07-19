@@ -255,21 +255,22 @@ class ZapRPC():
                         db_session.add(dbblk)
                         db_session.flush()
                     # add transactions to db
-                    for tx in block["transactions"]:
-                        if tx["type"] == 4:
-                            recipient = tx["recipient"]
-                            if recipient == cfg.address:
-                                txid = tx["id"]
-                                logger.info(f"new tx {txid}")
-                                attachment = tx["attachment"]
-                                if attachment:
-                                    attachment = base58.b58decode(attachment)
-                                    logger.info(f"    {attachment}")
-                                invoice_id = utils.extract_invoice_id(logger, attachment)
-                                if invoice_id:
-                                    logger.info(f"    {invoice_id}")
-                                dbtx = Transaction(txid, tx["sender"], recipient, tx["amount"], attachment, invoice_id, dbblk.id)
-                                db_session.add(dbtx)
+                    if "transactions" in block:
+                        for tx in block["transactions"]:
+                            if tx["type"] == 4:
+                                recipient = tx["recipient"]
+                                if recipient == cfg.address:
+                                    txid = tx["id"]
+                                    logger.info(f"new tx {txid}")
+                                    attachment = tx["attachment"]
+                                    if attachment:
+                                        attachment = base58.b58decode(attachment)
+                                        logger.info(f"    {attachment}")
+                                    invoice_id = utils.extract_invoice_id(logger, attachment)
+                                    if invoice_id:
+                                        logger.info(f"    {invoice_id}")
+                                    dbtx = Transaction(txid, tx["sender"], recipient, tx["amount"], attachment, invoice_id, dbblk.id)
+                                    db_session.add(dbtx)
                     scanned_block_num = block["height"]
                     logger.debug(f"scanned block {scanned_block_num}")
                     if scanned_block_num % 100 == 0:
