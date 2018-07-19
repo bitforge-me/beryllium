@@ -14,9 +14,9 @@ def read_cfg():
     cfg.testnet = cp["network"]["testnet"]
     cfg.testnet_start_block = cp["network"]["testnet_start_block"]
     cfg.mainnet_start_block = cp["network"]["mainnet_start_block"]
-    cfg.start_block = cfg.testnet_start_block
+    cfg.start_block = int(cfg.testnet_start_block)
     if not cfg.testnet:
-        cfg.start_block = cfg.mainnet_start_block
+        cfg.start_block = int(cfg.mainnet_start_block)
 
     # trusted node
     cfg.node_api_key = cp["node"]["node_api_key"]

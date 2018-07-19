@@ -13,9 +13,3 @@ def get_value(keyname, default):
     if not setting:
         return default
     return setting.value
-
-def set_scanned_block_num(db_session, blocknum):
-    set_value(db_session, "scanned_block_num", blocknum)
-
-def get_scanned_block_num(default):
-    return int(get_value("scanned_block_num", default))

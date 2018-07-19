@@ -20,6 +20,7 @@ class TransactionSchema(Schema):
     attachment = fields.String()
     invoice_id = fields.String()
     block_num = fields.Integer()
+    block_date = fields.Integer()
 
 class Transaction(Base):
     __tablename__ = 'transactions'
@@ -30,31 +31,95 @@ class Transaction(Base):
     amount = Column(Integer, nullable=False)
     attachment = Column(String, nullable=True)
     invoice_id = Column(String, nullable=True)
-    block_num = Column(Integer, nullable=False)
+    block_id = Column(Integer, ForeignKey('blocks.id'))
+    block = relationship('Block')
 
-    def __init__(self, txid, sender, recipient, amount, attachment, invoice_id, block_num):
+    def __init__(self, txid, sender, recipient, amount, attachment, invoice_id, block_id):
         self.txid = txid
         self.sender = sender
         self.recipient = recipient
         self.amount = amount
         self.attachment = attachment
         self.invoice_id = invoice_id
-        self.block_num = block_num
+        self.block_id = block_id
 
     @classmethod
     def from_txid(cls, session, txid):
         return session.query(cls).filter(cls.txid == txid).first()
 
     @classmethod
-    def from_invoice_id(cls, session, invoice_id):
-        return session.query(cls).filter(cls.invoice_id == invoice_id).all()
+    def from_invoice_id(cls, session, invoice_id, start_date, end_date, offset, limit):
+        query = session.query(cls)
+        if invoice_id:
+            query = query.filter(cls.invoice_id == invoice_id)
+        if start_date != 0 or end_date != 0:
+            query = query.join(Block)
+            if start_date != 0:
+                query = query.filter(Block.date >= start_date)
+            if end_date != 0:
+                query = query.filter(Block.date <= end_date)
+        query = query.offset(offset).limit(limit)
+        return query.all()
 
     def __repr__(self):
         return '<Transaction %r>' % (self.txid)
 
     def to_json(self):
+        self.block_num = self.block.num
+        self.block_date = self.block.date
         tx_schema = TransactionSchema()
         return tx_schema.dump(self).data
+
+class Block(Base):
+    __tablename__ = 'blocks'
+    id = Column(Integer, primary_key=True)
+    date = Column(Float, nullable=False, unique=False)
+    num = Column(Integer, nullable=False)
+    hash = Column(String, nullable=False, unique=True)
+    reorged = Column(Boolean, nullable=False, default=False)
+    transactions = relationship('Transaction')
+
+    def __init__(self, block_date, block_num, block_hash):
+        self.date = block_date
+        self.num = block_num
+        self.hash = block_hash
+        self.reorged = False
+
+    def set_reorged(self, session):
+        for tx in self.transactions:
+            session.delete(tx)
+        self.reorged = True
+        session.add(self)
+
+    @classmethod
+    def last_block(cls, session):
+        return session.query(cls).filter(cls.reorged == False).order_by(cls.id.desc()).first()
+
+    @classmethod
+    def from_number(cls, session, num):
+        return session.query(cls).filter((cls.num == num) & (cls.reorged == False)).first()
+
+    @classmethod
+    def from_hash(cls, session, hash):
+        return session.query(cls).filter(cls.hash == hash).first()
+
+    @classmethod
+    def tx_block_num(cls, session, tx_block_id):
+        if tx_block_id:
+            block = session.query(cls).filter(cls.id == tx_block_id).first()
+            if block:
+                return block.num 
+        return -1
+
+    @classmethod
+    def tx_confirmations(cls, session, current_block_num, tx_block_id):
+        block_num = cls.tx_block_num(session, tx_block_id)
+        if block_num != -1:
+                return current_block_num - block_num 
+        return 0
+
+    def __repr__(self):
+        return '<Block %r %r>' % (self.num, self.hash)
 
 class CreatedTransactionSchema(Schema):
     date = fields.Date()

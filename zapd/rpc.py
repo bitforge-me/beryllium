@@ -19,8 +19,7 @@ import pyblake2
 
 import config
 from database import db_session, init_db
-import db_settings
-from models import Transaction, CreatedTransaction
+from models import Transaction, Block, CreatedTransaction
 import utils
 
 cfg = config.read_cfg()
@@ -59,8 +58,8 @@ def gettransaction(txid):
     return response.json()
 
 @jsonrpc.method("listtransactions")
-def listtransactions(invoice_id):
-    txs = Transaction.from_invoice_id(db_session, invoice_id)
+def listtransactions(invoice_id=None, start_date=0, end_date=0, offset=0, limit=50):
+    txs = Transaction.from_invoice_id(db_session, invoice_id, start_date, end_date, offset, limit)
     txs_json = []
     for tx in txs:
         txs_json.append(tx.to_json())
@@ -145,6 +144,12 @@ def block_at(num):
     response = get(cfg.node_http_base_url + f"blocks/at/{num}")
     return response.json()
 
+def block_hash(blk):
+    if isinstance(blk, dict):
+        return blk["reference"]
+    if isinstance(blk, int):
+        return block_at(blk)["reference"]
+
 class ZapRPC():
 
     def __init__(self, addr="127.0.0.1", port=5000):
@@ -200,13 +205,56 @@ class ZapRPC():
         def blockloop():
             logger.info("ZapRPC blockloop started")
 
-            scanned_block_num = db_settings.get_scanned_block_num(cfg.start_block)
+            # get last block from the db
+            last_block = Block.last_block(db_session)
+            if last_block:
+                scanned_block_num = last_block.num
+            else:
+                scanned_block_num = cfg.start_block
+
             while 1:
                 gevent.sleep(5)
+
+                # check for reorgs and invalidate any blocks (and associated txs)
+                block = Block.from_number(db_session, scanned_block_num)
+                if block:
+                    any_reorgs = False
+                    blk_hash = block_hash(scanned_block_num)
+                    if not blk_hash:
+                        logger.error("unable to get hash for block %d" % scanned_block_num)
+                        return
+                    while blk_hash != block.hash:
+                        logger.info("block %d hash does not match current blockchain, must have been reorged" % scanned_block_num)
+                        block.set_reorged(db_session)
+                        any_reorgs = True
+                        # decrement scanned_block_num
+                        scanned_block_num -= 1
+                        # now do the previous block
+                        block = Block.from_number(db_session, scanned_block_num)
+                        if not block:
+                            logger.error("unable to get hash for block %d" % scanned_block_num)
+                            return
+                        blk_hash = block_hash(scanned_block_num)
+                    if any_reorgs:
+                        db_session.commit()
+            
+                # scan for new blocks
                 # use "block_height() - 1" because with the WavesNG protocol the block can have new transactions
                 # added until the next block is found
                 while block_height() - 1 > scanned_block_num:
                     block = block_at(scanned_block_num + 1)
+                    blk_hash = block_hash(block)
+                    # check for reorged blocks now reorged *back* into the main chain
+                    dbblk = Block.from_hash(db_session, blk_hash)
+                    if dbblk:
+                        self.logger.info("block %s (was #%d) now un-reorged" % (blk_hash.hex(), dbblk.num))
+                        dbblk.num = block_num
+                        dbblk.reorged = False
+                    else:
+                        dbblk = Block(block["timestamp"], block["height"], blk_hash)
+                        db_session.add(dbblk)
+                        db_session.flush()
+                    # add transactions to db
                     for tx in block["transactions"]:
                         if tx["type"] == 4:
                             recipient = tx["recipient"]
@@ -220,15 +268,13 @@ class ZapRPC():
                                 invoice_id = utils.extract_invoice_id(logger, attachment)
                                 if invoice_id:
                                     logger.info(f"    {invoice_id}")
-                                dbtx = Transaction(txid, tx["sender"], recipient, tx["amount"], attachment, invoice_id, block["height"])
+                                dbtx = Transaction(txid, tx["sender"], recipient, tx["amount"], attachment, invoice_id, dbblk.id)
                                 db_session.add(dbtx)
                     scanned_block_num = block["height"]
                     logger.debug(f"scanned block {scanned_block_num}")
                     if scanned_block_num % 100 == 0:
-                        db_settings.set_scanned_block_num(db_session, scanned_block_num)
                         db_session.commit()
                     gevent.sleep(0)
-                db_settings.set_scanned_block_num(db_session, scanned_block_num)
                 db_session.commit()
 
         def start_greenlets():
