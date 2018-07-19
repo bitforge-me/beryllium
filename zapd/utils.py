@@ -71,3 +71,6 @@ def email_death(logger, msg):
 
 def email_alive(logger, msg):
     send_email(logger, "zapd is alive", msg)
+
+def email_exception(logger, msg):
+    send_email(logger, "zapd exception", msg)

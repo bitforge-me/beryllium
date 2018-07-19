@@ -51,6 +51,15 @@ def sigint_handler(signum, frame):
     logger.warning("SIGINT caught, attempting to exit gracefully")
     keep_running = False
 
+def g_exception(g):
+    try:
+        g.get()
+    except Exception as e:
+        import traceback
+        stack_trace = traceback.format_exc()
+        msg = f"{e}\n---\n{stack_trace}"
+        utils.email_exception(logger, msg)
+
 keep_running = True
 if __name__ == "__main__":
     setup_logging(logging.DEBUG)
@@ -64,6 +73,8 @@ if __name__ == "__main__":
     wutx.start(group)
     logger.info("main loop")
     sent_start_email = False
+    for g in group:
+        g.link_exception(g_exception)
     while keep_running:
         gevent.sleep(1)
         # check if any essential greenlets are dead
