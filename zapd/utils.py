@@ -74,3 +74,7 @@ def email_alive(logger, msg):
 
 def email_exception(logger, msg):
     send_email(logger, "zapd exception", msg)
+
+def email_buffer(logger, msg, buf):
+    msg = f"{msg}\n\n{buf}"
+    send_email(logger, "zapd buffer issue", msg)
