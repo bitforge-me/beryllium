@@ -10,6 +10,7 @@ import logging
 import gevent
 from gevent import socket
 import base58
+import pyblake2
 
 import utils
 
@@ -42,6 +43,17 @@ def create_handshake(port):
             node_name_len, node_name, node_nonce,
             declared_address_len, declared_address, declared_address_port,
             timestamp)
+
+def create_score(score):
+    fmt = ">llBl"
+    payload = score.to_bytes(1, "big")
+    payload_len = len(payload)
+    packet_len = struct.calcsize(fmt) + payload_len
+    hash_ = pyblake2.blake2b(payload, digest_size=32).digest()
+    checksum = hash_[:4]
+    score_msg = struct.pack(fmt, packet_len, MAGIC, CONTENT_ID_SCORE, payload_len)
+    score_msg += checksum + payload
+    return score_msg
 
 def decode_handshake(msg):
     l = msg[0]
@@ -221,8 +233,9 @@ class WavesUTX():
             # version 0.14.0 of the waves node will kick an idle peer (after 1 minute) so we will just echo
             # back the score to our node every 20 seconds
             logger.info("WavesUTX keepaliveloop started")
+            global g_last_score_msg
+            g_last_score_msg = create_score(0)
             while 1:
-                global g_last_score_msg
                 if g_last_score_msg:
                     l = self.s.send(g_last_score_msg)
                     logger.info(f"score bytes sent: {l}")
