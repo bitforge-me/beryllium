@@ -206,7 +206,7 @@ class WavesUTX():
         def runloop():
             logger.info("WavesUTX runloop started")
             while 1:
-                data = self.s.recv(1024)
+                data = self.s.recv(1024*1024)
                 if data:
                     logger.debug(f"recv: {len(data)}")
                     if self.on_msg:
