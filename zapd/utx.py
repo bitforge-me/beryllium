@@ -16,9 +16,12 @@ import utils
 logger = logging.getLogger(__name__)
 
 MAGIC = 305419896
+CONTENT_ID_GETPEERS = 0x01
 CONTENT_ID_TX = 0x19
 CONTENT_ID_BLOCK = 0x17
 CONTENT_ID_SCORE = 0x18
+
+g_last_score_msg = None
 
 def create_handshake(port):
     name = b"wavesT"
@@ -116,6 +119,8 @@ def transfer_asset_txid(pubkey, asset_id, fee_asset_id, timestamp, amount, fee, 
     return utils.txid_from_txdata(serialized_data)
 
 def parse_message(wutx, msg, on_transfer_utx=None):
+    orig_msg = msg
+
     handshake = decode_handshake(msg)
     if handshake:
         logger.info(f"handshake: {handshake[0]} {handshake[1]}.{handshake[2]}.{handshake[3]} {handshake[4]}")
@@ -167,6 +172,8 @@ def parse_message(wutx, msg, on_transfer_utx=None):
                 # score
                 score = int(binascii.hexlify(payload), 16)
                 logger.info(f"score: value {score}")
+                global g_last_score_msg
+                g_last_score_msg = orig_msg
 
 class WavesUTX():
 
@@ -210,14 +217,27 @@ class WavesUTX():
                     logger.info("empty string from socket.recv(): the socket has been closed")
                     break
 
+        def keepaliveloop():
+            # version 0.14.0 of the waves node will kick an idle peer (after 1 minute) so we will just echo
+            # back the score to our node every 20 seconds
+            logger.info("WavesUTX keepaliveloop started")
+            while 1:
+                global g_last_score_msg
+                if g_last_score_msg:
+                    l = self.s.send(g_last_score_msg)
+                    logger.info(f"score bytes sent: {l}")
+                gevent.sleep(20)
+
         def start_greenlet():
             logger.info("checking p2p socket")
             self.init_socket()
             logger.info("starting WavesUTX runloop...")
             self.runloop_greenlet.start()
+            self.keepaliveloop_greenlet.start()
 
         # create greenlet
         self.runloop_greenlet = gevent.Greenlet(runloop)
+        self.keepaliveloop_greenlet = gevent.Greenlet(keepaliveloop)
         if group != None:
             group.add(self.runloop_greenlet)
         # check socket and start greenlet
@@ -225,6 +245,7 @@ class WavesUTX():
 
     def stop(self):
         self.runloop_greenlet.kill()
+        self.keepaliveloop_greenlet.kill()
 
 def decode_test_msg():
     # tx msg
