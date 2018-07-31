@@ -221,8 +221,10 @@ class ZapRPC():
                     any_reorgs = False
                     blk_hash = block_hash(scanned_block_num)
                     if not blk_hash:
-                        logger.error("unable to get hash for block %d" % scanned_block_num)
-                        return
+                        msg = f"unable to get hash (from node) for block {scanned_block_num}"
+                        logger.error(msg)
+                        utils.email_death(logger, msg)
+                        sys.exit(1)
                     while blk_hash != block.hash:
                         logger.info("block %d hash does not match current blockchain, must have been reorged" % scanned_block_num)
                         block.set_reorged(db_session)
@@ -232,8 +234,10 @@ class ZapRPC():
                         # now do the previous block
                         block = Block.from_number(db_session, scanned_block_num)
                         if not block:
-                            logger.error("unable to get hash for block %d" % scanned_block_num)
-                            return
+                            msg = f"unable to get hash (from db) for block {scanned_block_num}"
+                            logger.error(msg)
+                            utils.email_death(logger, msg)
+                            sys.exit(1)
                         blk_hash = block_hash(scanned_block_num)
                     if any_reorgs:
                         db_session.commit()
