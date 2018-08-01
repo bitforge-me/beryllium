@@ -48,3 +48,4 @@
       template:
         src: templates/backup_cron
         dest: /etc/cron.daily/01waves_backup
+        mode: 0755
