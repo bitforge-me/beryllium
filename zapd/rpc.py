@@ -145,10 +145,19 @@ def block_at(num):
     return response.json()
 
 def block_hash(blk):
-    if isinstance(blk, dict):
-        return blk["reference"]
+    height = "unknown"
     if isinstance(blk, int):
-        return block_at(blk)["reference"]
+        height = blk
+        blk = block_at(blk)
+    if not "signature" in blk:
+        if "height" in blk:
+            height = blk["height"]
+        blk_json = json.dumps(blk, sort_keys=True, indent=4)
+        msg = f"block_hash(): no 'signature' field in block ({height}\n\n{blk_json}"
+        logger.error(msg)
+        utils.email_death(logger, msg)
+        sys.exit(1)
+    return blk["signature"]
 
 class ZapRPC():
 
