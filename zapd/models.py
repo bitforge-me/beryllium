@@ -61,6 +61,10 @@ class Transaction(Base):
         query = query.offset(offset).limit(limit)
         return query.all()
 
+    @classmethod
+    def count(cls, session):
+        return session.query(cls).count()
+
     def __repr__(self):
         return '<Transaction %r>' % (self.txid)
 
@@ -157,6 +161,10 @@ class CreatedTransaction(Base):
             tx.json_data = ""
             session.add(tx)
         return len(txs)
+
+    @classmethod
+    def count(cls, session):
+        return session.query(cls).count()
 
     def __repr__(self):
         return '<CreatedTransaction %r>' % (self.txid)

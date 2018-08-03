@@ -41,6 +41,22 @@ ERR_FAILED_TO_BROADCAST = 0
 ERR_NO_TXID = 1
 ERR_TX_EXPIRED = 2
 
+@jsonrpc.method("status")
+def status():
+    remote_node = "https://testnode1.wavesnodes.com"
+    if not cfg.testnet:
+        remote_node = "https://nodes.wavesnodes.com"
+    response = get(remote_node + "/blocks/height")
+    remote_block_height = response.json()["height"]
+    scanned_block_height = 0
+    last_block = Block.last_block(db_session)
+    if last_block:
+        scanned_block_height = last_block.num
+    incomming_tx_count = Transaction.count(db_session)
+    created_tx_count = CreatedTransaction.count(db_session)
+    return {"remote_block_height": remote_block_height, "scanned_block_height": scanned_block_height, \
+            "incomming_tx_count": incomming_tx_count, "created_tx_count": created_tx_count}
+
 @jsonrpc.method("getaddress")
 def getaddress():
     return {"address": cfg.address}

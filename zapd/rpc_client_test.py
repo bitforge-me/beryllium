@@ -37,6 +37,7 @@ def print_request(function, params={}):
     print("---\n")
     return res
 
+print_request("status")
 print_request("getaddress")
 print_request("getbalance")
 print_request("listtransactions", {"invoice_id": 123})
