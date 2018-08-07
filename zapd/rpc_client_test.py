@@ -7,8 +7,10 @@ import random
 import requests
 from requests.auth import HTTPBasicAuth
 
-url = "http://localhost:5000/api"
-#url = "https://testnet.zap.me/api"
+local_url = "http://localhost:5000/api"
+testnet_url = "https://testnet.zap.me/api"
+url = local_url
+auth=None
 
 def serialize(method_name, params, is_notification):
     data = {"jsonrpc": "2.0", "method": method_name}
@@ -26,7 +28,7 @@ def request(method_name, params):
         "Accept": "application/json-rpc",
     })
     data = serialize(method_name, params, False)
-    response = session.post(url, data, auth=HTTPBasicAuth("zapd", "s5d4qDHNfmqoEigiSbE6"))
+    response = session.post(url, data, auth=auth)
     print(response)
     return response.json()
 
@@ -37,6 +39,15 @@ def print_request(function, params={}):
     print("---\n")
     return res
 
+# init/show params
+if len(sys.argv) >= 2:
+    password = sys.argv[1]
+    url = testnet_url
+    print("Using password: " + password);
+    auth = HTTPBasicAuth("zapd", password)
+print("Using url: " + url)
+
+# run tests
 print_request("status")
 print_request("getaddress")
 print_request("getbalance")
