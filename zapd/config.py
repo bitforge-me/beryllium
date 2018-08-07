@@ -23,7 +23,11 @@ def read_cfg():
     cfg.node_http_base_url = cp["node"]["node_http_base_url"]
 
     # wallet
-    cfg.asset_id = cp["wallet"]["asset_id"]
+    cfg.asset_id_testnet = cp["wallet"]["asset_id_testnet"]
+    cfg.asset_id_mainnet = cp["wallet"]["asset_id_mainnet"]
+    cfg.asset_id = cfg.asset_id_testnet
+    if not cfg.testnet:
+        cfg.asset_id = cfg.asset_id_mainnet
     cfg.address = cp["wallet"]["address"]
 
     # webhook
