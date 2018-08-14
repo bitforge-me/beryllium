@@ -1,6 +1,7 @@
 *~
 *.swp
 *.db
+.DS_Store
 
 /ansible/deploy.retry
 /zapd/__pycache__
