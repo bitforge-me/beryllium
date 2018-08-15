@@ -5,7 +5,7 @@
   become_user: root
 
   vars:
-    backup_dir: "{{ '/home/waves/waves/testnet/wallet' if TESTNET else '/home/waves/waves/wallet' }}"
+    backup_dir: "/opt/zapd"
     backup_dir_remote: "{{ 'testnet' if TESTNET else 'mainnet' }}"
   tasks:
 

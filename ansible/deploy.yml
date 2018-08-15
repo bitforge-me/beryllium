@@ -35,6 +35,7 @@
         - python3-pip
         - dos2unix
         - nginx
+        - unzip
 
     # https://github.com/ansible/ansible/issues/23914      
     - name: resize partition

@@ -74,6 +74,9 @@ then
     TESTNET=false
 fi 
 
+# create archive
+(cd zapd; git archive --format=zip HEAD > ../zapd.zip)
+
 # print variables
 echo ":: DEPLOYMENT DETAILS ::"
 echo "   - ADMIN_EMAIL: $ADMIN_EMAIL"
@@ -82,6 +85,7 @@ echo "   - DEPLOY_USER: $DEPLOY_USER"
 echo "   - BACKUP_KEY: $BACKUP_KEY"
 echo "   - BACKUP_SSH_KEY: $BACKUP_KEY"
 echo "   - BACKUP_HOST: $BACKUP_HOST"
+echo "   - ZAPD_ARCIVCE: zapd.zip"
 
 # ask user to continue
 read -p "Are you sure? " -n 1 -r

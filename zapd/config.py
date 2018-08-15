@@ -4,6 +4,9 @@ import configparser
 def get_filename():
     return os.path.join(os.path.dirname(os.path.realpath(__file__)), "config.cfg")
 
+def get_secret_filename():
+    return os.path.join(os.path.dirname(os.path.realpath(__file__)), "config_secret.cfg")
+
 def read_cfg():
     cp = configparser.ConfigParser()
     cp.read(get_filename())
@@ -39,9 +42,17 @@ def read_cfg():
     cfg.email_from = cp["email"]["from"]
     cfg.email_host = cp["email"]["host"]
 
+    # secret
+    if os.path.exists(get_secret_filename()):
+        cp.read(get_secret_filename())
+        cfg.seed = cp["wallet"]["seed"]
+    else:
+        cfg.seed = None
+
     return cfg
 
-def init_wallet_address(address):
+def init_wallet_address(address, seed):
+    # write address
     import re
     pattern = "(address=)(.*)"
     with open(get_filename()) as f:
@@ -51,3 +62,8 @@ def init_wallet_address(address):
     data = re.sub(pattern, subaddr, data)
     with open(get_filename(), "w") as f:
         f.write(data)
+
+    # write seed
+    if not os.path.exists(get_secret_filename()):
+        with open(get_secret_filename(), "w") as f:
+            f.write(f"[wallet]\nseed={seed}\n")

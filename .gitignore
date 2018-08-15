@@ -6,3 +6,5 @@
 /ansible/deploy.retry
 /zapd/__pycache__
 /.vagrant
+/zapd/config_secret.cfg
+zapd.zip

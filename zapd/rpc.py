@@ -184,41 +184,23 @@ class ZapRPC():
         self.blockloop_greenlet = None
 
     def check_wallet(self):
-        while 1:
-            try:
-                # get node addresses
-                response = requests.get(cfg.node_http_base_url + "addresses")
-                node_addresses = response.json()
-                # check cfg.address is one of the nodes addresses
-                if not cfg.address in node_addresses:
-                    msg = f"node wallet does not control {cfg.address}"
-                    logger.error(msg)
-                    utils.email_death(logger, msg)
-                    sys.exit(1)
-                # get private key from our node
-                headers = {"X-Api-Key": cfg.node_api_key}
-                response = requests.get(cfg.node_http_base_url + "wallet/seed", headers=headers)
-                if not response.ok:
-                    msg = f"Wallet seed request: {response.text}"
-                    logger.error(msg)
-                    utils.email_death(logger, msg)
-                    sys.exit(1)
-                else:
-                    # create our address object for creating transactions
-                    wallet_seed = response.json()["seed"]
-                    global pw_address
-                    pw_address = pywaves.Address(seed=wallet_seed)
-                    # check address object matches our configured address
-                    if not pw_address.address != cfg.address:
-                        msg = f"pw_address does not match {cfg.address}"
-                        logger.error(msg)
-                        utils.email_death(logger, msg)
-                        sys.exit(1)
-                # success, exit loop!
-                break
-            except requests.exceptions.RequestException as e:
-                logger.error(f"{e}")
-                gevent.sleep(10)
+        # check seed has been set
+        if not cfg.seed:
+            msg = "cfg.seed is not set"
+            logger.error(msg)
+            utils.email_death(logger, msg)
+            sys.exit(1)
+        # check address object matches our configured address
+        global pw_address
+        pw_address = pywaves.Address(seed=cfg.seed)
+        print(cfg.seed)
+        print(cfg.address)
+        print(pw_address.address)
+        if pw_address.address != cfg.address:
+            msg = f"pw_address does not match {cfg.address}"
+            logger.error(msg)
+            utils.email_death(logger, msg)
+            sys.exit(1)
 
     def start(self, group=None):
         def runloop():

@@ -18,16 +18,16 @@
         system: yes
         state: present
 
-    - name: copy zapd
+    - name: copy zapd.zip
       copy:
-        src: ../zapd/
-        dest: /opt/zapd
-        owner: zapd
-        group: zapd
-        mode: 0755
+        src: ../zapd.zip
+        dest: /opt/zapd.zip
 
-    - name: zapd dos2unix
-      shell: dos2unix /opt/zapd/*
+    - name: extract zapd.zip
+      shell: unzip /opt/zapd.zip -d /opt/zapd
+
+    - name: chown /opt/zapd
+      shell: chown zapd:zapd /opt/zapd -R
 
     - name: init wallet address
       shell: /opt/zapd/init_wallet_address.py
