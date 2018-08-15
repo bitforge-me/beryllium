@@ -57,7 +57,7 @@ print_request("listtransactions", {"start_date": 1531973964278})
 print_request("listtransactions", {"end_date":   1531973964278})
 print_request("listtransactions", {"offset": 1})
 print_request("listtransactions", {"limit": 1})
-res = print_request("createtransaction", {"recipient": "3NAbEPpnw2YmZ3axaPFAXW5LG9R6jJip69e", "amount": 10, "attachment": ""})
+res = print_request("createtransaction", {"recipient": "3MpkEPnU3KkDYkFGwivUn2psMQo74MX4fyJ", "amount": 10, "attachment": ""})
 if not "error" in res:
     print_request("broadcasttransaction", {"txid": res["result"]["txid"]})
     print_request("gettransaction", {"txid": res["result"]["txid"]})
