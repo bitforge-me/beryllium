@@ -24,13 +24,16 @@
         dest: /opt/zapd.zip
 
     - name: extract zapd.zip
-      shell: unzip /opt/zapd.zip -d /opt/zapd
+      shell: unzip -o /opt/zapd.zip -d /opt/zapd
 
     - name: chown /opt/zapd
       shell: chown zapd:zapd /opt/zapd -R
 
     - name: init wallet address
       shell: /opt/zapd/init_wallet_address.py
+
+    - name: set webhook config
+      shell: /opt/zapd/set_webhook_config.py {{ WEBHOOK_URL }} {{ WEBHOOK_KEY }}
 
     - name: copy zapd.service
       template:

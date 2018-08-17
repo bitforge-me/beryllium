@@ -67,3 +67,19 @@ def init_wallet_address(address, seed):
     if not os.path.exists(get_secret_filename()):
         with open(get_secret_filename(), "w") as f:
             f.write(f"[wallet]\nseed={seed}\n")
+
+def set_webhook_config(url, key):
+    # write url and key
+    import re
+    with open(get_filename()) as f:
+        data = f.read()
+    def subaddr_url(m):
+        return m.group(1) + url
+    pattern = "(url=)(.*)"
+    data = re.sub(pattern, subaddr_url, data)
+    def subaddr_key(m):
+        return m.group(1) + key
+    pattern = "(key=)(.*)"
+    data = re.sub(pattern, subaddr_key, data)
+    with open(get_filename(), "w") as f:
+        f.write(data)

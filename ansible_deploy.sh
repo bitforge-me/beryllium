@@ -5,22 +5,28 @@ DEPLOY_PRODUCTION=production
 DEPLOY_TYPE=$1
 BACKUP_KEY=$2
 BACKUP_SSH_KEY=$3
+WEBHOOK_URL=$4
+WEBHOOK_KEY=$5
 
 display_usage() { 
     echo -e "\nUsage:
 
-    ansible_deploy.sh <DEPLOY_TYPE ($DEPLOY_TEST | $DEPLOY_PRODUCTION)> <BACKUP_KEY> <BACKUP_SSH_KEY>
+    ansible_deploy.sh <DEPLOY_TYPE ($DEPLOY_TEST | $DEPLOY_PRODUCTION)> <BACKUP_KEY> <BACKUP_SSH_KEY> <WEBHOOK_URL> <WEBHOOK_KEY>
 
         BACKUP_KEY: the **public** GPG key used to encrypt backups
                     (use \"gpg --armor --export <KEY_NAME> > backup_key.asc\" to export public key)
 
         BACKUP_SSH_KEY: the **private** SSH key used to log in to the backup server
 
+        WEBHOOK_URL: the URL for incomming transaction notifications
+
+        WEBHOOK_KEY: the key to sign the transaction notifications with
+
     "
 } 
 
 # if less than two arguments supplied, display usage 
-if [  $# -le 2 ]
+if [  $# -le 4 ]
 then 
     display_usage
     exit 1
@@ -83,8 +89,10 @@ echo "   - ADMIN_EMAIL: $ADMIN_EMAIL"
 echo "   - DEPLOY_HOST: $DEPLOY_HOST"
 echo "   - DEPLOY_USER: $DEPLOY_USER"
 echo "   - BACKUP_KEY: $BACKUP_KEY"
-echo "   - BACKUP_SSH_KEY: $BACKUP_KEY"
+echo "   - BACKUP_SSH_KEY: $BACKUP_SSH_KEY"
 echo "   - BACKUP_HOST: $BACKUP_HOST"
+echo "   - WEBHOOK_URL: $WEBHOOK_URL"
+echo "   - WEBHOOK_KEY: $WEBHOOK_KEY"
 echo "   - ZAPD_ARCIVCE: zapd.zip"
 
 # ask user to continue
@@ -95,6 +103,6 @@ then
     # do dangerous stuff
     echo ok lets go!!!
     ansible-playbook --inventory "$DEPLOY_HOST," --user "$DEPLOY_USER" -v \
-        --extra-vars "ADMIN_EMAIL=$ADMIN_EMAIL DEPLOY_HOST=$DEPLOY_HOST BACKUP_KEY='$BACKUP_KEY' BACKUP_SSH_KEY='$BACKUP_SSH_KEY' BACKUP_HOST=$BACKUP_HOST VAGRANT=$VAGRANT TESTNET=$TESTNET" \
+        --extra-vars "ADMIN_EMAIL=$ADMIN_EMAIL DEPLOY_HOST=$DEPLOY_HOST BACKUP_KEY='$BACKUP_KEY' BACKUP_SSH_KEY='$BACKUP_SSH_KEY' BACKUP_HOST=$BACKUP_HOST WEBHOOK_URL=$WEBHOOK_URL WEBHOOK_KEY=$WEBHOOK_KEY VAGRANT=$VAGRANT TESTNET=$TESTNET" \
         ansible/deploy.yml
 fi
