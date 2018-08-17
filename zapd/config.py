@@ -54,12 +54,12 @@ def read_cfg():
 def init_wallet_address(address, seed):
     # write address
     import re
-    pattern = "(address=)(.*)"
     with open(get_filename()) as f:
         data = f.read()
     def subaddr(m):
         return m.group(1) + address
-    data = re.sub(pattern, subaddr, data)
+    pattern = "^(address=)(.*)"
+    data = re.sub(pattern, subaddr, data, flags=re.MULTILINE)
     with open(get_filename(), "w") as f:
         f.write(data)
 
@@ -75,11 +75,11 @@ def set_webhook_config(url, key):
         data = f.read()
     def subaddr_url(m):
         return m.group(1) + url
-    pattern = "(url=)(.*)"
-    data = re.sub(pattern, subaddr_url, data)
+    pattern = "^(url=)(.*)"
+    data = re.sub(pattern, subaddr_url, data, flags=re.MULTILINE)
     def subaddr_key(m):
         return m.group(1) + key
-    pattern = "(key=)(.*)"
-    data = re.sub(pattern, subaddr_key, data)
+    pattern = "^(key=)(.*)"
+    data = re.sub(pattern, subaddr_key, data, flags=re.MULTILINE)
     with open(get_filename(), "w") as f:
         f.write(data)
