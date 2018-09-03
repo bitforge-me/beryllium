@@ -175,7 +175,7 @@ def parse_message(wutx, msg, on_transfer_utx=None):
                     try:
                         tx_len, tx_type, sig, tx_type2, pubkey, asset_flag, asset_id, fee_asset_flag, fee_asset_id, timestamp, amount, fee, recipient, attachment = parse_transfer_tx(payload)
                     except Exception as e:
-                        utils.email_buffer(logger, "transfer tx parse exception: {e}", payload)
+                        utils.email_buffer(logger, f"transfer tx parse exception: {e}", payload)
                         return
 
                     txid = transfer_asset_txid(pubkey, asset_id, fee_asset_id, timestamp, amount, fee, recipient, attachment)
