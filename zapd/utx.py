@@ -78,7 +78,9 @@ def parse_transfer_tx(payload):
     fmt_start = ">B64sB32sB"
     fmt_start_len = struct.calcsize(fmt_start)
     if len(payload) < fmt_start_len:
-        utils.email_buffer(logger, "transfer tx buffer too short to decode start tx", payload)
+        msg = "transfer tx buffer too short to decode start tx"
+        logger.error(msg)
+        utils.email_buffer(logger, msg, payload)
     tx_type, sig, tx_type2, pubkey, asset_flag = \
         struct.unpack_from(fmt_start, payload)
     offset = fmt_start_len
@@ -98,8 +100,10 @@ def parse_transfer_tx(payload):
     offset += fee_asset_id_len
     fmt_mid = ">QQQ26sH"
     fmt_mid_len = struct.calcsize(fmt_mid)
-    if len(payload) < fmt_mid_len - offset:
-        utils.email_buffer(logger, "transfer tx buffer too short to decode middle of tx", payload)
+    if len(payload) - offset < fmt_mid_len:
+        msg = "transfer tx buffer too short to decode middle of tx"
+        logger.error(msg)
+        utils.email_buffer(logger, msg, payload)
     timestamp, amount, fee, recipient, attachment_len = \
         struct.unpack_from(fmt_mid, payload[offset:])
     offset += fmt_mid_len
