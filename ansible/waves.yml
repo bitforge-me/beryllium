@@ -5,8 +5,8 @@
   become_user: root
 
   vars:
-    waves_file: "{{ 'waves-all-0.14.2.jar' if TESTNET else 'waves-all-0.13.4.jar' }}"
-    waves_download_dir: "{{ 'v0.14.2' if TESTNET else 'v0.13.4' }}"
+    waves_file: "{{ 'waves-all-0.14.3.jar' if TESTNET else 'waves-all-0.13.4.jar' }}"
+    waves_download_dir: "{{ 'v0.14.3' if TESTNET else 'v0.13.4' }}"
     waves_conf_file: "{{ 'waves_testnet.conf' if TESTNET else 'waves_mainnet.conf' }}"
   tasks:
     - name: ansible group
