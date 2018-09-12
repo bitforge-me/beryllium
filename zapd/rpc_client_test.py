@@ -3,10 +3,12 @@
 import sys
 import json
 import random
+import pprint
 
 import requests
 from requests.auth import HTTPBasicAuth
 
+pp = pprint.PrettyPrinter(indent=4)
 local_url = "http://localhost:5000/api"
 testnet_url = "https://testnet.zap.me/api"
 url = local_url
@@ -35,7 +37,7 @@ def request(method_name, params):
 def print_request(function, params={}):
     print(f"::{function}")
     res = request(function, params)
-    print(res)
+    pp.pprint(res)
     print("---\n")
     return res
 
