@@ -48,7 +48,20 @@
 
     - name: add cron job to expire transactions
       cron:
+        name: SHELL
+        env: yes
+        value: /bin/bash
+
+    - name: add cron job to expire transactions
+      cron:
         name: expire zapd transactions
         special_time: daily
         job: >
           curl -d '{"jsonrpc":"2.0","id":1,"method":"expiretransactions","params":{}}' -H "Content-Type: application/json-rpc" localhost:5000/api
+
+    - name: add cron job to check zapd balance
+      cron:
+        name: check zapd balance
+        special_time: hourly
+        job: >
+          bal=`curl -s -d '{"jsonrpc":"2.0","id":1,"method":"getbalance","params":{}}' -H "Content-Type: application/json-rpc" localhost:5000/api | jq '.["result"]["balance"]'` && if (( $bal < 500000 )); then echo "balance ($bal) is less then 500000"; fi
