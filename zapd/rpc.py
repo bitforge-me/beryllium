@@ -193,9 +193,6 @@ class ZapRPC():
         # check address object matches our configured address
         global pw_address
         pw_address = pywaves.Address(seed=cfg.seed)
-        print(cfg.seed)
-        print(cfg.address)
-        print(pw_address.address)
         if pw_address.address != cfg.address:
             msg = f"pw_address does not match {cfg.address}"
             logger.error(msg)
