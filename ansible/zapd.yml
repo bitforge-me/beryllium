@@ -4,6 +4,9 @@
   become: yes
   become_user: root
 
+  vars:
+    min_zap: 5000
+    max_zap: 10000
   tasks:
     - name: ansible group
       group: 
@@ -64,4 +67,4 @@
         name: check zapd balance
         special_time: hourly
         job: >
-          bal=`curl -s -d '{"jsonrpc":"2.0","id":1,"method":"getbalance","params":{}}' -H "Content-Type: application/json-rpc" localhost:5000/api | jq '.["result"]["balance"]'` && if (( $bal < 500000 )); then echo "balance ($bal) is less then 500000"; fi
+          bal=`curl -s -d '{"jsonrpc":"2.0","id":1,"method":"getbalance","params":{}}' -H "Content-Type: application/json-rpc" localhost:5000/api | jq '.["result"]["balance"]'` && if (( $bal < {{ min_zap }}00 )); then echo "balance ($bal) is less then {{ min_zap }} ZAP"; elif (( $bal > {{ max_zap }}00 )); then echo "balance is greater then {{ max_zap }} ZAP"; fi

@@ -5,8 +5,8 @@
   become_user: root
 
   vars:
-    waves_file: "{{ 'waves-all-0.15.0.jar' if TESTNET else 'waves-all-0.14.6.jar' }}"
-    waves_download_dir: "{{ 'v0.15.0' if TESTNET else 'v0.14.6' }}"
+    waves_version: "{{ '0.15.0' if TESTNET else '0.14.6' }}"
+    waves_file: "waves-all-{{ waves_version }}.jar"
     waves_conf_file: "{{ 'waves_testnet.conf' if TESTNET else 'waves_mainnet.conf' }}"
   tasks:
     - name: ansible group
@@ -24,7 +24,7 @@
 
     - name: download waves
       get_url:
-        url: https://github.com/wavesplatform/Waves/releases/download/{{ waves_download_dir }}/{{ waves_file }}
+        url: https://github.com/wavesplatform/Waves/releases/download/v{{ waves_version }}/{{ waves_file }}
         dest: /home/waves/{{ waves_file }}
 
     - file:
