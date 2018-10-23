@@ -71,13 +71,13 @@ BACKUP_HOST=backup.zap.me
 # set deploy variables for production
 DEPLOY_HOST=mainnet.zap.me
 DEPLOY_USER=root
-TESTNET=true
+TESTNET=
 # set deploy variables for test
 if [[ ( $DEPLOY_TYPE == "test" ) ]]
 then 
     DEPLOY_HOST=testnet.zap.me
     DEPLOY_USER=root
-    TESTNET=false
+    TESTNET=true
 fi 
 
 # create archive
@@ -85,6 +85,7 @@ fi
 
 # print variables
 echo ":: DEPLOYMENT DETAILS ::"
+echo "   - TESTNET: $TESTNET"
 echo "   - ADMIN_EMAIL: $ADMIN_EMAIL"
 echo "   - DEPLOY_HOST: $DEPLOY_HOST"
 echo "   - DEPLOY_USER: $DEPLOY_USER"

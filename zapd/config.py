@@ -51,6 +51,18 @@ def read_cfg():
 
     return cfg
 
+def set_testnet(value):
+    # write address
+    import re
+    with open(get_filename()) as f:
+        data = f.read()
+    def subtestnet(m):
+        return m.group(1) + value
+    pattern = "^(testnet=)(.*)"
+    data = re.sub(pattern, subtestnet, data, flags=re.MULTILINE)
+    with open(get_filename(), "w") as f:
+        f.write(data)
+
 def init_wallet_address(address, seed):
     # write address
     import re

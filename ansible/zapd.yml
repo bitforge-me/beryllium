@@ -32,6 +32,12 @@
     - name: chown /opt/zapd
       shell: chown zapd:zapd /opt/zapd -R
 
+    - name: install python requiremnents
+      shell: pip3 install --system -r /opt/zapd/requirements.txt
+
+    - name: set testnet value
+      shell: /opt/zapd/set_testnet.py {{ 'true' if TESTNET else 'false' }}
+
     - name: init wallet address
       shell: /opt/zapd/init_wallet_address.py
 
@@ -42,9 +48,6 @@
       template:
         src: templates/zapd.service
         dest: /etc/systemd/system/zapd.service
-
-    - name: install python requiremnents
-      shell: pip3 install --system -r /opt/zapd/requirements.txt
 
     - name: restart/enable zapd service
       service: name=zapd state=restarted enabled=yes
