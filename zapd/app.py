@@ -69,7 +69,10 @@ if __name__ == "__main__":
     group = gevent.pool.Group()
     zaprpc = rpc.ZapRPC()
     zaprpc.start(group)
-    wutx = utx.WavesUTX(None, on_transfer_utx)
+    port = 6863
+    if not cfg.testnet:
+        port = 6868
+    wutx = utx.WavesUTX(None, on_transfer_utx, port=port)
     wutx.start(group)
     logger.info("main loop")
     sent_start_email = False
