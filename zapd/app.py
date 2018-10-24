@@ -72,7 +72,7 @@ if __name__ == "__main__":
     port = 6863
     if not cfg.testnet:
         port = 6868
-    wutx = utx.WavesUTX(None, on_transfer_utx, port=port)
+    wutx = utx.WavesUTX(None, on_transfer_utx, port=port, testnet=cfg.testnet)
     wutx.start(group)
     logger.info("main loop")
     sent_start_email = False

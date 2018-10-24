@@ -24,8 +24,10 @@ CONTENT_ID_SCORE = 0x18
 
 g_last_score_msg = None
 
-def create_handshake(port):
+def create_handshake(port, testnet):
     name = b"wavesT"
+    if not testnet:
+        name = b"wavesW"
     name_len = len(name) 
     version_major = 0
     version_minor = 13
@@ -202,11 +204,12 @@ def parse_message(wutx, msg, on_transfer_utx=None):
 
 class WavesUTX():
 
-    def __init__(self, on_msg, on_transfer_utx, addr="127.0.0.1", port=6863):
+    def __init__(self, on_msg, on_transfer_utx, addr="127.0.0.1", port=6863, testnet=True):
         self.on_msg = on_msg
         self.on_transfer_utx = on_transfer_utx
         self.addr = addr
         self.port = port
+        self.testnet = testnet
 
     def init_socket(self):
         while 1:
@@ -218,7 +221,7 @@ class WavesUTX():
                 logger.info(f"socket opened: {self.addr}:{self.port}")
                 # send handshake
                 local_port = self.s.getsockname()[1]
-                handshake = create_handshake(local_port)
+                handshake = create_handshake(local_port, self.testnet)
                 l = self.s.send(handshake)
                 logger.info(f"handshake bytes sent: {l}")
                 # success, exit loop!
