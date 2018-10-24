@@ -14,7 +14,7 @@ def read_cfg():
     cfg = type("cfg", (object,), {})()
 
     # network
-    cfg.testnet = cp["network"]["testnet"]
+    cfg.testnet = cp.getboolean("network", "testnet")
     cfg.testnet_start_block = cp["network"]["testnet_start_block"]
     cfg.mainnet_start_block = cp["network"]["mainnet_start_block"]
     cfg.start_block = int(cfg.testnet_start_block)
