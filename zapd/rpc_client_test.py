@@ -11,6 +11,7 @@ from requests.auth import HTTPBasicAuth
 pp = pprint.PrettyPrinter(indent=4)
 local_url = "http://localhost:5000/api"
 testnet_url = "https://testnet.zap.me/api"
+mainnet_url = "https://mainnet.zap.me/api"
 url = local_url
 auth=None
 
@@ -42,9 +43,13 @@ def print_request(function, params={}):
     return res
 
 # init/show params
-if len(sys.argv) >= 2:
-    password = sys.argv[1]
-    url = testnet_url
+if len(sys.argv) >= 3:
+    network = sys.argv[1]
+    if network == "testnet":
+        url = testnet_url
+    else:
+        url = mainnet_url
+    password = sys.argv[2]
     print("Using password: " + password);
     auth = HTTPBasicAuth("zapd", password)
 print("Using url: " + url)
