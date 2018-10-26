@@ -40,6 +40,7 @@ CTX_BROADCAST = "broadcast"
 ERR_FAILED_TO_BROADCAST = 0
 ERR_NO_TXID = 1
 ERR_TX_EXPIRED = 2
+ERR_FAILED_TO_GET_ASSET_INFO = 3
 
 @jsonrpc.method("status")
 def status():
@@ -96,8 +97,20 @@ def transfer_asset_txid(tx):
 
 @jsonrpc.method("createtransaction")
 def createtransaction(recipient, amount, attachment):
+    # get fee
+    path = f"assets/details/{cfg.asset_id}"
+    response = requests.get(cfg.node_http_base_url + path)
+    if response.ok:
+        asset_fee = response.json()["minSponsoredAssetFee"]
+    else:
+        short_msg = "failed to get asset info"
+        logger.error(f"{short_msg}: ({response.status_code}, {response.request.method} {response.url}):\n\t{response.text}")
+        err = OtherError(short_msg, ERR_FAILED_TO_GET_ASSET_INFO)
+        err.data = response.text
+        raise err
     recipient = pywaves.Address(recipient)
-    address_data = pw_address.sendAsset(recipient, pywaves.Asset(cfg.asset_id), amount, attachment)
+    asset = pywaves.Asset(cfg.asset_id)
+    address_data = pw_address.sendAsset(recipient, asset, amount, attachment, feeAsset=asset, txFee=asset_fee)
     signed_tx = json.loads(address_data["api-data"])
     # calc txid properly
     txid = transfer_asset_txid(signed_tx)
