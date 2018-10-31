@@ -7,7 +7,7 @@ import struct
 
 import gevent
 from gevent.pywsgi import WSGIServer
-from flask import Flask
+from flask import Flask, render_template
 from flask_jsonrpc import JSONRPC
 from flask_jsonrpc.exceptions import OtherError
 import requests
@@ -42,21 +42,45 @@ ERR_NO_TXID = 1
 ERR_TX_EXPIRED = 2
 ERR_FAILED_TO_GET_ASSET_INFO = 3
 
-@jsonrpc.method("status")
-def status():
+def dashboard_data():
+    # get remote block height
     remote_node = "https://testnode1.wavesnodes.com"
     if not cfg.testnet:
         remote_node = "https://nodes.wavesnodes.com"
     response = get(remote_node + "/blocks/height")
     remote_block_height = response.json()["height"]
+    # get locally scanned block height
     scanned_block_height = 0
     last_block = Block.last_block(db_session)
     if last_block:
         scanned_block_height = last_block.num
+    # get incomming tx count
     incomming_tx_count = Transaction.count(db_session)
+    # get created tx count
     created_tx_count = CreatedTransaction.count(db_session)
+    # get balance of local wallet
+    path = f"assets/balance/{cfg.address}/{cfg.asset_id}"
+    response = requests.get(cfg.node_http_base_url + path)
+    zap_balance = response.json()["balance"]
+    # get the balance of the main wallet
+    path = f"transactions/info/{cfg.asset_id}"
+    response = requests.get(cfg.node_http_base_url + path)
+    issuer = response.json()["sender"]
+    path = f"addresses/balance/{issuer}"
+    response = requests.get(cfg.node_http_base_url + path)
+    master_waves_balance = response.json()["balance"]
+    # return data
     return {"remote_block_height": remote_block_height, "scanned_block_height": scanned_block_height, \
-            "incomming_tx_count": incomming_tx_count, "created_tx_count": created_tx_count}
+            "incomming_tx_count": incomming_tx_count, "created_tx_count": created_tx_count, \
+            "zap_balance": zap_balance, "master_waves_balance": master_waves_balance}
+
+@app.route("/")
+def dashboard():
+    return render_template("dashboard.html", data=dashboard_data())
+
+@jsonrpc.method("status")
+def status():
+    return dashboard_data()
 
 @jsonrpc.method("getaddress")
 def getaddress():
