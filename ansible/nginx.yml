@@ -53,10 +53,15 @@
         src: create_htpasswd.py
         dest: /tmp/create_htpasswd.py
 
-    - name: Install .htpasswd file
-      shell: python3 /tmp/create_htpasswd.py /etc/nginx/htpasswd
+    - name: Install .htpasswd file for RPC
+      shell: python3 /tmp/create_htpasswd.py /etc/nginx/htpasswd zapd
       args:
           creates: /etc/nginx/htpasswd
+
+    - name: Install .htpasswd file for dashboard
+      shell: python3 /tmp/create_htpasswd.py /etc/nginx/htpasswd_dashboard dashboard
+      args:
+          creates: /etc/nginx/htpasswd_dashboard
 
     - name: Reload nginx to activate specified site
       service: name=nginx state=restarted

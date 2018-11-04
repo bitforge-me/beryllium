@@ -74,7 +74,7 @@ def dashboard_data():
             "incomming_tx_count": incomming_tx_count, "created_tx_count": created_tx_count, \
             "zap_balance": zap_balance, "master_waves_balance": master_waves_balance}
 
-@app.route("/")
+@app.route("/dashboard")
 def dashboard():
     return render_template("dashboard.html", data=dashboard_data())
 
