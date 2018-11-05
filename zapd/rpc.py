@@ -76,7 +76,10 @@ def dashboard_data():
 
 @app.route("/dashboard")
 def dashboard():
-    return render_template("dashboard.html", data=dashboard_data())
+    data = dashboard_data()
+    data["zap_balance"] = data["zap_balance"] / 100
+    data["master_waves_balance"] = data["master_waves_balance"] / 10**8
+    return render_template("dashboard.html", data=data)
 
 @jsonrpc.method("status")
 def status():

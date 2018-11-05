@@ -65,4 +65,19 @@ server {
         proxy_set_header  X-Forwarded-Proto $scheme;
         proxy_pass        http://localhost:5000;
     }
+
+    # reverse proxy to our app dashboard assets
+    location /static {
+        limit_req zone=zapd_limit burst=20 nodelay;
+
+        limit_except GET {
+            deny all;
+        }
+
+        proxy_set_header  Host $host;
+        proxy_set_header  X-Real-IP $remote_addr;
+        proxy_set_header  X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header  X-Forwarded-Proto $scheme;
+        proxy_pass        http://localhost:5000;
+    }
 }
