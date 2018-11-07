@@ -4,6 +4,7 @@ import sys
 import logging
 import json
 import struct
+import time
 
 import gevent
 from gevent.pywsgi import WSGIServer
@@ -19,7 +20,7 @@ import pyblake2
 
 import config
 from database import db_session, init_db
-from models import Transaction, Block, CreatedTransaction
+from models import Transaction, Block, CreatedTransaction, DashboardHistory
 import utils
 
 cfg = config.read_cfg()
@@ -74,12 +75,42 @@ def dashboard_data():
             "incomming_tx_count": incomming_tx_count, "created_tx_count": created_tx_count, \
             "zap_balance": zap_balance, "master_waves_balance": master_waves_balance}
 
+def from_int_to_user_friendly(val, divisor, decimal_places=4):
+    val = val / divisor
+    return round(val, decimal_places)
+
 @app.route("/dashboard")
 def dashboard():
+    history = DashboardHistory.last_week(db_session)
     data = dashboard_data()
-    data["zap_balance"] = data["zap_balance"] / 100
-    data["master_waves_balance"] = data["master_waves_balance"] / 10**8
+    data["zap_balance"] = from_int_to_user_friendly(data["zap_balance"], 100)
+    data["master_waves_balance"] = from_int_to_user_friendly(data["master_waves_balance"], 10**8)
+    history_convert = []
+    for i in range(len(history)):
+        item = {}
+        item["date"] = history[i].date
+        item["zap_balance"] = from_int_to_user_friendly(history[i].zap_balance, 100)
+        item["master_waves_balance"] = from_int_to_user_friendly(history[i].master_waves_balance, 10**8)
+        history_convert.append(item)
+    data["history"] = history_convert
+    data["history_mins_since_update"] = 0
+    if len(history) > 0:
+        data["history_mins_since_update"] = int((time.time() - history[-1].date) / 60)
     return render_template("dashboard.html", data=data)
+
+@app.route("/dashboard/snapshot")
+@app.route("/dashboard/snapshot/<cmd>")
+def dashboard_snapshot(cmd=None):
+    last_entry = DashboardHistory.last_entry(db_session)
+    fourhours = 60 * 60 * 4
+    if cmd == "override" or not last_entry or last_entry.date < time.time() - fourhours:
+        data = dashboard_data()
+        history = DashboardHistory(data["incomming_tx_count"], data["created_tx_count"], \
+                data["zap_balance"], data["master_waves_balance"])
+        db_session.add(history)
+        db_session.commit()
+        return "ok"
+    return "not needed right now"
 
 @jsonrpc.method("status")
 def status():

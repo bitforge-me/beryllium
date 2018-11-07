@@ -21,11 +21,6 @@
     <!--  Paper Dashboard core CSS    -->
     <link href="static/assets/css/paper-dashboard.css" rel="stylesheet"/>
 
-
-    <!--  CSS for Demo Purpose, don't include it in your project     -->
-    <link href="static/assets/css/demo.css" rel="stylesheet" />
-
-
     <!--  Fonts and icons     -->
     <link href="https://maxcdn.bootstrapcdn.com/font-awesome/latest/css/font-awesome.min.css" rel="stylesheet">
     <link href='https://fonts.googleapis.com/css?family=Muli:400,300' rel='stylesheet' type='text/css'>
@@ -267,24 +262,18 @@
                 </div>
 
                 <div class="row">
-
                     <div class="col-md-12">
                         <div class="card">
                             <div class="header">
-                                <h4 class="title">Users Behavior</h4>
-                                <p class="category">24 Hours performance</p>
+                                <h4 class="title">Zap Balance</h4>
+                                <p class="category">24 Hour History</p>
                             </div>
                             <div class="content">
-                                <div id="chartHours" class="ct-chart"></div>
+                                <div id="chartZapBalance" class="ct-chart"></div>
                                 <div class="footer">
-                                    <div class="chart-legend">
-                                        <i class="fa fa-circle text-info"></i> Open
-                                        <i class="fa fa-circle text-danger"></i> Click
-                                        <i class="fa fa-circle text-warning"></i> Click Second Time
-                                    </div>
                                     <hr>
                                     <div class="stats">
-                                        <i class="ti-reload"></i> Updated 3 minutes ago
+                                        <i class="ti-reload"></i> Updated {{ data["history_mins_since_update"] }} minutes ago
                                     </div>
                                 </div>
                             </div>
@@ -292,52 +281,25 @@
                     </div>
                 </div>
                 <div class="row">
-                    <div class="col-md-6">
+                    <div class="col-md-12">
                         <div class="card">
                             <div class="header">
-                                <h4 class="title">Email Statistics</h4>
-                                <p class="category">Last Campaign Performance</p>
+                                <h4 class="title">Master Waves Balance</h4>
+                                <p class="category">24 Hour History</p>
                             </div>
                             <div class="content">
-                                <div id="chartPreferences" class="ct-chart ct-perfect-fourth"></div>
-
+                                <div id="chartMasterWavesBalance" class="ct-chart"></div>
                                 <div class="footer">
-                                    <div class="chart-legend">
-                                        <i class="fa fa-circle text-info"></i> Open
-                                        <i class="fa fa-circle text-danger"></i> Bounce
-                                        <i class="fa fa-circle text-warning"></i> Unsubscribe
-                                    </div>
                                     <hr>
                                     <div class="stats">
-                                        <i class="ti-timer"></i> Campaign sent 2 days ago
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card ">
-                            <div class="header">
-                                <h4 class="title">2015 Sales</h4>
-                                <p class="category">All products including Taxes</p>
-                            </div>
-                            <div class="content">
-                                <div id="chartActivity" class="ct-chart"></div>
-
-                                <div class="footer">
-                                    <div class="chart-legend">
-                                        <i class="fa fa-circle text-info"></i> Tesla Model S
-                                        <i class="fa fa-circle text-warning"></i> BMW 5 Series
-                                    </div>
-                                    <hr>
-                                    <div class="stats">
-                                        <i class="ti-check"></i> Data information certified
+                                        <i class="ti-reload"></i> Updated {{ data["history_mins_since_update"] }} minutes ago
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
 
@@ -376,31 +338,76 @@
 	<!--  Charts Plugin -->
 	<script src="static/assets/js/chartist.min.js"></script>
 
+	<!--  Moment Plugin -->
+	<script src="static/assets/js/moment.min.js"></script>
+
     <!--  Notifications Plugin    -->
     <script src="static/assets/js/bootstrap-notify.js"></script>
 
-    <!--  Google Maps Plugin    -->
-    <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js"></script>
-
-    <!-- Paper Dashboard Core javascript and methods for Demo purpose -->
+    <!-- Paper Dashboard Core javascript and methods -->
 	<script src="static/assets/js/paper-dashboard.js"></script>
 
-	<!-- Paper Dashboard DEMO methods, don't include it in your project! -->
-	<script src="static/assets/js/demo.js"></script>
-
 	<script type="text/javascript">
+        function initZapCharts() {
+            // init line charts
+            var dataZapBalance = {
+              series: [
+                { data: [
+                    {% for item in data["history"] %}
+                        {x: new Date({{ item["date"] * 1000 }}), y: {{ item["zap_balance"] }} },
+                    {% endfor %}
+                  ]
+                }
+              ]
+            };
+
+            var dataMasterWavesBalance = {
+              series: [
+                { data: [
+                    {% for item in data["history"] %}
+                        {x: new Date({{ item["date"] * 1000 }}), y: {{ item["master_waves_balance"] }} },
+                    {% endfor %}
+                  ]
+                }
+              ]
+            };
+
+            var options = {
+              lineSmooth: false,
+              showArea: true,
+              height: "245px",
+              axisX: {
+                type: Chartist.FixedScaleAxis,
+                divisor: 5,
+                labelInterpolationFnc: function(value) {
+                  return moment(value).format('HH:mm');
+                }
+              },
+              lineSmooth: Chartist.Interpolation.simple({
+                divisor: 3
+              }),
+              showLine: true,
+              showPoint: true,
+            };
+
+            var responsive = [
+              ['screen and (max-width: 640px)', {
+                axisX: {
+                  labelInterpolationFnc: function (value) {
+                    return value[0];
+                  }
+                }
+              }]
+            ];
+
+            Chartist.Line('#chartZapBalance', dataZapBalance, options, responsive);
+            Chartist.Line('#chartMasterWavesBalance', dataMasterWavesBalance, options, responsive);
+
+        };
+
     	$(document).ready(function(){
 
-        	demo.initChartist();
-
-        	$.notify({
-            	icon: 'ti-gift',
-            	message: "Welcome to <b>Paper Dashboard</b> - a beautiful Bootstrap freebie for your next project."
-
-            },{
-                type: 'success',
-                timer: 4000
-            });
+            initZapCharts();
 
     	});
 	</script>

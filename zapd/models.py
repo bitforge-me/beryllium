@@ -185,3 +185,29 @@ class Setting(Base):
 
     def __repr__(self):
         return '<Setting %r %r>' % (self.key, self.value)
+
+class DashboardHistory(Base):
+    __tablename__ = "dashboard_history"
+    id = Column(Integer, primary_key=True)
+    date = Column(Integer, nullable=False)
+    incomming_tx_count = Column(Integer, nullable=False)
+    created_tx_count = Column(Integer, nullable=False)
+    zap_balance = Column(Integer, nullable=False)
+    master_waves_balance = Column(Integer, nullable=False)
+
+    def __init__(self, incomming_tx_count, created_tx_count, zap_balance, master_waves_balance):
+        self.date = time.time()
+        self.incomming_tx_count = incomming_tx_count
+        self.created_tx_count = created_tx_count
+        self.zap_balance = zap_balance
+        self.master_waves_balance = master_waves_balance
+
+    @classmethod
+    def last_entry(cls, session):
+        return session.query(cls).order_by(cls.id.desc()).first()
+
+    @classmethod
+    def last_week(cls, session):
+        now = time.time()
+        week = 60 * 60 * 24 * 7
+        return session.query(cls).filter(cls.date > now - week).all()

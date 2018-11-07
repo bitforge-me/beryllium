@@ -52,7 +52,7 @@
     - name: restart/enable zapd service
       service: name=zapd state=restarted enabled=yes
 
-    - name: add cron job to expire transactions
+    - name: set cron shell
       cron:
         name: SHELL
         env: yes
@@ -64,6 +64,13 @@
         special_time: daily
         job: >
           curl -d '{"jsonrpc":"2.0","id":1,"method":"expiretransactions","params":{}}' -H "Content-Type: application/json-rpc" localhost:5000/api
+
+    - name: add cron job to snapshot dashboard
+      cron:
+        name: snapshot zapd dashboard
+        special_time: hourly
+        job: >
+          curl localhost:5000/dashboard/snapshot
 
     - name: add cron job to check zapd balance
       cron:
