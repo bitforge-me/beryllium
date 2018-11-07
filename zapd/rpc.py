@@ -231,6 +231,15 @@ def block_at(num):
     response = get(cfg.node_http_base_url + f"blocks/at/{num}")
     return response.json()
 
+def block_chk(blk):
+    if not isinstance(blk, dict):
+        return False, "blk not dict"
+    if "status" in blk and blk["status"] == "error":
+        return False, blk["details"]
+    if not "signature" in blk:
+        return False, "no signature field in blk"
+    return True, "all good"
+
 def block_hash(blk):
     height = "unknown"
     if isinstance(blk, int):
@@ -240,7 +249,7 @@ def block_hash(blk):
         if "height" in blk:
             height = blk["height"]
         blk_json = json.dumps(blk, sort_keys=True, indent=4)
-        msg = f"block_hash(): no 'signature' field in block ({height}\n\n{blk_json}"
+        msg = f"block_hash(): no 'signature' field in block ({height}\n\n{blk_json})"
         logger.error(msg)
         utils.email_death(logger, msg)
         sys.exit(1)
@@ -322,6 +331,10 @@ class ZapRPC():
                 # added until the next block is found
                 while block_height() - 1 > scanned_block_num:
                     block = block_at(scanned_block_num + 1)
+                    res, reason = block_chk(block)
+                    if not res:
+                        logger.error(f"failed to get block at {scanned_block_num + 1} ({reason})")
+                        break
                     blk_hash = block_hash(block)
                     # check for reorged blocks now reorged *back* into the main chain
                     dbblk = Block.from_hash(db_session, blk_hash)
