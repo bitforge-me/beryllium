@@ -18,6 +18,9 @@
     <!-- Animation library for notifications   -->
     <link href="static/assets/css/animate.min.css" rel="stylesheet"/>
 
+    <!-- Chartist tooltip plugin -->
+    <link href="static/assets/css/chartist-plugin-tooltip.css" rel="stylesheet"/>
+
     <!--  Paper Dashboard core CSS    -->
     <link href="static/assets/css/paper-dashboard.css" rel="stylesheet"/>
 
@@ -337,6 +340,7 @@
 
 	<!--  Charts Plugin -->
 	<script src="static/assets/js/chartist.min.js"></script>
+	<script src="static/assets/js/chartist-plugin-tooltip.js"></script>
 
 	<!--  Moment Plugin -->
 	<script src="static/assets/js/moment.min.js"></script>
@@ -388,6 +392,7 @@
               }),
               showLine: true,
               showPoint: true,
+              plugins: [Chartist.plugins.tooltip()],
             };
 
             var responsive = [
