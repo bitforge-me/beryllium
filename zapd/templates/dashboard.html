@@ -269,7 +269,7 @@
                         <div class="card">
                             <div class="header">
                                 <h4 class="title">Zap Balance</h4>
-                                <p class="category">24 Hour History</p>
+                                <p class="category">1 Week History</p>
                             </div>
                             <div class="content">
                                 <div id="chartZapBalance" class="ct-chart"></div>
@@ -288,7 +288,7 @@
                         <div class="card">
                             <div class="header">
                                 <h4 class="title">Master Waves Balance</h4>
-                                <p class="category">24 Hour History</p>
+                                <p class="category">1 Week History</p>
                             </div>
                             <div class="content">
                                 <div id="chartMasterWavesBalance" class="ct-chart"></div>
@@ -358,7 +358,7 @@
               series: [
                 { data: [
                     {% for item in data["history"] %}
-                        {x: new Date({{ item["date"] * 1000 }}), y: {{ item["zap_balance"] }} },
+                        { x: new Date({{ item["date"] * 1000 }}), y: {{ item["zap_balance"] }} },
                     {% endfor %}
                   ]
                 }
@@ -382,9 +382,9 @@
               height: "245px",
               axisX: {
                 type: Chartist.FixedScaleAxis,
-                divisor: 5,
+                divisor: 10,
                 labelInterpolationFnc: function(value) {
-                  return moment(value).format('HH:mm');
+                  return moment(value).format('MM/DD HH:mm');
                 }
               },
               lineSmooth: Chartist.Interpolation.simple({
@@ -392,7 +392,11 @@
               }),
               showLine: true,
               showPoint: true,
-              plugins: [Chartist.plugins.tooltip()],
+              plugins: [Chartist.plugins.tooltip({ tooltipFnc: function(meta, value) { 
+                  var parts = value.split(",");
+                  var dt = new Date(parseInt(parts[0]));
+                  return moment(dt).format("YYYY/MM/DD HH:mm") + " - " + parts[1];
+              }})],
             };
 
             var responsive = [
