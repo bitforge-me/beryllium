@@ -66,16 +66,21 @@ def dashboard_data():
     # get the balance of the main wallet
     path = f"transactions/info/{cfg.asset_id}"
     response = requests.get(cfg.node_http_base_url + path)
-    issuer = response.json()["sender"]
-    path = f"addresses/balance/{issuer}"
-    response = requests.get(cfg.node_http_base_url + path)
-    master_waves_balance = response.json()["balance"]
+    try:
+        issuer = response.json()["sender"]
+        path = f"addresses/balance/{issuer}"
+        response = requests.get(cfg.node_http_base_url + path)
+        master_waves_balance = response.json()["balance"]
+    except:
+        master_waves_balance = "n/a"
     # return data
     return {"remote_block_height": remote_block_height, "scanned_block_height": scanned_block_height, \
             "incomming_tx_count": incomming_tx_count, "created_tx_count": created_tx_count, \
             "zap_balance": zap_balance, "master_waves_balance": master_waves_balance}
 
 def from_int_to_user_friendly(val, divisor, decimal_places=4):
+    if not isinstance(val, int):
+        return val
     val = val / divisor
     return round(val, decimal_places)
 
@@ -102,8 +107,8 @@ def dashboard():
 @app.route("/dashboard/snapshot/<cmd>")
 def dashboard_snapshot(cmd=None):
     last_entry = DashboardHistory.last_entry(db_session)
-    fourhours = 60 * 60 * 4
-    if cmd == "override" or not last_entry or last_entry.date < time.time() - fourhours:
+    almost_fourhours = 60 * 60 * 4 - 300
+    if cmd == "override" or not last_entry or last_entry.date < time.time() - almost_fourhours:
         data = dashboard_data()
         history = DashboardHistory(data["incomming_tx_count"], data["created_tx_count"], \
                 data["zap_balance"], data["master_waves_balance"])
