@@ -114,8 +114,12 @@ def dashboard_snapshot(cmd=None):
     almost_fourhours = 60 * 60 * 4 - 300
     if cmd == "override" or not last_entry or last_entry.date < time.time() - almost_fourhours:
         data = dashboard_data()
+        zap_balance = data["zap_balance"]
+        master_waves_balance = data["master_waves_balance"]
+        if not isinstance(zap_balance, int) or not isinstance(master_waves_balance, int):
+            return "not able to get balances"
         history = DashboardHistory(data["incomming_tx_count"], data["created_tx_count"], \
-                data["zap_balance"], data["master_waves_balance"])
+                zap_balance, master_waves_balance)
         db_session.add(history)
         db_session.commit()
         return "ok"
