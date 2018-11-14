@@ -72,11 +72,15 @@ def dashboard_data():
         response = requests.get(cfg.node_http_base_url + path)
         master_waves_balance = response.json()["balance"]
     except:
+        issuer = "n/a"
         master_waves_balance = "n/a"
     # return data
     return {"remote_block_height": remote_block_height, "scanned_block_height": scanned_block_height, \
             "incomming_tx_count": incomming_tx_count, "created_tx_count": created_tx_count, \
-            "zap_balance": zap_balance, "master_waves_balance": master_waves_balance}
+            "zap_balance": zap_balance, "zap_address": cfg.address, \
+            "master_waves_balance": master_waves_balance, "master_waves_address": issuer, \
+            "asset_id": cfg.asset_id, \
+            "testnet": cfg.testnet, "remote_node": remote_node}
 
 def from_int_to_user_friendly(val, divisor, decimal_places=4):
     if not isinstance(val, int):

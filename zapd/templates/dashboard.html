@@ -223,7 +223,9 @@
                                     </div>
                                     <div class="col-xs-7">
                                         <div class="numbers">
-                                            <p>Zap balance</p>
+                                            <p><a href="{{ data["remote_node"] }}/assets/balance/{{ data["zap_address"] }}/{{ data["asset_id"] }}">
+                                                Zap balance
+                                            </a></p>
                                             {{ data["zap_balance"] }}
                                         </div>
                                     </div>
@@ -248,7 +250,9 @@
                                     </div>
                                     <div class="col-xs-7">
                                         <div class="numbers">
-                                            <p>Master zap account waves balance</p>
+                                            <p><a href="{{ data["remote_node"] }}/addresses/balance/{{ data["master_waves_address"] }}">
+                                                Master zap account waves balance
+                                            </a></p>
                                             {{ data["master_waves_balance"] }}
                                         </div>
                                     </div>
