@@ -77,6 +77,7 @@ def to_hex(data):
     return s
 
 def parse_transfer_tx(payload):
+    # start of tx (type, sig, pubkey, asset flag)
     fmt_start = ">B64sB32sB"
     fmt_start_len = struct.calcsize(fmt_start)
     if len(payload) < fmt_start_len:
@@ -86,12 +87,14 @@ def parse_transfer_tx(payload):
     tx_type, sig, tx_type2, pubkey, asset_flag = \
         struct.unpack_from(fmt_start, payload)
     offset = fmt_start_len
+    # asset id
     asset_id_len = 0
     asset_id = ""
     if asset_flag:
         asset_id_len = 32
         asset_id = payload[offset:offset+asset_id_len]
     offset += asset_id_len
+    # fee asset id
     fee_asset_flag = payload[offset]
     offset += 1
     fee_asset_id_len = 0
@@ -100,15 +103,37 @@ def parse_transfer_tx(payload):
         fee_asset_id_len = 32
         fee_asset_id = payload[offset:offset+fee_asset_id_len]
     offset += fee_asset_id_len
-    fmt_mid = ">QQQ26sH"
+    # mid of tx (timestamp, amount, fee)
+    fmt_mid = ">QQQ" #"26sH"
     fmt_mid_len = struct.calcsize(fmt_mid)
     if len(payload) - offset < fmt_mid_len:
-        msg = "transfer tx buffer too short to decode middle of tx"
+        msg = f"transfer tx buffer too short ({len(payload)-offset}) to decode middle of tx"
         logger.error(msg)
         utils.email_buffer(logger, msg, payload)
-    timestamp, amount, fee, recipient, attachment_len = \
-        struct.unpack_from(fmt_mid, payload[offset:])
+    timestamp, amount, fee = struct.unpack_from(fmt_mid, payload[offset:])
     offset += fmt_mid_len
+    # end of tx (recipient and attachment length)
+    recipient_type = payload[offset]
+    if recipient_type == 1:
+        # address
+        recipient_size = 26
+    else:
+        # alias
+        recipient_size, = struct.unpack_from(">H", payload[offset+2:])
+        recipient_size += 4
+    print(recipient_type)
+    print(recipient_size)
+    fmt_end = f">{recipient_size}sH"
+    fmt_end_len = struct.calcsize(fmt_end)
+    if len(payload) - offset < fmt_end_len:
+        msg = f"transfer tx buffer too short ({len(payload)-offset}) to decode end of tx"
+        logger.error(msg)
+        utils.email_buffer(logger, msg, payload)
+    recipient, attachment_len = struct.unpack_from(fmt_end, payload[offset:])
+    print(recipient)
+    print(attachment_len)
+    offset += fmt_end_len
+    # attachment
     attachment = payload[offset:offset+attachment_len]
 
     return offset + attachment_len, tx_type, sig, tx_type2, pubkey, asset_flag, asset_id, fee_asset_flag, fee_asset_id, timestamp, amount, fee, recipient, attachment
