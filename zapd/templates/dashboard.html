@@ -74,6 +74,12 @@
                     <ul class="nav navbar-nav navbar-right">
                         <li>
                             <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+                                <i class="ti-bell"></i>
+								<p id="countdown"></p>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" class="dropdown-toggle" data-toggle="dropdown">
                                 <i class="ti-panel"></i>
 								<p>Stats</p>
                             </a>
@@ -418,9 +424,33 @@
 
         };
 
+        function initRefresh() {
+
+            var countdown = $("#countdown");
+
+            var time = new Date().getTime();
+            $(document.body).bind("mousemove keypress", function(e) {
+                time = new Date().getTime();
+            });
+
+            function refresh() {
+                var timeout = 300000;
+                var now = new Date().getTime();
+                if (now - time >= timeout) 
+                    window.location.reload(true);
+                else 
+                    setTimeout(refresh, 1000);
+                countdown.text(parseInt((timeout - (now - time)) / 1000));
+            }
+
+            setTimeout(refresh, 1000);
+        }
+
     	$(document).ready(function(){
 
             initZapCharts();
+
+            initRefresh();
 
     	});
 	</script>
