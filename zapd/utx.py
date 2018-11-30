@@ -200,7 +200,7 @@ def parse_message(wutx, msg, on_transfer_utx=None):
             if content_id == CONTENT_ID_TX:
                 # transaction!
                 tx_type = payload[0]
-                logger.info(f"transaction type: {tx_type}")
+                #logger.info(f"transaction type: {tx_type}")
                 if tx_type == 4:
                     # transfer
                     try:
@@ -211,7 +211,7 @@ def parse_message(wutx, msg, on_transfer_utx=None):
 
                     txid = transfer_asset_txid(pubkey, asset_id, fee_asset_id, timestamp, amount, fee, recipient, attachment)
 
-                    logger.info(f"  txid: {txid}, senders pubkey: {base58.b58encode(pubkey)}, recipient: {base58.b58encode(recipient)}, amount: {amount}, fee: {fee}, asset id: {asset_id}, timestamp: {timestamp}, attachment: {attachment}")
+                    #logger.info(f"  txid: {txid}, senders pubkey: {base58.b58encode(pubkey)}, recipient: {base58.b58encode(recipient)}, amount: {amount}, fee: {fee}, asset id: {asset_id}, timestamp: {timestamp}, attachment: {attachment}")
                     if on_transfer_utx:
                         on_transfer_utx(wutx, txid, sig, pubkey, asset_id, timestamp, amount, fee, recipient, attachment)
 
@@ -261,7 +261,7 @@ class WavesUTX():
             while 1:
                 data = self.s.recv(1024*1024)
                 if data:
-                    logger.debug(f"recv: {len(data)}")
+                    #logger.debug(f"recv: {len(data)}")
                     if self.on_msg:
                         self.on_msg(self, data)
                     parse_message(self, data, self.on_transfer_utx)
