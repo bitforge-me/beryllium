@@ -46,6 +46,7 @@ def create_signed_payment_notification(txid, timestamp, recipient, sender, amoun
 def call_webhook(logger, msg, sig):
     try:
         headers = {"Content-Type": "application/json", "Signature": sig}
+        logger.debug(f"calling '{cfg.webhook_url}' with headers ({json.dumps(headers)}) and body ({body})") 
         response = requests.post(cfg.webhook_url, headers=headers, data=msg)
         if response.ok:
             logger.info(f"called {cfg.webhook_url} ok")
