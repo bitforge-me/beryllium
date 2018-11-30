@@ -191,7 +191,7 @@ def parse_message(wutx, msg, on_transfer_utx=None):
 
             msg = msg[4 + length:]
 
-            logger.debug(f"message: len {length:4}, magic {magic}, content_id: {content_id:#04x}, payload_len {payload_len:4}")
+            #logger.debug(f"message: len {length:4}, magic {magic}, content_id: {content_id:#04x}, payload_len {payload_len:4}")
 
             if magic != MAGIC:
                 logger.error("invalid magic")
@@ -217,7 +217,7 @@ def parse_message(wutx, msg, on_transfer_utx=None):
 
             if content_id == CONTENT_ID_BLOCK:
                 # block
-                logger.debug(f"block: len {len(payload)}")
+                #logger.debug(f"block: len {len(payload)}")
                 parse_block(payload)
 
             if content_id == CONTENT_ID_SCORE:
