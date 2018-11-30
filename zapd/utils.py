@@ -35,12 +35,16 @@ def address_from_public_key(public_key, b58encoded=False):
     addr_hash = pywaves.crypto.hashChain(pywaves.crypto.str2bytes(unhashed_address))[0:4]
     return base58.b58encode(pywaves.crypto.str2bytes(unhashed_address + addr_hash))
 
+def create_sig_from_msg(key, msg):
+    sig = hmac.HMAC(key.encode(), msg.encode(), "sha256").digest()
+    sig = base64.b64encode(sig)
+    return sig
+
 def create_signed_payment_notification(txid, timestamp, recipient, sender, amount, invoice_id):
     d = {"txid": txid, "timestamp": timestamp, "recipient": recipient,\
             "sender": sender, "amount": amount, "invoice_id": invoice_id}
     msg = json.dumps(d)
-    sig = hmac.HMAC(cfg.webhook_key.encode(), msg.encode(), "sha256").digest()
-    sig = base64.b64encode(sig)
+    sig = create_sig_from_msg(cfg.webhook_key, msg)
     return msg, sig
 
 def call_webhook(logger, msg, sig):
@@ -79,3 +83,10 @@ def email_exception(logger, msg):
 def email_buffer(logger, msg, buf):
     msg = f"{msg}\n\n{buf}"
     send_email(logger, "zapd buffer issue", msg)
+
+if __name__ == "__main__":
+    import sys
+    key = sys.argv[1]
+    msg = sys.argv[2]
+    sig = create_sig_from_msg(key, msg)
+    print(sig)
