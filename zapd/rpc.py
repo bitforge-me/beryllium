@@ -352,8 +352,8 @@ class ZapRPC():
                     # check for reorged blocks now reorged *back* into the main chain
                     dbblk = Block.from_hash(db_session, blk_hash)
                     if dbblk:
-                        self.logger.info("block %s (was #%d) now un-reorged" % (blk_hash.hex(), dbblk.num))
-                        dbblk.num = block_num
+                        logger.info("block %s (was #%d) now un-reorged" % (blk_hash, dbblk.num))
+                        dbblk.num = scanned_block_num + 1
                         dbblk.reorged = False
                     else:
                         dbblk = Block(block["timestamp"], block["height"], blk_hash)
