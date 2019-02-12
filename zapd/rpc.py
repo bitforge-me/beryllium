@@ -225,6 +225,13 @@ def expiretransactions(above_age=60*60*24):
     db_session.commit()
     return {"count": count}
 
+@jsonrpc.method("validateaddress")
+def validateaddress(address):
+    if pywaves.validateAddress(address):
+        return {"address": address}
+    err = OtherError("invalid address", 0)
+    raise err
+
 def get(url):
     with requests.Session() as s:
         retries = Retry(
