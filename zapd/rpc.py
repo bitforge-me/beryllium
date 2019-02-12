@@ -42,6 +42,7 @@ ERR_FAILED_TO_BROADCAST = 0
 ERR_NO_TXID = 1
 ERR_TX_EXPIRED = 2
 ERR_FAILED_TO_GET_ASSET_INFO = 3
+ERR_EMPTY_ADDRESS = 4
 
 def dashboard_data():
     # get remote block height
@@ -178,6 +179,11 @@ def createtransaction(recipient, amount, attachment):
         logger.error(f"{short_msg}: ({response.status_code}, {response.request.method} {response.url}):\n\t{response.text}")
         err = OtherError(short_msg, ERR_FAILED_TO_GET_ASSET_INFO)
         err.data = response.text
+        raise err
+    if not recipient:
+        short_msg = "recipient is null or an empty string"
+        logger.error(short_msg)
+        err = OtherError(short_msg, ERR_EMPTY_ADDRESS)
         raise err
     recipient = pywaves.Address(recipient)
     asset = pywaves.Asset(cfg.asset_id)
