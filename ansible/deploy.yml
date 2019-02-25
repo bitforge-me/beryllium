@@ -65,3 +65,4 @@
 - include: java.yml
 - include: waves.yml
 - include: zapd.yml
+- include: zapd_cron.yml

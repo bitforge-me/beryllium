@@ -66,17 +66,20 @@ fi
 BACKUP_SSH_KEY=`realpath $BACKUP_SSH_KEY`
 
 ADMIN_EMAIL=admin@zap.me
+ALERT_EMAIL=alerts@zap.me
 VAGRANT=false
 BACKUP_HOST=backup.zap.me
 # set deploy variables for production
 DEPLOY_HOST=mainnet.zap.me
 DEPLOY_USER=root
+REMOTE_WAVES_NODES=nodes.wavesnodes.com
 TESTNET=
 # set deploy variables for test
 if [[ ( $DEPLOY_TYPE == "test" ) ]]
 then 
     DEPLOY_HOST=testnet.zap.me
     DEPLOY_USER=root
+    REMOTE_WAVES_NODES=testnet1.wavesnodes.com
     TESTNET=true
 fi 
 
@@ -87,6 +90,7 @@ fi
 echo ":: DEPLOYMENT DETAILS ::"
 echo "   - TESTNET: $TESTNET"
 echo "   - ADMIN_EMAIL: $ADMIN_EMAIL"
+echo "   - ALERT_EMAIL: $ALERT_EMAIL"
 echo "   - DEPLOY_HOST: $DEPLOY_HOST"
 echo "   - DEPLOY_USER: $DEPLOY_USER"
 echo "   - BACKUP_KEY: $BACKUP_KEY"
@@ -94,6 +98,7 @@ echo "   - BACKUP_SSH_KEY: $BACKUP_SSH_KEY"
 echo "   - BACKUP_HOST: $BACKUP_HOST"
 echo "   - WEBHOOK_URL: $WEBHOOK_URL"
 echo "   - WEBHOOK_KEY: $WEBHOOK_KEY"
+echo "   - REMOTE_WAVES_NODES: $REMOTE_WAVES_NODES"
 echo "   - ZAPD_ARCIVCE: zapd.zip"
 
 # ask user to continue
@@ -104,6 +109,6 @@ then
     # do dangerous stuff
     echo ok lets go!!!
     ansible-playbook --inventory "$DEPLOY_HOST," --user "$DEPLOY_USER" -v \
-        --extra-vars "ADMIN_EMAIL=$ADMIN_EMAIL DEPLOY_HOST=$DEPLOY_HOST BACKUP_KEY='$BACKUP_KEY' BACKUP_SSH_KEY='$BACKUP_SSH_KEY' BACKUP_HOST=$BACKUP_HOST WEBHOOK_URL=$WEBHOOK_URL WEBHOOK_KEY=$WEBHOOK_KEY VAGRANT=$VAGRANT TESTNET=$TESTNET" \
+        --extra-vars "ADMIN_EMAIL=$ADMIN_EMAIL ALERT_EMAIL=$ALERT_EMAIL DEPLOY_HOST=$DEPLOY_HOST BACKUP_KEY='$BACKUP_KEY' BACKUP_SSH_KEY='$BACKUP_SSH_KEY' BACKUP_HOST=$BACKUP_HOST WEBHOOK_URL=$WEBHOOK_URL WEBHOOK_KEY=$WEBHOOK_KEY REMOTE_WAVES_NODES=$REMOTE_WAVES_NODES VAGRANT=$VAGRANT TESTNET=$TESTNET" \
         ansible/deploy.yml
 fi

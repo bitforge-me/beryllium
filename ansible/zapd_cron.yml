@@ -1,0 +1,86 @@
+---
+- name: zapd_cron
+  hosts: all 
+  become: yes
+  become_user: root
+
+  vars:
+   min_zap: 5000
+   max_zap: 10000
+
+  tasks:
+    - name: set cron shell
+      cron:
+        name: SHELL
+        env: yes
+        value: /bin/bash
+
+    - name: create the scripts directory
+      file:
+        path: /root/scripts
+        state: directory
+        mode: 0755
+        owner: root
+        group: root
+
+    - name: copy the zapd_balance.sh using the template module
+      template:
+        src: templates/zapd_balance.sh
+        dest: /root/scripts/zapd_balance.sh
+        mode: 0755
+   
+    - name: copy the zapd_block_height.sh using the template module
+      template:
+        src: templates/zapd_block_height.sh
+        dest: /root/scripts/zapd_block_height.sh
+        mode: 0755
+    
+    - name: copy the zapd_heartbeat.sh using the template module
+      template:
+        src: templates/zapd_heartbeat.sh
+        dest: /root/scripts/zapd_heartbeat.sh
+        mode: 0755
+    
+    - name: Cronjob entry for zapd_balance.sh
+      cron:
+        name: "### Notification sent if ZAPD balance is too high or too low."
+        minute: "*/5"
+        hour: "*"
+        day: "*"
+        month: "*"
+        weekday: "*"
+        job: /root/scripts/zapd_balance.sh
+    
+    - name: Cronjob entry for zapd_block_height.sh
+      cron:
+        name: "### Notification sent if the difference between REMOTE and LOCAL wave node is greater than 2."
+        minute: "*/5"
+        hour: "*"
+        day: "*"
+        month: "*"
+        weekday: "*"
+        job: /root/scripts/zapd_block_height.sh
+    
+    - name: Cronjob entry for zapd_heartbeat.sh
+      cron:
+        name: "### Notification sent if the localhost is not able to get a respond from zapd app on port 5000."
+        minute: "*/5"
+        hour: "*"
+        day: "*"
+        month: "*"
+        weekday: "*"
+        job: /root/scripts/zapd_heartbeat.sh
+
+    - name: add cron job to expire transactions
+      cron:
+        name: expire zapd transactions
+        special_time: daily
+        job: >
+          curl -d '{"jsonrpc":"2.0","id":1,"method":"expiretransactions","params":{}}' -H "Content-Type: application/json-rpc" localhost:5000/api
+
+    - name: add cron job to snapshot dashboard
+      cron:
+        name: snapshot zapd dashboard
+        special_time: hourly
+        job: >
+          curl localhost:5000/dashboard/snapshot
