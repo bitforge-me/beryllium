@@ -377,7 +377,8 @@ class ZapRPC():
                         for tx in block["transactions"]:
                             if tx["type"] == 4:
                                 recipient = tx["recipient"]
-                                if recipient == cfg.address:
+                                asset_id = tx["assetId"]
+                                if recipient == cfg.address and asset_id == cfg.asset_id:
                                     txid = tx["id"]
                                     logger.info(f"new tx {txid}")
                                     attachment = tx["attachment"]
