@@ -5,7 +5,7 @@
   become_user: root
 
   vars:
-   min_zap: 5000
+   min_zap: 2000
    max_zap: 10000
 
   tasks:
