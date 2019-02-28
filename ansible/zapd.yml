@@ -26,11 +26,26 @@
         src: ../zapd.zip
         dest: /opt/zapd.zip
 
-    - name: extract zapd.zip
-      shell: unzip -o /opt/zapd.zip -d /opt/zapd
+    - name: create teh zapd directory
+      file:
+        path: /opt/zapd
+        state: directory
+        owner: zapd
+        group: zapd
+        mode: 0755
 
-    - name: chown /opt/zapd
-      shell: chown zapd:zapd /opt/zapd -R
+    - name: extract zapd.zip with unarchive
+      unarchive:
+        src: /opt/zapd.zip
+        dest: /opt/zapd
+        remote_src: yes
+
+    - name: change ownership /opt/zapd
+      file:
+        dest: /opt/zapd
+        owner: zapd
+        group: zapd
+        recurse: yes
 
     - name: install python requiremnents
       shell: pip3 install --system -r /opt/zapd/requirements.txt
@@ -43,6 +58,7 @@
 
     - name: set webhook config
       shell: /opt/zapd/set_webhook_config.py {{ WEBHOOK_URL }} {{ WEBHOOK_KEY }}
+      when: KEYS_SUPPLIED
 
     - name: copy zapd.service
       template:

@@ -33,21 +33,28 @@ def read_cfg():
         cfg.asset_id = cfg.asset_id_mainnet
     cfg.address = cp["wallet"]["address"]
 
-    # webhook
-    cfg.webhook_key = cp["webhook"]["key"]
-    cfg.webhook_url = cp["webhook"]["url"]
-
     # email
     cfg.email_admin = cp["email"]["admin"]
     cfg.email_from = cp["email"]["from"]
     cfg.email_host = cp["email"]["host"]
 
     # secret
+    cfg.seed = None
+    cfg.webhook_key = None
+    cfg.webhook_url = None
     if os.path.exists(get_secret_filename()):
         cp.read(get_secret_filename())
-        cfg.seed = cp["wallet"]["seed"]
-    else:
-        cfg.seed = None
+        # wallet seed
+        try:
+            cfg.seed = cp["wallet"]["seed"]
+        except:
+            pass
+        # webhook
+        try:
+            cfg.webhook_key = cp["webhook"]["key"]
+            cfg.webhook_url = cp["webhook"]["url"]
+        except:
+            pass
 
     return cfg
 
@@ -76,22 +83,25 @@ def init_wallet_address(address, seed):
         f.write(data)
 
     # write seed
-    if not os.path.exists(get_secret_filename()):
+    cp = configparser.ConfigParser()
+    cp.read(get_secret_filename())
+    if not cp.has_section("wallet"):
+        cp.add_section("wallet")
+    if cp.has_option("wallet", "seed"):
+        if cp.get("wallet", "seed") != seed:
+            raise Exception("There is already a seed that is different!")
+    else:
+        cp.set("wallet", "seed", seed)
         with open(get_secret_filename(), "w") as f:
-            f.write(f"[wallet]\nseed={seed}\n")
+            cp.write(f)
 
 def set_webhook_config(url, key):
     # write url and key
-    import re
-    with open(get_filename()) as f:
-        data = f.read()
-    def subaddr_url(m):
-        return m.group(1) + url
-    pattern = "^(url=)(.*)"
-    data = re.sub(pattern, subaddr_url, data, flags=re.MULTILINE)
-    def subaddr_key(m):
-        return m.group(1) + key
-    pattern = "^(key=)(.*)"
-    data = re.sub(pattern, subaddr_key, data, flags=re.MULTILINE)
-    with open(get_filename(), "w") as f:
-        f.write(data)
+    cp = configparser.ConfigParser()
+    cp.read(get_secret_filename())
+    if not cp.has_section("webhook"):
+        cp.add_section("webhook")
+        cp.set("webhook", "url", url)
+        cp.set("webhook", "key", key)
+        with open(get_secret_filename(), "w") as f:
+            cp.write(f)

@@ -40,29 +40,32 @@
     # https://github.com/ansible/ansible/issues/23914      
     - name: resize partition
       shell: 'echo yes | parted ---pretend-input-tty /dev/vda resizepart 1 Yes 100% 2>&1 > /dev/null || true'
-      when: VAGRANT == "true"
+      when: VAGRANT
       ignore_errors: yes
 
     - name: resize filesystem
       shell: 'resize2fs /dev/vda1'
-      when: VAGRANT == "true"
+      when: VAGRANT
       ignore_errors: yes
 
-- include: backup.yml
-  when: VAGRANT == "false"
-- include: updates.yml
-  when: VAGRANT == "false"
-- include: postfix.yml
-  when: VAGRANT == "false"
-- include: nginx.yml
-  when: VAGRANT == "false"
-- include: firewall.yml
-  when: VAGRANT == "false"
-- include: logwatch.yml
-  when: VAGRANT == "false"
-- include: fail2ban.yml
-  when: VAGRANT == "false"
-- include: java.yml
-- include: waves.yml
-- include: zapd.yml
-- include: zapd_cron.yml
+- import_playbook: backup.yml
+  when: not VAGRANT and FULL_DEPLOY and KEYS_SUPPLIED
+- import_playbook: updates.yml
+  when: not VAGRANT and FULL_DEPLOY
+- import_playbook: postfix.yml
+  when: not VAGRANT and FULL_DEPLOY
+- import_playbook: nginx.yml
+  when: not VAGRANT and FULL_DEPLOY
+- import_playbook: firewall.yml
+  when: not VAGRANT and FULL_DEPLOY
+- import_playbook: logwatch.yml
+  when: not VAGRANT and FULL_DEPLOY
+- import_playbook: fail2ban.yml
+  when: not VAGRANT and FULL_DEPLOY
+- import_playbook: java.yml
+  when: FULL_DEPLOY
+- import_playbook: waves.yml
+  when: FULL_DEPLOY
+- import_playbook: zapd.yml
+- import_playbook: zapd_cron.yml
+  when: FULL_DEPLOY
