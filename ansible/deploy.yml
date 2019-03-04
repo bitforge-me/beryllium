@@ -68,4 +68,3 @@
   when: FULL_DEPLOY
 - import_playbook: zapd.yml
 - import_playbook: zapd_cron.yml
-  when: FULL_DEPLOY
