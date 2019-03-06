@@ -52,6 +52,8 @@ then
         exit 2
     fi
     KEYS_SUPPLIED=
+    BACKUP_KEY=
+    BACKUP_SSH_KEY=
     if [[ "$DEPLOY_LEVEL" == "$DEPLOY_LEVEL_ZAPD_ONLY" ]]; then
         FULL_DEPLOY=
     fi
@@ -79,28 +81,26 @@ then
     exit 2
 fi 
 
-## check whether backup key exists
-if [[ ( ! -f "$BACKUP_KEY" ) && ( "$KEYS_SUPPLIED" == "true") ]]
+if [[ "$KEYS_SUPPLIED" == "true" ]]
 then
-    display_usage
-    echo !!\"$BACKUP_KEY\" does not exist
-    exit 3
-fi
-
-if [[ $KEYS_SUPPLIED == "true" ]]
-then
+    ## check whether backup key exists
+    if [[ ! -f "$BACKUP_KEY" ]]
+    then
+        display_usage
+        echo !!\"$BACKUP_KEY\" does not exist
+        exit 3
+    fi
     BACKUP_KEY=`realpath $BACKUP_KEY`
-fi
 
-## check whether backup ssh key exists
-if [[ ( ! -f "$BACKUP_SSH_KEY"  ) && ( "$KEYS_SUPPLIED" == "true" ) ]]
-then 
-    display_usage
-    echo !!\"$BACKUP_SSH_KEY\" does not exist
-    exit 3
-else
+    ## check whether backup ssh key exists
+    if [[ ! -f "$BACKUP_SSH_KEY" ]]
+    then
+        display_usage
+        echo !!\"$BACKUP_SSH_KEY\" does not exist
+        exit 3
+    fi
     BACKUP_SSH_KEY=`realpath $BACKUP_SSH_KEY`
-fi 
+fi
 
 ADMIN_EMAIL=admin@zap.me
 ALERT_EMAIL=alerts@zap.me
