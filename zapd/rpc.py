@@ -19,13 +19,11 @@ import pywaves
 import pyblake2
 
 import config
-from database import db_session, init_db
+from app_core import app, db
 from models import Transaction, Block, CreatedTransaction, DashboardHistory
 import utils
 
 cfg = config.read_cfg()
-init_db()
-app = Flask(__name__)
 jsonrpc = JSONRPC(app, "/api")
 logger = logging.getLogger(__name__)
 
@@ -53,13 +51,13 @@ def dashboard_data():
     remote_block_height = response.json()["height"]
     # get locally scanned block height
     scanned_block_height = 0
-    last_block = Block.last_block(db_session)
+    last_block = Block.last_block(db.session)
     if last_block:
         scanned_block_height = last_block.num
     # get incomming tx count
-    incomming_tx_count = Transaction.count(db_session)
+    incomming_tx_count = Transaction.count(db.session)
     # get created tx count
-    created_tx_count = CreatedTransaction.count(db_session)
+    created_tx_count = CreatedTransaction.count(db.session)
     # get balance of local wallet
     path = f"assets/balance/{cfg.address}/{cfg.asset_id}"
     response = requests.get(cfg.node_http_base_url + path)
@@ -91,7 +89,7 @@ def from_int_to_user_friendly(val, divisor, decimal_places=4):
 
 @app.route("/dashboard")
 def dashboard():
-    history = DashboardHistory.last_week(db_session)
+    history = DashboardHistory.last_week(db.session)
     data = dashboard_data()
     data["zap_balance"] = from_int_to_user_friendly(data["zap_balance"], 100)
     data["master_waves_balance"] = from_int_to_user_friendly(data["master_waves_balance"], 10**8)
@@ -111,7 +109,7 @@ def dashboard():
 @app.route("/dashboard/snapshot")
 @app.route("/dashboard/snapshot/<cmd>")
 def dashboard_snapshot(cmd=None):
-    last_entry = DashboardHistory.last_entry(db_session)
+    last_entry = DashboardHistory.last_entry(db.session)
     almost_fourhours = 60 * 60 * 4 - 300
     if cmd == "override" or not last_entry or last_entry.date < time.time() - almost_fourhours:
         data = dashboard_data()
@@ -121,8 +119,8 @@ def dashboard_snapshot(cmd=None):
             return "not able to get balances"
         history = DashboardHistory(data["incomming_tx_count"], data["created_tx_count"], \
                 zap_balance, master_waves_balance)
-        db_session.add(history)
-        db_session.commit()
+        db.session.add(history)
+        db.session.commit()
         return "ok"
     return "not needed right now"
 
@@ -148,7 +146,7 @@ def gettransaction(txid):
 
 @jsonrpc.method("listtransactions")
 def listtransactions(invoice_id=None, start_date=0, end_date=0, offset=0, limit=50):
-    txs = Transaction.from_invoice_id(db_session, invoice_id, start_date, end_date, offset, limit)
+    txs = Transaction.from_invoice_id(db.session, invoice_id, start_date, end_date, offset, limit)
     txs_json = []
     for tx in txs:
         txs_json.append(tx.to_json())
@@ -193,14 +191,14 @@ def createtransaction(recipient, amount, attachment):
     txid = transfer_asset_txid(signed_tx)
     # store tx in db
     dbtx = CreatedTransaction(txid, CTX_CREATED, signed_tx["amount"], address_data["api-data"])
-    db_session.add(dbtx)
-    db_session.commit()
+    db.session.add(dbtx)
+    db.session.commit()
     # return txid/state to caller
     return {"txid": txid, "state": dbtx.state}
 
 @jsonrpc.method("broadcasttransaction")
 def broadcasttransaction(txid):
-    dbtx = CreatedTransaction.from_txid(db_session, txid)
+    dbtx = CreatedTransaction.from_txid(db.session, txid)
     if not dbtx:
         raise OtherError("transaction not found", ERR_NO_TXID)
     if dbtx.state == CTX_EXPIRED:
@@ -214,8 +212,8 @@ def broadcasttransaction(txid):
     if response.ok:
         # update tx in db
         dbtx.state = CTX_BROADCAST
-        db_session.add(dbtx)
-        db_session.commit()
+        db.session.add(dbtx)
+        db.session.commit()
     else:
         short_msg = "failed to broadcast"
         logger.error(f"{short_msg}: ({response.status_code}, {response.request.method} {response.url}):\n\t{response.text}")
@@ -227,8 +225,8 @@ def broadcasttransaction(txid):
 
 @jsonrpc.method("expiretransactions")
 def expiretransactions(above_age=60*60*24):
-    count = CreatedTransaction.expire_transactions(db_session, above_age, CTX_CREATED, CTX_EXPIRED)
-    db_session.commit()
+    count = CreatedTransaction.expire_transactions(db.session, above_age, CTX_CREATED, CTX_EXPIRED)
+    db.session.commit()
     return {"count": count}
 
 @jsonrpc.method("validateaddress")
@@ -316,7 +314,7 @@ class ZapRPC():
             logger.info("ZapRPC blockloop started")
 
             # get last block from the db
-            last_block = Block.last_block(db_session)
+            last_block = Block.last_block(db.session)
             if last_block:
                 scanned_block_num = last_block.num
             else:
@@ -326,7 +324,7 @@ class ZapRPC():
                 gevent.sleep(5)
 
                 # check for reorgs and invalidate any blocks (and associated txs)
-                block = Block.from_number(db_session, scanned_block_num)
+                block = Block.from_number(db.session, scanned_block_num)
                 if block:
                     any_reorgs = False
                     blk_hash = block_hash(scanned_block_num)
@@ -337,12 +335,12 @@ class ZapRPC():
                         sys.exit(1)
                     while blk_hash != block.hash:
                         logger.info("block %d hash does not match current blockchain, must have been reorged" % scanned_block_num)
-                        block.set_reorged(db_session)
+                        block.set_reorged(db.session)
                         any_reorgs = True
                         # decrement scanned_block_num
                         scanned_block_num -= 1
                         # now do the previous block
-                        block = Block.from_number(db_session, scanned_block_num)
+                        block = Block.from_number(db.session, scanned_block_num)
                         if not block:
                             msg = f"unable to get hash (from db) for block {scanned_block_num}"
                             logger.error(msg)
@@ -350,7 +348,7 @@ class ZapRPC():
                             sys.exit(1)
                         blk_hash = block_hash(scanned_block_num)
                     if any_reorgs:
-                        db_session.commit()
+                        db.session.commit()
             
                 # scan for new blocks
                 # use "block_height() - 1" because with the WavesNG protocol the block can have new transactions
@@ -363,15 +361,15 @@ class ZapRPC():
                         break
                     blk_hash = block_hash(block)
                     # check for reorged blocks now reorged *back* into the main chain
-                    dbblk = Block.from_hash(db_session, blk_hash)
+                    dbblk = Block.from_hash(db.session, blk_hash)
                     if dbblk:
                         logger.info("block %s (was #%d) now un-reorged" % (blk_hash, dbblk.num))
                         dbblk.num = scanned_block_num + 1
                         dbblk.reorged = False
                     else:
                         dbblk = Block(block["timestamp"], block["height"], blk_hash)
-                        db_session.add(dbblk)
-                        db_session.flush()
+                        db.session.add(dbblk)
+                        db.session.flush()
                     # add transactions to db
                     if "transactions" in block:
                         for tx in block["transactions"]:
@@ -389,13 +387,13 @@ class ZapRPC():
                                     if invoice_id:
                                         logger.info(f"    {invoice_id}")
                                     dbtx = Transaction(txid, tx["sender"], recipient, tx["amount"], attachment, invoice_id, dbblk.id)
-                                    db_session.add(dbtx)
+                                    db.session.add(dbtx)
                     scanned_block_num = block["height"]
                     logger.debug(f"scanned block {scanned_block_num}")
                     if scanned_block_num % 100 == 0:
-                        db_session.commit()
+                        db.session.commit()
                     gevent.sleep(0)
-                db_session.commit()
+                db.session.commit()
 
         def start_greenlets():
             logger.info("checking wallet...")

@@ -1,13 +1,8 @@
 import time
 
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey
-import sqlalchemy.types as types
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql.expression import func
-from sqlalchemy import or_, and_, desc
 from marshmallow import Schema, fields
 
-from database import Base
+from app_core import app, db
 import config
 
 cfg = config.read_cfg()
@@ -22,17 +17,17 @@ class TransactionSchema(Schema):
     block_num = fields.Integer()
     block_date = fields.Integer()
 
-class Transaction(Base):
+class Transaction(db.Model):
     __tablename__ = 'transactions'
-    id = Column(Integer, primary_key=True)
-    txid = Column(String, nullable=False, unique=True)
-    sender = Column(String, nullable=False)
-    recipient = Column(String, nullable=False)
-    amount = Column(Integer, nullable=False)
-    attachment = Column(String, nullable=True)
-    invoice_id = Column(String, nullable=True)
-    block_id = Column(Integer, ForeignKey('blocks.id'))
-    block = relationship('Block')
+    id = db.Column(db.Integer, primary_key=True)
+    txid = db.Column(db.String, nullable=False, unique=True)
+    sender = db.Column(db.String, nullable=False)
+    recipient = db.Column(db.String, nullable=False)
+    amount = db.Column(db.Integer, nullable=False)
+    attachment = db.Column(db.String, nullable=True)
+    invoice_id = db.Column(db.String, nullable=True)
+    block_id = db.Column(db.Integer, db.ForeignKey('blocks.id'))
+    block = db.relationship('Block')
 
     def __init__(self, txid, sender, recipient, amount, attachment, invoice_id, block_id):
         self.txid = txid
@@ -74,14 +69,14 @@ class Transaction(Base):
         tx_schema = TransactionSchema()
         return tx_schema.dump(self).data
 
-class Block(Base):
+class Block(db.Model):
     __tablename__ = 'blocks'
-    id = Column(Integer, primary_key=True)
-    date = Column(Float, nullable=False, unique=False)
-    num = Column(Integer, nullable=False)
-    hash = Column(String, nullable=False, unique=True)
-    reorged = Column(Boolean, nullable=False, default=False)
-    transactions = relationship('Transaction')
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Float, nullable=False, unique=False)
+    num = db.Column(db.Integer, nullable=False)
+    hash = db.Column(db.String, nullable=False, unique=True)
+    reorged = db.Column(db.Boolean, nullable=False, default=False)
+    transactions = db.relationship('Transaction')
 
     def __init__(self, block_date, block_num, block_hash):
         self.date = block_date
@@ -132,14 +127,14 @@ class CreatedTransactionSchema(Schema):
     amount = fields.Integer()
     json_data = fields.String()
 
-class CreatedTransaction(Base):
+class CreatedTransaction(db.Model):
     __tablename__ = 'created_transactions'
-    id = Column(Integer, primary_key=True)
-    date = Column(Integer, nullable=False)
-    txid = Column(String, nullable=False, unique=True)
-    state = Column(String, nullable=False)
-    amount = Column(Integer, nullable=False)
-    json_data = Column(String, nullable=False)
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Integer, nullable=False)
+    txid = db.Column(db.String, nullable=False, unique=True)
+    state = db.Column(db.String, nullable=False)
+    amount = db.Column(db.Integer, nullable=False)
+    json_data = db.Column(db.String, nullable=False)
 
     def __init__(self, txid, state, amount, json_data):
         self.date = time.time()
@@ -173,11 +168,11 @@ class CreatedTransaction(Base):
         tx_schema = CreatedTransactionSchema()
         return tx_schema.dump(self).data
 
-class Setting(Base):
+class Setting(db.Model):
     __tablename__ = 'settings'
-    id = Column(Integer, primary_key=True)
-    key = Column(String, nullable=False, unique=True)
-    value = Column(String, unique=False)
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String, nullable=False, unique=True)
+    value = db.Column(db.String, unique=False)
 
     def __init__(self, key, value):
         self.key = key
@@ -186,14 +181,14 @@ class Setting(Base):
     def __repr__(self):
         return '<Setting %r %r>' % (self.key, self.value)
 
-class DashboardHistory(Base):
+class DashboardHistory(db.Model):
     __tablename__ = "dashboard_history"
-    id = Column(Integer, primary_key=True)
-    date = Column(Integer, nullable=False)
-    incomming_tx_count = Column(Integer, nullable=False)
-    created_tx_count = Column(Integer, nullable=False)
-    zap_balance = Column(Integer, nullable=False)
-    master_waves_balance = Column(Integer, nullable=False)
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Integer, nullable=False)
+    incomming_tx_count = db.Column(db.Integer, nullable=False)
+    created_tx_count = db.Column(db.Integer, nullable=False)
+    zap_balance = db.Column(db.Integer, nullable=False)
+    master_waves_balance = db.Column(db.Integer, nullable=False)
 
     def __init__(self, incomming_tx_count, created_tx_count, zap_balance, master_waves_balance):
         self.date = time.time()
