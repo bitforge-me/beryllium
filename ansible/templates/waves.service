@@ -7,7 +7,7 @@ User=waves
 Group=waves
 
 Type=simple
-ExecStart=/usr/bin/java -jar /opt/waves/{{ waves_file }} /opt/waves/{{ waves_conf_file }}
+ExecStart=/usr/bin/java -Dlogback.file.level=INFO -jar /opt/waves/{{ waves_file }} /opt/waves/{{ waves_conf_file }}
 
 Restart=always
 PrivateTmp=true
