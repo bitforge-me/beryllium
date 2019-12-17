@@ -302,11 +302,12 @@ def validateaddress(address):
 
 class ZapWeb():
 
-    def __init__(self, addr="127.0.0.1", port=5000):
+    def __init__(self, addr="127.0.0.1", port=5000, no_waves=False):
         self.addr = addr
         self.port = port
         self.runloop_greenlet = None
         self.blockloop_greenlet = None
+        self.no_waves = no_waves
 
     def check_wallet(self):
         # check seed has been set
@@ -421,21 +422,25 @@ class ZapWeb():
             self.check_wallet()
             logger.info("starting ZapWeb runloop...")
             self.runloop_greenlet.start()
-            logger.info("starting ZapWeb blockloop...")
-            self.blockloop_greenlet.start()
+            if not self.no_waves:
+                logger.info("starting ZapWeb blockloop...")
+                self.blockloop_greenlet.start()
 
         # create greenlets
         self.runloop_greenlet = gevent.Greenlet(runloop)
-        self.blockloop_greenlet = gevent.Greenlet(blockloop)
+        if not self.no_waves:
+            self.blockloop_greenlet = gevent.Greenlet(blockloop)
         if group != None:
             group.add(self.runloop_greenlet)
-            group.add(self.blockloop_greenlet)
+            if not self.no_waves:
+                group.add(self.blockloop_greenlet)
         # check node/wallet and start greenlets
         gevent.spawn(start_greenlets)
 
     def stop(self):
         self.runloop_greenlet.kill()
-        self.blockloop_greenlet.kill()
+        if not self.no_waves:
+            self.blockloop_greenlet.kill()
 
 if __name__ == "__main__":
     # setup logging

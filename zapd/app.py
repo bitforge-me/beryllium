@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import os
 import sys
 import logging
 import signal
@@ -111,15 +112,21 @@ if __name__ == "__main__":
     else:
         signal.signal(signal.SIGINT, sigint_handler)
 
+        no_waves = os.getenv("NO_WAVES")
         logger.info("starting greenlets")
         group = gevent.pool.Group()
-        zapweb = web.ZapWeb()
+        greenlet_count = 0
+        zapweb = web.ZapWeb(no_waves=no_waves)
         zapweb.start(group)
-        port = 6863
-        if not cfg.testnet:
-            port = 6868
-        wutx = utx.WavesUTX(None, on_transfer_utx, port=port, testnet=cfg.testnet)
-        wutx.start(group)
+        greenlet_count += 1 if no_waves else 2
+        wutx = None
+        if not no_waves:
+            port = 6863
+            if not cfg.testnet:
+                port = 6868
+            wutx = utx.WavesUTX(None, on_transfer_utx, port=port, testnet=cfg.testnet)
+            wutx.start(group)
+            greenlet_count += 1
         logger.info("main loop")
         sent_start_email = False
         for g in group:
@@ -127,7 +134,7 @@ if __name__ == "__main__":
         while keep_running:
             gevent.sleep(1)
             # check if any essential greenlets are dead
-            if len(group) < 3:
+            if len(group) < greenlet_count:
                 msg = "one of our greenlets is dead X("
                 logger.error(msg)
                 utils.email_death(logger, msg)
@@ -144,5 +151,6 @@ if __name__ == "__main__":
                     logger.info(msg)
                     utils.email_alive(logger, msg)
         logger.info("stopping greenlets")
-        wutx.stop()
+        if wutx:
+            wutx.stop()
         zapweb.stop()
