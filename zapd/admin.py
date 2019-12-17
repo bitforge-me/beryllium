@@ -3,7 +3,8 @@ import flask_admin
 from flask_admin import helpers as admin_helpers
 
 from app_core import app, db
-from models import security, RestrictedModelView, Role, User, Transaction, CreatedTransaction
+from models import security, RestrictedModelView, ProposalModelView, \
+    Role, User, Proposal, Transaction, CreatedTransaction
 
 # Create admin
 admin = flask_admin.Admin(
@@ -16,6 +17,7 @@ admin = flask_admin.Admin(
 # Add model views
 admin.add_view(RestrictedModelView(Role, db.session))
 admin.add_view(RestrictedModelView(User, db.session))
+admin.add_view(ProposalModelView(Proposal, db.session))
 admin.add_view(RestrictedModelView(Transaction, db.session))
 admin.add_view(RestrictedModelView(CreatedTransaction, db.session))
 
