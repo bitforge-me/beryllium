@@ -9,7 +9,7 @@ import base58
 import pywaves
 
 import config
-import rpc
+import web
 import utx
 import utils
 
@@ -24,13 +24,13 @@ if cfg.testnet:
 def setup_logging(level):
     # setup logging
     logger.setLevel(level)
-    rpc.logger.setLevel(level)
+    web.logger.setLevel(level)
     utx.logger.setLevel(level)
     ch = logging.StreamHandler()
     ch.setLevel(level)
     ch.setFormatter(logging.Formatter('[%(name)s %(levelname)s] %(message)s'))
     logger.addHandler(ch)
-    rpc.logger.addHandler(ch)
+    web.logger.addHandler(ch)
     utx.logger.addHandler(ch)
     # clear loggers set by any imported modules
     logging.getLogger().handlers.clear()
@@ -71,8 +71,8 @@ if __name__ == "__main__":
 
     logger.info("starting greenlets")
     group = gevent.pool.Group()
-    zaprpc = rpc.ZapRPC()
-    zaprpc.start(group)
+    zapweb = web.ZapWeb()
+    zapweb.start(group)
     port = 6863
     if not cfg.testnet:
         port = 6868
@@ -103,4 +103,4 @@ if __name__ == "__main__":
                 utils.email_alive(logger, msg)
     logger.info("stopping greenlets")
     wutx.stop()
-    zaprpc.stop()
+    zapweb.stop()

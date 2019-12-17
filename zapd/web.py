@@ -23,6 +23,10 @@ from app_core import app, db
 from models import Transaction, Block, CreatedTransaction, DashboardHistory
 import utils
 
+# create tables
+db.create_all()
+db.session.commit()
+
 cfg = config.read_cfg()
 jsonrpc = JSONRPC(app, "/api")
 logger = logging.getLogger(__name__)
@@ -279,7 +283,7 @@ def block_hash(blk):
         sys.exit(1)
     return blk["signature"]
 
-class ZapRPC():
+class ZapWeb():
 
     def __init__(self, addr="127.0.0.1", port=5000):
         self.addr = addr
@@ -305,13 +309,13 @@ class ZapRPC():
 
     def start(self, group=None):
         def runloop():
-            logger.info("ZapRPC runloop started")
+            logger.info("ZapWeb runloop started")
 
             http_server = WSGIServer((self.addr, self.port), app)
             http_server.serve_forever()
 
         def blockloop():
-            logger.info("ZapRPC blockloop started")
+            logger.info("ZapWeb blockloop started")
 
             # get last block from the db
             last_block = Block.last_block(db.session)
@@ -398,9 +402,9 @@ class ZapRPC():
         def start_greenlets():
             logger.info("checking wallet...")
             self.check_wallet()
-            logger.info("starting ZapRPC runloop...")
+            logger.info("starting ZapWeb runloop...")
             self.runloop_greenlet.start()
-            logger.info("starting ZapRPC blockloop...")
+            logger.info("starting ZapWeb blockloop...")
             self.blockloop_greenlet.start()
 
         # create greenlets
@@ -426,10 +430,10 @@ if __name__ == "__main__":
     # clear loggers set by any imported modules
     logging.getLogger().handlers.clear()
 
-    zaprpc = ZapRPC()
-    zaprpc.start()
+    zapweb = ZapWeb()
+    zapweb.start()
 
     while 1:
         gevent.sleep(1)
 
-    zaprpc.stop()
+    zapweb.stop()

@@ -1,13 +1,15 @@
+import os
 import json
 import hmac
 import base64
 import smtplib
-from email.mime.text import MIMEText
 
 import requests
 import base58
 import pywaves
 import pyblake2
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 
 import config
 
@@ -60,14 +62,13 @@ def call_webhook(logger, msg, sig):
         logger.error(f"call_webhook: {ex}")
 
 def send_email(logger, subject, msg):
+    message = Mail(from_email=cfg.email_from, to_emails=cfg.email_admin, subject=subject, html_content=msg)
     try:
-        msg = MIMEText(msg)
-        msg["Subject"] = subject
-        msg["From"] = cfg.email_from
-        msg["To"] = cfg.email_admin
-        s = smtplib.SMTP(cfg.email_host)
-        s.send_message(msg)
-        s.quit()
+        sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
+        response = sg.send(message)
+        #print(response.status_code)
+        #print(response.body)
+        #print(response.headers)
     except Exception as ex:
         logger.error(f"email '{subject}': {ex}")
 
