@@ -1,10 +1,10 @@
 # Create dummy secrey key so we can use sessions
 SECRET_KEY = '123456790'
 
-# Create in-memory database
-DATABASE_FILE = 'zapd-test.db'
+# Create database
+DATABASE_FILE = 'zapd_testnet.db'
 SQLALCHEMY_DATABASE_URI = 'sqlite:///' + DATABASE_FILE
-SQLALCHEMY_ECHO = True
+SQLALCHEMY_ECHO = False
 
 # Flask-Security config
 SECURITY_URL_PREFIX = "/admin"

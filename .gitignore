@@ -7,4 +7,5 @@
 /zapd/__pycache__
 /.vagrant
 /zapd/config_secret.cfg
+/zapd/flask_config_secret.py
 zapd.zip

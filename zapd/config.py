@@ -7,6 +7,13 @@ def get_filename():
 def get_secret_filename():
     return os.path.join(os.path.dirname(os.path.realpath(__file__)), "config_secret.cfg")
 
+def get_db_filename(testnet):
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    if testnet:
+        return "sqlite:///%s/zapd_testnet.db" % dir_path
+    else:
+        return "sqlite:///%s/zapd.db" % dir_path
+
 def read_cfg():
     cp = configparser.ConfigParser()
     cp.read(get_filename())
@@ -20,6 +27,9 @@ def read_cfg():
     cfg.start_block = int(cfg.testnet_start_block)
     if not cfg.testnet:
         cfg.start_block = int(cfg.mainnet_start_block)
+
+    # db
+    cfg.db_filename = get_db_filename(cfg.testnet)
 
     # trusted node
     cfg.node_api_key = cp["node"]["node_api_key"]

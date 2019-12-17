@@ -64,11 +64,9 @@ def call_webhook(logger, msg, sig):
 def send_email(logger, subject, msg):
     message = Mail(from_email=cfg.email_from, to_emails=cfg.email_admin, subject=subject, html_content=msg)
     try:
-        sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
+        import flask_config_secret
+        sg = SendGridAPIClient(flask_config_secret.MAIL_SENDGRID_API_KEY)
         response = sg.send(message)
-        #print(response.status_code)
-        #print(response.body)
-        #print(response.headers)
     except Exception as ex:
         logger.error(f"email '{subject}': {ex}")
 

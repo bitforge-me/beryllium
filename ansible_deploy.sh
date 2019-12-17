@@ -10,11 +10,12 @@ BACKUP_KEY=$2
 BACKUP_SSH_KEY=$3
 WEBHOOK_URL=$4
 WEBHOOK_KEY=$5
+SENDGRID_API_KEY=$6
 
 display_usage() { 
     echo -e "\nUsage:
 
-    ansible_deploy.sh <DEPLOY_TYPE ($DEPLOY_TEST | $DEPLOY_PRODUCTION)> <BACKUP_KEY> <BACKUP_SSH_KEY> <WEBHOOK_URL> <WEBHOOK_KEY>
+    ansible_deploy.sh <DEPLOY_TYPE ($DEPLOY_TEST | $DEPLOY_PRODUCTION)> <BACKUP_KEY> <BACKUP_SSH_KEY> <WEBHOOK_URL> <WEBHOOK_KEY> <SENDGRID_API_KEY>
 
         This is the full deploy scenario, required for initial deployment:
 
@@ -26,6 +27,8 @@ display_usage() {
         WEBHOOK_URL: the URL for incomming transaction notifications
 
         WEBHOOK_KEY: the key to sign the transaction notifications with
+
+        SENDGRID_API_KEY: the api key to use with sendgrid for sending emails
 
     ansible_deploy.sh <DEPLOY_TYPE ($DEPLOY_TEST | $DEPLOY_PRODUCTION)> <DEPLOY_LEVEL ($DEPLOY_LEVEL_ZAPD_ONLY | $DEPLOY_LEVEL_NO_KEYS)>
         
@@ -57,7 +60,7 @@ then
     if [[ "$DEPLOY_LEVEL" == "$DEPLOY_LEVEL_ZAPD_ONLY" ]]; then
         FULL_DEPLOY=
     fi
-elif [[ ( $# -le 4 ) || ( $# -gt 5 ) ]]
+elif [[ ( $# -le 5 ) || ( $# -gt 6 ) ]]
 then
     ## if less than four arguments supplied, display usage 
     display_usage
@@ -136,6 +139,7 @@ echo "   - BACKUP_SSH_KEY:  $BACKUP_SSH_KEY"
 echo "   - BACKUP_HOST:     $BACKUP_HOST"
 echo "   - WEBHOOK_URL:     $WEBHOOK_URL"
 echo "   - WEBHOOK_KEY:     $WEBHOOK_KEY"
+echo "   - SENDGRID_API_KEY:$SENDGRID_API_KEY"
 echo "   - REMOTE_WAVES_NODES: $REMOTE_WAVES_NODES"
 echo "   - ZAPD_ARCHIVE:    zapd.zip"
 
@@ -147,6 +151,6 @@ then
     ## do dangerous stuff
     echo ok lets go!!!
     ansible-playbook --inventory "$DEPLOY_HOST," --user "$DEPLOY_USER" -v \
-        --extra-vars "ADMIN_EMAIL=$ADMIN_EMAIL ALERT_EMAIL=$ALERT_EMAIL DEPLOY_HOST=$DEPLOY_HOST BACKUP_KEY='$BACKUP_KEY' BACKUP_SSH_KEY='$BACKUP_SSH_KEY' BACKUP_HOST=$BACKUP_HOST WEBHOOK_URL=$WEBHOOK_URL WEBHOOK_KEY=$WEBHOOK_KEY REMOTE_WAVES_NODES=$REMOTE_WAVES_NODES KEYS_SUPPLIED=$KEYS_SUPPLIED FULL_DEPLOY=$FULL_DEPLOY VAGRANT=$VAGRANT TESTNET=$TESTNET" \
+        --extra-vars "ADMIN_EMAIL=$ADMIN_EMAIL ALERT_EMAIL=$ALERT_EMAIL DEPLOY_HOST=$DEPLOY_HOST BACKUP_KEY='$BACKUP_KEY' BACKUP_SSH_KEY='$BACKUP_SSH_KEY' BACKUP_HOST=$BACKUP_HOST WEBHOOK_URL=$WEBHOOK_URL WEBHOOK_KEY=$WEBHOOK_KEY SENDGRID_API_KEY=$SENDGRID_API_KEY REMOTE_WAVES_NODES=$REMOTE_WAVES_NODES KEYS_SUPPLIED=$KEYS_SUPPLIED FULL_DEPLOY=$FULL_DEPLOY VAGRANT=$VAGRANT TESTNET=$TESTNET" \
         ansible/deploy.yml
 fi
