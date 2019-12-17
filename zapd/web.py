@@ -21,11 +21,8 @@ import pyblake2
 import config
 from app_core import app, db
 from models import Transaction, Block, CreatedTransaction, DashboardHistory
+import admin
 import utils
-
-# create tables
-db.create_all()
-db.session.commit()
 
 cfg = config.read_cfg()
 jsonrpc = JSONRPC(app, "/api")
@@ -45,6 +42,53 @@ ERR_NO_TXID = 1
 ERR_TX_EXPIRED = 2
 ERR_FAILED_TO_GET_ASSET_INFO = 3
 ERR_EMPTY_ADDRESS = 4
+
+#
+# helper functions
+#
+
+def get(url):
+    with requests.Session() as s:
+        retries = Retry(
+            total=10,
+            backoff_factor=0.2,
+            status_forcelist=[500, 502, 503, 504])
+        s.mount('http://', HTTPAdapter(max_retries=retries))
+        s.mount('https://', HTTPAdapter(max_retries=retries))
+        response = s.get(url)
+        return response
+
+def block_height():
+    response = get(cfg.node_http_base_url + "blocks/height")
+    return response.json()["height"]
+
+def block_at(num):
+    response = get(cfg.node_http_base_url + f"blocks/at/{num}")
+    return response.json()
+
+def block_chk(blk):
+    if not isinstance(blk, dict):
+        return False, "blk not dict"
+    if "status" in blk and blk["status"] == "error":
+        return False, blk["details"]
+    if not "signature" in blk:
+        return False, "no signature field in blk"
+    return True, "all good"
+
+def block_hash(blk):
+    height = "unknown"
+    if isinstance(blk, int):
+        height = blk
+        blk = block_at(blk)
+    if not "signature" in blk:
+        if "height" in blk:
+            height = blk["height"]
+        blk_json = json.dumps(blk, sort_keys=True, indent=4)
+        msg = f"block_hash(): no 'signature' field in block ({height}\n\n{blk_json})"
+        logger.error(msg)
+        utils.email_death(logger, msg)
+        sys.exit(1)
+    return blk["signature"]
 
 def dashboard_data():
     # get remote block height
@@ -91,6 +135,14 @@ def from_int_to_user_friendly(val, divisor, decimal_places=4):
     val = val / divisor
     return round(val, decimal_places)
 
+#
+# Flask views
+#
+
+@app.route("/")
+def index():
+    return render_template("index.html")
+
 @app.route("/dashboard")
 def dashboard():
     history = DashboardHistory.last_week(db.session)
@@ -127,6 +179,10 @@ def dashboard_snapshot(cmd=None):
         db.session.commit()
         return "ok"
     return "not needed right now"
+
+#
+# JSON-RPC
+#
 
 @jsonrpc.method("status")
 def status():
@@ -240,48 +296,9 @@ def validateaddress(address):
     err = OtherError("invalid address", 0)
     raise err
 
-def get(url):
-    with requests.Session() as s:
-        retries = Retry(
-            total=10,
-            backoff_factor=0.2,
-            status_forcelist=[500, 502, 503, 504])
-        s.mount('http://', HTTPAdapter(max_retries=retries))
-        s.mount('https://', HTTPAdapter(max_retries=retries))
-        response = s.get(url)
-        return response
-
-def block_height():
-    response = get(cfg.node_http_base_url + "blocks/height")
-    return response.json()["height"]
-
-def block_at(num):
-    response = get(cfg.node_http_base_url + f"blocks/at/{num}")
-    return response.json()
-
-def block_chk(blk):
-    if not isinstance(blk, dict):
-        return False, "blk not dict"
-    if "status" in blk and blk["status"] == "error":
-        return False, blk["details"]
-    if not "signature" in blk:
-        return False, "no signature field in blk"
-    return True, "all good"
-
-def block_hash(blk):
-    height = "unknown"
-    if isinstance(blk, int):
-        height = blk
-        blk = block_at(blk)
-    if not "signature" in blk:
-        if "height" in blk:
-            height = blk["height"]
-        blk_json = json.dumps(blk, sort_keys=True, indent=4)
-        msg = f"block_hash(): no 'signature' field in block ({height}\n\n{blk_json})"
-        logger.error(msg)
-        utils.email_death(logger, msg)
-        sys.exit(1)
-    return blk["signature"]
+#
+# gevent class
+#
 
 class ZapWeb():
 

@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import sys
 import logging
 import signal
 
@@ -12,6 +13,8 @@ import config
 import web
 import utx
 import utils
+from app_core import app, db
+from models import User, Role
 
 cfg = config.read_cfg()
 logger = logging.getLogger(__name__)
@@ -35,6 +38,33 @@ def setup_logging(level):
     # clear loggers set by any imported modules
     logging.getLogger().handlers.clear()
 
+def add_user(email, password):
+    with app.app_context():
+        user = User.from_email(db.session, email)
+        if user:
+            #logger.error("user already exists")
+            #return
+            user.password = encrypt_password(password)
+        else:
+            user = user_datastore.create_user(email=email, password=encrypt_password(password))
+        db.session.commit()
+
+def add_role(email, role_name):
+    with app.app_context():
+        user = User.from_email(db.session, email)
+        if not user:
+            logger.error("user does not exist")
+            return
+        role = Role.from_name(db.session, role_name)
+        if not role:
+            role = Role(name=role_name)
+            db.session.add(role)
+            user.roles.append(role)
+        elif role not in user.roles:
+            user.roles.append(role)
+        else:
+            logger.info("user already has role")
+        db.session.commit()
 
 def on_transfer_utx(wutx, txid, sig, pubkey, asset_id, timestamp, amount, fee, recipient, attachment):
     recipient = base58.b58encode(recipient)
@@ -67,40 +97,52 @@ def g_exception(g):
 keep_running = True
 if __name__ == "__main__":
     setup_logging(logging.DEBUG)
-    signal.signal(signal.SIGINT, sigint_handler)
 
-    logger.info("starting greenlets")
-    group = gevent.pool.Group()
-    zapweb = web.ZapWeb()
-    zapweb.start(group)
-    port = 6863
-    if not cfg.testnet:
-        port = 6868
-    wutx = utx.WavesUTX(None, on_transfer_utx, port=port, testnet=cfg.testnet)
-    wutx.start(group)
-    logger.info("main loop")
-    sent_start_email = False
-    for g in group:
-        g.link_exception(g_exception)
-    while keep_running:
-        gevent.sleep(1)
-        # check if any essential greenlets are dead
-        if len(group) < 3:
-            msg = "one of our greenlets is dead X("
-            logger.error(msg)
-            utils.email_death(logger, msg)
-            break
-        # send start email when all essential greenlets are started
-        if not sent_start_email:
-            send_start_email = True
-            for g in group:
-                if not g.started:
-                    send_start_email = False
-            if send_start_email:
-                sent_start_email = True
-                msg = "our greenlets have started :)"
-                logger.info(msg)
-                utils.email_alive(logger, msg)
-    logger.info("stopping greenlets")
-    wutx.stop()
-    zapweb.stop()
+    # create tables
+    db.create_all()
+    db.session.commit()
+
+    # process commands
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "add_user":
+            add_user(sys.argv[2], sys.argv[3])
+        if sys.argv[1] == "add_role":
+            add_role(sys.argv[2], sys.argv[3])
+    else:
+        signal.signal(signal.SIGINT, sigint_handler)
+
+        logger.info("starting greenlets")
+        group = gevent.pool.Group()
+        zapweb = web.ZapWeb()
+        zapweb.start(group)
+        port = 6863
+        if not cfg.testnet:
+            port = 6868
+        wutx = utx.WavesUTX(None, on_transfer_utx, port=port, testnet=cfg.testnet)
+        wutx.start(group)
+        logger.info("main loop")
+        sent_start_email = False
+        for g in group:
+            g.link_exception(g_exception)
+        while keep_running:
+            gevent.sleep(1)
+            # check if any essential greenlets are dead
+            if len(group) < 3:
+                msg = "one of our greenlets is dead X("
+                logger.error(msg)
+                utils.email_death(logger, msg)
+                break
+            # send start email when all essential greenlets are started
+            if not sent_start_email:
+                send_start_email = True
+                for g in group:
+                    if not g.started:
+                        send_start_email = False
+                if send_start_email:
+                    sent_start_email = True
+                    msg = "our greenlets have started :)"
+                    logger.info(msg)
+                    utils.email_alive(logger, msg)
+        logger.info("stopping greenlets")
+        wutx.stop()
+        zapweb.stop()

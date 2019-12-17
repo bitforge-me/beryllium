@@ -6,6 +6,7 @@ from flask_mail_sendgrid import MailSendGrid
 
 # Create Flask application
 app = Flask(__name__)
+app.config.from_pyfile("flask_config.py")
 if os.getenv("DEBUG"):
     app.config["DEBUG"] = True
 if os.getenv("DATABASE_URL"):
