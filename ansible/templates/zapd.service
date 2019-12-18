@@ -7,6 +7,7 @@ User=zapd
 Group=zapd
 
 Type=simple
+Environment="SERVER_NAME={{SERVER_NAME}}"
 ExecStart=/usr/bin/python3 /opt/zapd/app.py
 
 Restart=always

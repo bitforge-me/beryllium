@@ -20,5 +20,7 @@ if os.getenv("PASSWORD_SALT"):
     app.config["SECURITY_PASSWORD_SALT"] = os.getenv("PASSWORD_SALT")
 if os.getenv("SENDGRID_API_KEY"):
     app.config["MAIL_SENDGRID_API_KEY"] = os.getenv("SENDGRID_API_KEY")
+if os.getenv("SERVER_NAME"):
+    app.config["SERVER_NAME"] = os.getenv("SERVER_NAME")
 db = SQLAlchemy(app)
 mail = MailSendGrid(app)
