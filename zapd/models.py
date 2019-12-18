@@ -317,15 +317,16 @@ class ProposalModelView(BaseModelView):
         return self.render('admin/payments.html', payments=proposal.payments)
 
 class UserModelView(BaseModelView):
-    can_create = True
-    can_delete = True
+    can_create = False
+    can_delete = False
     can_edit = False
-    column_exclude_list = ['password']
+    column_list = ['email', 'roles']
+    column_editable_list = ['roles']
 
     def is_accessible(self):
         return (current_user.is_active and
-                current_user.is_authenticated
-        )
+                current_user.is_authenticated and
+                current_user.has_role('admin'))
 
 ### define payment processing models
 

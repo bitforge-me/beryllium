@@ -50,18 +50,22 @@ def add_user(email, password):
             user = user_datastore.create_user(email=email, password=encrypt_password(password))
         db.session.commit()
 
+def create_role(name, desc):
+    role = Role.from_name(db.session, name)
+    if not role:
+        role = Role(name=name, description=desc)
+    else:
+        role.description = desc
+    db.session.add(role)
+
 def add_role(email, role_name):
     with app.app_context():
         user = User.from_email(db.session, email)
         if not user:
             logger.error("user does not exist")
             return
-        role = Role.from_name(db.session, role_name)
-        if not role:
-            role = Role(name=role_name)
-            db.session.add(role)
-            user.roles.append(role)
-        elif role not in user.roles:
+        role = create_role(role_name, None)
+        if role not in user.roles:
             user.roles.append(role)
         else:
             logger.info("user already has role")
@@ -101,6 +105,9 @@ if __name__ == "__main__":
 
     # create tables
     db.create_all()
+    create_role("admin", "super user")
+    create_role("proposer", "Can propose zap payments")
+    create_role("authorizer", "Can authorize zap payments")
     db.session.commit()
 
     # process commands
