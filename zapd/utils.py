@@ -12,6 +12,7 @@ import pywaves
 import pyblake2
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
+from flask import url_for
 
 import config
 
@@ -63,8 +64,10 @@ def call_webhook(logger, msg, sig):
     except Exception as ex:
         logger.error(f"call_webhook: {ex}")
 
-def send_email(logger, subject, msg):
-    message = Mail(from_email=cfg.email_from, to_emails=cfg.email_admin, subject=subject, html_content=msg)
+def send_email(logger, subject, msg, to=None):
+    if not to:
+        to = cfg.email_admin
+    message = Mail(from_email=cfg.email_from, to_emails=to, subject=subject, html_content=msg)
     try:
         import flask_config_secret
         sg = SendGridAPIClient(flask_config_secret.MAIL_SENDGRID_API_KEY)
@@ -84,6 +87,11 @@ def email_exception(logger, msg):
 def email_buffer(logger, msg, buf):
     msg = f"{msg}\n\n{buf}"
     send_email(logger, "zapd buffer issue", msg)
+
+def email_payment_claim(logger, email, token):
+    url = url_for("claim_payment", token=token, _external=True)
+    msg = f"claim your payment <a href='{url}'>here</a>"
+    send_email(logger, "claim your payment", msg, email)
 
 def generate_key(num=20):
     return binascii.hexlify(os.urandom(num)).decode()

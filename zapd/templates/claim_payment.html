@@ -1,0 +1,16 @@
+<html>
+    <body>
+        <h4>Payment of {{payment.amount}} ZAP cents</h4>
+        <p>
+            Message: "{{payment.message}}"
+        </p>
+        <form method="post">
+            {%if not recipient%}
+            <input type="text" name="recipient" placeholder="Wallet address"/>
+            {%else%}
+            Wallet address: {{recipient}}<br/>
+            {%endif%}
+            <input type="submit" />
+        </form>
+    </body>
+</html>

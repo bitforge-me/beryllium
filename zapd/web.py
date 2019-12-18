@@ -5,10 +5,11 @@ import logging
 import json
 import struct
 import time
+import datetime
 
 import gevent
 from gevent.pywsgi import WSGIServer
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 from flask_jsonrpc import JSONRPC
 from flask_jsonrpc.exceptions import OtherError
 import requests
@@ -20,7 +21,7 @@ import pyblake2
 
 import config
 from app_core import app, db
-from models import Transaction, Block, CreatedTransaction, DashboardHistory
+from models import Transaction, Block, CreatedTransaction, DashboardHistory, Proposal, Payment
 import admin
 import utils
 
@@ -135,6 +136,56 @@ def from_int_to_user_friendly(val, divisor, decimal_places=4):
     val = val / divisor
     return round(val, decimal_places)
 
+def _create_transaction(recipient, amount, attachment):
+    # get fee
+    path = f"assets/details/{cfg.asset_id}"
+    response = requests.get(cfg.node_http_base_url + path)
+    if response.ok:
+        asset_fee = response.json()["minSponsoredAssetFee"]
+    else:
+        short_msg = "failed to get asset info"
+        logger.error(f"{short_msg}: ({response.status_code}, {response.request.method} {response.url}):\n\t{response.text}")
+        err = OtherError(short_msg, ERR_FAILED_TO_GET_ASSET_INFO)
+        err.data = response.text
+        raise err
+    if not recipient:
+        short_msg = "recipient is null or an empty string"
+        logger.error(short_msg)
+        err = OtherError(short_msg, ERR_EMPTY_ADDRESS)
+        raise err
+    recipient = pywaves.Address(recipient)
+    asset = pywaves.Asset(cfg.asset_id)
+    address_data = pw_address.sendAsset(recipient, asset, amount, attachment, feeAsset=asset, txFee=asset_fee)
+    signed_tx = json.loads(address_data["api-data"])
+    # calc txid properly
+    txid = transfer_asset_txid(signed_tx)
+    # store tx in db
+    dbtx = CreatedTransaction(txid, CTX_CREATED, signed_tx["amount"], address_data["api-data"])
+    return dbtx
+
+def _broadcast_transaction(txid):
+    dbtx = CreatedTransaction.from_txid(db.session, txid)
+    if not dbtx:
+        raise OtherError("transaction not found", ERR_NO_TXID)
+    if dbtx.state == CTX_EXPIRED:
+        raise OtherError("transaction expired", ERR_TX_EXPIRED)
+    signed_tx = dbtx.json_data
+    # broadcast
+    logger.debug(f"requesting broadcast of tx:\n\t{signed_tx}")
+    path = f"assets/broadcast/transfer"
+    headers = {"Content-Type": "application/json"}
+    response = requests.post(cfg.node_http_base_url + path, headers=headers, data=signed_tx)
+    if response.ok:
+        # update tx in db
+        dbtx.state = CTX_BROADCAST
+    else:
+        short_msg = "failed to broadcast"
+        logger.error(f"{short_msg}: ({response.status_code}, {response.request.method} {response.url}):\n\t{response.text}")
+        err = OtherError(short_msg, ERR_FAILED_TO_BROADCAST)
+        err.data = response.text
+        raise err
+    return dbtx
+
 #
 # Flask views
 #
@@ -142,6 +193,76 @@ def from_int_to_user_friendly(val, divisor, decimal_places=4):
 @app.route("/")
 def index():
     return render_template("index.html")
+
+@app.route("/process_proposals")
+def process_proposals():
+    # set expired
+    expired = 0
+    now = datetime.datetime.now()
+    proposals = Proposal.in_status(db.session, Proposal.STATE_AUTHORIZED)
+    for proposal in proposals:
+        if proposal.date_expiry < now:
+            proposal.status = Proposal.STATE_EXPIRED
+            expired += 1
+            db.session.add(proposal)
+    db.session.commit()
+    # process authorized 
+    emails = 0
+    proposals = Proposal.in_status(db.session, Proposal.STATE_AUTHORIZED)
+    for proposal in proposals:
+        for payment in proposal.payments:
+            if payment.status == payment.STATE_CREATED:
+                if payment.email:
+                    utils.email_payment_claim(logger, payment.email, payment.token)
+                    payment.status = payment.STATE_SENT_CLAIM_LINK
+                    db.session.add(payment)
+                    logger.info(f"Sent payment claim url to {payment.email}")
+                    emails += 1
+                elif payment.mobile:
+                    raise("not yet implemented")
+                elif payment.wallet_address:
+                    ##TODO: set status and commit before sending so we cannot send twice
+                    raise("not yet implemented")
+    db.session.commit()
+    logger.info(f"payment statuses commited")
+    return f"done (expired {expired}, emails {emails})"
+
+@app.route("/claim_payment/<token>", methods=["GET", "POST"])
+def claim_payment(token):
+    payment = Payment.from_token(db.session, token)
+    if not payment:
+        abort(404)
+    dbtx = CreatedTransaction.from_txid(db.session, payment.txid)
+    if request.method == "POST":
+        if payment.proposal.status != payment.proposal.STATE_AUTHORIZED:
+            return "payment not authorized"
+        if payment.status != payment.STATE_SENT_CLAIM_LINK:
+            return "payment not authorized"
+        # create/get transaction
+        if not dbtx:
+            try:
+                recipient = request.form["recipient"]
+                dbtx = _create_transaction(recipient, payment.amount, payment.message)
+                payment.txid = dbtx.txid
+                db.session.add(dbtx)
+                db.session.add(payment)
+                db.session.commit()
+            except OtherError as ex:
+                return f"ERROR: {ex.message}"
+            except ValueError as ex:
+                return f"ERROR: {ex}"
+        # broadcast transaction
+        try:
+            dbtx = _broadcast_transaction(dbtx.txid)
+            payment.status = payment.STATE_SENT_FUNDS
+            db.session.add(dbtx)
+            db.session.commit()
+        except OtherError as ex:
+            return f"ERROR: {ex.message}"
+    recipient = None
+    if dbtx:
+        recipient = json.loads(dbtx.json_data)["recipient"]
+    return render_template("claim_payment.html", payment=payment, recipient=recipient)
 
 @app.route("/dashboard")
 def dashboard():
@@ -227,59 +348,17 @@ def transfer_asset_txid(tx):
 
 @jsonrpc.method("createtransaction")
 def createtransaction(recipient, amount, attachment):
-    # get fee
-    path = f"assets/details/{cfg.asset_id}"
-    response = requests.get(cfg.node_http_base_url + path)
-    if response.ok:
-        asset_fee = response.json()["minSponsoredAssetFee"]
-    else:
-        short_msg = "failed to get asset info"
-        logger.error(f"{short_msg}: ({response.status_code}, {response.request.method} {response.url}):\n\t{response.text}")
-        err = OtherError(short_msg, ERR_FAILED_TO_GET_ASSET_INFO)
-        err.data = response.text
-        raise err
-    if not recipient:
-        short_msg = "recipient is null or an empty string"
-        logger.error(short_msg)
-        err = OtherError(short_msg, ERR_EMPTY_ADDRESS)
-        raise err
-    recipient = pywaves.Address(recipient)
-    asset = pywaves.Asset(cfg.asset_id)
-    address_data = pw_address.sendAsset(recipient, asset, amount, attachment, feeAsset=asset, txFee=asset_fee)
-    signed_tx = json.loads(address_data["api-data"])
-    # calc txid properly
-    txid = transfer_asset_txid(signed_tx)
-    # store tx in db
-    dbtx = CreatedTransaction(txid, CTX_CREATED, signed_tx["amount"], address_data["api-data"])
+    dbtx = _create_transaction(recipient, amount, attachment)
     db.session.add(dbtx)
     db.session.commit()
     # return txid/state to caller
-    return {"txid": txid, "state": dbtx.state}
+    return {"txid": dbtx.txid, "state": dbtx.state}
 
 @jsonrpc.method("broadcasttransaction")
 def broadcasttransaction(txid):
-    dbtx = CreatedTransaction.from_txid(db.session, txid)
-    if not dbtx:
-        raise OtherError("transaction not found", ERR_NO_TXID)
-    if dbtx.state == CTX_EXPIRED:
-        raise OtherError("transaction expired", ERR_TX_EXPIRED)
-    signed_tx = dbtx.json_data
-    # broadcast
-    logger.debug(f"requesting broadcast of tx:\n\t{signed_tx}")
-    path = f"assets/broadcast/transfer"
-    headers = {"Content-Type": "application/json"}
-    response = requests.post(cfg.node_http_base_url + path, headers=headers, data=signed_tx)
-    if response.ok:
-        # update tx in db
-        dbtx.state = CTX_BROADCAST
-        db.session.add(dbtx)
-        db.session.commit()
-    else:
-        short_msg = "failed to broadcast"
-        logger.error(f"{short_msg}: ({response.status_code}, {response.request.method} {response.url}):\n\t{response.text}")
-        err = OtherError(short_msg, ERR_FAILED_TO_BROADCAST)
-        err.data = response.text
-        raise err
+    dbtx = _broadcast_transaction(txid)
+    db.session.add(dbtx)
+    db.session.commit()
     # return txid/state to caller
     return {"txid": txid, "state": dbtx.state}
 

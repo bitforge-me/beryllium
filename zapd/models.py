@@ -55,7 +55,7 @@ class User(db.Model, UserMixin):
 
 class Payment(db.Model):
     STATE_CREATED = "created"
-    STATE_SENT_CLAIM_LINK = "send_claim_link"
+    STATE_SENT_CLAIM_LINK = "sent_claim_link"
     STATE_EXPIRED = "expired"
     STATE_SENT_FUNDS = "sent_funds"
 
@@ -126,6 +126,10 @@ class Proposal(db.Model):
     @classmethod
     def count(cls, session):
         return session.query(cls).count()
+
+    @classmethod
+    def in_status(cls, session, status):
+        return session.query(cls).filter(cls.status == status).all()
 
     def __repr__(self):
         return "<Proposal %r>" % (self.id)
@@ -206,6 +210,14 @@ class ProposalModelView(BaseModelView):
            (not is_email(form.recipient.data) and not is_mobile(form.recipient.data) and not is_address(form.recipient.data)):
             flash("Recipient is invalid")
             return False
+        ##TODO: temporary
+        if is_mobile(form.recipient.data):
+            flash("Mobile number not yet implemented")
+            return False
+        if is_address(form.recipient.data):
+            flash("Mobile number not yet implemented")
+            return False
+        ##
         if not form.amount.data or form.amount.data <= 0:
             flash("Amount must be greater then 0")
             return False
