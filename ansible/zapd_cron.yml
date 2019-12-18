@@ -83,7 +83,7 @@
         name: process zapd proposals
         minute: "*/2"
         job: >
-          curl localhost:5000/internal/process_proposals > /dev/null
+            curl -H "Host: {{SERVER_NAME}}" localhost:5000/internal/process_proposals > /dev/null
 
     - name: add cron job to snapshot dashboard
       cron:
