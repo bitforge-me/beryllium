@@ -6,10 +6,11 @@ import json
 import struct
 import time
 import datetime
+import decimal
 
 import gevent
 from gevent.pywsgi import WSGIServer
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, flash
 from flask_jsonrpc import JSONRPC
 from flask_jsonrpc.exceptions import OtherError
 import requests
@@ -187,6 +188,15 @@ def _broadcast_transaction(txid):
     return dbtx
 
 #
+# Jinja2 filters
+#
+
+@app.template_filter()
+def int2zap(num):
+    num = decimal.Decimal(num)
+    return num/100
+
+#
 # Flask views
 #
 
@@ -227,6 +237,34 @@ def process_proposals():
     logger.info(f"payment statuses commited")
     return f"done (expired {expired}, emails {emails})"
 
+def process_claim(payment, dbtx):
+    if payment.proposal.status != payment.proposal.STATE_AUTHORIZED:
+        return dbtx, "payment not authorized"
+    if payment.status != payment.STATE_SENT_CLAIM_LINK:
+        return dbtx, "payment not authorized"
+    # create/get transaction
+    if not dbtx:
+        try:
+            recipient = request.form["recipient"]
+            dbtx = _create_transaction(recipient, payment.amount, payment.message)
+            payment.txid = dbtx.txid
+            db.session.add(dbtx)
+            db.session.add(payment)
+            db.session.commit()
+        except OtherError as ex:
+            return dbtx, ex.message
+        except ValueError as ex:
+            return dbtx, ex
+    # broadcast transaction
+    try:
+        dbtx = _broadcast_transaction(dbtx.txid)
+        payment.status = payment.STATE_SENT_FUNDS
+        db.session.add(dbtx)
+        db.session.commit()
+    except OtherError as ex:
+        return dbtx, ex.message
+    return dbtx, None
+
 @app.route("/claim_payment/<token>", methods=["GET", "POST"])
 def claim_payment(token):
     payment = Payment.from_token(db.session, token)
@@ -234,31 +272,9 @@ def claim_payment(token):
         abort(404)
     dbtx = CreatedTransaction.from_txid(db.session, payment.txid)
     if request.method == "POST":
-        if payment.proposal.status != payment.proposal.STATE_AUTHORIZED:
-            return "payment not authorized"
-        if payment.status != payment.STATE_SENT_CLAIM_LINK:
-            return "payment not authorized"
-        # create/get transaction
-        if not dbtx:
-            try:
-                recipient = request.form["recipient"]
-                dbtx = _create_transaction(recipient, payment.amount, payment.message)
-                payment.txid = dbtx.txid
-                db.session.add(dbtx)
-                db.session.add(payment)
-                db.session.commit()
-            except OtherError as ex:
-                return f"ERROR: {ex.message}"
-            except ValueError as ex:
-                return f"ERROR: {ex}"
-        # broadcast transaction
-        try:
-            dbtx = _broadcast_transaction(dbtx.txid)
-            payment.status = payment.STATE_SENT_FUNDS
-            db.session.add(dbtx)
-            db.session.commit()
-        except OtherError as ex:
-            return f"ERROR: {ex.message}"
+        dbtx, err_msg = process_claim(payment, dbtx)
+        if err_msg:
+            flash(err_msg, "danger")
     recipient = None
     if dbtx:
         recipient = json.loads(dbtx.json_data)["recipient"]

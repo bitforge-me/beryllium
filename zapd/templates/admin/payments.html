@@ -4,12 +4,29 @@
 <div class="container">
     <div class="row">
         <div class="col-sm-10 col-sm-offset-1">
-            <ul>
-            {% for payment in payments %}
-                <li>
-                    {{payment.email}} - {{payment.mobile}} - {{payment.wallet_address}} - {{payment.message}} - {{payment.amount}} - {{payment.status}}
-                </li>
-            {% endfor %}
+            <table class="table">
+                <thead>
+                    <tr>
+                    <th>Email</th>
+                    <th>Mobile</th>
+                    <th>Wallet Address</th>
+                    <th>Message</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for payment in payments %}
+                    <tr>
+                        <td>{{payment.email}}</td>
+                        <td>{{payment.mobile}}</td>
+                        <td>{{payment.wallet_address}}</td>
+                        <td>{{payment.message}}</td>
+                        <td>{{payment.amount|int2zap}} ZAP</td>
+                        <td>{{payment.status}}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
             </ul>
         </div>
     </div>

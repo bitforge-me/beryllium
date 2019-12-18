@@ -1,21 +1,26 @@
-<html>
-    <body>
-        <h4>Payment of {{payment.amount}} ZAP cents</h4>
-        <p>
-            Message: "{{payment.message}}"
-        </p>
-        <form method="post">
-        {%if not recipient%}
-            <input type="text" name="recipient" placeholder="Wallet address"/>
-        {%else%}
-            Wallet address: {{recipient}}<br/>
-        {%endif%}
-        {%if payment.status == payment.STATE_SENT_CLAIM_LINK%}
-            <input type="submit" />
-        {%endif%}
-        </form>
-        {%if payment.status == payment.STATE_SENT_FUNDS%}
-            Sent!<br/>
-        {%endif%}
-    </body>
-</html>
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-sm-10 col-sm-offset-1">
+            <h4>Payment of {{payment.amount|int2zap}} ZAP</h4>
+            <p>
+                Message: "{{payment.message}}"
+            </p>
+            <form method="post">
+            {%if not recipient%}
+                <input type="text" name="recipient" placeholder="Wallet address"/>
+            {%else%}
+                Wallet address: {{recipient}}<br/>
+            {%endif%}
+            {%if payment.status == payment.STATE_SENT_CLAIM_LINK%}
+                <input type="submit" />
+            {%endif%}
+            </form>
+            {%if payment.status == payment.STATE_SENT_FUNDS%}
+                Sent!<br/>
+            {%endif%}
+        </div>
+    </div>
+</div>
+{% endblock content %}
