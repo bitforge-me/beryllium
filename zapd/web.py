@@ -10,7 +10,7 @@ import decimal
 
 import gevent
 from gevent.pywsgi import WSGIServer
-from flask import Flask, render_template, request, flash
+from flask import Flask, render_template, request, flash, abort
 from flask_jsonrpc import JSONRPC
 from flask_jsonrpc.exceptions import OtherError
 import requests

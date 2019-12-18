@@ -9,13 +9,14 @@ import gevent
 import gevent.pool
 import base58
 import pywaves
+from flask_security.utils import encrypt_password
 
 import config
 import web
 import utx
 import utils
 from app_core import app, db
-from models import User, Role
+from models import user_datastore, User, Role
 
 cfg = config.read_cfg()
 logger = logging.getLogger(__name__)
@@ -57,6 +58,7 @@ def create_role(name, desc):
     else:
         role.description = desc
     db.session.add(role)
+    return role
 
 def add_role(email, role_name):
     with app.app_context():
