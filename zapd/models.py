@@ -1,5 +1,6 @@
 import time
 import datetime
+import decimal
 
 from flask import redirect, url_for, request, flash
 from flask_security import Security, SQLAlchemyUserDatastore, \
@@ -7,10 +8,12 @@ from flask_security import Security, SQLAlchemyUserDatastore, \
 from flask_admin import expose
 from flask_admin.helpers import get_form_data
 from flask_admin.contrib import sqla
+from wtforms.fields import TextField, DecimalField
 from marshmallow import Schema, fields
 from markupsafe import Markup
 
 from app_core import app, db
+from utils import generate_key, is_email, is_mobile, is_address
 
 ### Define zapsend models
 
@@ -61,22 +64,20 @@ class Payment(db.Model):
     proposal = db.relationship('Proposal', backref=db.backref('payments', lazy='dynamic'))
     token = db.Column(db.String(255), unique=True, nullable=False)
     mobile = db.Column(db.String(255))
-    mobile_message = db.Column(db.String(255))
     email = db.Column(db.String(255))
-    email_message = db.Column(db.String(255))
     wallet_address = db.Column(db.String(255))
+    message = db.Column(db.String())
     amount = db.Column(db.Integer)
     status = db.Column(db.String(255))
     txid = db.Column(db.String(255))
 
-    def __init__(self, proposal, token, mobile, mobile_message, email, email_message, wallet_address, amount):
+    def __init__(self, proposal, mobile, email, wallet_address, message, amount):
         self.proposal = proposal
-        self.token = token
+        self.token = generate_key()
         self.mobile = mobile
-        self.mobile_message = mobile_message
         self.email = email
-        self.email_message = email_message
         self.wallet_address = wallet_address
+        self.message = message
         self.amount = amount
         self.status = self.STATE_CREATED
         self.txid = None
@@ -95,6 +96,7 @@ class Payment(db.Model):
 class Proposal(db.Model):
     STATE_CREATED = "created"
     STATE_AUTHORIZED = "authorized"
+    STATE_DECLINED = "declined"
     STATE_EXPIRED = "expired"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -155,33 +157,71 @@ class RestrictedModelView(BaseModelView):
     def is_accessible(self):
         return (current_user.is_active and
                 current_user.is_authenticated and
-                current_user.has_role('admin')
-        )
+                current_user.has_role('admin'))
 
 class ProposalModelView(BaseModelView):
-    def _format_authorized_column(view, context, model, name):
-        if model.status == model.STATE_AUTHORIZED or model.status == model.STATE_EXPIRED:
-            return model.status
+    can_create = False
+    can_delete = False
+    can_edit = False
 
+    def _format_status_column(view, context, model, name):
+        if model.status in (model.STATE_AUTHORIZED, model.STATE_DECLINED, model.STATE_EXPIRED):
+            return model.status
         if current_user.has_role('admin') or current_user.has_role('authorizer'):
             authorize_url = url_for('.authorize_view')
+            decline_url = url_for('.decline_view')
             html = '''
                 <form action="{authorize_url}" method="POST">
                     <input id="proposal_id" name="proposal_id"  type="hidden" value="{proposal_id}">
                     <button type='submit'>Authorise</button>
-                </form
-            '''.format(authorize_url=authorize_url, proposal_id=model.id)
+                </form>
+                <form action="{decline_url}" method="POST">
+                    <input id="proposal_id" name="proposal_id"  type="hidden" value="{proposal_id}">
+                    <button type='submit'>Decline</button>
+                </form>
+            '''.format(authorize_url=authorize_url, decline_url=decline_url, proposal_id=model.id)
+        return Markup(html)
 
-            return Markup(html)
+    def _format_total_column(view, context, model, name):
+        total = 0
+        for payment in model.payments:
+            total += payment.amount
+        total = decimal.Decimal(total) / 100
+        payments_url = url_for('.payments_view', proposal_id=model.id)
+        html = '''
+            <a href="{payments_url}">
+                {total}
+            </a>
+        '''.format(payments_url=payments_url, total=total)
+        return Markup(html)
 
-    column_list = ('id', 'date', 'proposer', 'authorizer', 'reason', 'date_authorized', 'date_expiry', 'status', 'authorised?')
-    column_labels = {'authorizer': 'Authorized by'}
-    column_formatters = { 'authorised?': _format_authorized_column }
-    form_excluded_columns = ['date', 'proposer', 'authorizer', 'date_authorized', 'date_expiry', 'status']
+    column_list = ('id', 'date', 'proposer', 'authorizer', 'reason', 'date_authorized', 'date_expiry', 'status', 'total')
+    column_labels = {'proposer': 'Proposed by', 'authorizer': 'Authorized by'}
+    column_formatters = {'status': _format_status_column, 'total': _format_total_column}
+    form_columns = ['reason', 'recipient', 'message', 'amount']
+    form_extra_fields = {'recipient': TextField('Recipient'), 'message': TextField('Message'), 'amount': DecimalField('Amount')}
+
+    def validate_form(self, form):
+        if not form.recipient.data or \
+           (not is_email(form.recipient.data) and not is_mobile(form.recipient.data) and not is_address(form.recipient.data)):
+            flash("Recipient is invalid")
+            return False
+        if not form.amount.data or form.amount.data <= 0:
+            flash("Amount must be greater then 0")
+            return False
+        return super(BaseModelView, self).validate_form(form)
 
     def on_model_change(self, form, model, is_created):
         if is_created:
             model.generate_defaults()
+            recipient = form.recipient.data
+            email = recipient if is_email(recipient) else None 
+            mobile = recipient if is_mobile(recipient) else None
+            address = recipient if is_address(recipient) else None
+            message = form.message.data
+            amount = int(form.amount.data * 100)
+            payment = Payment(model, mobile, email, address, message, amount)
+            self.session.add(payment)
 
     def is_accessible(self):
         if not (current_user.is_active and current_user.is_authenticated):
@@ -228,6 +268,53 @@ class ProposalModelView(BaseModelView):
                 raise
             flash('Failed to set proposal {proposal_id} as authorized'.format(proposal_id=proposal_id), 'error')
         return redirect(return_url)
+
+    @expose('decline', methods=['POST'])
+    def decline_view(self):
+        return_url = self.get_url('.index_view')
+        # check permission
+        if not (current_user.has_role('admin') or current_user.has_role('authorizer')):
+            # permission denied
+            flash('Not authorized.', 'error')
+            return redirect(return_url)
+        # get the model from the database
+        form = get_form_data()
+        if not form:
+            flash('Could not get form data.', 'error')
+            return redirect(return_url)
+        proposal_id = form['proposal_id']
+        proposal = self.get_one(proposal_id)
+        if proposal is None:
+            flash('Proposal not not found.', 'error')
+            return redirect(return_url)
+        # process the proposal
+        if proposal.status == proposal.STATE_CREATED:
+            proposal.status = proposal.STATE_DECLINED
+        # commit to db
+        try:
+            self.session.commit()
+            flash('Proposal {proposal_id} set as declined'.format(proposal_id=proposal_id))
+        except Exception as ex:
+            if not self.handle_view_exception(ex):
+                raise
+            flash('Failed to set proposal {proposal_id} as declined'.format(proposal_id=proposal_id), 'error')
+        return redirect(return_url)
+
+    @expose('payments/<proposal_id>', methods=['GET'])
+    def payments_view(self, proposal_id):
+        return_url = self.get_url('.index_view')
+        # check permission
+        if not (current_user.has_role('admin') or current_user.has_role('authorizer') or current_user.has_role('proposer')):
+            # permission denied
+            flash('Not authorized.', 'error')
+            return redirect(return_url)
+        # get the model from the database
+        proposal = self.get_one(proposal_id)
+        if proposal is None:
+            flash('Proposal not not found.', 'error')
+            return redirect(return_url)
+        # show the proposal payments
+        return self.render('admin/payments.html', payments=proposal.payments)
 
 class UserModelView(BaseModelView):
     can_create = True

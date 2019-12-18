@@ -3,6 +3,8 @@ import json
 import hmac
 import base64
 import smtplib
+import binascii
+import re
 
 import requests
 import base58
@@ -82,6 +84,21 @@ def email_exception(logger, msg):
 def email_buffer(logger, msg, buf):
     msg = f"{msg}\n\n{buf}"
     send_email(logger, "zapd buffer issue", msg)
+
+def generate_key(num=20):
+    return binascii.hexlify(os.urandom(num)).decode()
+
+def is_email(s):
+    return re.match("[^@]+@[^@]+\.[^@]+", s)
+
+def is_mobile(s):
+    return s.isnumeric()
+
+def is_address(s):
+    try:
+        return pywaves.validateAddress(s)
+    except:
+        return False
 
 if __name__ == "__main__":
     import sys
