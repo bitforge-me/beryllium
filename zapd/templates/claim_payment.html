@@ -5,12 +5,17 @@
             Message: "{{payment.message}}"
         </p>
         <form method="post">
-            {%if not recipient%}
+        {%if not recipient%}
             <input type="text" name="recipient" placeholder="Wallet address"/>
-            {%else%}
+        {%else%}
             Wallet address: {{recipient}}<br/>
-            {%endif%}
+        {%endif%}
+        {%if payment.status == payment.STATE_SENT_CLAIM_LINK%}
             <input type="submit" />
+        {%endif%}
         </form>
+        {%if payment.status == payment.STATE_SENT_FUNDS%}
+            Sent!<br/>
+        {%endif%}
     </body>
 </html>
