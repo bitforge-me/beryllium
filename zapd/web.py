@@ -204,7 +204,7 @@ def int2zap(num):
 def index():
     return render_template("index.html")
 
-@app.route("/process_proposals")
+@app.route("/internal/process_proposals")
 def process_proposals():
     # set expired
     expired = 0

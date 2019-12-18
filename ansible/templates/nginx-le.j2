@@ -45,6 +45,11 @@ server {
         proxy_pass        http://localhost:5000;
     }
 
+    # block internal location
+    location /internal {
+        return 400;
+    }
+
     # reverse proxy to our app
     location /api {
         limit_req zone=zapd_limit burst=20 nodelay;
