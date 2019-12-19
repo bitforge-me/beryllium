@@ -189,15 +189,19 @@ class ProposalModelView(BaseModelView):
 
     def _format_total_column(view, context, model, name):
         total = 0
+        total_claimed = 0
         for payment in model.payments:
             total += payment.amount
+            if payment.status == payment.STATE_SENT_FUNDS:
+                total_claimed += payment.amount
         total = decimal.Decimal(total) / 100
+        total_claimed = decimal.Decimal(total_claimed) / 100
         payments_url = url_for('.payments_view', proposal_id=model.id)
         html = '''
             <a href="{payments_url}">
-                {total}
+                {total} ({total_claimed})
             </a>
-        '''.format(payments_url=payments_url, total=total)
+        '''.format(payments_url=payments_url, total=total, total_claimed=total_claimed)
         return Markup(html)
 
     column_list = ('id', 'date', 'proposer', 'authorizer', 'reason', 'date_authorized', 'date_expiry', 'status', 'total')
