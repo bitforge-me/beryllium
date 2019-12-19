@@ -11,7 +11,7 @@ import base58
 import pywaves
 import pyblake2
 from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail
+from sendgrid.helpers.mail import Mail, From
 from flask import url_for
 
 import config
@@ -67,7 +67,8 @@ def call_webhook(logger, msg, sig):
 def send_email(logger, subject, msg, to=None):
     if not to:
         to = cfg.email_admin
-    message = Mail(from_email=cfg.email_from, to_emails=to, subject=subject, html_content=msg)
+    from_email = From(cfg.email_from, cfg.email_from_name)
+    message = Mail(from_email=from_email, to_emails=to, subject=subject, html_content=msg)
     try:
         import flask_config_secret
         sg = SendGridAPIClient(flask_config_secret.MAIL_SENDGRID_API_KEY)

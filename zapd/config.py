@@ -46,6 +46,7 @@ def read_cfg():
     # email
     cfg.email_admin = cp["email"]["admin"]
     cfg.email_from = cp["email"]["from"]
+    cfg.email_from_name = cp["email"]["from_name"]
 
     # secret
     cfg.seed = None
