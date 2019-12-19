@@ -184,7 +184,8 @@ class ProposalModelView(BaseModelView):
                     <button type='submit'>Decline</button>
                 </form>
             '''.format(authorize_url=authorize_url, decline_url=decline_url, proposal_id=model.id)
-        return Markup(html)
+            return Markup(html)
+        return model.status
 
     def _format_total_column(view, context, model, name):
         total = 0
