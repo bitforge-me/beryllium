@@ -188,6 +188,8 @@ class ProposalModelView(BaseModelView):
         return model.status
 
     def _format_total_column(view, context, model, name):
+        if model.status == model.STATE_DECLINED:
+            return Markup('-')
         total = 0
         total_claimed = 0
         for payment in model.payments:
