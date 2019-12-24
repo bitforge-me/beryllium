@@ -197,11 +197,14 @@ class ProposalModelView(BaseModelView):
         total = decimal.Decimal(total) / 100
         total_claimed = decimal.Decimal(total_claimed) / 100
         payments_url = url_for('.payments_view', proposal_id=model.id)
-        html = '''
-            <a href="{payments_url}">
-                {total} ({total_claimed})
-            </a>
-        '''.format(payments_url=payments_url, total=total, total_claimed=total_claimed)
+        if total_claimed == total:
+            html = '''
+                <a href="{payments_url}">{total}</a>
+            '''.format(payments_url=payments_url, total=total)
+        else:
+            html = '''
+                <a href="{payments_url}">{total} ({total_claimed})</a>
+            '''.format(payments_url=payments_url, total=total, total_claimed=total_claimed)
         return Markup(html)
 
     column_list = ('id', 'date', 'proposer', 'authorizer', 'reason', 'date_authorized', 'date_expiry', 'status', 'total')
