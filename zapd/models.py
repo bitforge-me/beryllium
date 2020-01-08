@@ -246,6 +246,7 @@ class ProposalModelView(BaseModelView):
             '''.format(payments_url=payments_url, total=total, total_claimed=total_claimed)
         return Markup(html)
 
+    column_default_sort = ('id', True)
     column_list = ('id', 'date', 'proposer', 'authorizer', 'reason', 'date_authorized', 'date_expiry', 'status', 'total')
     column_labels = {'proposer': 'Proposed by', 'authorizer': 'Authorized by'}
     column_formatters = {'status': _format_status_column, 'total': _format_total_column}
