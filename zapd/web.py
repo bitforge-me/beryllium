@@ -154,6 +154,11 @@ def _create_transaction(recipient, amount, attachment):
         logger.error(short_msg)
         err = OtherError(short_msg, ERR_EMPTY_ADDRESS)
         raise err
+    if not utils.is_address(recipient):
+        short_msg = "recipient is not a valid address"
+        logger.error(short_msg)
+        err = OtherError(short_msg, ERR_EMPTY_ADDRESS)
+        raise err
     recipient = pywaves.Address(recipient)
     asset = pywaves.Asset(cfg.asset_id)
     address_data = pw_address.sendAsset(recipient, asset, amount, attachment, feeAsset=asset, txFee=asset_fee)
