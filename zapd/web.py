@@ -228,7 +228,7 @@ def process_proposals():
         for payment in proposal.payments:
             if payment.status == payment.STATE_CREATED:
                 if payment.email:
-                    utils.email_payment_claim(logger, payment.email, payment.token)
+                    utils.email_payment_claim(logger, payment)
                     payment.status = payment.STATE_SENT_CLAIM_LINK
                     db.session.add(payment)
                     logger.info(f"Sent payment claim url to {payment.email}")

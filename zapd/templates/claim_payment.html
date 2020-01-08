@@ -3,10 +3,12 @@
 <div class="container">
     <div class="row">
         <div class="col-sm-10 col-sm-offset-1">
-            <h4>Payment of {{payment.amount|int2zap}} ZAP</h4>
-            <p>
-                Message: "{{payment.message}}"
-            </p>
+            <h3>You can claim a payment of {{payment.amount|int2zap}} ZAP</h3>
+            <h4>Expiry Date:</h4>
+            <p>{{payment.proposal.date_expiry}}</p>
+            <h4>Message:</h4>
+            <p>{{payment.message}}</p>
+            <h4>Claim form:</h4>
             <form method="post">
             {%if not recipient%}
                 <input type="text" name="recipient" placeholder="Wallet address"/>
@@ -14,7 +16,7 @@
                 Wallet address: {{recipient}}<br/>
             {%endif%}
             {%if payment.status == payment.STATE_SENT_CLAIM_LINK%}
-                <input type="submit" />
+                <input type="submit" value="Submit" />
             {%endif%}
             </form>
             {%if payment.status == payment.STATE_SENT_FUNDS%}

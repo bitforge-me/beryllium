@@ -89,10 +89,10 @@ def email_buffer(logger, msg, buf):
     msg = f"{msg}\n\n{buf}"
     send_email(logger, "zapd buffer issue", msg)
 
-def email_payment_claim(logger, email, token):
-    url = url_for("claim_payment", token=token, _external=True)
-    msg = f"claim your payment <a href='{url}'>here</a>"
-    send_email(logger, "claim your payment", msg, email)
+def email_payment_claim(logger, payment):
+    url = url_for("claim_payment", token=payment.token, _external=True)
+    msg = f"You have a ZAP payment waiting!<br/><br/>Claim your payment <a href='{url}'>here</a>"
+    send_email(logger, "Claim your ZAP payment", msg, payment.email)
 
 def generate_key(num=20):
     return binascii.hexlify(os.urandom(num)).decode()
