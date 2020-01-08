@@ -1,6 +1,7 @@
 import time
 import datetime
 import decimal
+import csv
 
 from flask import redirect, url_for, request, flash
 from flask_security import Security, SQLAlchemyUserDatastore, \
@@ -8,7 +9,8 @@ from flask_security import Security, SQLAlchemyUserDatastore, \
 from flask_admin import expose
 from flask_admin.helpers import get_form_data
 from flask_admin.contrib import sqla
-from wtforms.fields import TextField, DecimalField
+from wtforms.fields import TextField, DecimalField, FileField
+from wtforms import validators
 from marshmallow import Schema, fields
 from markupsafe import Markup
 
@@ -163,6 +165,41 @@ class RestrictedModelView(BaseModelView):
                 current_user.is_authenticated and
                 current_user.has_role('admin'))
 
+def validate_recipient(recipient):
+    if not recipient or \
+       (not is_email(recipient) and not is_mobile(recipient) and not is_address(recipient)):
+        return False
+    ##TODO: mobile not yet implemented
+    if is_mobile(recipient):
+        return False
+    ##TODO: direct wallet address not yet implemented
+    if is_address(recipient):
+        return False
+    return True
+
+def validate_csv(data):
+    rows = []
+    try:
+        data = data.decode('utf-8')
+    except:
+        return False
+    data = data.splitlines()
+    reader = csv.reader(data)
+    for row in reader:
+        if len(row) != 3:
+            return False
+        recipient, message, amount = row
+        if not validate_recipient(recipient):
+            return False
+        try:
+            amount = decimal.Decimal(amount)
+        except ValueError:
+            return False
+        if amount <= 0:
+            return False
+        rows.append((recipient, message, amount))
+    return rows
+
 class ProposalModelView(BaseModelView):
     can_create = False
     can_delete = False
@@ -212,38 +249,52 @@ class ProposalModelView(BaseModelView):
     column_list = ('id', 'date', 'proposer', 'authorizer', 'reason', 'date_authorized', 'date_expiry', 'status', 'total')
     column_labels = {'proposer': 'Proposed by', 'authorizer': 'Authorized by'}
     column_formatters = {'status': _format_status_column, 'total': _format_total_column}
-    form_columns = ['reason', 'recipient', 'message', 'amount']
-    form_extra_fields = {'recipient': TextField('Recipient'), 'message': TextField('Message'), 'amount': DecimalField('Amount')}
+    form_columns = ['reason', 'recipient', 'message', 'amount', 'csvfile']
+    form_extra_fields = {'recipient': TextField('Recipient'), 'message': TextField('Message'), 'amount': DecimalField('Amount', validators=[validators.Optional()]), 'csvfile': FileField('CSV File')}
 
-    def validate_form(self, form):
-        if not form.recipient.data or \
-           (not is_email(form.recipient.data) and not is_mobile(form.recipient.data) and not is_address(form.recipient.data)):
-            flash("Recipient is invalid")
-            return False
-        ##TODO: temporary
-        if is_mobile(form.recipient.data):
-            flash("Mobile number not yet implemented")
-            return False
-        if is_address(form.recipient.data):
-            flash("Mobile number not yet implemented")
-            return False
-        ##
-        if not form.amount.data or form.amount.data <= 0:
-            flash("Amount must be greater then 0")
-            return False
-        return super(BaseModelView, self).validate_form(form)
+    def _validate_form(self, form):
+        csv_rows = None
+        if not form.reason.data:
+            return False, "Empty reason value", csv_rows
+        # do csv file first
+        if form.csvfile.data:
+            csv_rows = validate_csv(form.csvfile.data.stream.read())
+            if not csv_rows:
+                return False, "Invalid CSV file", csv_rows
+        else:
+            # if not csv file then do other:
+            if not validate_recipient(form.recipient.data):
+                return False, "Recipient is invalid", csv_rows
+            if not form.amount.data or form.amount.data <= 0:
+                return False, "Amount must be greater then 0", csv_rows
+        return True, "", csv_rows
+
+    def _add_payment(self, model, recipient, message, amount):
+        email = recipient if is_email(recipient) else None 
+        mobile = recipient if is_mobile(recipient) else None
+        address = recipient if is_address(recipient) else None
+        amount = int(amount * 100)
+        payment = Payment(model, mobile, email, address, message, amount)
+        self.session.add(payment)
 
     def on_model_change(self, form, model, is_created):
         if is_created:
+            # validate
+            res, msg, csv_rows = self._validate_form(form)
+            if not res:
+                raise validators.ValidationError(msg)
+            # generate model defaults
             model.generate_defaults()
-            recipient = form.recipient.data
-            email = recipient if is_email(recipient) else None 
-            mobile = recipient if is_mobile(recipient) else None
-            address = recipient if is_address(recipient) else None
-            message = form.message.data
-            amount = int(form.amount.data * 100)
-            payment = Payment(model, mobile, email, address, message, amount)
-            self.session.add(payment)
+            # check csv file first
+            if form.csvfile.data:
+                for recipient, message, amount in csv_rows:
+                    self._add_payment(model, recipient, message, amount)
+            # or just process basic fields
+            else:
+                recipient = form.recipient.data
+                message = form.message.data
+                amount = form.amount.data
+                self._add_payment(model, recipient, message, amount)
 
     def is_accessible(self):
         if not (current_user.is_active and current_user.is_authenticated):
