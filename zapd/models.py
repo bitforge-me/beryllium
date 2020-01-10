@@ -95,6 +95,24 @@ class Payment(db.Model):
     def __repr__(self):
         return "<Payment %r>" % (self.token)
 
+categories_proposals = db.Table(
+    'categories_proposals',
+    db.Column('proposal_id', db.Integer(), db.ForeignKey('proposal.id')),
+    db.Column('category_id', db.Integer(), db.ForeignKey('category.id'))
+)
+
+class Category(db.Model):
+    id = db.Column(db.Integer(), primary_key=True)
+    name = db.Column(db.String(80), unique=True)
+    description = db.Column(db.String(255))
+
+    @classmethod
+    def from_name(cls, session, name):
+        return session.query(cls).filter(cls.name == name).first()
+
+    def __str__(self):
+        return self.name
+
 class Proposal(db.Model):
     STATE_CREATED = "created"
     STATE_AUTHORIZED = "authorized"
@@ -111,6 +129,8 @@ class Proposal(db.Model):
     date_authorized = db.Column(db.DateTime())
     date_expiry = db.Column(db.DateTime())
     status = db.Column(db.String(255))
+    categories = db.relationship('Category', secondary=categories_proposals,
+                            backref=db.backref('proposals', lazy='dynamic'))
 
     def __init__(self, proposer, reason):
         self.generate_defaults()
@@ -247,10 +267,10 @@ class ProposalModelView(BaseModelView):
         return Markup(html)
 
     column_default_sort = ('id', True)
-    column_list = ('id', 'date', 'proposer', 'authorizer', 'reason', 'date_authorized', 'date_expiry', 'status', 'total')
+    column_list = ('id', 'date', 'proposer', 'categories', 'authorizer', 'reason', 'date_authorized', 'date_expiry', 'status', 'total')
     column_labels = {'proposer': 'Proposed by', 'authorizer': 'Authorized by'}
     column_formatters = {'status': _format_status_column, 'total': _format_total_column}
-    form_columns = ['reason', 'recipient', 'message', 'amount', 'csvfile']
+    form_columns = ['reason', 'categories', 'recipient', 'message', 'amount', 'csvfile']
     form_extra_fields = {'recipient': TextField('Recipient'), 'message': TextField('Message'), 'amount': DecimalField('Amount', validators=[validators.Optional()]), 'csvfile': FileField('CSV File')}
 
     def _validate_form(self, form):

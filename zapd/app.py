@@ -16,7 +16,7 @@ import web
 import utx
 import utils
 from app_core import app, db
-from models import user_datastore, User, Role
+from models import user_datastore, User, Role, Category
 
 cfg = config.read_cfg()
 logger = logging.getLogger(__name__)
@@ -59,6 +59,15 @@ def create_role(name, desc):
         role.description = desc
     db.session.add(role)
     return role
+
+def create_category(name, desc):
+    category = Category.from_name(db.session, name)
+    if not category:
+        category = Category(name=name, description=desc)
+    else:
+        category.description = desc
+    db.session.add(category)
+    return category
 
 def add_role(email, role_name):
     with app.app_context():
@@ -110,6 +119,8 @@ if __name__ == "__main__":
     create_role("admin", "super user")
     create_role("proposer", "Can propose zap payments")
     create_role("authorizer", "Can authorize zap payments")
+    create_category("marketing", "")
+    create_category("misc", "")
     db.session.commit()
 
     # process commands
