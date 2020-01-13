@@ -7,8 +7,11 @@ from flask import redirect, url_for, request, flash
 from flask_security import Security, SQLAlchemyUserDatastore, \
     UserMixin, RoleMixin, login_required, current_user
 from flask_admin import expose
+from flask_admin.babel import lazy_gettext
 from flask_admin.helpers import get_form_data
 from flask_admin.contrib import sqla
+from flask_admin.contrib.sqla.filters import BaseSQLAFilter
+from flask_admin.model import filters
 from wtforms.fields import TextField, DecimalField, FileField
 from wtforms import validators
 from marshmallow import Schema, fields
@@ -220,10 +223,56 @@ def validate_csv(data):
         rows.append((recipient, message, amount))
     return rows
 
+class DateBetweenFilter(BaseSQLAFilter, filters.BaseDateBetweenFilter):
+    def __init__(self, column, name, options=None, data_type=None):
+        super(DateBetweenFilter, self).__init__(column,
+                                                name,
+                                                options,
+                                                data_type='daterangepicker')
+
+    def apply(self, query, value, alias=None):
+        start, end = value
+        return query.filter(self.get_column(alias).between(start, end))
+
+class FilterEqual(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        return query.filter(self.get_column(alias) == value)
+
+    def operation(self):
+        return lazy_gettext('equals')
+
+class FilterNotEqual(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        return query.filter(self.get_column(alias) != value)
+
+    def operation(self):
+        return lazy_gettext('not equal')
+
+class FilterGreater(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        return query.filter(self.get_column(alias) > value)
+
+    def operation(self):
+        return lazy_gettext('greater than')
+
+class FilterSmaller(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        return query.filter(self.get_column(alias) < value)
+
+    def operation(self):
+        return lazy_gettext('smaller than')
+
+class DateTimeGreaterFilter(FilterGreater, filters.BaseDateTimeFilter):
+    pass
+
+class DateSmallerFilter(FilterSmaller, filters.BaseDateFilter):
+    pass
+
 class ProposalModelView(BaseModelView):
     can_create = False
     can_delete = False
     can_edit = False
+    can_export = True
 
     def _format_status_column(view, context, model, name):
         if model.status in (model.STATE_AUTHORIZED, model.STATE_DECLINED, model.STATE_EXPIRED):
@@ -270,6 +319,7 @@ class ProposalModelView(BaseModelView):
     column_list = ('id', 'date', 'proposer', 'categories', 'authorizer', 'reason', 'date_authorized', 'date_expiry', 'status', 'total')
     column_labels = {'proposer': 'Proposed by', 'authorizer': 'Authorized by'}
     column_formatters = {'status': _format_status_column, 'total': _format_total_column}
+    column_filters = [ DateBetweenFilter(Proposal.date, 'Search Date'), DateTimeGreaterFilter(Proposal.date, 'Search Date'), DateSmallerFilter(Proposal.date, 'Search Date'), FilterEqual(Proposal.status, 'Search Status'), FilterNotEqual(Proposal.status, 'Search Status') ]
     form_columns = ['reason', 'categories', 'recipient', 'message', 'amount', 'csvfile']
     form_extra_fields = {'recipient': TextField('Recipient'), 'message': TextField('Message'), 'amount': DecimalField('Amount', validators=[validators.Optional()]), 'csvfile': FileField('CSV File')}
 
