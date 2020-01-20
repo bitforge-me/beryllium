@@ -192,9 +192,6 @@ def validate_recipient(recipient):
     if not recipient or \
        (not is_email(recipient) and not is_mobile(recipient) and not is_address(recipient)):
         return False
-    ##TODO: mobile not yet implemented
-    if is_mobile(recipient):
-        return False
     ##TODO: direct wallet address not yet implemented
     if is_address(recipient):
         return False

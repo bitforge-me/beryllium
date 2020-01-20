@@ -223,6 +223,7 @@ def process_proposals():
     db.session.commit()
     # process authorized 
     emails = 0
+    sms_messages = 0
     proposals = Proposal.in_status(db.session, Proposal.STATE_AUTHORIZED)
     for proposal in proposals:
         for payment in proposal.payments:
@@ -234,13 +235,17 @@ def process_proposals():
                     logger.info(f"Sent payment claim url to {payment.email}")
                     emails += 1
                 elif payment.mobile:
-                    raise("not yet implemented")
+                    utils.sms_payment_claim(logger, payment)
+                    payment.status = payment.STATE_SENT_CLAIM_LINK
+                    db.session.add(payment)
+                    logger.info(f"Sent payment claim url to {payment.mobile}")
+                    sms_messages += 1
                 elif payment.wallet_address:
                     ##TODO: set status and commit before sending so we cannot send twice
-                    raise("not yet implemented")
+                    raise Exception("not yet implemented")
     db.session.commit()
     logger.info(f"payment statuses commited")
-    return f"done (expired {expired}, emails {emails})"
+    return f"done (expired {expired}, emails {emails}, SMS messages {sms_messages})"
 
 def process_claim(payment, dbtx):
     if payment.proposal.status != payment.proposal.STATE_AUTHORIZED:

@@ -94,6 +94,15 @@ def email_payment_claim(logger, payment):
     msg = f"You have a ZAP payment waiting!<br/><br/>Claim your payment <a href='{url}'>here</a>"
     send_email(logger, "Claim your ZAP payment", msg, payment.email)
 
+def sms_payment_claim(logger, payment):
+    # SMS messages are sent by burst SMS
+    #  - the authorization is by the sender email
+    #  - the country code is configured by the account
+    url = url_for("claim_payment", token=payment.token, _external=True)
+    msg = f"You have a ZAP payment waiting! Claim your payment {url}"
+    email = str(payment.mobile) + "@transmitsms.com"
+    send_email(logger, "ZAP Payment", msg, email)
+
 def generate_key(num=20):
     return binascii.hexlify(os.urandom(num)).decode()
 
