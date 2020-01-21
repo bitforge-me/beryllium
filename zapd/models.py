@@ -11,7 +11,7 @@ from flask_admin.babel import lazy_gettext
 from flask_admin.helpers import get_form_data
 from flask_admin.contrib import sqla
 from flask_admin.contrib.sqla.filters import BaseSQLAFilter
-from flask_admin.model import filters
+from flask_admin.model import filters, typefmt
 from wtforms.fields import TextField, DecimalField, FileField
 from wtforms import validators
 from marshmallow import Schema, fields
@@ -163,6 +163,16 @@ class Proposal(db.Model):
 user_datastore = SQLAlchemyUserDatastore(db, User, Role)
 security = Security(app, user_datastore)
 
+# Setup base flask admin formatters
+
+def date_format(view, value):
+    return value.strftime('%Y.%m.%d %H:%M')
+
+MY_DEFAULT_FORMATTERS = dict(typefmt.BASE_FORMATTERS)
+MY_DEFAULT_FORMATTERS.update({
+    datetime.date: date_format,
+})
+
 # Create customized model view classes
 class BaseModelView(sqla.ModelView):
     def _handle_view(self, name, **kwargs):
@@ -271,6 +281,21 @@ class ProposalModelView(BaseModelView):
     can_edit = False
     can_export = True
 
+    def _format_proposer_column(view, context, model, name):
+        if name == 'proposer':
+            if not model.proposer:
+                return ''
+            email = model.proposer.email
+        elif name == 'authorizer':
+            if not model.authorizer:
+                return ''
+            email = model.authorizer.email
+        else:
+            raise Exception('invalid column')
+        name = email.split("@")[0]
+        html = '<span title="{email}">{name}</span>'.format(email=email, name=name)
+        return Markup(html)
+
     def _format_status_column(view, context, model, name):
         if model.status in (model.STATE_AUTHORIZED, model.STATE_DECLINED, model.STATE_EXPIRED):
             return model.status
@@ -312,7 +337,7 @@ class ProposalModelView(BaseModelView):
             '''.format(payments_url=payments_url, total=total, total_claimed=total_claimed)
         return Markup(html)
 
-    def _format_total_column_text_total(view, context, model, name):
+    def _format_total_column_export(view, context, model, name):
         if model.status == model.STATE_DECLINED:
             return Markup('-')
         total = 0
@@ -321,7 +346,7 @@ class ProposalModelView(BaseModelView):
         total = total / 100
         return Markup(total)
 
-    def _format_total_column_text_totalclaimed(view, context, model, name):
+    def _format_totalclaimed_column_export(view, context, model, name):
         if model.status == model.STATE_DECLINED:
             return Markup('-')
         total_claimed = 0
@@ -334,10 +359,11 @@ class ProposalModelView(BaseModelView):
     column_default_sort = ('id', True)
     column_list = ('id', 'date', 'proposer', 'categories', 'authorizer', 'reason', 'date_authorized', 'date_expiry', 'status', 'total')
     column_labels = {'proposer': 'Proposed by', 'authorizer': 'Authorized by'}
-    column_formatters = {'status': _format_status_column, 'total': _format_total_column}
+    column_type_formatters = MY_DEFAULT_FORMATTERS
+    column_formatters = {'proposer': _format_proposer_column, 'authorizer': _format_proposer_column, 'status': _format_status_column, 'total': _format_total_column}
     column_filters = [ DateBetweenFilter(Proposal.date, 'Search Date'), DateTimeGreaterFilter(Proposal.date, 'Search Date'), DateSmallerFilter(Proposal.date, 'Search Date'), FilterEqual(Proposal.status, 'Search Status'), FilterNotEqual(Proposal.status, 'Search Status') ]
     column_export_list = ('id', 'date', 'proposer', 'categories', 'authorizer', 'reason', 'date_authorized', 'date_expiry', 'status', 'total', 'claimed')
-    column_formatters_export = {'total': _format_total_column_text_total, 'claimed': _format_total_column_text_totalclaimed}
+    column_formatters_export = {'total': _format_total_column_export, 'claimed': _format_totalclaimed_column_export}
     form_columns = ['reason', 'categories', 'recipient', 'message', 'amount', 'csvfile']
     form_extra_fields = {'recipient': TextField('Recipient'), 'message': TextField('Message'), 'amount': DecimalField('Amount', validators=[validators.Optional()]), 'csvfile': FileField('CSV File')}
 
