@@ -312,11 +312,32 @@ class ProposalModelView(BaseModelView):
             '''.format(payments_url=payments_url, total=total, total_claimed=total_claimed)
         return Markup(html)
 
+    def _format_total_column_text_total(view, context, model, name):
+        if model.status == model.STATE_DECLINED:
+            return Markup('-')
+        total = 0
+        for payment in model.payments:
+            total += payment.amount
+        total = total / 100
+        return Markup(total)
+
+    def _format_total_column_text_totalclaimed(view, context, model, name):
+        if model.status == model.STATE_DECLINED:
+            return Markup('-')
+        total_claimed = 0
+        for payment in model.payments:
+            if payment.status == payment.STATE_SENT_FUNDS:
+                total_claimed += payment.amount
+        total_claimed = total_claimed / 100
+        return Markup(total_claimed)
+
     column_default_sort = ('id', True)
     column_list = ('id', 'date', 'proposer', 'categories', 'authorizer', 'reason', 'date_authorized', 'date_expiry', 'status', 'total')
     column_labels = {'proposer': 'Proposed by', 'authorizer': 'Authorized by'}
     column_formatters = {'status': _format_status_column, 'total': _format_total_column}
     column_filters = [ DateBetweenFilter(Proposal.date, 'Search Date'), DateTimeGreaterFilter(Proposal.date, 'Search Date'), DateSmallerFilter(Proposal.date, 'Search Date'), FilterEqual(Proposal.status, 'Search Status'), FilterNotEqual(Proposal.status, 'Search Status') ]
+    column_export_list = ('id', 'date', 'proposer', 'categories', 'authorizer', 'reason', 'date_authorized', 'date_expiry', 'status', 'total', 'claimed')
+    column_formatters_export = {'total': _format_total_column_text_total, 'claimed': _format_total_column_text_totalclaimed}
     form_columns = ['reason', 'categories', 'recipient', 'message', 'amount', 'csvfile']
     form_extra_fields = {'recipient': TextField('Recipient'), 'message': TextField('Message'), 'amount': DecimalField('Amount', validators=[validators.Optional()]), 'csvfile': FileField('CSV File')}
 
