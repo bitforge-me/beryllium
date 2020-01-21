@@ -121,6 +121,10 @@ if __name__ == "__main__":
     create_role("authorizer", "Can authorize zap payments")
     create_category("marketing", "")
     create_category("misc", "")
+    create_category("customer incentive", "")
+    create_category("staff incentive", "")
+    create_category("merchant incentive", "")
+    create_category("testing", "")
     db.session.commit()
 
     # process commands
