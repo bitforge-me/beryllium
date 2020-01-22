@@ -511,6 +511,7 @@ class ProposalModelView(BaseModelView):
         # process the proposal
         if proposal.status == proposal.STATE_CREATED:
             proposal.status = proposal.STATE_DECLINED
+            proposal.authorizer = current_user
         # commit to db
         try:
             self.session.commit()
