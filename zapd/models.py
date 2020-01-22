@@ -751,3 +751,18 @@ class DashboardHistory(db.Model):
         now = time.time()
         week = 60 * 60 * 24 * 7
         return session.query(cls).filter(cls.date > now - week).all()
+
+class TransactionRestrictedModelView(sqla.ModelView):
+    can_create = False
+    can_delete = False
+    can_edit = False
+    can_export = True
+    column_filters = [ FilterEqual(Transaction.txid, 'Search Transaction ID'), FilterNotEqual(Transaction.txid, 'Search Transaction ID'), FilterEqual(Transaction.invoice_id, 'Search Invoice ID'), FilterNotEqual(Transaction.invoice_id, 'Search Invoice ID'), FilterEqual(Transaction.sender, 'Search Sender'), FilterNotEqual(Transaction.sender, 'Search Sender'), FilterEqual(Transaction.recipient, 'Search Recipient'), FilterNotEqual(Transaction.sender, 'Search Recipient') ]
+    def is_accessible(self):
+        if not current_user.is_active or not current_user.is_authenticated:
+            return False
+
+        if current_user.has_role('admin'):
+            self.can_export = True
+            return True
+
