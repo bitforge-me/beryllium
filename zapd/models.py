@@ -348,26 +348,19 @@ class ProposalModelView(BaseModelView):
             return Markup(html)
         return model.status
 
-    def _format_total_column(view, context, model, name):
+    def _format_claimed_column(view, context, model, name):
         if model.status == model.STATE_DECLINED:
             return Markup('-')
-        total = 0
         total_claimed = 0
         for payment in model.payments:
-            total += payment.amount
             if payment.status == payment.STATE_SENT_FUNDS:
                 total_claimed += payment.amount
-        total = decimal.Decimal(total) / 100
         total_claimed = decimal.Decimal(total_claimed) / 100
         payments_url = url_for('.payments_view', proposal_id=model.id)
-        if total_claimed == total:
-            html = '''
-                <a href="{payments_url}">{total}</a>
-            '''.format(payments_url=payments_url, total=total)
-        else:
-            html = '''
-                <a href="{payments_url}">{total} ({total_claimed})</a>
-            '''.format(payments_url=payments_url, total=total, total_claimed=total_claimed)
+
+        html = '''
+            <a href="{payments_url}">{total_claimed}</a>
+        '''.format(payments_url=payments_url, total_claimed=total_claimed)
         return Markup(html)
 
     def _format_total_column_export(view, context, model, name):
@@ -390,10 +383,10 @@ class ProposalModelView(BaseModelView):
         return Markup(total_claimed)
 
     column_default_sort = ('id', True)
-    column_list = ('id', 'date', 'proposer', 'categories', 'authorizer', 'reason', 'date_authorized', 'date_expiry', 'status', 'total')
+    column_list = ('id', 'date', 'proposer', 'categories', 'authorizer', 'reason', 'date_authorized', 'date_expiry', 'status', 'Proposed Total', 'Claimed')
     column_labels = {'proposer': 'Proposed by', 'authorizer': 'Authorized by'}
     column_type_formatters = MY_DEFAULT_FORMATTERS
-    column_formatters = {'proposer': _format_proposer_column, 'authorizer': _format_proposer_column, 'status': _format_status_column, 'total': _format_total_column}
+    column_formatters = {'proposer': _format_proposer_column, 'authorizer': _format_proposer_column, 'status': _format_status_column, 'Proposed Total': _format_total_column_export, 'Claimed': _format_claimed_column}
     column_filters = [ DateBetweenFilter(Proposal.date, 'Search Date'), DateTimeGreaterFilter(Proposal.date, 'Search Date'), DateSmallerFilter(Proposal.date, 'Search Date'), FilterEqual(Proposal.status, 'Search Status', options=get_status_options), FilterNotEqual(Proposal.status, 'Search Status', options=get_status_options), FilterByProposer(None, 'Search Proposer'), FilterByAuthorizer(None, 'Search Authorizer'), FilterByCategory(None, 'Search Category') ]
     column_export_list = ('id', 'date', 'proposer', 'categories', 'authorizer', 'reason', 'date_authorized', 'date_expiry', 'status', 'total', 'claimed')
     column_formatters_export = {'total': _format_total_column_export, 'claimed': _format_totalclaimed_column_export}
