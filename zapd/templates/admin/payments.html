@@ -13,6 +13,7 @@
                     <th>Message</th>
                     <th>Amount</th>
                     <th>Status</th>
+                    <th>TransactionID</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -24,6 +25,7 @@
                         <td>{{payment.message}}</td>
                         <td>{{payment.amount|int2zap}} ZAP</td>
                         <td>{{payment.status}}</td>
+                        <td>{{payment.txid}}</td>
                     </tr>
                 {% endfor %}
                 </tbody>
