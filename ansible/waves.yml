@@ -5,7 +5,7 @@
   become_user: root
 
   vars:
-    waves_version: "{{ '1.1.5' if TESTNET else '1.1.5' }}"
+    waves_version: "{{ '1.1.9' if TESTNET else '1.1.9' }}"
     waves_file: "waves-all-{{ waves_version }}.jar"
     waves_conf_file: "{{ 'waves_testnet.conf' if TESTNET else 'waves_mainnet.conf' }}"
   tasks:
