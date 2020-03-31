@@ -122,6 +122,8 @@ class Proposal(db.Model):
     STATE_DECLINED = "declined"
     STATE_EXPIRED = "expired"
 
+    HOURS_EXPIRY = 72
+
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.DateTime(), nullable=False)
     proposer_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -469,7 +471,7 @@ class ProposalModelView(BaseModelView):
             proposal.status = proposal.STATE_AUTHORIZED
             now = datetime.datetime.now()
             proposal.date_authorized = now
-            proposal.date_expiry = now + datetime.timedelta(days = 3)
+            proposal.date_expiry = now + datetime.timedelta(hours = Proposal.HOURS_EXPIRY)
             proposal.authorizer = current_user
         # commit to db
         try:

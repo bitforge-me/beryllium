@@ -229,13 +229,13 @@ def process_proposals():
         for payment in proposal.payments:
             if payment.status == payment.STATE_CREATED:
                 if payment.email:
-                    utils.email_payment_claim(logger, payment)
+                    utils.email_payment_claim(logger, payment, proposal.HOURS_EXPIRY)
                     payment.status = payment.STATE_SENT_CLAIM_LINK
                     db.session.add(payment)
                     logger.info(f"Sent payment claim url to {payment.email}")
                     emails += 1
                 elif payment.mobile:
-                    utils.sms_payment_claim(logger, payment)
+                    utils.sms_payment_claim(logger, payment, proposal.HOURS_EXPIRY)
                     payment.status = payment.STATE_SENT_CLAIM_LINK
                     db.session.add(payment)
                     logger.info(f"Sent payment claim url to {payment.mobile}")

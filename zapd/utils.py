@@ -89,17 +89,17 @@ def email_buffer(logger, msg, buf):
     msg = f"{msg}\n\n{buf}"
     send_email(logger, "zapd buffer issue", msg)
 
-def email_payment_claim(logger, payment):
+def email_payment_claim(logger, payment, hours_expiry):
     url = url_for("claim_payment", token=payment.token, _external=True)
-    msg = f"You have a ZAP payment waiting!<br/><br/>Claim your payment <a href='{url}'>here</a>"
+    msg = f"You have a ZAP payment waiting!<br/><br/>Claim your payment <a href='{url}'>here</a><br/><br/>Claim within {hours_expiry} hours"
     send_email(logger, "Claim your ZAP payment", msg, payment.email)
 
-def sms_payment_claim(logger, payment):
+def sms_payment_claim(logger, payment, hours_expiry):
     # SMS messages are sent by burst SMS
     #  - the authorization is by the sender email
     #  - the country code is configured by the account
     url = url_for("claim_payment", token=payment.token, _external=True)
-    msg = f"You have a ZAP payment waiting! Claim your payment {url}"
+    msg = f"You have a ZAP payment waiting! Claim your payment (within {hours_expiry} hours) {url}"
     email = str(payment.mobile) + "@transmitsms.com"
     send_email(logger, "ZAP Payment", msg, email)
 
