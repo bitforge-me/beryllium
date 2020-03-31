@@ -78,7 +78,7 @@ class Payment(db.Model):
 
     def __init__(self, proposal, mobile, email, wallet_address, message, amount):
         self.proposal = proposal
-        self.token = generate_key()
+        self.token = generate_key(8)
         self.mobile = mobile
         self.email = email
         self.wallet_address = wallet_address
