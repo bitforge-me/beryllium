@@ -256,7 +256,7 @@ def process_claim(payment, dbtx):
     if not dbtx:
         try:
             recipient = request.form["recipient"]
-            dbtx = _create_transaction(recipient, payment.amount, payment.message)
+            dbtx = _create_transaction(recipient, payment.amount, None)
             payment.txid = dbtx.txid
             db.session.add(dbtx)
             db.session.add(payment)
