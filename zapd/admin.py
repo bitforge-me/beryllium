@@ -15,12 +15,12 @@ admin = flask_admin.Admin(
 )
 
 # Add model views
-admin.add_view(RestrictedModelView(Role, db.session))
-admin.add_view(UserModelView(User, db.session))
+admin.add_view(UserModelView(User, db.session, category='Admin'))
+admin.add_view(RestrictedModelView(Role, db.session, category='Admin'))
+admin.add_view(RestrictedModelView(Category, db.session, category='Admin'))
 admin.add_view(ProposalModelView(Proposal, db.session))
-admin.add_view(RestrictedModelView(Category, db.session))
-admin.add_view(TransactionRestrictedModelView(Transaction, db.session))
-admin.add_view(RestrictedModelView(CreatedTransaction, db.session))
+admin.add_view(TransactionRestrictedModelView(Transaction, db.session, category='ZAPD'))
+admin.add_view(RestrictedModelView(CreatedTransaction, db.session, category='ZAPD'))
 
 # define a context processor for merging flask-admin's template context into the
 # flask-security views.
