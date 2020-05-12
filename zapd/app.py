@@ -125,6 +125,7 @@ if __name__ == "__main__":
     create_category("staff incentive", "")
     create_category("merchant incentive", "")
     create_category("testing", "")
+    create_category("rebate", "")
     db.session.commit()
 
     # process commands
