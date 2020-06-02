@@ -170,6 +170,32 @@ class Proposal(db.Model):
     def __repr__(self):
         return "<Proposal %r>" % (self.id)
 
+class AMWallet(db.Model):
+    id = db.Column(db.Integer(), primary_key=True)
+    address = db.Column(db.String(), unique=True)
+    devices = db.relationship('AMDevice', backref='am_wallet', lazy=True)
+
+    @classmethod
+    def from_address(cls, session, address):
+        return session.query(cls).filter(cls.address == address).first()
+
+    def __repr__(self):
+        return "<Wallet Addres %r>" % (self.address)
+
+class AMDevice(db.Model):
+    id = db.Column(db.Integer(), primary_key=True)
+    device_imei = db.Column(db.String(), unique=True)
+    device_os = db.Column(db.String())
+    device_mobile_no = db.Column(db.String())
+    wallet_id = db.Column(db.Integer, db.ForeignKey('am_wallet.id'), nullable=False)
+
+    @classmethod
+    def from_device_id(cls, session, device_imei):
+        return session.query(cls).filter(cls.device_imei == device_imei).first()
+
+    def __repr__(self):
+        return "<imei_id %r>" % (self.device_imei)
+
 # Setup Flask-Security
 user_datastore = SQLAlchemyUserDatastore(db, User, Role)
 security = Security(app, user_datastore)
@@ -367,6 +393,27 @@ class FilterByStatusNotEqual(BaseSQLAFilter):
     def get_options(self, view):
         # return a generator that is reloaded each time it is used
         return ReloadingIterator(get_statuses)
+
+class FilterByDeviceOS(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        return query.filter(AMDevice.device_os == value)
+
+    def operation(self):
+        return u'equals'
+
+class FilterByMobileNo(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        return query.filter(AMDevice.device_mobile_no == value)
+
+    def operation(self):
+        return u'equals'
+
+class FilterByZapAddress(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        return query.filter(AMWallet.address == value)
+
+    def operation(self):
+        return u'equals'
 
 class ProposalModelView(BaseModelView):
     can_create = False
@@ -817,3 +864,34 @@ class TransactionRestrictedModelView(sqla.ModelView):
             self.can_export = True
             return True
 
+class WalletRestrictedModelView(sqla.ModelView):
+    can_create = False
+    can_delete = False
+    can_edit = False
+    #column_list = ['email', 'roles']
+    #column_editable_list = ['roles']
+
+    def is_accessible(self):
+        if not current_user.is_active or not current_user.is_authenticated:
+            return False
+
+        if current_user.has_role('admin'):
+            self.can_export = True
+            return True
+
+class AMDeviceRestrictedModelView(sqla.ModelView):
+    can_create = False
+    can_delete = False
+    can_edit = False
+    #column_list = ['email', 'roles']
+    #column_editable_list = ['roles']
+    column_labels = {'device_imei': 'IMEI ID', 'device_os': 'OS', 'device_mobile_no': 'Mobile No.', 'wallet': 'ZAP Address'}
+    column_filters = [ FilterByDeviceOS(None, 'Search Device OS'), FilterByMobileNo(None, 'Search Mobile No'), FilterByZapAddress(None, 'Search Zap Address') ]
+
+    def is_accessible(self):
+        if not current_user.is_active or not current_user.is_authenticated:
+            return False
+
+        if current_user.has_role('admin'):
+            self.can_export = True
+            return True
