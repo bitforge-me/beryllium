@@ -89,6 +89,10 @@ def email_buffer(logger, msg, buf):
     msg = f"{msg}\n\n{buf}"
     send_email(logger, "zapd buffer issue", msg)
 
+def email_wallet_address_duplicate(logger, address):
+    msg = f"the duplicate address is: {address}"
+    send_email(logger, "zapd duplicate wallet address", msg)
+
 def email_payment_claim(logger, payment, hours_expiry):
     url = url_for("claim_payment", token=payment.token, _external=True)
     msg = f"You have a ZAP payment waiting!<br/><br/>Claim your payment <a href='{url}'>here</a><br/><br/>Claim within {hours_expiry} hours"

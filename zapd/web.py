@@ -22,7 +22,7 @@ import pyblake2
 
 import config
 from app_core import app, db
-from models import Transaction, Block, CreatedTransaction, DashboardHistory, Proposal, Payment
+from models import Transaction, Block, CreatedTransaction, DashboardHistory, Proposal, Payment, AMWallet, AMDevice
 import admin
 import utils
 
@@ -289,6 +289,34 @@ def claim_payment(token):
     if dbtx:
         recipient = json.loads(dbtx.json_data)["recipient"]
     return render_template("claim_payment.html", payment=payment, recipient=recipient)
+
+# App metrics wallet log
+@app.route("/am_wallet_log", methods=["POST"])
+def wallet_log():
+    # get request args
+    content = request.json
+    app_version = content["app_version"]
+    os = content["os"]
+    os_version = content["os_version"]
+    manufacturer = content["manufacturer"]
+    brand = content["brand"]
+    device_id = content["device_id"]
+    wallet_address = content["wallet_address"]
+    # create db objects
+    wallet = AMWallet.from_address(db.session, wallet_address)
+    dupe = False
+    if not wallet:
+        wallet = AMWallet(wallet_address)
+    else:
+        dupe = True
+    device = AMDevice(wallet, app_version, os, os_version, manufacturer, brand, device_id)
+    db.session.add(wallet)
+    db.session.add(device)
+    db.session.commit()
+    # log error
+    if (dupe):
+        logger.error(f"found duplicate wallet address: {wallet_address}")
+        utils.email_wallet_address_duplicate(logger, wallet_address)
 
 @app.route("/dashboard")
 def dashboard():

@@ -170,31 +170,48 @@ class Proposal(db.Model):
     def __repr__(self):
         return "<Proposal %r>" % (self.id)
 
+# App Metrics Device
+class AMDevice(db.Model):
+    __tablename__ = 'amdevice'
+    id = db.Column(db.Integer(), primary_key=True)
+    wallet_id = db.Column(db.Integer, db.ForeignKey('amwallet.id'), nullable=False)
+    wallet = db.relationship('AMWallet', backref=db.backref('devices', lazy='dynamic'))
+    date = db.Column(db.DateTime())
+    app_version = db.Column(db.String())
+    os = db.Column(db.String())
+    os_version = db.Column(db.String())
+    manufacturer = db.Column(db.String())
+    brand = db.Column(db.String())
+    device_id = db.Column(db.String())
+
+    def __init__(self, wallet, app_version, os, os_version, manufacturer, brand, device_id):
+        self.wallet = wallet
+        self.date = datetime.datetime.now()
+        self.app_version = app_version
+        self.os = os
+        self.os_version = os_version
+        self.manufacturer = manufacturer
+        self.brand = brand
+        self.device_id = device_id
+
+    def __repr__(self):
+        return "<AMDevice %r %r>" % (self.brand, self.device_id)
+
+# App Metrics Wallet
 class AMWallet(db.Model):
+    __tablename__ = 'amwallet'
     id = db.Column(db.Integer(), primary_key=True)
     address = db.Column(db.String(), unique=True)
-    devices = db.relationship('AMDevice', backref='am_wallet', lazy=True)
+
+    def __init__(self, address):
+        self.address = address
 
     @classmethod
     def from_address(cls, session, address):
         return session.query(cls).filter(cls.address == address).first()
 
     def __repr__(self):
-        return "<Wallet Addres %r>" % (self.address)
-
-class AMDevice(db.Model):
-    id = db.Column(db.Integer(), primary_key=True)
-    device_imei = db.Column(db.String(), unique=True)
-    device_os = db.Column(db.String())
-    device_mobile_no = db.Column(db.String())
-    wallet_id = db.Column(db.Integer, db.ForeignKey('am_wallet.id'), nullable=False)
-
-    @classmethod
-    def from_device_id(cls, session, device_imei):
-        return session.query(cls).filter(cls.device_imei == device_imei).first()
-
-    def __repr__(self):
-        return "<imei_id %r>" % (self.device_imei)
+        return "<AMWallet %r>" % (self.address)
 
 # Setup Flask-Security
 user_datastore = SQLAlchemyUserDatastore(db, User, Role)
