@@ -3,7 +3,7 @@ import datetime
 import decimal
 import csv
 
-from flask import redirect, url_for, request, flash
+from flask import redirect, url_for, request, flash, has_app_context, g
 from flask_security import Security, SQLAlchemyUserDatastore, \
     UserMixin, RoleMixin, login_required, current_user
 from flask_admin import expose
@@ -19,6 +19,15 @@ from markupsafe import Markup
 
 from app_core import app, db
 from utils import generate_key, is_email, is_mobile, is_address
+
+### helper functions/classes
+
+class ReloadingIterator:
+    def __init__(self, iterator_factory):
+        self.iterator_factory = iterator_factory
+
+    def __iter__(self):
+        return self.iterator_factory()
 
 ### Define zapsend models
 
@@ -277,6 +286,33 @@ class DateTimeGreaterFilter(FilterGreater, filters.BaseDateTimeFilter):
 class DateSmallerFilter(FilterSmaller, filters.BaseDateFilter):
     pass
 
+def get_users():
+    # prevent database access when app is not yet ready
+    if has_app_context():
+        if not hasattr(g, 'users'):
+            query = User.query.order_by(User.email)
+            g.users = [(user.id, user.email) for user in query]
+        for user_id, user_email in g.users:
+            yield user_id, user_email
+
+def get_categories():
+    # prevent database access when app is not yet ready
+    if has_app_context():
+        if not hasattr(g, 'categories'):
+            query = Category.query.order_by(Category.name)
+            g.categories = [(category.id, category.name) for category in query]
+        for category_id, category_email in g.categories:
+            yield category_id, category_email
+
+def get_statuses():
+    # prevent database access when app is not yet ready
+    if has_app_context():
+        if not hasattr(g, 'statuses'):
+            query = Proposal.query.distinct(Proposal.status).group_by(Proposal.status)
+            g.statuses = [(proposal.status, proposal.status) for proposal in query]
+        for proposal_status, proposal_status in g.statuses:
+            yield proposal_status, proposal_status
+
 class FilterByProposer(BaseSQLAFilter):
     def apply(self, query, value, alias=None):
         return query.filter(Proposal.proposer_id == value)
@@ -285,7 +321,8 @@ class FilterByProposer(BaseSQLAFilter):
         return u'equals'
 
     def get_options(self, view):
-        return [(user.id, user.email) for user in User.query.order_by(User.email)]
+        # return a generator that is reloaded each time it is used
+        return ReloadingIterator(get_users)
 
 class FilterByAuthorizer(BaseSQLAFilter):
     def apply(self, query, value, alias=None):
@@ -295,7 +332,8 @@ class FilterByAuthorizer(BaseSQLAFilter):
         return u'equals'
 
     def get_options(self, view):
-        return [(user.id, user.email) for user in User.query.order_by(User.email)]
+        # return a generator that is reloaded each time it is used
+        return ReloadingIterator(get_users)
 
 class FilterByCategory(BaseSQLAFilter):
     def apply(self, query, value, alias=None):
@@ -305,10 +343,30 @@ class FilterByCategory(BaseSQLAFilter):
         return u'equals'
 
     def get_options(self, view):
-        return [(category.id, category.name) for category in Category.query.order_by(Category.name)]
+        # return a generator that is reloaded each time it is used
+        return ReloadingIterator(get_categories)
 
-def get_status_options():
-    return [(proposal.status, proposal.status) for proposal in Proposal.query.distinct(Proposal.status).group_by(Proposal.status)]
+class FilterByStatusEqual(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        return query.filter(Proposal.status == value)
+
+    def operation(self):
+        return u'equals'
+
+    def get_options(self, view):
+        # return a generator that is reloaded each time it is used
+        return ReloadingIterator(get_statuses)
+
+class FilterByStatusNotEqual(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        return query.filter(Proposal.status != value)
+
+    def operation(self):
+        return u'not equals'
+
+    def get_options(self, view):
+        # return a generator that is reloaded each time it is used
+        return ReloadingIterator(get_statuses)
 
 class ProposalModelView(BaseModelView):
     can_create = False
@@ -387,7 +445,7 @@ class ProposalModelView(BaseModelView):
     column_labels = {'proposer': 'Proposed by', 'authorizer': 'Authorized by'}
     column_type_formatters = MY_DEFAULT_FORMATTERS
     column_formatters = {'proposer': _format_proposer_column, 'authorizer': _format_proposer_column, 'status': _format_status_column, 'Proposed Total': _format_total_column, 'Claimed': _format_claimed_column}
-    column_filters = [ DateBetweenFilter(Proposal.date, 'Search Date'), DateTimeGreaterFilter(Proposal.date, 'Search Date'), DateSmallerFilter(Proposal.date, 'Search Date'), FilterEqual(Proposal.status, 'Search Status', options=get_status_options), FilterNotEqual(Proposal.status, 'Search Status', options=get_status_options), FilterByProposer(None, 'Search Proposer'), FilterByAuthorizer(None, 'Search Authorizer'), FilterByCategory(None, 'Search Category') ]
+    column_filters = [ DateBetweenFilter(Proposal.date, 'Search Date'), DateTimeGreaterFilter(Proposal.date, 'Search Date'), DateSmallerFilter(Proposal.date, 'Search Date'), FilterByStatusEqual(None, 'Search Status'), FilterByStatusNotEqual(None, 'Search Status'), FilterByProposer(None, 'Search Proposer'), FilterByAuthorizer(None, 'Search Authorizer'), FilterByCategory(None, 'Search Category') ]
     column_export_list = ('id', 'date', 'proposer', 'categories', 'authorizer', 'reason', 'date_authorized', 'date_expiry', 'status', 'total', 'claimed')
     column_formatters_export = {'total': _format_total_column, 'claimed': _format_totalclaimed_column_export}
     form_columns = ['reason', 'categories', 'recipient', 'message', 'amount', 'csvfile']
