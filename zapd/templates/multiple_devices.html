@@ -1,0 +1,14 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+{% for wallet in wallets %}
+<div class="col-lg-12">
+    <strong>Address: {{wallet.address}}</strong>
+    <ul>
+        {% for device in wallet.devices %}
+        <li>{{device.date}} -- {{device.os}} {{device.os_version}}, {{device.manufacturer}} {{device.brand}} {{device.device_id}}, app version {{device.app_version}}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endfor %}
+{% endblock %}
