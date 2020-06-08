@@ -317,6 +317,7 @@ def wallet_log():
     if (dupe):
         logger.error(f"found duplicate wallet address: {wallet_address}")
         utils.email_wallet_address_duplicate(logger, wallet_address)
+    return "ok"
 
 @app.route("/dashboard")
 def dashboard():

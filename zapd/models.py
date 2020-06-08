@@ -16,6 +16,7 @@ from wtforms.fields import TextField, DecimalField, FileField
 from wtforms import validators
 from marshmallow import Schema, fields
 from markupsafe import Markup
+from sqlalchemy import func
 
 from app_core import app, db
 from utils import generate_key, is_email, is_mobile, is_address
@@ -175,7 +176,7 @@ class AMDevice(db.Model):
     __tablename__ = 'amdevice'
     id = db.Column(db.Integer(), primary_key=True)
     wallet_id = db.Column(db.Integer, db.ForeignKey('amwallet.id'), nullable=False)
-    wallet = db.relationship('AMWallet', backref=db.backref('devices', lazy='dynamic'))
+    wallet = db.relationship('AMWallet', backref=db.backref('devices', lazy='joined'))
     date = db.Column(db.DateTime())
     app_version = db.Column(db.String())
     os = db.Column(db.String())
@@ -209,6 +210,13 @@ class AMWallet(db.Model):
     @classmethod
     def from_address(cls, session, address):
         return session.query(cls).filter(cls.address == address).first()
+
+    @classmethod
+    def with_multiple_devices(cls, session):
+        ids = []
+        for wallet in session.query(cls).join(cls.devices).group_by(cls.id).having(func.count(AMDevice.id) > 1):
+            ids.append(wallet.id)
+        return session.query(cls).filter(cls.id.in_(ids))
 
     def __repr__(self):
         return "<AMWallet %r>" % (self.address)
@@ -410,27 +418,6 @@ class FilterByStatusNotEqual(BaseSQLAFilter):
     def get_options(self, view):
         # return a generator that is reloaded each time it is used
         return ReloadingIterator(get_statuses)
-
-class FilterByDeviceOS(BaseSQLAFilter):
-    def apply(self, query, value, alias=None):
-        return query.filter(AMDevice.device_os == value)
-
-    def operation(self):
-        return u'equals'
-
-class FilterByMobileNo(BaseSQLAFilter):
-    def apply(self, query, value, alias=None):
-        return query.filter(AMDevice.device_mobile_no == value)
-
-    def operation(self):
-        return u'equals'
-
-class FilterByZapAddress(BaseSQLAFilter):
-    def apply(self, query, value, alias=None):
-        return query.filter(AMWallet.address == value)
-
-    def operation(self):
-        return u'equals'
 
 class ProposalModelView(BaseModelView):
     can_create = False
@@ -881,12 +868,13 @@ class TransactionRestrictedModelView(sqla.ModelView):
             self.can_export = True
             return True
 
-class WalletRestrictedModelView(sqla.ModelView):
+class AMWalletRestrictedModelView(sqla.ModelView):
     can_create = False
     can_delete = False
     can_edit = False
-    #column_list = ['email', 'roles']
-    #column_editable_list = ['roles']
+    column_list = ['address', 'devices']
+    column_filters = [FilterEqual(AMWallet.address, 'Search Address')]
+    list_template = 'amdevice_list.html'
 
     def is_accessible(self):
         if not current_user.is_active or not current_user.is_authenticated:
@@ -896,19 +884,7 @@ class WalletRestrictedModelView(sqla.ModelView):
             self.can_export = True
             return True
 
-class AMDeviceRestrictedModelView(sqla.ModelView):
-    can_create = False
-    can_delete = False
-    can_edit = False
-    #column_list = ['email', 'roles']
-    #column_editable_list = ['roles']
-    column_labels = {'device_imei': 'IMEI ID', 'device_os': 'OS', 'device_mobile_no': 'Mobile No.', 'wallet': 'ZAP Address'}
-    column_filters = [ FilterByDeviceOS(None, 'Search Device OS'), FilterByMobileNo(None, 'Search Mobile No'), FilterByZapAddress(None, 'Search Zap Address') ]
-
-    def is_accessible(self):
-        if not current_user.is_active or not current_user.is_authenticated:
-            return False
-
-        if current_user.has_role('admin'):
-            self.can_export = True
-            return True
+    @expose('/multiple_devices', methods=['GET'])
+    def execute(self):
+        wallets = AMWallet.with_multiple_devices(db.session)
+        return self.render('multiple_devices.html', wallets=wallets)
