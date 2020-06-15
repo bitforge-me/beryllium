@@ -2,6 +2,7 @@ import time
 import datetime
 import decimal
 import csv
+import logging
 
 from flask import redirect, url_for, request, flash, has_app_context, g
 from flask_security import Security, SQLAlchemyUserDatastore, \
@@ -17,9 +18,14 @@ from wtforms import validators
 from marshmallow import Schema, fields
 from markupsafe import Markup
 from sqlalchemy import func
+import requests
 
 from app_core import app, db
-from utils import generate_key, is_email, is_mobile, is_address
+import config
+from utils import generate_key, is_email, is_mobile, is_address, issuer_address, blockchain_transactions
+
+cfg = config.read_cfg()
+logger = logging.getLogger(__name__)
 
 ### helper functions/classes
 
@@ -217,6 +223,47 @@ class AMWallet(db.Model):
         for wallet in session.query(cls).join(cls.devices).group_by(cls.id).having(func.count(AMDevice.id) > 1):
             ids.append(wallet.id)
         return session.query(cls).filter(cls.id.in_(ids))
+
+    @classmethod
+    def initialize_wallet_addresses(cls, session):
+        # update txs
+        addrs = {}
+        try:
+            node = cfg.node_http_base_url
+            issuer_addr = issuer_address(node, cfg.asset_id)
+            if not issuer_addr:
+                return False
+            limit = 1000
+            oldest_txid = None
+            txs_count = None
+            txs = []
+            while True:
+                have_tx = False
+                txs = blockchain_transactions(node, issuer_addr, limit, oldest_txid)
+                for tx in txs:
+                    oldest_txid = tx["id"]
+                    if tx["type"] == 4 and tx["assetId"] == cfg.asset_id:
+                        if 'sender' in tx:
+                            addrs[tx['sender']] = 1
+                        if 'recipient' in tx:
+                            addrs[tx['recipient']] = 1
+                # reached end of transaction history for this address
+                if len(txs) < limit:
+                    break
+        except requests.exceptions.ConnectionError as ex:
+            logger.error(ex)
+            return False
+        # create all the AMWallet and AMDevice db entries
+        for key, value in addrs.items():
+            wallet = AMWallet(key)
+            session.add(wallet)
+            session.add(AMDevice(wallet, 'n/a', 'n/a', 'n/a', 'n/a', 'n/a', 'n/a'))
+        session.commit()
+        return True
+
+    @classmethod
+    def is_empty(cls, session):
+        return not session.query(cls).first()
 
     def __repr__(self):
         return "<AMWallet %r>" % (self.address)
@@ -888,3 +935,15 @@ class AMWalletRestrictedModelView(sqla.ModelView):
     def execute(self):
         wallets = AMWallet.with_multiple_devices(db.session)
         return self.render('multiple_devices.html', wallets=wallets)
+
+    @expose('/initialize_address_list')
+    def update(self):
+        if AMWallet.is_empty(db.session):
+            if AMWallet.initialize_wallet_addresses(db.session):
+                flash('Initialized wallet addresses')
+            else:
+                flash('Failed to initialize wallet addresses', 'error')
+        else:
+            flash('Table is not empty', 'error')
+        return_url = self.get_url('.index_view')
+        return redirect(return_url)

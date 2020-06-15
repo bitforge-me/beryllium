@@ -122,6 +122,33 @@ def is_address(s):
     except:
         return False
 
+def issuer_address(node, asset_id):
+    url = '%s/transactions/info/%s' % (node, asset_id)
+    print(':: requesting %s..' % url)
+    r = requests.get(url)
+    if r.status_code != 200:
+        print('ERROR: status code is %d' % r.status_code)
+        return None
+    info = r.json()
+    issuer_addr = info['sender']
+    return issuer_addr
+
+def blockchain_transactions(node, wallet_address, limit, after=None):
+    url = '%s/transactions/address/%s/limit/%s' % (node, wallet_address, limit)
+    if after:
+        url += '?after=%s' % after
+    print(':: requesting %s..' % url)
+    r = requests.get(url)
+    if r.status_code != 200:
+        print('ERROR: status code is %d' % r.status_code)
+    txs = r.json()[0]
+    print(':: retrieved %d records' % len(txs))
+    txs_result = []
+    for tx in txs:
+        txs_result.append(tx)
+    
+    return txs_result
+
 if __name__ == "__main__":
     import sys
     key = sys.argv[1]

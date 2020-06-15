@@ -16,7 +16,7 @@ import web
 import utx
 import utils
 from app_core import app, db
-from models import user_datastore, User, Role, Category
+from models import user_datastore, User, Role, Category, AMDevice
 
 cfg = config.read_cfg()
 logger = logging.getLogger(__name__)
