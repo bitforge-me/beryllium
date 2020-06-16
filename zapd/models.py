@@ -229,7 +229,7 @@ class AMWallet(db.Model):
         # update txs
         addrs = {}
         try:
-            node = cfg.node_http_base_url
+            node = cfg.node_http_base_url[:-1]
             issuer_addr = issuer_address(node, cfg.asset_id)
             if not issuer_addr:
                 return False
