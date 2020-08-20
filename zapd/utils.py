@@ -15,6 +15,7 @@ from sendgrid.helpers.mail import Mail, From
 from flask import url_for
 
 import config
+from app_core import app
 
 cfg = config.read_cfg()
 
@@ -70,8 +71,7 @@ def send_email(logger, subject, msg, to=None):
     from_email = From(cfg.email_from, cfg.email_from_name)
     message = Mail(from_email=from_email, to_emails=to, subject=subject, html_content=msg)
     try:
-        import flask_config_secret
-        sg = SendGridAPIClient(flask_config_secret.MAIL_SENDGRID_API_KEY)
+        sg = SendGridAPIClient(app.config["MAIL_SENDGRID_API_KEY"])
         response = sg.send(message)
     except Exception as ex:
         logger.error(f"email '{subject}': {ex}")
