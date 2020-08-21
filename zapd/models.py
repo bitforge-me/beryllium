@@ -183,6 +183,7 @@ class AMDevice(db.Model):
     id = db.Column(db.Integer(), primary_key=True)
     wallet_id = db.Column(db.Integer, db.ForeignKey('amwallet.id'), nullable=False)
     wallet = db.relationship('AMWallet', backref=db.backref('devices', lazy='joined'))
+    device_resolution = db.relationship('AMDeviceResolution', uselist=False, back_populates='device')
     date = db.Column(db.DateTime())
     app_version = db.Column(db.String())
     os = db.Column(db.String())
@@ -204,6 +205,10 @@ class AMDevice(db.Model):
     def __repr__(self):
         return "<AMDevice %r %r>" % (self.brand, self.device_id)
 
+    @classmethod
+    def from_wallet(cls, session, wallet_id):
+        return session.query(cls).filter(cls.wallet_id == wallet_id).all()
+
 # App Metrics Wallet
 class AMWallet(db.Model):
     __tablename__ = 'amwallet'
@@ -221,7 +226,14 @@ class AMWallet(db.Model):
     def with_multiple_devices(cls, session):
         ids = []
         for wallet in session.query(cls).join(cls.devices).group_by(cls.id).having(func.count(AMDevice.id) > 1):
-            ids.append(wallet.id)
+            resolved = 0
+            count = 0
+            for device in AMDevice.from_wallet(session, wallet.id):
+                count += 1
+                if device.device_resolution:
+                    resolved += 1
+            if count - resolved > 1:
+                ids.append(wallet.id)
         return session.query(cls).filter(cls.id.in_(ids))
 
     @classmethod
@@ -267,6 +279,20 @@ class AMWallet(db.Model):
 
     def __repr__(self):
         return "<AMWallet %r>" % (self.address)
+
+class AMDeviceResolution(db.Model):
+    __tablename__ = 'amdeviceresolution'
+    id = db.Column(db.Integer(), primary_key=True)
+    amdevice_id = db.Column(db.Integer, db.ForeignKey('amdevice.id'), nullable=False)
+    device = db.relationship('AMDevice', uselist=False, back_populates='device_resolution')
+    resolution = db.Column(db.String(), nullable=False)
+
+    def __init__(self, amdevice_id, resolution):
+       self.amdevice_id = amdevice_id
+       self.resolution = resolution
+
+    def __repr__(self):
+        return "<AMDeviceResolution %r %r>" % (self.amdevice_id, self.resolution)
 
 # Setup Flask-Security
 user_datastore = SQLAlchemyUserDatastore(db, User, Role)
@@ -932,9 +958,18 @@ class AMWalletRestrictedModelView(sqla.ModelView):
             return True
 
     @expose('/multiple_devices', methods=['GET'])
-    def execute(self):
+    def multiple_devices(self):
         wallets = AMWallet.with_multiple_devices(db.session)
         return self.render('multiple_devices.html', wallets=wallets)
+
+    @expose('/resolve_device', methods=['POST'])
+    def resolve_device(self):
+        device_id = request.form['device_id']
+        resolution = request.form['resolution']
+        res = AMDeviceResolution(device_id, resolution)
+        db.session.add(res)
+        db.session.commit()
+        return redirect('multiple_devices')
 
     @expose('/initialize_address_list')
     def update(self):
