@@ -6,7 +6,7 @@
 
   vars:
     min_zap: 5000
-    max_zap: 10000
+    max_zap: 20000
   tasks:
     - name: ansible group
       group: 
