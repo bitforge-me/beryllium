@@ -126,112 +126,9 @@
                                     </div>
                                     <div class="col-xs-7">
                                         <div class="numbers">
-                                            <p>Remote block height</p>
-                                            {{ data["remote_block_height"] }}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="footer">
-                                    <hr />
-                                    <div class="stats">
-                                        <i class="ti-reload"></i> Updated now
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-sm-6">
-                        <div class="card">
-                            <div class="content">
-                                <div class="row">
-                                    <div class="col-xs-5">
-                                        <div class="icon-big icon-success text-center">
-                                            <i class="ti-server"></i>
-                                        </div>
-                                    </div>
-                                    <div class="col-xs-7">
-                                        <div class="numbers">
-                                            <p>Scanned block height</p>
-                                            {{ data["scanned_block_height"] }}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="footer">
-                                    <hr />
-                                    <div class="stats">
-                                        <i class="ti-reload"></i> Updated now
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-sm-6">
-                        <div class="card">
-                            <div class="content">
-                                <div class="row">
-                                    <div class="col-xs-5">
-                                        <div class="icon-big icon-success text-center">
-                                            <i class="ti-pulse"></i>
-                                        </div>
-                                    </div>
-                                    <div class="col-xs-7">
-                                        <div class="numbers">
-                                            <p># of incomming txs processed</p>
-                                            {{ data["incomming_tx_count"] }}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="footer">
-                                    <hr />
-                                    <div class="stats">
-                                        <i class="ti-reload"></i> Updated now
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-sm-6">
-                        <div class="card">
-                            <div class="content">
-                                <div class="row">
-                                    <div class="col-xs-5">
-                                        <div class="icon-big icon-success text-center">
-                                            <i class="ti-pulse"></i>
-                                        </div>
-                                    </div>
-                                    <div class="col-xs-7">
-                                        <div class="numbers">
-                                            <p># of outgoing txs created</p>
-                                            {{ data["created_tx_count"] }}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="footer">
-                                    <hr />
-                                    <div class="stats">
-                                        <i class="ti-reload"></i> Updated now
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-lg-3 col-sm-6">
-                        <div class="card">
-                            <div class="content">
-                                <div class="row">
-                                    <div class="col-xs-5">
-                                        <div class="icon-big icon-success text-center">
-                                            <i class="ti-server"></i>
-                                        </div>
-                                    </div>
-                                    <div class="col-xs-7">
-                                        <div class="numbers">
-                                            <p><a href="{{ data["remote_node"] }}/assets/balance/{{ data["zap_address"] }}/{{ data["asset_id"] }}">
+                                            <p>
                                                 Zap balance
-                                            </a></p>
+                                            </p>
                                             {{ data["zap_balance"] }}
                                         </div>
                                     </div>
@@ -256,9 +153,9 @@
                                     </div>
                                     <div class="col-xs-7">
                                         <div class="numbers">
-                                            <p><a href="{{ data["remote_node"] }}/addresses/balance/{{ data["master_waves_address"] }}">
+                                            <p>
                                                 Master zap account waves balance
-                                            </a></p>
+                                            </p>
                                             {{ data["master_waves_balance"] }}
                                         </div>
                                     </div>
@@ -267,45 +164,6 @@
                                     <hr />
                                     <div class="stats">
                                         <i class="ti-reload"></i> Updated now
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="card">
-                            <div class="header">
-                                <h4 class="title">Zap Balance</h4>
-                                <p class="category">1 Week History</p>
-                            </div>
-                            <div class="content">
-                                <div id="chartZapBalance" class="ct-chart"></div>
-                                <div class="footer">
-                                    <hr>
-                                    <div class="stats">
-                                        <i class="ti-reload"></i> Updated {{ data["history_mins_since_update"] }} minutes ago
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="card">
-                            <div class="header">
-                                <h4 class="title">Master Waves Balance</h4>
-                                <p class="category">1 Week History</p>
-                            </div>
-                            <div class="content">
-                                <div id="chartMasterWavesBalance" class="ct-chart"></div>
-                                <div class="footer">
-                                    <hr>
-                                    <div class="stats">
-                                        <i class="ti-reload"></i> Updated {{ data["history_mins_since_update"] }} minutes ago
                                     </div>
                                 </div>
                             </div>
@@ -360,99 +218,5 @@
 
     <!-- Paper Dashboard Core javascript and methods -->
 	<script src="static/assets/js/paper-dashboard.js"></script>
-
-	<script type="text/javascript">
-        function initZapCharts() {
-            // init line charts
-            var dataZapBalance = {
-              series: [
-                { data: [
-                    {% for item in data["history"] %}
-                        { x: new Date({{ item["date"] * 1000 }}), y: {{ item["zap_balance"] }} },
-                    {% endfor %}
-                  ]
-                }
-              ]
-            };
-
-            var dataMasterWavesBalance = {
-              series: [
-                { data: [
-                    {% for item in data["history"] %}
-                        {x: new Date({{ item["date"] * 1000 }}), y: {{ item["master_waves_balance"] }} },
-                    {% endfor %}
-                  ]
-                }
-              ]
-            };
-
-            var options = {
-              lineSmooth: false,
-              showArea: true,
-              height: "245px",
-              axisX: {
-                type: Chartist.FixedScaleAxis,
-                divisor: 10,
-                labelInterpolationFnc: function(value) {
-                  return moment(value).format('MM/DD HH:mm');
-                }
-              },
-              lineSmooth: Chartist.Interpolation.simple({
-                divisor: 3
-              }),
-              showLine: true,
-              showPoint: true,
-              plugins: [Chartist.plugins.tooltip({ tooltipFnc: function(meta, value) { 
-                  var parts = value.split(",");
-                  var dt = new Date(parseInt(parts[0]));
-                  return moment(dt).format("YYYY/MM/DD HH:mm") + " - " + parts[1];
-              }})],
-            };
-
-            var responsive = [
-              ['screen and (max-width: 640px)', {
-                axisX: {
-                  labelInterpolationFnc: function (value) {
-                    return value[0];
-                  }
-                }
-              }]
-            ];
-
-            Chartist.Line('#chartZapBalance', dataZapBalance, options, responsive);
-            Chartist.Line('#chartMasterWavesBalance', dataMasterWavesBalance, options, responsive);
-
-        };
-
-        function initRefresh() {
-
-            var countdown = $("#countdown");
-
-            var time = new Date().getTime();
-            $(document.body).bind("mousemove keypress", function(e) {
-                time = new Date().getTime();
-            });
-
-            function refresh() {
-                var timeout = 300000;
-                var now = new Date().getTime();
-                if (now - time >= timeout) 
-                    window.location.reload(true);
-                else 
-                    setTimeout(refresh, 1000);
-                countdown.text(parseInt((timeout - (now - time)) / 1000));
-            }
-
-            setTimeout(refresh, 1000);
-        }
-
-    	$(document).ready(function(){
-
-            initZapCharts();
-
-            initRefresh();
-
-    	});
-	</script>
 
 </html>

@@ -22,7 +22,7 @@ import pyblake2
 
 import config
 from app_core import app, db
-from models import Transaction, Block, CreatedTransaction, DashboardHistory, Proposal, Payment, AMWallet, AMDevice
+from models import Transaction, Block, CreatedTransaction, Proposal, Payment, AMWallet, AMDevice
 import admin
 import utils
 
@@ -93,21 +93,6 @@ def block_hash(blk):
     return blk["signature"]
 
 def dashboard_data():
-    # get remote block height
-    remote_node = "https://testnode1.wavesnodes.com"
-    if not cfg.testnet:
-        remote_node = "https://nodes.wavesnodes.com"
-    response = get(remote_node + "/blocks/height")
-    remote_block_height = response.json()["height"]
-    # get locally scanned block height
-    scanned_block_height = 0
-    last_block = Block.last_block(db.session)
-    if last_block:
-        scanned_block_height = last_block.num
-    # get incomming tx count
-    incomming_tx_count = Transaction.count(db.session)
-    # get created tx count
-    created_tx_count = CreatedTransaction.count(db.session)
     # get balance of local wallet
     path = f"assets/balance/{cfg.address}/{cfg.asset_id}"
     response = requests.get(cfg.node_http_base_url + path)
@@ -124,12 +109,10 @@ def dashboard_data():
         issuer = "n/a"
         master_waves_balance = "n/a"
     # return data
-    return {"remote_block_height": remote_block_height, "scanned_block_height": scanned_block_height, \
-            "incomming_tx_count": incomming_tx_count, "created_tx_count": created_tx_count, \
-            "zap_balance": zap_balance, "zap_address": cfg.address, \
+    return {"zap_balance": zap_balance, "zap_address": cfg.address, \
             "master_waves_balance": master_waves_balance, "master_waves_address": issuer, \
             "asset_id": cfg.asset_id, \
-            "testnet": cfg.testnet, "remote_node": remote_node}
+            "testnet": cfg.testnet}
 
 def from_int_to_user_friendly(val, divisor, decimal_places=4):
     if not isinstance(val, int):
@@ -321,40 +304,10 @@ def wallet_log():
 
 @app.route("/dashboard")
 def dashboard():
-    history = DashboardHistory.last_week(db.session)
     data = dashboard_data()
     data["zap_balance"] = from_int_to_user_friendly(data["zap_balance"], 100)
     data["master_waves_balance"] = from_int_to_user_friendly(data["master_waves_balance"], 10**8)
-    history_convert = []
-    for i in range(len(history)):
-        item = {}
-        item["date"] = history[i].date
-        item["zap_balance"] = from_int_to_user_friendly(history[i].zap_balance, 100)
-        item["master_waves_balance"] = from_int_to_user_friendly(history[i].master_waves_balance, 10**8)
-        history_convert.append(item)
-    data["history"] = history_convert
-    data["history_mins_since_update"] = 0
-    if len(history) > 0:
-        data["history_mins_since_update"] = int((time.time() - history[-1].date) / 60)
     return render_template("dashboard.html", data=data)
-
-@app.route("/dashboard/snapshot")
-@app.route("/dashboard/snapshot/<cmd>")
-def dashboard_snapshot(cmd=None):
-    last_entry = DashboardHistory.last_entry(db.session)
-    almost_fourhours = 60 * 60 * 4 - 300
-    if cmd == "override" or not last_entry or last_entry.date < time.time() - almost_fourhours:
-        data = dashboard_data()
-        zap_balance = data["zap_balance"]
-        master_waves_balance = data["master_waves_balance"]
-        if not isinstance(zap_balance, int) or not isinstance(master_waves_balance, int):
-            return "not able to get balances"
-        history = DashboardHistory(data["incomming_tx_count"], data["created_tx_count"], \
-                zap_balance, master_waves_balance)
-        db.session.add(history)
-        db.session.commit()
-        return "ok"
-    return "not needed right now"
 
 #
 # JSON-RPC
