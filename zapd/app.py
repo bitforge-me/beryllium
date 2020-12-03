@@ -13,10 +13,9 @@ from flask_security.utils import encrypt_password
 
 import config
 import web
-import utx
 import utils
 from app_core import app, db
-from models import user_datastore, User, Role, Category, AMDevice
+from models import user_datastore, User, Role, Category
 
 cfg = config.read_cfg()
 logger = logging.getLogger(__name__)
@@ -30,13 +29,11 @@ def setup_logging(level):
     # setup logging
     logger.setLevel(level)
     web.logger.setLevel(level)
-    utx.logger.setLevel(level)
     ch = logging.StreamHandler()
     ch.setLevel(level)
     ch.setFormatter(logging.Formatter('[%(name)s %(levelname)s] %(message)s'))
     logger.addHandler(ch)
     web.logger.addHandler(ch)
-    utx.logger.addHandler(ch)
     # clear loggers set by any imported modules
     logging.getLogger().handlers.clear()
 
@@ -82,20 +79,6 @@ def add_role(email, role_name):
             logger.info("user already has role")
         db.session.commit()
 
-def on_transfer_utx(wutx, txid, sig, pubkey, asset_id, timestamp, amount, fee, recipient, attachment):
-    recipient = base58.b58encode(recipient)
-    try:
-        asset_id = base58.b58encode(asset_id)
-    except TypeError:
-        pass
-    #logger.info(f"!transfer!: txid {txid}, recipient {recipient}, amount {amount}, attachment {attachment}")
-    if recipient == cfg.address and asset_id == cfg.asset_id:
-        # create message
-        sender = utils.address_from_public_key(pubkey)
-        invoice_id = utils.extract_invoice_id(logger, attachment)
-        msg, sig = utils.create_signed_payment_notification(txid, timestamp, recipient, sender, amount, invoice_id)
-        utils.call_webhook(logger, msg, sig)
-
 def sigint_handler(signum, frame):
     global keep_running
     logger.warning("SIGINT caught, attempting to exit gracefully")
@@ -138,21 +121,12 @@ if __name__ == "__main__":
     else:
         signal.signal(signal.SIGINT, sigint_handler)
 
-        no_waves = os.getenv("NO_WAVES")
         logger.info("starting greenlets")
         group = gevent.pool.Group()
         greenlet_count = 0
-        zapweb = web.ZapWeb(no_waves=no_waves)
+        zapweb = web.ZapWeb()
         zapweb.start(group)
-        greenlet_count += 1 if no_waves else 2
-        wutx = None
-        if not no_waves:
-            port = 6863
-            if not cfg.testnet:
-                port = 6868
-            wutx = utx.WavesUTX(None, on_transfer_utx, port=port, testnet=cfg.testnet)
-            wutx.start(group)
-            greenlet_count += 1
+        greenlet_count += 1
         logger.info("main loop")
         sent_start_email = False
         for g in group:
@@ -163,7 +137,6 @@ if __name__ == "__main__":
             if len(group) < greenlet_count:
                 msg = "one of our greenlets is dead X("
                 logger.error(msg)
-                utils.email_death(logger, msg)
                 break
             # send start email when all essential greenlets are started
             if not sent_start_email:
@@ -175,8 +148,5 @@ if __name__ == "__main__":
                     sent_start_email = True
                     msg = "our greenlets have started :)"
                     logger.info(msg)
-                    utils.email_alive(logger, msg)
         logger.info("stopping greenlets")
-        if wutx:
-            wutx.stop()
         zapweb.stop()

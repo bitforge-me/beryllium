@@ -22,11 +22,6 @@ def read_cfg():
 
     # network
     cfg.testnet = cp.getboolean("network", "testnet")
-    cfg.testnet_start_block = cp["network"]["testnet_start_block"]
-    cfg.mainnet_start_block = cp["network"]["mainnet_start_block"]
-    cfg.start_block = int(cfg.testnet_start_block)
-    if not cfg.testnet:
-        cfg.start_block = int(cfg.mainnet_start_block)
 
     # db
     cfg.db_filename = get_db_filename(cfg.testnet)
