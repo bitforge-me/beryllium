@@ -21,10 +21,8 @@ from sqlalchemy import func
 import requests
 
 from app_core import app, db
-import config
 from utils import generate_key, is_email, is_mobile, is_address
 
-cfg = config.read_cfg()
 logger = logging.getLogger(__name__)
 
 ### helper functions/classes

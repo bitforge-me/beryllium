@@ -20,13 +20,11 @@ import base58
 import pywaves
 import pyblake2
 
-import config
 from app_core import app, db
 from models import CreatedTransaction, Proposal, Payment
 import admin
 import utils
 
-cfg = config.read_cfg()
 jsonrpc = JSONRPC(app, "/api")
 logger = logging.getLogger(__name__)
 
@@ -45,6 +43,11 @@ ERR_TX_EXPIRED = 2
 ERR_FAILED_TO_GET_ASSET_INFO = 3
 ERR_EMPTY_ADDRESS = 4
 
+NODE_BASE_URL = app.config["NODE_BASE_URL"]
+SEED = app.config["WALLET_SEED"]
+ADDRESS = app.config["WALLET_ADDRESS"]
+ASSET_ID = app.config["ASSET_ID"]
+
 #
 # helper functions
 #
@@ -62,25 +65,25 @@ def get(url):
 
 def dashboard_data():
     # get balance of local wallet
-    path = f"assets/balance/{cfg.address}/{cfg.asset_id}"
-    response = requests.get(cfg.node_http_base_url + path)
+    path = f"assets/balance/{ADDRESS}/{ASSET_ID}"
+    response = requests.get(NODE_BASE_URL + path)
     zap_balance = response.json()["balance"]
     # get the balance of the main wallet
-    path = f"transactions/info/{cfg.asset_id}"
-    response = requests.get(cfg.node_http_base_url + path)
+    path = f"transactions/info/{ASSET_ID}"
+    response = requests.get(NODE_BASE_URL + path)
     try:
         issuer = response.json()["sender"]
         path = f"addresses/balance/{issuer}"
-        response = requests.get(cfg.node_http_base_url + path)
+        response = requests.get(NODE_BASE_URL + path)
         master_waves_balance = response.json()["balance"]
     except:
         issuer = "n/a"
         master_waves_balance = "n/a"
     # return data
-    return {"zap_balance": zap_balance, "zap_address": cfg.address, \
+    return {"zap_balance": zap_balance, "zap_address": ADDRESS, \
             "master_waves_balance": master_waves_balance, "master_waves_address": issuer, \
-            "asset_id": cfg.asset_id, \
-            "testnet": cfg.testnet}
+            "asset_id": ASSET_ID, \
+            "testnet": app.config["TESTNET"]}
 
 def from_int_to_user_friendly(val, divisor, decimal_places=4):
     if not isinstance(val, int):
@@ -90,8 +93,8 @@ def from_int_to_user_friendly(val, divisor, decimal_places=4):
 
 def _create_transaction(recipient, amount, attachment):
     # get fee
-    path = f"assets/details/{cfg.asset_id}"
-    response = requests.get(cfg.node_http_base_url + path)
+    path = f"assets/details/{ASSET_ID}"
+    response = requests.get(NODE_BASE_URL + path)
     if response.ok:
         asset_fee = response.json()["minSponsoredAssetFee"]
     else:
@@ -111,7 +114,7 @@ def _create_transaction(recipient, amount, attachment):
         err = OtherError(short_msg, ERR_EMPTY_ADDRESS)
         raise err
     recipient = pywaves.Address(recipient)
-    asset = pywaves.Asset(cfg.asset_id)
+    asset = pywaves.Asset(ASSET_ID)
     address_data = pw_address.sendAsset(recipient, asset, amount, attachment, feeAsset=asset, txFee=asset_fee)
     signed_tx = json.loads(address_data["api-data"])
     # calc txid properly
@@ -131,7 +134,7 @@ def _broadcast_transaction(txid):
     logger.debug(f"requesting broadcast of tx:\n\t{signed_tx}")
     path = f"assets/broadcast/transfer"
     headers = {"Content-Type": "application/json"}
-    response = requests.post(cfg.node_http_base_url + path, headers=headers, data=signed_tx)
+    response = requests.post(NODE_BASE_URL + path, headers=headers, data=signed_tx)
     if response.ok:
         # update tx in db
         dbtx.state = CTX_BROADCAST
@@ -258,18 +261,18 @@ def status():
 
 @jsonrpc.method("getaddress")
 def getaddress():
-    return {"address": cfg.address}
+    return {"address": ADDRESS}
 
 @jsonrpc.method("getbalance")
 def getbalance():
-    path = f"assets/balance/{cfg.address}/{cfg.asset_id}"
-    response = requests.get(cfg.node_http_base_url + path)
+    path = f"assets/balance/{ADDRESS}/{ASSET_ID}"
+    response = requests.get(NODE_BASE_URL + path)
     return response.json()
 
 @jsonrpc.method("gettransaction")
 def gettransaction(txid):
     path = f"transactions/info/{txid}"
-    response = requests.get(cfg.node_http_base_url + path)
+    response = requests.get(NODE_BASE_URL + path)
     return response.json()
 
 def transfer_asset_txid(tx):
@@ -328,15 +331,15 @@ class ZapWeb():
 
     def check_wallet(self):
         # check seed has been set
-        if not cfg.seed:
-            msg = "cfg.seed is not set"
+        if not SEED:
+            msg = "WALLET_SEED is not set"
             logger.error(msg)
             sys.exit(1)
         # check address object matches our configured address
         global pw_address
-        pw_address = pywaves.Address(seed=cfg.seed)
-        if pw_address.address.decode() != cfg.address:
-            msg = f"pw_address ({pw_address.address.decode()}) does not match {cfg.address}"
+        pw_address = pywaves.Address(seed=SEED)
+        if pw_address.address.decode() != ADDRESS:
+            msg = f"pw_address ({pw_address.address.decode()}) does not match {ADDRESS}"
             logger.error(msg)
             sys.exit(1)
 

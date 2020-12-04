@@ -14,10 +14,7 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, From
 from flask import url_for
 
-import config
 from app_core import app
-
-cfg = config.read_cfg()
 
 def txid_from_txdata(serialized_txdata):
     txid = pyblake2.blake2b(serialized_txdata, digest_size=32).digest()
@@ -30,8 +27,8 @@ def create_sig_from_msg(key, msg):
 
 def send_email(logger, subject, msg, to=None):
     if not to:
-        to = cfg.email_admin
-    from_email = From(cfg.email_from, cfg.email_from_name)
+        to = app.config["ADMIN_EMAIL"]
+    from_email = From(app.config["FROM_EMAIL"], app.config["FROM_NAME"])
     message = Mail(from_email=from_email, to_emails=to, subject=subject, html_content=msg)
     try:
         sg = SendGridAPIClient(app.config["MAIL_SENDGRID_API_KEY"])

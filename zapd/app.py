@@ -11,18 +11,16 @@ import base58
 import pywaves
 from flask_security.utils import encrypt_password
 
-import config
 import web
 import utils
 from app_core import app, db
 from models import user_datastore, User, Role, Category
 
-cfg = config.read_cfg()
 logger = logging.getLogger(__name__)
 
 # set pywaves to offline mode
 pywaves.setOffline()
-if cfg.testnet:
+if app.config["TESTNET"]:
     pywaves.setChain("testnet")
 
 def setup_logging(level):
