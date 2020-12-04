@@ -313,7 +313,7 @@ def get_statuses():
     # prevent database access when app is not yet ready
     if has_app_context():
         if not hasattr(g, 'statuses'):
-            query = Proposal.query.distinct(Proposal.status).group_by(Proposal.status)
+            query = Proposal.query.distinct(Proposal.status)
             g.statuses = [(proposal.status, proposal.status) for proposal in query]
         for proposal_status, proposal_status in g.statuses:
             yield proposal_status, proposal_status
