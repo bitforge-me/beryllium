@@ -13,7 +13,7 @@ from flask_security.utils import encrypt_password
 
 import web
 import utils
-from app_core import app, db
+from app_core import missing_vital_setting, app, db
 from models import user_datastore, User, Role, Category
 
 logger = logging.getLogger(__name__)
@@ -117,34 +117,22 @@ if __name__ == "__main__":
         if sys.argv[1] == "add_role":
             add_role(sys.argv[2], sys.argv[3])
     else:
+        if missing_vital_setting:
+            logger.error('missing vital setting')
+            sys.exit(1)
+        else:
+            logger.info('got all vital settings')
+
         signal.signal(signal.SIGINT, sigint_handler)
 
         logger.info("starting greenlets")
         group = gevent.pool.Group()
-        greenlet_count = 0
         zapweb = web.ZapWeb()
         zapweb.start(group)
-        greenlet_count += 1
         logger.info("main loop")
-        sent_start_email = False
         for g in group:
             g.link_exception(g_exception)
         while keep_running:
             gevent.sleep(1)
-            # check if any essential greenlets are dead
-            if len(group) < greenlet_count:
-                msg = "one of our greenlets is dead X("
-                logger.error(msg)
-                break
-            # send start email when all essential greenlets are started
-            if not sent_start_email:
-                send_start_email = True
-                for g in group:
-                    if not g.started:
-                        send_start_email = False
-                if send_start_email:
-                    sent_start_email = True
-                    msg = "our greenlets have started :)"
-                    logger.info(msg)
         logger.info("stopping greenlets")
         zapweb.stop()

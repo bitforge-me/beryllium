@@ -1,9 +1,10 @@
 import os
-import sys
 
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_mail_sendgrid import MailSendGrid
+
+missing_vital_setting = False
 
 # Create Flask application
 app = Flask(__name__)
@@ -16,8 +17,8 @@ else:
     app.config["TESTNET"] = False
 app.config.from_pyfile("flask_config.py")
 
-if os.getenv("DATABASE_URI"):
-    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URI")
+if os.getenv("DATABASE_URL"):
+    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
 else:
     if app.config["TESTNET"]:
         DATABASE_FILE = 'zapd_testnet.db'
@@ -33,7 +34,8 @@ def set_vital_setting(env_name, setting_name=None):
         app.config[env_name] = os.getenv(env_name)
     else:
         print("no " + env_name)
-        sys.exit(1)
+        global missing_vital_setting
+        missing_vital_setting = True
 
 set_vital_setting("NODE_BASE_URL")
 set_vital_setting("WALLET_SEED")
