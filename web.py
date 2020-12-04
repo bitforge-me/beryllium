@@ -323,22 +323,17 @@ def validateaddress(address):
 
 class ZapWeb():
 
-    def __init__(self, addr="127.0.0.1", port=5000):
+    def __init__(self, addr="0.0.0.0", port=5000):
         self.addr = addr
         self.port = port
         self.runloop_greenlet = None
 
     def check_wallet(self):
-        # check seed has been set
-        if not SEED:
-            msg = "WALLET_SEED is not set"
-            logger.error(msg)
-            sys.exit(1)
         # check address object matches our configured address
         global pw_address
         pw_address = pywaves.Address(seed=SEED)
-        if pw_address.address.decode() != ADDRESS:
-            msg = f"pw_address ({pw_address.address.decode()}) does not match {ADDRESS}"
+        if pw_address.address != ADDRESS:
+            msg = f"pw_address ({pw_address.address}) does not match {ADDRESS}"
             logger.error(msg)
             sys.exit(1)
 
