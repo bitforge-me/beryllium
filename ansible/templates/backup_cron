@@ -1,3 +1,0 @@
-#!/bin/bash
-
-/usr/bin/duplicity --ssh-options="-oIdentityFile=/root/backup_id" --encrypt-key {{ key_id }} {{ backup_dir }} pexpect+scp://root@{{ BACKUP_HOST }}/{{ backup_dir_remote }} 2>&1 | mailx -s "$0" {{ ADMIN_EMAIL }}
