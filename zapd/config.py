@@ -45,19 +45,11 @@ def read_cfg():
 
     # secret
     cfg.seed = None
-    cfg.webhook_key = None
-    cfg.webhook_url = None
     if os.path.exists(get_secret_filename()):
         cp.read(get_secret_filename())
         # wallet seed
         try:
             cfg.seed = cp["wallet"]["seed"]
-        except:
-            pass
-        # webhook
-        try:
-            cfg.webhook_key = cp["webhook"]["key"]
-            cfg.webhook_url = cp["webhook"]["url"]
         except:
             pass
 
@@ -97,16 +89,5 @@ def init_wallet_address(address, seed):
             raise Exception("There is already a seed that is different!")
     else:
         cp.set("wallet", "seed", seed)
-        with open(get_secret_filename(), "w") as f:
-            cp.write(f)
-
-def set_webhook_config(url, key):
-    # write url and key
-    cp = configparser.ConfigParser()
-    cp.read(get_secret_filename())
-    if not cp.has_section("webhook"):
-        cp.add_section("webhook")
-        cp.set("webhook", "url", url)
-        cp.set("webhook", "key", key)
         with open(get_secret_filename(), "w") as f:
             cp.write(f)

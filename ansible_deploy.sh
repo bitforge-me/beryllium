@@ -8,14 +8,12 @@ DEPLOY_LEVEL_NO_KEYS=no_keys
 DEPLOY_LEVEL=$2
 BACKUP_KEY=$2
 BACKUP_SSH_KEY=$3
-WEBHOOK_URL=$4
-WEBHOOK_KEY=$5
-SENDGRID_API_KEY=$6
+SENDGRID_API_KEY=$4
 
 display_usage() { 
     echo -e "\nUsage:
 
-    ansible_deploy.sh <DEPLOY_TYPE ($DEPLOY_TEST | $DEPLOY_PRODUCTION)> <BACKUP_KEY> <BACKUP_SSH_KEY> <WEBHOOK_URL> <WEBHOOK_KEY> <SENDGRID_API_KEY>
+    ansible_deploy.sh <DEPLOY_TYPE ($DEPLOY_TEST | $DEPLOY_PRODUCTION)> <BACKUP_KEY> <BACKUP_SSH_KEY> <SENDGRID_API_KEY>
 
         This is the full deploy scenario, required for initial deployment:
 
@@ -23,10 +21,6 @@ display_usage() {
                     (use \"gpg --armor --export <KEY_NAME> > backup_key.asc\" to export public key)
 
         BACKUP_SSH_KEY: the **private** SSH key used to log in to the backup server
-
-        WEBHOOK_URL: the URL for incomming transaction notifications
-
-        WEBHOOK_KEY: the key to sign the transaction notifications with
 
         SENDGRID_API_KEY: the api key to use with sendgrid for sending emails
 
@@ -36,7 +30,7 @@ display_usage() {
 
         DEPLOY_LEVEL=$DEPLOY_LEVEL_ZAPD_ONLY: only update the zapd service
 
-        DEPLOY_LEVEL=$DEPLOY_LEVEL_NO_KEYS: almost a full deploy but without the backup keys or webhook details supplied so those steps are skipped
+        DEPLOY_LEVEL=$DEPLOY_LEVEL_NO_KEYS: almost a full deploy but without the backup keys as those steps are skipped
     "
 } 
 
@@ -137,8 +131,6 @@ echo "   - DEPLOY_USER:     $DEPLOY_USER"
 echo "   - BACKUP_KEY:      $BACKUP_KEY"
 echo "   - BACKUP_SSH_KEY:  $BACKUP_SSH_KEY"
 echo "   - BACKUP_HOST:     $BACKUP_HOST"
-echo "   - WEBHOOK_URL:     $WEBHOOK_URL"
-echo "   - WEBHOOK_KEY:     $WEBHOOK_KEY"
 echo "   - SENDGRID_API_KEY:$SENDGRID_API_KEY"
 echo "   - REMOTE_WAVES_NODES: $REMOTE_WAVES_NODES"
 echo "   - ZAPD_ARCHIVE:    zapd.zip"
@@ -151,6 +143,6 @@ then
     ## do dangerous stuff
     echo ok lets go!!!
     ansible-playbook --inventory "$DEPLOY_HOST," --user "$DEPLOY_USER" -v \
-        --extra-vars "ADMIN_EMAIL=$ADMIN_EMAIL ALERT_EMAIL=$ALERT_EMAIL DEPLOY_HOST=$DEPLOY_HOST BACKUP_KEY='$BACKUP_KEY' BACKUP_SSH_KEY='$BACKUP_SSH_KEY' BACKUP_HOST=$BACKUP_HOST WEBHOOK_URL=$WEBHOOK_URL WEBHOOK_KEY=$WEBHOOK_KEY SENDGRID_API_KEY=$SENDGRID_API_KEY REMOTE_WAVES_NODES=$REMOTE_WAVES_NODES KEYS_SUPPLIED=$KEYS_SUPPLIED FULL_DEPLOY=$FULL_DEPLOY VAGRANT=$VAGRANT TESTNET=$TESTNET SERVER_NAME=$DEPLOY_HOST" \
+        --extra-vars "ADMIN_EMAIL=$ADMIN_EMAIL ALERT_EMAIL=$ALERT_EMAIL DEPLOY_HOST=$DEPLOY_HOST BACKUP_KEY='$BACKUP_KEY' BACKUP_SSH_KEY='$BACKUP_SSH_KEY' BACKUP_HOST=$BACKUP_HOST SENDGRID_API_KEY=$SENDGRID_API_KEY REMOTE_WAVES_NODES=$REMOTE_WAVES_NODES KEYS_SUPPLIED=$KEYS_SUPPLIED FULL_DEPLOY=$FULL_DEPLOY VAGRANT=$VAGRANT TESTNET=$TESTNET SERVER_NAME=$DEPLOY_HOST" \
         ansible/deploy.yml
 fi

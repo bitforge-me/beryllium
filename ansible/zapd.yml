@@ -56,10 +56,6 @@
     - name: init wallet address
       shell: /opt/zapd/init_wallet_address.py
 
-    - name: set webhook config
-      shell: /opt/zapd/set_webhook_config.py {{ WEBHOOK_URL }} {{ WEBHOOK_KEY }}
-      when: KEYS_SUPPLIED
-
     - name: init flask config secret
       shell: /opt/zapd/init_flask_config_secret.py {{ SENDGRID_API_KEY }}
       when: KEYS_SUPPLIED
