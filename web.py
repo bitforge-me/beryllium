@@ -323,11 +323,10 @@ def validateaddress(address):
 
 class ZapWeb():
 
-    def __init__(self, addr="127.0.0.1", port=5000, no_waves=False):
+    def __init__(self, addr="127.0.0.1", port=5000):
         self.addr = addr
         self.port = port
         self.runloop_greenlet = None
-        self.no_waves = no_waves
 
     def check_wallet(self):
         # check seed has been set
@@ -346,7 +345,7 @@ class ZapWeb():
     def start(self, group=None):
         def runloop():
             logger.info("ZapWeb runloop started")
-
+            logger.info(f"ZapWeb webserver starting (addr: {self.addr}, port: {self.port})")
             http_server = WSGIServer((self.addr, self.port), app)
             http_server.serve_forever()
 
