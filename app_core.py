@@ -21,9 +21,9 @@ if os.getenv("DATABASE_URL"):
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
 else:
     if app.config["TESTNET"]:
-        DATABASE_FILE = 'zapd_testnet.db'
+        DATABASE_FILE = 'premio_stage_testnet.db'
     else:
-        DATABASE_FILE = 'zapd.db'
+        DATABASE_FILE = 'premio_stage.db'
     app.config["SQLALCHEMY_DATABASE_URI"] = 'sqlite:///' + DATABASE_FILE
 
 def set_vital_setting(env_name, setting_name=None):
@@ -41,6 +41,7 @@ set_vital_setting("NODE_BASE_URL")
 set_vital_setting("WALLET_SEED")
 set_vital_setting("WALLET_ADDRESS")
 set_vital_setting("ASSET_ID")
+set_vital_setting("ASSET_NAME")
 set_vital_setting("ADMIN_EMAIL")
 set_vital_setting("FROM_EMAIL", "SECURITY_EMAIL_SENDER")
 set_vital_setting("FROM_NAME")

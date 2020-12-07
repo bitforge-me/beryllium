@@ -37,21 +37,21 @@ def send_email(logger, subject, msg, to=None):
         logger.error(f"email '{subject}': {ex}")
 
 def email_exception(logger, msg):
-    send_email(logger, "zapd exception", msg)
+    send_email(logger, "premio stage exception", msg)
 
-def email_payment_claim(logger, payment, hours_expiry):
+def email_payment_claim(logger, asset_name, payment, hours_expiry):
     url = url_for("claim_payment", token=payment.token, _external=True)
-    msg = f"You have a ZAP payment waiting!<br/><br/>Claim your payment <a href='{url}'>here</a><br/><br/>Claim within {hours_expiry} hours"
-    send_email(logger, "Claim your ZAP payment", msg, payment.email)
+    msg = f"You have a {asset_name} payment waiting!<br/><br/>Claim your payment <a href='{url}'>here</a><br/><br/>Claim within {hours_expiry} hours"
+    send_email(logger, f"Claim your {asset_name} payment", msg, payment.email)
 
-def sms_payment_claim(logger, payment, hours_expiry):
+def sms_payment_claim(logger, asset_name, payment, hours_expiry):
     # SMS messages are sent by burst SMS
     #  - the authorization is by the sender email
     #  - the country code is configured by the account
     url = url_for("claim_payment", token=payment.token, _external=True)
-    msg = f"You have a ZAP payment waiting! Claim your payment (within {hours_expiry} hours) {url}"
+    msg = f"You have a {asset_name} payment waiting! Claim your payment (within {hours_expiry} hours) {url}"
     email = str(payment.mobile) + "@transmitsms.com"
-    send_email(logger, "ZAP Payment", msg, email)
+    send_email(logger, "{asset_name} Payment", msg, email)
 
 def generate_key(num=20):
     return binascii.hexlify(os.urandom(num)).decode()

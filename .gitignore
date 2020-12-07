@@ -3,9 +3,4 @@
 *.db
 .DS_Store
 
-/ansible/deploy.retry
-/zapd/__pycache__
-/.vagrant
-/zapd/config_secret.cfg
-/zapd/flask_config_secret.py
-zapd.zip
+/__pycache__

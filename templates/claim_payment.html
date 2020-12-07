@@ -3,7 +3,7 @@
 <div class="container">
     <div class="row">
         <div class="col-sm-10 col-sm-offset-1">
-            <h3>You can claim a payment of {{payment.amount|int2zap}} ZAP</h3>
+            <h3>You can claim a payment of {{payment.amount|int2asset}} {{ config["ASSET_NAME"] }}</h3>
             <h4>Expiry Date:</h4>
             <p>{{payment.proposal.date_expiry}}</p>
             <h4>Message:</h4>

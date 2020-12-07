@@ -6,7 +6,7 @@
 	<link rel="icon" type="image/png" sizes="96x96" href="static/assets/img/favicon.png">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
 
-	<title>Zap Dashboard</title>
+	<title>Premio Stage Dashboard</title>
 
 	<meta content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0' name='viewport' />
     <meta name="viewport" content="width=device-width" />
@@ -33,31 +33,6 @@
 <body>
 
 <div class="wrapper">
-    <div class="sidebar" data-background-color="white" data-active-color="danger">
-
-    <!--
-		Tip 1: you can change the color of the sidebar's background using: data-background-color="white | black"
-		Tip 2: you can change the color of the active button using the data-active-color="primary | info | success | warning | danger"
-	-->
-
-    	<div class="sidebar-wrapper">
-            <div class="logo">
-                <a href="http://zap.me" class="simple-text">
-                    ZAP DAEMON
-                </a>
-            </div>
-
-            <ul class="nav">
-                <li class="active">
-                    <a href="dashboard.html">
-                        <i class="ti-panel"></i>
-                        <p>Dashboard</p>
-                    </a>
-                </li>
-            </ul>
-    	</div>
-    </div>
-
     <div class="main-panel">
         <nav class="navbar navbar-default">
             <div class="container-fluid">
@@ -72,37 +47,10 @@
                 </div>
                 <div class="collapse navbar-collapse">
                     <ul class="nav navbar-nav navbar-right">
-                        <li>
-                            <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-                                <i class="ti-bell"></i>
-								<p id="countdown"></p>
-                            </a>
-                        </li>
-                        <li>
-                            <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-                                <i class="ti-panel"></i>
-								<p>Stats</p>
-                            </a>
-                        </li>
-                        <li class="dropdown">
-                              <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-                                    <i class="ti-bell"></i>
-                                    <p class="notification">5</p>
-									<p>Notifications</p>
-									<b class="caret"></b>
-                              </a>
-                              <ul class="dropdown-menu">
-                                <li><a href="#">Notification 1</a></li>
-                                <li><a href="#">Notification 2</a></li>
-                                <li><a href="#">Notification 3</a></li>
-                                <li><a href="#">Notification 4</a></li>
-                                <li><a href="#">Another notification</a></li>
-                              </ul>
-                        </li>
 						<li>
-                            <a href="#">
+                            <a href="/admin">
 								<i class="ti-settings"></i>
-								<p>Settings</p>
+								<p>Admin</p>
                             </a>
                         </li>
                     </ul>
@@ -127,16 +75,18 @@
                                     <div class="col-xs-7">
                                         <div class="numbers">
                                             <p>
-                                                Zap balance
+                                                {{ config["ASSET_NAME"] }} balance
                                             </p>
-                                            {{ data["zap_balance"] }}
+                                            {{ data["asset_balance"] }}
                                         </div>
                                     </div>
                                 </div>
                                 <div class="footer">
                                     <hr />
                                     <div class="stats">
+                                        <!--
                                         <i class="ti-reload"></i> Updated now
+                                        -->
                                     </div>
                                 </div>
                             </div>
@@ -154,7 +104,7 @@
                                     <div class="col-xs-7">
                                         <div class="numbers">
                                             <p>
-                                                Master zap account waves balance
+                                                Master account waves balance
                                             </p>
                                             {{ data["master_waves_balance"] }}
                                         </div>
@@ -163,7 +113,9 @@
                                 <div class="footer">
                                     <hr />
                                     <div class="stats">
-                                        <i class="ti-reload"></i> Updated now
+                                        <!--
+                                            <i class="ti-reload"></i> Updated now
+                                        -->
                                     </div>
                                 </div>
                             </div>
@@ -181,8 +133,8 @@
                     <ul>
 
                         <li>
-                            <a href="http://zap.me">
-                                Zap Me
+                            <a href="#">
+                                Premio - by ZAP
                             </a>
                         </li>
                     </ul>

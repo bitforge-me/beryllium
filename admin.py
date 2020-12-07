@@ -9,7 +9,7 @@ from models import security, RestrictedModelView, ProposalModelView, UserModelVi
 # Create admin
 admin = flask_admin.Admin(
     app,
-    'ZAPD Admin',
+    'Premio Stage Admin',
     base_template='my_master.html',
     template_mode='bootstrap3',
 )
@@ -19,7 +19,7 @@ admin.add_view(UserModelView(User, db.session, category='Admin'))
 admin.add_view(RestrictedModelView(Role, db.session, category='Admin'))
 admin.add_view(RestrictedModelView(Category, db.session, category='Admin'))
 admin.add_view(ProposalModelView(Proposal, db.session))
-admin.add_view(RestrictedModelView(CreatedTransaction, db.session, category='ZAPD'))
+admin.add_view(RestrictedModelView(CreatedTransaction, db.session))
 
 # define a context processor for merging flask-admin's template context into the
 # flask-security views.

@@ -34,7 +34,7 @@ class ReloadingIterator:
     def __iter__(self):
         return self.iterator_factory()
 
-### Define zapsend models
+### Define premio stage models
 
 roles_users = db.Table(
     'roles_users',

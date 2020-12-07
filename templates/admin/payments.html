@@ -23,7 +23,7 @@
                         <td>{{payment.mobile}}</td>
                         <td>{{payment.wallet_address}}</td>
                         <td>{{payment.message}}</td>
-                        <td>{{payment.amount|int2zap}} ZAP</td>
+                        <td>{{payment.amount|int2asset}} {{ config["ASSET_NAME"] }}</td>
                         <td>{{payment.status}}</td>
                         <td>{{payment.txid}}</td>
                     </tr>

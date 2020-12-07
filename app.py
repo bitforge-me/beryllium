@@ -98,16 +98,11 @@ if __name__ == "__main__":
     # create tables
     db.create_all()
     create_role("admin", "super user")
-    create_role("proposer", "Can propose zap payments")
-    create_role("authorizer", "Can authorize zap payments")
+    create_role("proposer", "Can propose payments")
+    create_role("authorizer", "Can authorize payments")
     create_category("marketing", "")
     create_category("misc", "")
-    create_category("customer incentive", "")
-    create_category("staff incentive", "")
-    create_category("merchant incentive", "")
     create_category("testing", "")
-    create_category("rebate", "")
-    create_category("zap nz", "")
     db.session.commit()
 
     # process commands
@@ -126,13 +121,9 @@ if __name__ == "__main__":
         signal.signal(signal.SIGINT, sigint_handler)
 
         logger.info("starting greenlets")
-        group = gevent.pool.Group()
-        zapweb = web.ZapWeb()
-        zapweb.start(group)
-        logger.info("main loop")
-        for g in group:
-            g.link_exception(g_exception)
+        web_greenlet = web.WebGreenlet(g_exception)
+        web_greenlet.start()
         while keep_running:
             gevent.sleep(1)
         logger.info("stopping greenlets")
-        zapweb.stop()
+        web_greenlet.stop()
