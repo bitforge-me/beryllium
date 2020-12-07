@@ -333,8 +333,11 @@ class WebGreenlet():
         # check address object matches our configured address
         global pw_address
         pw_address = pywaves.Address(seed=SEED)
-        if pw_address.address != ADDRESS:
-            msg = f"pw_address ({pw_address.address}) does not match {ADDRESS}"
+        addr = pw_address.address
+        if isinstance(addr, bytes):
+            addr = addr.decode()
+        if addr != ADDRESS:
+            msg = f"pw_address ({addr}) does not match {ADDRESS}"
             logger.error(msg)
             sys.exit(1)
 
