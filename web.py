@@ -8,6 +8,8 @@ import time
 import datetime
 import decimal
 import base64
+import io
+from urllib.parse import urlparse
 
 import gevent
 from gevent.pywsgi import WSGIServer
@@ -21,6 +23,8 @@ from requests.packages.urllib3.util.retry import Retry
 import base58
 import pywaves
 import pyblake2
+import qrcode
+import qrcode.image.svg
 
 from app_core import app, db
 from models import TokenTx, TxSig, Proposal, Payment
@@ -152,6 +156,14 @@ def _broadcast_transaction(txid):
         raise err
     return dbtx
 
+def qrcode_svg_create(data):
+    factory = qrcode.image.svg.SvgPathImage
+    img = qrcode.make(data, image_factory=factory)
+    output = io.BytesIO()
+    img.save(output)
+    svg = output.getvalue().decode('utf-8')
+    return svg
+
 #
 # Jinja2 filters
 #
@@ -160,6 +172,13 @@ def _broadcast_transaction(txid):
 def int2asset(num):
     num = decimal.Decimal(num)
     return num/100
+
+@app.context_processor
+def inject_config_qrcode_svg():
+    url_parts = urlparse(request.url)
+    url = url_parts._replace(scheme="premiostagelink", path="/config").geturl()
+    qrcode_svg = qrcode_svg_create(url)
+    return dict(config_url=url, config_qrcode_svg=qrcode_svg)
 
 #
 # Flask views

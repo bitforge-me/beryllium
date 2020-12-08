@@ -16,3 +16,4 @@ marshmallow==2.15.3
 psycopg2-binary==2.8.1
 pywaves==0.8.14
 pysha3==1.0.2
+qrcode==6.1

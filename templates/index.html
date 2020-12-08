@@ -28,6 +28,7 @@
         <small class="text-muted">
             {{config["ASSET_NAME"]}} - {{config["ASSET_ID"]}} - testnet: {{config["TESTNET"]}}
         </small>
+        <a href="{{ config_url }}">{{ config_qrcode_svg | safe }}</a><br/>
     </div>
     </div>
 {% endblock %}
