@@ -10,7 +10,7 @@ import decimal
 
 import gevent
 from gevent.pywsgi import WSGIServer
-from flask import Flask, render_template, request, flash, abort
+from flask import Flask, render_template, request, flash, abort, jsonify
 from flask_security import current_user, roles_accepted
 #from flask_jsonrpc import JSONRPC
 from flask_jsonrpc.exceptions import OtherError
@@ -25,6 +25,7 @@ from app_core import app, db
 from models import CreatedTransaction, Proposal, Payment
 import admin
 import utils
+import tx_utils
 
 #jsonrpc = JSONRPC(app, "/api")
 logger = logging.getLogger(__name__)
@@ -252,6 +253,19 @@ def dashboard():
     data["asset_balance"] = from_int_to_user_friendly(data["asset_balance"], 100)
     data["master_waves_balance"] = from_int_to_user_friendly(data["master_waves_balance"], 10**8)
     return render_template("dashboard.html", data=data)
+
+@app.route("/config")
+def config():
+    return jsonify(dict(asset_id=app.config["ASSET_ID"], asset_name=app.config["ASSET_NAME"], testnet=app.config["TESTNET"]))
+
+@app.route("/tx_serialize", methods=["POST"])
+def tx_serialize():
+    content = request.json
+    tx = json.loads(content["tx"])
+    tx_bytes = tx_utils.tx_serialize(app.config["TESTNET"], tx)
+
+    res = {"bytes": tx_bytes}
+    return jsonify(res)
 
 ##
 ## JSON-RPC
