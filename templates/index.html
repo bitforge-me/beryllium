@@ -1,7 +1,33 @@
-<html>
-    <body>
-        <div>
-            <a href="{{ url_for('admin.index') }}">Go to admin!</a>
-        </div>
-    </body>
-</html>
+{% extends "layout.html" %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+    <div class="row justify-content-center">
+    <div class="col-sm-6">
+        <ul>
+	    {% if current_user.has_role("admin") %}
+            <li>
+                <a href="/dashboard">Dashboard</a>
+            </li>
+            <li>
+                <a href="{{ url_for('admin.index') }}">Admin</a>
+            </li>
+	    {% endif %}
+            <li>
+                <a href="/internal/process_proposals">Process proposals</a>
+            </li>
+        </ul>
+    </div>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block footer %}
+    <div class="row justify-content-center">
+    <div class="col-sm-6">
+        <small class="text-muted">
+            {{config["ASSET_NAME"]}} - {{config["ASSET_ID"]}} - testnet: {{config["TESTNET"]}}
+        </small>
+    </div>
+    </div>
+{% endblock %}

@@ -11,7 +11,8 @@ import decimal
 import gevent
 from gevent.pywsgi import WSGIServer
 from flask import Flask, render_template, request, flash, abort
-from flask_jsonrpc import JSONRPC
+from flask_security import current_user, roles_accepted
+#from flask_jsonrpc import JSONRPC
 from flask_jsonrpc.exceptions import OtherError
 import requests
 from requests.adapters import HTTPAdapter
@@ -25,7 +26,7 @@ from models import CreatedTransaction, Proposal, Payment
 import admin
 import utils
 
-jsonrpc = JSONRPC(app, "/api")
+#jsonrpc = JSONRPC(app, "/api")
 logger = logging.getLogger(__name__)
 
 # our address object
@@ -245,77 +246,78 @@ def claim_payment(token):
     return render_template("claim_payment.html", payment=payment, recipient=recipient)
 
 @app.route("/dashboard")
+@roles_accepted("admin")
 def dashboard():
     data = dashboard_data()
     data["asset_balance"] = from_int_to_user_friendly(data["asset_balance"], 100)
     data["master_waves_balance"] = from_int_to_user_friendly(data["master_waves_balance"], 10**8)
     return render_template("dashboard.html", data=data)
 
+##
+## JSON-RPC
+##
 #
-# JSON-RPC
+#@jsonrpc.method("status")
+#def status():
+#    return dashboard_data()
 #
-
-@jsonrpc.method("status")
-def status():
-    return dashboard_data()
-
-@jsonrpc.method("getaddress")
-def getaddress():
-    return {"address": ADDRESS}
-
-@jsonrpc.method("getbalance")
-def getbalance():
-    path = f"assets/balance/{ADDRESS}/{ASSET_ID}"
-    response = requests.get(NODE_BASE_URL + path)
-    return response.json()
-
-@jsonrpc.method("gettransaction")
-def gettransaction(txid):
-    path = f"transactions/info/{txid}"
-    response = requests.get(NODE_BASE_URL + path)
-    return response.json()
-
-def transfer_asset_txid(tx):
-    serialized_data = b'\4' + \
-        base58.b58decode(tx["senderPublicKey"]) + \
-        (b'\1' + base58.b58decode(tx["assetId"]) if tx["assetId"] else b'\0') + \
-        (b'\1' + base58.b58decode(tx["feeAssetId"]) if tx["feeAssetId"] else b'\0') + \
-        struct.pack(">Q", tx["timestamp"]) + \
-        struct.pack(">Q", tx["amount"]) + \
-        struct.pack(">Q", tx["fee"]) + \
-        base58.b58decode(tx["recipient"]) + \
-        struct.pack(">H", len(tx["attachment"])) + \
-        pywaves.crypto.str2bytes(tx["attachment"])
-    return utils.txid_from_txdata(serialized_data)
-
-@jsonrpc.method("createtransaction")
-def createtransaction(recipient, amount, attachment):
-    dbtx = _create_transaction(recipient, amount, attachment)
-    db.session.add(dbtx)
-    db.session.commit()
-    # return txid/state to caller
-    return {"txid": dbtx.txid, "state": dbtx.state}
-
-@jsonrpc.method("broadcasttransaction")
-def broadcasttransaction(txid):
-    dbtx = _broadcast_transaction(txid)
-    db.session.add(dbtx)
-    db.session.commit()
-    # return txid/state to caller
-    return {"txid": txid, "state": dbtx.state}
-
-@jsonrpc.method("expiretransactions")
-def expiretransactions(above_age=60*60*24):
-    count = CreatedTransaction.expire_transactions(db.session, above_age, CTX_CREATED, CTX_EXPIRED)
-    db.session.commit()
-    return {"count": count}
-
-@jsonrpc.method("validateaddress")
-def validateaddress(address):
-    if pywaves.validateAddress(address):
-        return {"address": address}
-    err = OtherError("invalid address", 0)
-    raise err
+#@jsonrpc.method("getaddress")
+#def getaddress():
+#    return {"address": ADDRESS}
+#
+#@jsonrpc.method("getbalance")
+#def getbalance():
+#    path = f"assets/balance/{ADDRESS}/{ASSET_ID}"
+#    response = requests.get(NODE_BASE_URL + path)
+#    return response.json()
+#
+#@jsonrpc.method("gettransaction")
+#def gettransaction(txid):
+#    path = f"transactions/info/{txid}"
+#    response = requests.get(NODE_BASE_URL + path)
+#    return response.json()
+#
+#def transfer_asset_txid(tx):
+#    serialized_data = b'\4' + \
+#        base58.b58decode(tx["senderPublicKey"]) + \
+#        (b'\1' + base58.b58decode(tx["assetId"]) if tx["assetId"] else b'\0') + \
+#        (b'\1' + base58.b58decode(tx["feeAssetId"]) if tx["feeAssetId"] else b'\0') + \
+#        struct.pack(">Q", tx["timestamp"]) + \
+#        struct.pack(">Q", tx["amount"]) + \
+#        struct.pack(">Q", tx["fee"]) + \
+#        base58.b58decode(tx["recipient"]) + \
+#        struct.pack(">H", len(tx["attachment"])) + \
+#        pywaves.crypto.str2bytes(tx["attachment"])
+#    return utils.txid_from_txdata(serialized_data)
+#
+#@jsonrpc.method("createtransaction")
+#def createtransaction(recipient, amount, attachment):
+#    dbtx = _create_transaction(recipient, amount, attachment)
+#    db.session.add(dbtx)
+#    db.session.commit()
+#    # return txid/state to caller
+#    return {"txid": dbtx.txid, "state": dbtx.state}
+#
+#@jsonrpc.method("broadcasttransaction")
+#def broadcasttransaction(txid):
+#    dbtx = _broadcast_transaction(txid)
+#    db.session.add(dbtx)
+#    db.session.commit()
+#    # return txid/state to caller
+#    return {"txid": txid, "state": dbtx.state}
+#
+#@jsonrpc.method("expiretransactions")
+#def expiretransactions(above_age=60*60*24):
+#    count = CreatedTransaction.expire_transactions(db.session, above_age, CTX_CREATED, CTX_EXPIRED)
+#    db.session.commit()
+#    return {"count": count}
+#
+#@jsonrpc.method("validateaddress")
+#def validateaddress(address):
+#    if pywaves.validateAddress(address):
+#        return {"address": address}
+#    err = OtherError("invalid address", 0)
+#    raise err
 
 #
 # gevent class
