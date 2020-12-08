@@ -608,24 +608,27 @@ class UserModelView(BaseModelView):
 
 ### define token distribution models
 
-class CreatedTransactionSchema(Schema):
+class TokenTxSchema(Schema):
     date = fields.Date()
     txid = fields.String()
+    type = fields.String()
     state = fields.String()
     amount = fields.Integer()
     json_data = fields.String()
 
-class CreatedTransaction(db.Model):
-    __tablename__ = 'created_transactions'
+class TokenTx(db.Model):
+    __tablename__ = 'token_txs'
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.Integer, nullable=False)
     txid = db.Column(db.String, nullable=False, unique=True)
+    type = db.Column(db.String, nullable=False)
     state = db.Column(db.String, nullable=False)
     amount = db.Column(db.Integer, nullable=False)
     json_data = db.Column(db.String, nullable=False)
 
-    def __init__(self, txid, state, amount, json_data):
+    def __init__(self, txid, type, state, amount, json_data):
         self.date = time.time()
+        self.type = type
         self.state = state
         self.txid = txid
         self.amount = amount
@@ -650,10 +653,10 @@ class CreatedTransaction(db.Model):
         return session.query(cls).count()
 
     def __repr__(self):
-        return '<CreatedTransaction %r>' % (self.txid)
+        return '<TokenTx %r>' % (self.txid)
 
     def to_json(self):
-        tx_schema = CreatedTransactionSchema()
+        tx_schema = TokenTxSchema()
         return tx_schema.dump(self).data
 
 class Setting(db.Model):

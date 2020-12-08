@@ -7,6 +7,7 @@ import struct
 import time
 import datetime
 import decimal
+import base64
 
 import gevent
 from gevent.pywsgi import WSGIServer
@@ -22,7 +23,7 @@ import pywaves
 import pyblake2
 
 from app_core import app, db
-from models import CreatedTransaction, Proposal, Payment
+from models import TokenTx, Proposal, Payment
 import admin
 import utils
 import tx_utils
@@ -93,6 +94,9 @@ def from_int_to_user_friendly(val, divisor, decimal_places=4):
     val = val / divisor
     return round(val, decimal_places)
 
+def tx_to_txid(tx):
+    return utils.txid_from_txdata(tx_utils.tx_serialize(tx))
+
 def _create_transaction(recipient, amount, attachment):
     # get fee
     path = f"assets/details/{ASSET_ID}"
@@ -122,11 +126,11 @@ def _create_transaction(recipient, amount, attachment):
     # calc txid properly
     txid = transfer_asset_txid(signed_tx)
     # store tx in db
-    dbtx = CreatedTransaction(txid, CTX_CREATED, signed_tx["amount"], address_data["api-data"])
+    dbtx = TokenTx(txid, CTX_CREATED, "transfer", signed_tx["amount"], address_data["api-data"])
     return dbtx
 
 def _broadcast_transaction(txid):
-    dbtx = CreatedTransaction.from_txid(db.session, txid)
+    dbtx = TokenTx.from_txid(db.session, txid)
     if not dbtx:
         raise OtherError("transaction not found", ERR_NO_TXID)
     if dbtx.state == CTX_EXPIRED:
@@ -236,7 +240,7 @@ def claim_payment(token):
     payment = Payment.from_token(db.session, token)
     if not payment:
         abort(404)
-    dbtx = CreatedTransaction.from_txid(db.session, payment.txid)
+    dbtx = TokenTx.from_txid(db.session, payment.txid)
     if request.method == "POST":
         dbtx, err_msg = process_claim(payment, dbtx)
         if err_msg:
@@ -256,16 +260,95 @@ def dashboard():
 
 @app.route("/config")
 def config():
-    return jsonify(dict(asset_id=app.config["ASSET_ID"], asset_name=app.config["ASSET_NAME"], testnet=app.config["TESTNET"]))
+    return jsonify(dict(asset_id=app.config["ASSET_ID"], asset_name=app.config["ASSET_NAME"], testnet=app.config["TESTNET"], tx_signers=app.config["TX_SIGNERS"], tx_types=tx_utils.TYPES))
+
+@app.route("/tx_create", methods=["POST"])
+def tx_create():
+    content = request.json
+    type = content["type"]
+    if not type in tx_utils.TYPES:
+        return abort(400, "'type' not valid")
+    pubkey = app.config["ASSET_MASTER_PUBKEY"]
+    address = tx_utils.generate_address(pubkey, tx_utils.CHAIN_ID)
+    asset_id = app.config["ASSET_ID"]
+    timestamp = content["timestamp"]
+    amount = 0
+    if type == "transfer":
+        fee = tx_utils.get_fee(app.config["NODE_BASE_URL"], tx_utils.DEFAULT_TX_FEE, address, None)
+        recipient = content["recipient"]
+        amount = content["amount"]
+        tx = tx_utils.transfer_asset_payload(address, pubkey, None, recipient, asset_id, amount, fee=fee, timestamp=timestamp)
+    elif type == "issue":
+        fee = tx_utils.get_fee(app.config["NODE_BASE_URL"], tx_utils.DEFAULT_ASSET_FEE, address, None)
+        asset_name = content["asset_name"]
+        asset_description = content["asset_description"]
+        amount = content["amount"]
+        tx = tx_utils.issue_asset_payload(address, pubkey, None, asset_name, asset_description, amount, decimals=2, reissuable=True, fee=fee, timestamp=timestamp)
+    elif type == "reissue":
+        fee = tx_utils.get_fee(app.config["NODE_BASE_URL"], tx_utils.DEFAULT_ASSET_FEE, address, None)
+        amount = content["amount"]
+        tx = tx_utils.reissue_asset_payload(address, pubkey, None, asset_id, amount, reissuable=True, fee=fee, timestamp=timestamp)
+    elif type == "sponsor":
+        fee = tx_utils.get_fee(app.config["NODE_BASE_URL"], tx_utils.DEFAULT_SPONSOR_FEE, address, None)
+        asset_fee = content["asset_fee"]
+        amount = asset_fee
+        tx = tx_utils.sponsor_payload(address, pubkey, None, asset_id, asset_fee, fee=fee, timestamp=timestamp)
+    elif type == "setscript":
+        fee = tx_utils.get_fee(app.config["NODE_BASE_URL"], tx_utils.DEFAULT_SCRIPT_FEE, address, None)
+        script = content["script"]
+        tx = tx_utils.set_script_payload(address, pubkey, None, script, fee=fee, timestamp=timestamp)
+    else:
+        return abort(400, "invalid type")
+
+    txid = transfer_asset_txid(tx)
+    dbtx = TokenTx(txid, CTX_CREATED, type, amount, json.dumps(tx))
+    db.session.add(dbtx)
+    db.session.commit()
+    return jsonify(dict(txid=txid, state=CTX_CREATED, tx=tx)
+
+@app.route("/tx_status", methods=["POST"])
+def tx_status():
+    content = request.json
+    txid = content["txid"]
+    dbtx = TokenTx.from_txid(db.session, txid)
+    if not dbtx:
+        return abort(404)
+    tx = json.loads(dbtx.json_data)
+    return jsonify(dict(txid=txid, state=tx["state"], tx=tx)
 
 @app.route("/tx_serialize", methods=["POST"])
 def tx_serialize():
     content = request.json
     tx = json.loads(content["tx"])
-    tx_bytes = tx_utils.tx_serialize(app.config["TESTNET"], tx)
-
-    res = {"bytes": tx_bytes}
+    tx_serialized = tx_utils.tx_serialize(app.config["TESTNET"], tx)
+    res = {"bytes": base64.b64encode(tx_serialized).decode("utf-8", "ignore")}
     return jsonify(res)
+
+@app.route("/tx_signature", methods=["POST"])
+def tx_signature():
+    #INPUT - txid, signer index, signature
+    #DO - add signature (add to separate 'signatures' table and construct signed tx on demand)
+    #RETURN - json, broadcast status, last broadcast error
+    pass
+
+@app.route("/tx_broadcast", methods=["POST"])
+def tx_broadcast():
+    #RETURN - json, broadcast status, last broadcast error
+    content = request.json
+    txid = content["txid"]
+    dbtx = TokenTx.from_txid(db.session, txid)
+    if not dbtx:
+        return abort(404)
+    tx = json.loads(dbtx.json_data)
+    error = ""
+    # broadcast transaction
+    try:
+        dbtx = _broadcast_transaction(dbtx.txid)
+        db.session.add(dbtx)
+        db.session.commit()
+    except OtherError as ex:
+        error = ex.message
+    return jsonify(dict(txid=txid, state=tx["state"], tx=tx, error=error)
 
 ##
 ## JSON-RPC
@@ -291,19 +374,6 @@ def tx_serialize():
 #    response = requests.get(NODE_BASE_URL + path)
 #    return response.json()
 #
-#def transfer_asset_txid(tx):
-#    serialized_data = b'\4' + \
-#        base58.b58decode(tx["senderPublicKey"]) + \
-#        (b'\1' + base58.b58decode(tx["assetId"]) if tx["assetId"] else b'\0') + \
-#        (b'\1' + base58.b58decode(tx["feeAssetId"]) if tx["feeAssetId"] else b'\0') + \
-#        struct.pack(">Q", tx["timestamp"]) + \
-#        struct.pack(">Q", tx["amount"]) + \
-#        struct.pack(">Q", tx["fee"]) + \
-#        base58.b58decode(tx["recipient"]) + \
-#        struct.pack(">H", len(tx["attachment"])) + \
-#        pywaves.crypto.str2bytes(tx["attachment"])
-#    return utils.txid_from_txdata(serialized_data)
-#
 #@jsonrpc.method("createtransaction")
 #def createtransaction(recipient, amount, attachment):
 #    dbtx = _create_transaction(recipient, amount, attachment)
@@ -322,7 +392,7 @@ def tx_serialize():
 #
 #@jsonrpc.method("expiretransactions")
 #def expiretransactions(above_age=60*60*24):
-#    count = CreatedTransaction.expire_transactions(db.session, above_age, CTX_CREATED, CTX_EXPIRED)
+#    count = TokenTx.expire_transactions(db.session, above_age, CTX_CREATED, CTX_EXPIRED)
 #    db.session.commit()
 #    return {"count": count}
 #

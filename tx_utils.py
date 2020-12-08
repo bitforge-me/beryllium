@@ -2,22 +2,55 @@ import json
 import base64
 import time
 import struct
+import os
+import random
+import hashlib
 
 import base58
+import axolotl_curve25519 as curve
+import sha3
+import pyblake2
 
 CHAIN_ID = None
+
+TYPES = dict(issue=3, transfer=4, reissue=5, setscript=13, sponsor=14)
 
 DEFAULT_TX_FEE = 100000
 DEFAULT_ASSET_FEE = 100000000
 DEFAULT_SPONSOR_FEE = 100000000
 DEFAULT_SCRIPT_FEE = 1000000
 
+def throw_error(msg):
+    raise Exception(msg)
+
 def str2bytes(s):
     # warning this method is flawed with some input
     return s.encode("latin-1")
 
-def throw_error(msg):
-    raise Exception(msg)
+def sign(privkey, message):
+    random64 = os.urandom(64)
+    return base58.b58encode(curve.calculateSignature(random64, base58.b58decode(privkey), message))
+
+def sha256(data):
+    return hashlib.sha256(data).digest()
+
+def waves_hash(data):
+    hash1 = pyblake2.blake2b(data, digest_size=32).digest()
+    hash2 = sha3.keccak_256(hash1).digest()
+    return hash2
+
+def generate_address(pubkey, chain_id):
+    # convert input to bytes
+    chain_id = str2bytes(chain_id)
+    # decode base58 pubkey
+    pubkey = base58.b58decode(pubkey)
+    # create address
+    address_version = bytes([1])
+    address = address_version + chain_id + waves_hash(pubkey)[:20]
+    checksum = waves_hash(address)[:4]
+    # base58 encode pubkey
+    address = base58.b58encode(address + checksum)
+    return address
 
 def waves_timestamp():
     return int(time.time() * 1000)
@@ -260,6 +293,31 @@ def tx_serialize(testnet, tx):
         data = set_script_non_witness_bytes(tx["senderPublicKey"], tx["script"], tx["fee"], \
             tx["timestamp"])
     else:
-        return abort("invalid tx type")
+        return None
 
-    return base64.b64encode(data).decode("utf-8", "ignore")
+    return data
+
+def post(host, api, data):
+    return requests.post('%s%s' % (host, api), data=data, headers={'content-type': 'application/json'}).json()
+
+def get(host, api):
+    return requests.get('%s%s' % (host, api)).json()
+
+def broadcast_tx(host, data):
+    return post(host, "/transactions/broadcast", data)
+
+def get_fee(host, default_fee, address, user_provided_fee):
+    fee = default_fee
+    if user_provided_fee:
+        fee = user_provided_fee
+    else:
+        try:
+            data = get(host, f"/addresses/scriptInfo/{address}")
+            if "error" in data:
+                throw_error(f"unable to check script fees on address ({address})")
+            else:
+                fee += data["extraFee"]
+        except:
+            throw_error(f"unable to check script fees on address ({address})")
+
+    return fee

@@ -1,4 +1,5 @@
 import os
+import json
 
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
@@ -42,6 +43,7 @@ set_vital_setting("WALLET_SEED")
 set_vital_setting("WALLET_ADDRESS")
 set_vital_setting("ASSET_ID")
 set_vital_setting("ASSET_NAME")
+set_vital_setting("ASSET_MASTER_PUBKEY")
 set_vital_setting("ADMIN_EMAIL")
 set_vital_setting("FROM_EMAIL", "SECURITY_EMAIL_SENDER")
 set_vital_setting("FROM_NAME")
@@ -50,6 +52,11 @@ set_vital_setting("SESSION_KEY", "SECRET_KEY")
 set_vital_setting("PASSWORD_SALT", "SECURITY_PASSWORD_SALT")
 set_vital_setting("SENDGRID_API_KEY", "MAIL_SENDGRID_API_KEY")
 set_vital_setting("SERVER_NAME")
+set_vital_setting("TX_SIGNERS")
+try:
+    app.config["TX_SIGNERS"] = json.loads(app.config["TX_SIGNERS"])
+except:
+    raise Exception('TX_SIGNERS is not valid json')
 
 db = SQLAlchemy(app)
 mail = MailSendGrid(app)
