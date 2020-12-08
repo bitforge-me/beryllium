@@ -23,7 +23,7 @@ import pywaves
 import pyblake2
 
 from app_core import app, db
-from models import TokenTx, Proposal, Payment
+from models import TokenTx, TxSig, Proposal, Payment
 import admin
 import utils
 import tx_utils
@@ -126,7 +126,7 @@ def _create_transaction(recipient, amount, attachment):
     # calc txid properly
     txid = transfer_asset_txid(signed_tx)
     # store tx in db
-    dbtx = TokenTx(txid, CTX_CREATED, "transfer", signed_tx["amount"], address_data["api-data"])
+    dbtx = TokenTx(txid, CTX_CREATED, "transfer", signed_tx["amount"], address_data["api-data"], True)
     return dbtx
 
 def _broadcast_transaction(txid):
@@ -135,7 +135,7 @@ def _broadcast_transaction(txid):
         raise OtherError("transaction not found", ERR_NO_TXID)
     if dbtx.state == CTX_EXPIRED:
         raise OtherError("transaction expired", ERR_TX_EXPIRED)
-    signed_tx = dbtx.json_data
+    signed_tx = dbtx.tx_with_sigs()
     # broadcast
     logger.debug(f"requesting broadcast of tx:\n\t{signed_tx}")
     path = f"assets/broadcast/transfer"
@@ -247,7 +247,7 @@ def claim_payment(token):
             flash(err_msg, "danger")
     recipient = None
     if dbtx:
-        recipient = json.loads(dbtx.json_data)["recipient"]
+        recipient = dbtx.tx_with_sigs()["recipient"]
     return render_template("claim_payment.html", payment=payment, recipient=recipient)
 
 @app.route("/dashboard")
@@ -301,10 +301,10 @@ def tx_create():
         return abort(400, "invalid type")
 
     txid = transfer_asset_txid(tx)
-    dbtx = TokenTx(txid, CTX_CREATED, type, amount, json.dumps(tx))
+    dbtx = TokenTx(txid, CTX_CREATED, type, amount, json.dumps(tx), False)
     db.session.add(dbtx)
     db.session.commit()
-    return jsonify(dict(txid=txid, state=CTX_CREATED, tx=tx)
+    return jsonify(dict(txid=txid, state=CTX_CREATED, tx=tx))
 
 @app.route("/tx_status", methods=["POST"])
 def tx_status():
@@ -313,8 +313,8 @@ def tx_status():
     dbtx = TokenTx.from_txid(db.session, txid)
     if not dbtx:
         return abort(404)
-    tx = json.loads(dbtx.json_data)
-    return jsonify(dict(txid=txid, state=tx["state"], tx=tx)
+    tx = dbtx.tx_with_sigs()
+    return jsonify(dict(txid=txid, state=dbtx.state, tx=tx))
 
 @app.route("/tx_serialize", methods=["POST"])
 def tx_serialize():
@@ -326,10 +326,18 @@ def tx_serialize():
 
 @app.route("/tx_signature", methods=["POST"])
 def tx_signature():
-    #INPUT - txid, signer index, signature
-    #DO - add signature (add to separate 'signatures' table and construct signed tx on demand)
-    #RETURN - json, broadcast status, last broadcast error
-    pass
+    content = request.json
+    txid = content["txid"]
+    signer_index = content["signer_index"]
+    signature = content["signature"]
+    dbtx = TokenTx.from_txid(db.session, txid)
+    if not dbtx:
+        return abort(404)
+    sig = TxSig(dbtx, signer_index, signature)
+    db.session.add(sig)
+    db.session.commit()
+    tx = dbtx.tx_with_sigs()
+    return jsonify(dict(txid=txid, state=dbtx.state, tx=tx))
 
 @app.route("/tx_broadcast", methods=["POST"])
 def tx_broadcast():
@@ -339,7 +347,7 @@ def tx_broadcast():
     dbtx = TokenTx.from_txid(db.session, txid)
     if not dbtx:
         return abort(404)
-    tx = json.loads(dbtx.json_data)
+    tx = dbtx.tx_with_sigs()
     error = ""
     # broadcast transaction
     try:
@@ -348,7 +356,7 @@ def tx_broadcast():
         db.session.commit()
     except OtherError as ex:
         error = ex.message
-    return jsonify(dict(txid=txid, state=tx["state"], tx=tx, error=error)
+    return jsonify(dict(txid=txid, state=dbtx.state, tx=tx, error=error))
 
 ##
 ## JSON-RPC
