@@ -9,21 +9,23 @@
             <p>{{payment.proposal.date_expiry}}</p>
             <h4>Message:</h4>
             <p>{{payment.message}}</p>
-            <h4>Claim form:</h4>
+            <h4>Claim payment:</h4>
             <form method="post">
             {%if not recipient%}
-                <input type="text" name="recipient" placeholder="Wallet address" autocomplete="off"/>
+                <div class="card-body">
+                    <a href="{{ url }}">{{ qrcode_svg | safe }}</a><br/>
+		    <p>SCAN or CLICK the QR code to claim your {{config["ASSET_NAME"]}}.</p><br/>
+                </div>
             {%else%}
                 Wallet address: {{recipient}}<br/>
-            {%endif%}
-            {%if payment.status == payment.STATE_SENT_CLAIM_LINK%}
+                {%if payment.status == payment.STATE_SENT_CLAIM_LINK%}
                 <input type="submit" value="Submit" />
+                {%endif%}
             {%endif%}
             </form>
             {%if payment.status == payment.STATE_SENT_FUNDS%}
-                Sent!<br/>
+                Sent!
             {%endif%}
-        </div>
     </div>
 </div>
 {% endblock content %}

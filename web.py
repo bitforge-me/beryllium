@@ -164,6 +164,44 @@ def qrcode_svg_create(data):
     svg = output.getvalue().decode('utf-8')
     return svg
 
+def process_proposals():
+    with app.app_context():
+        # set expired
+        expired = 0
+        now = datetime.datetime.now()
+        proposals = Proposal.in_status(db.session, Proposal.STATE_AUTHORIZED)
+        for proposal in proposals:
+            if proposal.date_expiry < now:
+                proposal.status = Proposal.STATE_EXPIRED
+                expired += 1
+                db.session.add(proposal)
+        db.session.commit()
+        # process authorized
+        emails = 0
+        sms_messages = 0
+        proposals = Proposal.in_status(db.session, Proposal.STATE_AUTHORIZED)
+        for proposal in proposals:
+            for payment in proposal.payments:
+                if payment.status == payment.STATE_CREATED:
+                    if payment.email:
+                        utils.email_payment_claim(logger, app.config["ASSET_NAME"], payment, proposal.HOURS_EXPIRY)
+                        payment.status = payment.STATE_SENT_CLAIM_LINK
+                        db.session.add(payment)
+                        logger.info(f"Sent payment claim url to {payment.email}")
+                        emails += 1
+                    elif payment.mobile:
+                        utils.sms_payment_claim(logger, app.config["ASSET_NAME"], payment, proposal.HOURS_EXPIRY)
+                        payment.status = payment.STATE_SENT_CLAIM_LINK
+                        db.session.add(payment)
+                        logger.info(f"Sent payment claim url to {payment.mobile}")
+                        sms_messages += 1
+                    elif payment.wallet_address:
+                        ##TODO: set status and commit before sending so we cannot send twice
+                        raise Exception("not yet implemented")
+        db.session.commit()
+        logger.info(f"payment statuses commited")
+        return f"done (expired {expired}, emails {emails}, SMS messages {sms_messages})"
+
 #
 # Jinja2 filters
 #
@@ -187,44 +225,6 @@ def inject_config_qrcode_svg():
 @app.route("/")
 def index():
     return render_template("index.html")
-
-@app.route("/internal/process_proposals")
-def process_proposals():
-    # set expired
-    expired = 0
-    now = datetime.datetime.now()
-    proposals = Proposal.in_status(db.session, Proposal.STATE_AUTHORIZED)
-    for proposal in proposals:
-        if proposal.date_expiry < now:
-            proposal.status = Proposal.STATE_EXPIRED
-            expired += 1
-            db.session.add(proposal)
-    db.session.commit()
-    # process authorized 
-    emails = 0
-    sms_messages = 0
-    proposals = Proposal.in_status(db.session, Proposal.STATE_AUTHORIZED)
-    for proposal in proposals:
-        for payment in proposal.payments:
-            if payment.status == payment.STATE_CREATED:
-                if payment.email:
-                    utils.email_payment_claim(logger, app.config["ASSET_NAME"], payment, proposal.HOURS_EXPIRY)
-                    payment.status = payment.STATE_SENT_CLAIM_LINK
-                    db.session.add(payment)
-                    logger.info(f"Sent payment claim url to {payment.email}")
-                    emails += 1
-                elif payment.mobile:
-                    utils.sms_payment_claim(logger, app.config["ASSET_NAME"], payment, proposal.HOURS_EXPIRY)
-                    payment.status = payment.STATE_SENT_CLAIM_LINK
-                    db.session.add(payment)
-                    logger.info(f"Sent payment claim url to {payment.mobile}")
-                    sms_messages += 1
-                elif payment.wallet_address:
-                    ##TODO: set status and commit before sending so we cannot send twice
-                    raise Exception("not yet implemented")
-    db.session.commit()
-    logger.info(f"payment statuses commited")
-    return f"done (expired {expired}, emails {emails}, SMS messages {sms_messages})"
 
 def process_claim(payment, dbtx):
     if payment.proposal.status != payment.proposal.STATE_AUTHORIZED:
@@ -256,6 +256,9 @@ def process_claim(payment, dbtx):
 
 @app.route("/claim_payment/<token>", methods=["GET", "POST"])
 def claim_payment(token):
+    qrcode = None
+    url = None
+    attachment = None
     payment = Payment.from_token(db.session, token)
     if not payment:
         abort(404)
@@ -267,7 +270,11 @@ def claim_payment(token):
     recipient = None
     if dbtx:
         recipient = dbtx.tx_with_sigs()["recipient"]
-    return render_template("claim_payment.html", payment=payment, recipient=recipient)
+    #return render_template("claim_payment.html", payment=payment, recipient=recipient)
+    url_parts = urlparse(request.url)
+    url = url_parts._replace(scheme="premiostagelink").geturl()
+    qrcode_svg = qrcode_svg_create(url)
+    return render_template("claim_payment.html", payment=payment, recipient=recipient, qrcode_svg=qrcode_svg, url=url)
 
 @app.route("/dashboard")
 @roles_accepted("admin")
@@ -430,6 +437,7 @@ def tx_broadcast():
 #    err = OtherError("invalid address", 0)
 #    raise err
 
+
 #
 # gevent class
 #
@@ -461,14 +469,21 @@ class WebGreenlet():
             http_server = WSGIServer((self.addr, self.port), app)
             http_server.serve_forever()
 
+        def process_proposals_loop():
+            while True:
+                gevent.spawn(process_proposals)
+                gevent.sleep(30)
+
         def start_greenlets():
             logger.info("checking wallet...")
             self.check_wallet()
             logger.info("starting WebGreenlet runloop...")
             self.runloop_greenlet.start()
+            self.process_proposals_greenlet.start()
 
         # create greenlet
         self.runloop_greenlet = gevent.Greenlet(runloop)
+        self.process_proposals_greenlet = gevent.Greenlet(process_proposals_loop)
         if self.exception_func:
             self.runloop_greenlet.link_exception(self.exception_func)
         # check node/wallet and start greenlets
@@ -476,6 +491,7 @@ class WebGreenlet():
 
     def stop(self):
         self.runloop_greenlet.kill()
+        self.process_proposals_greenlet.kill()
 
 if __name__ == "__main__":
     # setup logging
