@@ -176,7 +176,7 @@ def int2asset(num):
 @app.context_processor
 def inject_config_qrcode_svg():
     url_parts = urlparse(request.url)
-    url = url_parts._replace(scheme="premiostagelink", path="/config").geturl()
+    url = url_parts._replace(scheme="premiomwlink", path="/config").geturl()
     qrcode_svg = qrcode_svg_create(url)
     return dict(config_url=url, config_qrcode_svg=qrcode_svg)
 
