@@ -5,6 +5,7 @@ import struct
 import os
 import random
 import hashlib
+import logging
 
 import base58
 import axolotl_curve25519 as curve
@@ -19,6 +20,8 @@ DEFAULT_TX_FEE = 100000
 DEFAULT_ASSET_FEE = 100000000
 DEFAULT_SPONSOR_FEE = 100000000
 DEFAULT_SCRIPT_FEE = 1000000
+
+logger = logging.getLogger(__name__)
 
 def throw_error(msg):
     raise Exception(msg)
@@ -261,9 +264,6 @@ def set_script_payload(address, pubkey, privkey, script, fee=DEFAULT_SCRIPT_FEE,
     return data
 
 def tx_serialize(testnet, tx):
-    print("testnet: {}".format(testnet))
-    print("tx: {}".format(tx))
-
     global CHAIN_ID
     if testnet:
         CHAIN_ID = 'T'

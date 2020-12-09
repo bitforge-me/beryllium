@@ -626,6 +626,7 @@ class TokenTx(db.Model):
     type = db.Column(db.String, nullable=False)
     state = db.Column(db.String, nullable=False)
     amount = db.Column(db.Integer, nullable=False)
+    json_data_signed = db.Column(db.Boolean, nullable=False)
     json_data = db.Column(db.String, nullable=False)
 
     def __init__(self, txid, type, state, amount, json_data_signed, json_data):

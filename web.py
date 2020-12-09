@@ -13,7 +13,7 @@ from urllib.parse import urlparse
 
 import gevent
 from gevent.pywsgi import WSGIServer
-from flask import Flask, render_template, request, flash, abort, jsonify
+from flask import Flask, render_template, request, flash, jsonify
 from flask_security import current_user, roles_accepted
 #from flask_jsonrpc import JSONRPC
 from flask_jsonrpc.exceptions import OtherError
@@ -59,6 +59,11 @@ ASSET_ID = app.config["ASSET_ID"]
 # helper functions
 #
 
+def bad_request(message, code=400):
+    response = jsonify({'message': message})
+    response.status_code = code
+    return response
+
 def get(url):
     with requests.Session() as s:
         retries = Retry(
@@ -99,7 +104,8 @@ def from_int_to_user_friendly(val, divisor, decimal_places=4):
     return round(val, decimal_places)
 
 def tx_to_txid(tx):
-    return utils.txid_from_txdata(tx_utils.tx_serialize(tx))
+    logger.info("tx_to_txid - tx: {}".format(tx))
+    return utils.txid_from_txdata(tx_utils.tx_serialize(app.config["TESTNET"], tx))
 
 def _create_transaction(recipient, amount, attachment):
     # get fee
@@ -127,10 +133,11 @@ def _create_transaction(recipient, amount, attachment):
     asset = pywaves.Asset(ASSET_ID)
     address_data = pw_address.sendAsset(recipient, asset, amount, attachment, feeAsset=asset, txFee=asset_fee)
     signed_tx = json.loads(address_data["api-data"])
+    signed_tx["type"] = 4 # sendAsset does not include "type" - https://github.com/PyWaves/PyWaves/issues/131
     # calc txid properly
-    txid = transfer_asset_txid(signed_tx)
+    txid = tx_to_txid(signed_tx)
     # store tx in db
-    dbtx = TokenTx(txid, CTX_CREATED, "transfer", signed_tx["amount"], address_data["api-data"], True)
+    dbtx = TokenTx(txid, "transfer", CTX_CREATED, signed_tx["amount"], True, json.dumps(signed_tx))
     return dbtx
 
 def _broadcast_transaction(txid):
@@ -140,11 +147,12 @@ def _broadcast_transaction(txid):
     if dbtx.state == CTX_EXPIRED:
         raise OtherError("transaction expired", ERR_TX_EXPIRED)
     signed_tx = dbtx.tx_with_sigs()
+    logger.info("broadcasting tx: {}".format(signed_tx))
     # broadcast
     logger.debug(f"requesting broadcast of tx:\n\t{signed_tx}")
     path = f"assets/broadcast/transfer"
     headers = {"Content-Type": "application/json"}
-    response = requests.post(NODE_BASE_URL + path, headers=headers, data=signed_tx)
+    response = requests.post(NODE_BASE_URL + path, headers=headers, data=json.dumps(signed_tx))
     if response.ok:
         # update tx in db
         dbtx.state = CTX_BROADCAST
@@ -226,15 +234,16 @@ def inject_config_qrcode_svg():
 def index():
     return render_template("index.html")
 
-def process_claim(payment, dbtx):
+def process_claim(payment, dbtx, recipient, asset_id):
     if payment.proposal.status != payment.proposal.STATE_AUTHORIZED:
         return dbtx, "payment not authorized"
     if payment.status != payment.STATE_SENT_CLAIM_LINK:
         return dbtx, "payment not authorized"
     # create/get transaction
     if not dbtx:
+        if asset_id and asset_id != app.config["ASSET_ID"]:
+            return dbtx, "'asset_id' does not match server"
         try:
-            recipient = request.form["recipient"]
             dbtx = _create_transaction(recipient, payment.amount, "")
             payment.txid = dbtx.txid
             db.session.add(dbtx)
@@ -261,20 +270,50 @@ def claim_payment(token):
     attachment = None
     payment = Payment.from_token(db.session, token)
     if not payment:
-        abort(404)
+        return bad_request('payment not found', 404)
     dbtx = TokenTx.from_txid(db.session, payment.txid)
+
+    def render(dbtx):
+        recipient = None
+        if dbtx:
+            recipient = dbtx.tx_with_sigs()["recipient"]
+        url_parts = urlparse(request.url)
+        url = url_parts._replace(scheme="premiostagelink").geturl()
+        qrcode_svg = qrcode_svg_create(url)
+        return render_template("claim_payment.html", payment=payment, recipient=recipient, qrcode_svg=qrcode_svg, url=url)
+
     if request.method == "POST":
-        dbtx, err_msg = process_claim(payment, dbtx)
+        content_type = request.content_type
+        using_app = content_type.startswith('application/json')
+        logger.info("claim_payment: content type - {}, using_app - {}".format(content_type, using_app))
+        recipient = ""
+        asset_id = ""
+        if using_app:
+            try:
+                recipient = request.json["recipient"]
+            except:
+                return bad_request("'recipient' parameter not present")
+            try:
+                asset_id = request.json["asset_id"]
+            except:
+                pass
+        else: # using html form
+            try:
+                recipient = request.form["recipient"]
+            except:
+                flash("'recipient' parameter not present", "danger")
+                return render(dbtx)
+            try:
+                asset_id = request.form["asset_id"]
+            except:
+                pass
+        dbtx, err_msg = process_claim(payment, dbtx, recipient, asset_id)
         if err_msg:
+            logger.error("claim_payment: {}".format(err_msg))
+            if using_app:
+                return bad_request(err_msg)
             flash(err_msg, "danger")
-    recipient = None
-    if dbtx:
-        recipient = dbtx.tx_with_sigs()["recipient"]
-    #return render_template("claim_payment.html", payment=payment, recipient=recipient)
-    url_parts = urlparse(request.url)
-    url = url_parts._replace(scheme="premiostagelink").geturl()
-    qrcode_svg = qrcode_svg_create(url)
-    return render_template("claim_payment.html", payment=payment, recipient=recipient, qrcode_svg=qrcode_svg, url=url)
+    return render(dbtx)
 
 @app.route("/dashboard")
 @roles_accepted("admin")
@@ -293,7 +332,7 @@ def tx_create():
     content = request.json
     type = content["type"]
     if not type in tx_utils.TYPES:
-        return abort(400, "'type' not valid")
+        return bad_request("'type' not valid")
     pubkey = app.config["ASSET_MASTER_PUBKEY"]
     address = tx_utils.generate_address(pubkey, tx_utils.CHAIN_ID)
     asset_id = app.config["ASSET_ID"]
@@ -324,10 +363,10 @@ def tx_create():
         script = content["script"]
         tx = tx_utils.set_script_payload(address, pubkey, None, script, fee=fee, timestamp=timestamp)
     else:
-        return abort(400, "invalid type")
+        return bad_request("invalid type")
 
-    txid = transfer_asset_txid(tx)
-    dbtx = TokenTx(txid, CTX_CREATED, type, amount, json.dumps(tx), False)
+    txid = tx_to_txid(tx)
+    dbtx = TokenTx(txid, type, CTX_CREATED, amount, False, json.dumps(tx))
     db.session.add(dbtx)
     db.session.commit()
     return jsonify(dict(txid=txid, state=CTX_CREATED, tx=tx))
@@ -338,7 +377,7 @@ def tx_status():
     txid = content["txid"]
     dbtx = TokenTx.from_txid(db.session, txid)
     if not dbtx:
-        return abort(404)
+        return bad_request('tx not found', 404)
     tx = dbtx.tx_with_sigs()
     return jsonify(dict(txid=txid, state=dbtx.state, tx=tx))
 
@@ -358,7 +397,7 @@ def tx_signature():
     signature = content["signature"]
     dbtx = TokenTx.from_txid(db.session, txid)
     if not dbtx:
-        return abort(404)
+        return bad_request('tx not found', 404)
     sig = TxSig(dbtx, signer_index, signature)
     db.session.add(sig)
     db.session.commit()
@@ -372,7 +411,7 @@ def tx_broadcast():
     txid = content["txid"]
     dbtx = TokenTx.from_txid(db.session, txid)
     if not dbtx:
-        return abort(404)
+        return bad_request('tx not found', 404)
     tx = dbtx.tx_with_sigs()
     error = ""
     # broadcast transaction
