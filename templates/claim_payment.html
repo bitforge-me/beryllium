@@ -12,7 +12,7 @@
             <h4>Claim form:</h4>
             <form method="post">
             {%if not recipient%}
-                <input type="text" name="recipient" placeholder="Wallet address"/>
+                <input type="text" name="recipient" placeholder="Wallet address" autocomplete="off"/>
             {%else%}
                 Wallet address: {{recipient}}<br/>
             {%endif%}
