@@ -607,6 +607,11 @@ class UserModelView(BaseModelView):
                 current_user.is_authenticated and
                 current_user.has_role('admin'))
 
+class TopicModelView(RestrictedModelView):
+    can_create = True
+    can_delete = True
+    can_edit = False
+
 ### define token distribution models
 
 class TokenTxSchema(Schema):
@@ -686,6 +691,25 @@ class TxSig(db.Model):
         self.token_tx = token_tx
         self.signer_index = signer_index
         self.value = value
+
+### define push notification models
+
+class Topic(db.Model):
+    __tablename__ = 'topics'
+    id = db.Column(db.Integer, primary_key=True)
+    topic = db.Column(db.String, nullable=False, unique=True)
+
+    def __init__(self, topic):
+        self.topic = topic
+
+    @classmethod
+    def topic_list(cls, session):
+        return [row.topic for row in session.query(cls.topic)]
+
+    def __repr__(self):
+        return '<Topic %r %r>' % self.topic
+
+### define key/value setting models
 
 class Setting(db.Model):
     __tablename__ = 'settings'

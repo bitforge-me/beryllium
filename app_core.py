@@ -57,6 +57,7 @@ try:
     app.config["TX_SIGNERS"] = json.loads(app.config["TX_SIGNERS"])
 except:
     raise Exception('TX_SIGNERS is not valid json')
+set_vital_setting("FIREBASE_CREDENTIALS")
 
 db = SQLAlchemy(app)
 mail = MailSendGrid(app)

@@ -27,13 +27,15 @@ import qrcode
 import qrcode.image.svg
 
 from app_core import app, db
-from models import TokenTx, TxSig, Proposal, Payment
+from models import TokenTx, TxSig, Proposal, Payment, Topic
 import admin
 import utils
 import tx_utils
+from fcm import FCM
 
 #jsonrpc = JSONRPC(app, "/api")
 logger = logging.getLogger(__name__)
+fcm = FCM(app.config["FIREBASE_CREDENTIALS"])
 
 # our address object
 pw_address = None
@@ -322,6 +324,32 @@ def dashboard():
     data["asset_balance"] = from_int_to_user_friendly(data["asset_balance"], 100)
     data["master_waves_balance"] = from_int_to_user_friendly(data["master_waves_balance"], 10**8)
     return render_template("dashboard.html", data=data)
+
+@app.route("/push_notifications", methods=["GET", "POST"])
+@roles_accepted("admin")
+def push_notifications():
+    if request.method == "POST":
+        title = request.form["title"]
+        body = request.form["body"]
+        try:
+            if request.form["type"] == "topic":
+                topic = request.form["topic"]
+                fcm.send_to_topic(topic, title, body)
+            else:
+                registration_token = request.form["registration_token"]
+                fcm.send_to_token(registration_token, title, body)
+            flash("sent push noticiation", "success")
+        except Exception as e:
+            flash("{}".format(str(e.args[0])), "danger")
+    topics = Topic.topic_list(db.session)
+    return render_template("push_notifications.html", topics=topics)
+
+@app.route("/push_notifications_register", methods=["POST"])
+def push_notifications_register():
+   registration_token = request.json["registration_token"]
+   topics = Topic.topic_list(db.session)
+   fcm.subscribe_to_topics(registration_token, topics)
+   return jsonify(dict(result="ok"))
 
 @app.route("/config")
 def config():
