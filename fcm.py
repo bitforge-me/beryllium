@@ -14,15 +14,19 @@ class FCM:
         else:
             try:
                 json.loads(firebase_credentials)
-                fp = tempfile.NamedTemporaryFile(delete=False)
+                fp = tempfile.NamedTemporaryFile(mode='w')
                 fp.write(firebase_credentials)
+                fp.flush()
                 self.init_firebase(fp.name)
-            except:
-                logger.error('"firebase_credentials" is not valid json')
+            except Exception as e:
+                logger.error(e)
+                logger.error('"firebase_credentials" failed to load from json')
 
     def init_firebase(self, cred_filename):
+        logger.info('loading firebase creds from "{}"'.format(cred_filename))
         cred = credentials.Certificate(cred_filename)
         self.default_app = firebase_admin.initialize_app(cred)
+        logger.info('loading firebase creds')
 
     def send_to_token(self, registration_token, title, body):
         message = messaging.Message(

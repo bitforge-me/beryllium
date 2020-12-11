@@ -1,11 +1,11 @@
 {
  "schemaVersion" :2 ,
  "dockerfileLines" :[
-                "FROM python:3.7-alpine",
+                "FROM python:3.8-slim",
                 "COPY ./ /app",
                 "WORKDIR /app",
-                "RUN ls -a",
-                "RUN apk add --no-cache make gcc g++ linux-headers libc-dev libxslt-dev postgresql-dev libffi-dev",
+                "RUN apt-get update",
+                "RUN apt-get install -y build-essential libpq-dev",
                 "RUN pip3 install --upgrade pip",
                 "RUN pip3 install -r requirements.txt",
                 "CMD [ \"python3\", \"app.py\" ]",
