@@ -62,9 +62,6 @@ def generate_address(pubkey):
 def waves_timestamp():
     return int(time.time() * 1000)
 
-def json_dumps(obj):
-    return json.dumps(obj, indent=4)
-
 def transfer_asset_non_witness_bytes(pubkey, recipient, assetid, amount, attachment='', feeAsset='', fee=DEFAULT_TX_FEE, timestamp=0):
     if amount <= 0:
         msg = 'Amount must be > 0'
@@ -91,7 +88,7 @@ def transfer_asset_payload(address, pubkey, privkey, recipient, assetid, amount,
     signature = ""
     if privkey:
         signature = sign(privkey, sdata)
-    data = json_dumps({
+    return {
         "type": 4,
         "version": 2,
         "senderPublicKey": pubkey,
@@ -105,9 +102,7 @@ def transfer_asset_payload(address, pubkey, privkey, recipient, assetid, amount,
         "proofs": [
             signature
         ]
-    })
-
-    return data
+    }
 
 def issue_asset_non_witness_bytes(pubkey, name, description, quantity, script=None, decimals=2, reissuable=True, fee=DEFAULT_ASSET_FEE, timestamp=0):
     if len(name) < 4 or len(name) > 16:
@@ -143,7 +138,7 @@ def issue_asset_payload(address, pubkey, privkey, name, description, quantity, s
     signature = ""
     if privkey:
         signature = sign(privkey, sdata)
-    data = json_dumps({
+    return {
         "type": 3,
         "version": 2,
         "senderPublicKey": pubkey,
@@ -157,9 +152,7 @@ def issue_asset_payload(address, pubkey, privkey, name, description, quantity, s
         "proofs": [
             signature
         ]
-    })
-
-    return data
+    }
 
 def reissue_asset_non_witness_bytes(pubkey, assetid, quantity, reissuable=False, fee=DEFAULT_TX_FEE, timestamp=0):
     if timestamp == 0:
@@ -181,7 +174,7 @@ def reissue_asset_payload(address, pubkey, privkey, assetid, quantity, reissuabl
     signature = ""
     if privkey:
         signature = sign(privkey, sdata)
-    data = json_dumps({
+    return {
         "type": 5,
         "version": 2,
         "senderPublicKey": pubkey,
@@ -193,9 +186,7 @@ def reissue_asset_payload(address, pubkey, privkey, assetid, quantity, reissuabl
         "proofs": [
             signature
         ]
-    })
-
-    return data
+    }
 
 def sponsor_non_witness_bytes(pubkey, assetId, minimalFeeInAssets, fee=DEFAULT_SPONSOR_FEE, timestamp=0):
     if timestamp == 0:
@@ -216,7 +207,7 @@ def sponsor_payload(address, pubkey, privkey, assetId, minimalFeeInAssets, fee=D
     if privkey:
         signature = sign(privkey, sdata)
 
-    data = json_dumps({
+    return {
         "type": 14,
         "version": 1,
         "senderPublicKey": pubkey,
@@ -227,9 +218,7 @@ def sponsor_payload(address, pubkey, privkey, assetId, minimalFeeInAssets, fee=D
         "proofs": [
             signature
         ]
-    })
-
-    return data
+    }
 
 def set_script_non_witness_bytes(pubkey, script, fee=DEFAULT_SCRIPT_FEE, timestamp=0):
     if script:
@@ -253,7 +242,7 @@ def set_script_payload(address, pubkey, privkey, script, fee=DEFAULT_SCRIPT_FEE,
     if privkey:
         signature = sign(privkey, sdata)
 
-    data = json_dumps({
+    return {
         "type": 13,
         "version": 1,
         "senderPublicKey": pubkey,
@@ -263,9 +252,7 @@ def set_script_payload(address, pubkey, privkey, script, fee=DEFAULT_SCRIPT_FEE,
         "proofs": [
             signature
         ]
-    })
-
-    return data
+    }
 
 def tx_init_chain_id(testnet):
     global CHAIN_ID

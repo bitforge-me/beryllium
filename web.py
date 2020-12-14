@@ -407,7 +407,7 @@ def tx_create():
     else:
         return bad_request("invalid type")
 
-    txid = tx_to_txid(json.loads(tx))
+    txid = tx_to_txid(tx)
     dbtx = TokenTx.from_txid(db.session, txid)
     if dbtx:
         return bad_request("txid already exists")
@@ -433,7 +433,7 @@ def tx_serialize():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    tx = json.loads(content["tx"])
+    tx = content["tx"]
     if not "type" in tx:
         return bad_request("tx does not contain 'type' field")
     tx_serialized = tx_utils.tx_serialize(tx)
