@@ -79,15 +79,15 @@ def get(url):
 
 def dashboard_data():
     # get balance of local wallet
-    path = f"assets/balance/{ADDRESS}/{ASSET_ID}"
+    path = f"/assets/balance/{ADDRESS}/{ASSET_ID}"
     response = requests.get(NODE_BASE_URL + path)
     asset_balance = response.json()["balance"]
     # get the balance of the main wallet
-    path = f"transactions/info/{ASSET_ID}"
+    path = f"/transactions/info/{ASSET_ID}"
     response = requests.get(NODE_BASE_URL + path)
     try:
         issuer = response.json()["sender"]
-        path = f"addresses/balance/{issuer}"
+        path = f"/addresses/balance/{issuer}"
         response = requests.get(NODE_BASE_URL + path)
         master_waves_balance = response.json()["balance"]
     except:
@@ -107,11 +107,12 @@ def from_int_to_user_friendly(val, divisor, decimal_places=4):
 
 def tx_to_txid(tx):
     logger.info("tx_to_txid - tx: {}".format(tx))
-    return utils.txid_from_txdata(tx_utils.tx_serialize(app.config["TESTNET"], tx))
+    tx_utils.tx_init_chain_id(app.config["TESTNET"])
+    return utils.txid_from_txdata(tx_utils.tx_serialize(tx))
 
 def _create_transaction(recipient, amount, attachment):
     # get fee
-    path = f"assets/details/{ASSET_ID}"
+    path = f"/assets/details/{ASSET_ID}"
     response = requests.get(NODE_BASE_URL + path)
     if response.ok:
         asset_fee = response.json()["minSponsoredAssetFee"]
@@ -152,7 +153,7 @@ def _broadcast_transaction(txid):
     logger.info("broadcasting tx: {}".format(signed_tx))
     # broadcast
     logger.debug(f"requesting broadcast of tx:\n\t{signed_tx}")
-    path = f"assets/broadcast/transfer"
+    path = f"/assets/broadcast/transfer"
     headers = {"Content-Type": "application/json"}
     response = requests.post(NODE_BASE_URL + path, headers=headers, data=json.dumps(signed_tx))
     if response.ok:
@@ -291,12 +292,15 @@ def claim_payment(token):
         recipient = ""
         asset_id = ""
         if using_app:
+            content = request.get_json(force=True)
+            if content is None:
+                return bad_request("failed to decode JSON object")
             try:
-                recipient = request.json["recipient"]
+                recipient = content["recipient"]
             except:
                 return bad_request("'recipient' parameter not present")
             try:
-                asset_id = request.json["asset_id"]
+                asset_id = content["asset_id"]
             except:
                 pass
         else: # using html form
@@ -346,7 +350,10 @@ def push_notifications():
 
 @app.route("/push_notifications_register", methods=["POST"])
 def push_notifications_register():
-   registration_token = request.json["registration_token"]
+   content = request.get_json(force=True)
+   if content is None:
+       return bad_request("failed to decode JSON object")
+   registration_token = content["registration_token"]
    topics = Topic.topic_list(db.session)
    fcm.subscribe_to_topics(registration_token, topics)
    return jsonify(dict(result="ok"))
@@ -357,12 +364,16 @@ def config():
 
 @app.route("/tx_create", methods=["POST"])
 def tx_create():
-    content = request.json
+    tx_utils.tx_init_chain_id(app.config["TESTNET"])
+
+    content = request.get_json(force=True)
+    if content is None:
+        return bad_request("failed to decode JSON object")
     type = content["type"]
     if not type in tx_utils.TYPES:
         return bad_request("'type' not valid")
     pubkey = app.config["ASSET_MASTER_PUBKEY"]
-    address = tx_utils.generate_address(pubkey, tx_utils.CHAIN_ID)
+    address = tx_utils.generate_address(pubkey)
     asset_id = app.config["ASSET_ID"]
     timestamp = content["timestamp"]
     amount = 0
@@ -393,7 +404,10 @@ def tx_create():
     else:
         return bad_request("invalid type")
 
-    txid = tx_to_txid(tx)
+    txid = tx_to_txid(json.loads(tx))
+    dbtx = TokenTx.from_txid(db.session, txid)
+    if dbtx:
+        return bad_request("txid already exists")
     dbtx = TokenTx(txid, type, CTX_CREATED, amount, False, json.dumps(tx))
     db.session.add(dbtx)
     db.session.commit()
@@ -401,7 +415,9 @@ def tx_create():
 
 @app.route("/tx_status", methods=["POST"])
 def tx_status():
-    content = request.json
+    content = request.get_json(force=True)
+    if content is None:
+        return bad_request("failed to decode JSON object")
     txid = content["txid"]
     dbtx = TokenTx.from_txid(db.session, txid)
     if not dbtx:
@@ -411,15 +427,21 @@ def tx_status():
 
 @app.route("/tx_serialize", methods=["POST"])
 def tx_serialize():
-    content = request.json
+    content = request.get_json(force=True)
+    if content is None:
+        return bad_request("failed to decode JSON object")
     tx = json.loads(content["tx"])
-    tx_serialized = tx_utils.tx_serialize(app.config["TESTNET"], tx)
+    if not "type" in tx:
+        return bad_request("tx does not contain 'type' field")
+    tx_serialized = tx_utils.tx_serialize(tx)
     res = {"bytes": base64.b64encode(tx_serialized).decode("utf-8", "ignore")}
     return jsonify(res)
 
 @app.route("/tx_signature", methods=["POST"])
 def tx_signature():
-    content = request.json
+    content = request.get_json(force=True)
+    if content is None:
+        return bad_request("failed to decode JSON object")
     txid = content["txid"]
     signer_index = content["signer_index"]
     signature = content["signature"]
@@ -434,8 +456,9 @@ def tx_signature():
 
 @app.route("/tx_broadcast", methods=["POST"])
 def tx_broadcast():
-    #RETURN - json, broadcast status, last broadcast error
-    content = request.json
+    content = request.get_json(force=True)
+    if content is None:
+        return bad_request("failed to decode JSON object")
     txid = content["txid"]
     dbtx = TokenTx.from_txid(db.session, txid)
     if not dbtx:
@@ -465,13 +488,13 @@ def tx_broadcast():
 #
 #@jsonrpc.method("getbalance")
 #def getbalance():
-#    path = f"assets/balance/{ADDRESS}/{ASSET_ID}"
+#    path = f"/assets/balance/{ADDRESS}/{ASSET_ID}"
 #    response = requests.get(NODE_BASE_URL + path)
 #    return response.json()
 #
 #@jsonrpc.method("gettransaction")
 #def gettransaction(txid):
-#    path = f"transactions/info/{txid}"
+#    path = f"/transactions/info/{txid}"
 #    response = requests.get(NODE_BASE_URL + path)
 #    return response.json()
 #

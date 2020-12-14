@@ -7,6 +7,7 @@ import random
 import hashlib
 import logging
 
+import requests
 import base58
 import axolotl_curve25519 as curve
 import sha3
@@ -42,9 +43,12 @@ def waves_hash(data):
     hash2 = sha3.keccak_256(hash1).digest()
     return hash2
 
-def generate_address(pubkey, chain_id):
+def generate_address(pubkey):
+    if not CHAIN_ID:
+        raise Exception('CHAIN_ID not initialized')
+
     # convert input to bytes
-    chain_id = str2bytes(chain_id)
+    chain_id = str2bytes(CHAIN_ID)
     # decode base58 pubkey
     pubkey = base58.b58decode(pubkey)
     # create address
@@ -263,12 +267,16 @@ def set_script_payload(address, pubkey, privkey, script, fee=DEFAULT_SCRIPT_FEE,
 
     return data
 
-def tx_serialize(testnet, tx):
+def tx_init_chain_id(testnet):
     global CHAIN_ID
     if testnet:
         CHAIN_ID = 'T'
     else:
         CHAIN_ID = 'W'
+
+def tx_serialize(tx):
+    if not CHAIN_ID:
+        raise Exception('CHAIN_ID not initialized')
 
     # serialize
     type = tx["type"]
