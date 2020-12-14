@@ -29,7 +29,12 @@ def send_email(logger, subject, msg, to=None):
     if not to:
         to = app.config["ADMIN_EMAIL"]
     from_email = From(app.config["FROM_EMAIL"], app.config["FROM_NAME"])
-    message = Mail(from_email=from_email, to_emails=to, subject=subject, html_content=msg)
+    template_path = "templates/email_template.html"
+    with open(os.path.join(os.path.dirname(__file__), template_path), 'r') as input_file:
+        html = input_file.read()
+    logo_src = app.config["SERVER_NAME"] + "/static/assets/img/logo.png"
+    html = html.replace("<LOGOSRC/>", logo_src).replace("<EMAILCONTENT/>", msg)
+    message = Mail(from_email=from_email, to_emails=to, subject=subject, html_content=html)
     try:
         sg = SendGridAPIClient(app.config["MAIL_SENDGRID_API_KEY"])
         response = sg.send(message)
