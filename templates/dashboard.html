@@ -10,6 +10,8 @@
                 <h5 class="card-title">{{ config["ASSET_NAME"] }} balance</h5>
                 <p class="card-text">
                 {{ data["asset_balance"] }}
+                <center><a href="{{ data["wavesexplorer"] }}/address/{{ data["asset_address"]}}">{{ data["premio_qrcode"] | safe }}</a><br/></center>
+                <center><a href="{{ data["wavesexplorer"] }}/address/{{ data["asset_address"]}}">{{ config["ASSET_NAME"] }} Address</a><br/></center>
                 </p>
             </div>
         </div>
@@ -19,6 +21,8 @@
                 <h5 class="card-title">Master account WAVES balance</h5>
                 <p class="card-text">
                 {{ data["master_waves_balance"] }}
+                <center><a href="{{ data["wavesexplorer"] }}/address/{{ data["master_waves_address"]}}">{{ data["issuer_qrcode"] | safe }}</a><br/></center>
+                <center><a href="{{ data["wavesexplorer"] }}/address/{{ data["master_waves_address"]}}">Master Waves Address</a><br/></center>
                 </p>
             </div>
         </div>
