@@ -14,8 +14,10 @@ if os.getenv("DEBUG"):
 
 if os.getenv("TESTNET"):
     app.config["TESTNET"] = True
+    app.config["WAVESEXPLORER"] = 'https://testnet.wavesexplorer.com'
 else:
     app.config["TESTNET"] = False
+    app.config["WAVESEXPLORER"] = 'https://wavesexplorer.com'
 app.config.from_pyfile("flask_config.py")
 
 if os.getenv("DATABASE_URL"):

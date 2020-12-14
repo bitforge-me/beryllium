@@ -97,7 +97,10 @@ def dashboard_data():
     return {"asset_balance": asset_balance, "asset_address": ADDRESS, \
             "master_waves_balance": master_waves_balance, "master_waves_address": issuer, \
             "asset_id": ASSET_ID, \
-            "testnet": app.config["TESTNET"]}
+            "testnet": app.config["TESTNET"], \
+            "premio_qrcode": qrcode_svg_create(ADDRESS), \
+            "issuer_qrcode": qrcode_svg_create(issuer), \
+            "wavesexplorer": app.config["WAVESEXPLORER"]}
 
 def from_int_to_user_friendly(val, divisor, decimal_places=4):
     if not isinstance(val, int):
