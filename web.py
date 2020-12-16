@@ -156,7 +156,7 @@ def _broadcast_transaction(txid):
     logger.info("broadcasting tx: {}".format(signed_tx))
     # broadcast
     logger.debug(f"requesting broadcast of tx:\n\t{signed_tx}")
-    path = f"/assets/broadcast/transfer"
+    path = f"/transactions/broadcast"
     headers = {"Content-Type": "application/json"}
     response = requests.post(NODE_BASE_URL + path, headers=headers, data=json.dumps(signed_tx))
     if response.ok:
@@ -482,6 +482,8 @@ def tx_broadcast():
         db.session.commit()
     except OtherError as ex:
         error = ex.message
+        if hasattr(ex, 'data'):
+            error = "{} - {}".format(ex.message, ex.data)
     return jsonify(dict(txid=txid, state=dbtx.state, tx=tx, error=error))
 
 ##
