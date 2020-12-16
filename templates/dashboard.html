@@ -7,22 +7,38 @@
 
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title">{{ config["ASSET_NAME"] }} balance</h5>
+                <h5 class="card-title">Operations Wallet</h5>
                 <p class="card-text">
-                {{ data["asset_balance"] }}
-                <center><a href="{{ data["wavesexplorer"] }}/address/{{ data["asset_address"]}}">{{ data["premio_qrcode"] | safe }}</a><br/></center>
-                <center><a href="{{ data["wavesexplorer"] }}/address/{{ data["asset_address"]}}">{{ config["ASSET_NAME"] }} Address</a><br/></center>
+                <center>
+                    {{ data["asset_balance"] }} {{ config["ASSET_NAME"] }}
+                    <br/>
+                    {{ data["waves_balance"] }} WAVES
+                    <br/>
+                    <a href="{{ data["wavesexplorer"] }}/address/{{ data["asset_address"]}}">{{ data["premio_qrcode"] | safe }}</a>
+                    <br/>
+                    <a href="{{ data["wavesexplorer"] }}/address/{{ data["asset_address"]}}">{{ data["asset_address"] }}</a>
+                    <br/>
+                </center>
                 </p>
             </div>
         </div>
 
+        <br/>
+
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title">Master account WAVES balance</h5>
+                <h5 class="card-title">Master Wallet</h5>
                 <p class="card-text">
-                {{ data["master_waves_balance"] }}
-                <center><a href="{{ data["wavesexplorer"] }}/address/{{ data["master_waves_address"]}}">{{ data["issuer_qrcode"] | safe }}</a><br/></center>
-                <center><a href="{{ data["wavesexplorer"] }}/address/{{ data["master_waves_address"]}}">Master Waves Address</a><br/></center>
+                <center>
+                    {{ data["master_asset_balance"] }} {{ config["ASSET_NAME"] }}
+                    <br/>
+                    {{ data["master_waves_balance"] }} WAVES 
+                    <br/>
+                    <a href="{{ data["wavesexplorer"] }}/address/{{ data["master_waves_address"]}}">{{ data["issuer_qrcode"] | safe }}</a>
+                    <br/>
+                    <a href="{{ data["wavesexplorer"] }}/address/{{ data["master_waves_address"]}}">{{ data["master_waves_address"]}}</a>
+                    <br/>
+                </center>
                 </p>
             </div>
         </div>

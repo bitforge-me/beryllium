@@ -10,34 +10,52 @@
                 <h5 class="card-title">Send to topic</h5>
                 <form method="POST">
                     <input type="hidden" id="type" name="type" value="topic" />
-                    topic:
-                    <select id="topic" name="topic">
-                        {% for topic in topics %}
-                        <option value="{{topic}}">{{topic}}</option>
-                        {% endfor %}
-                    </select>
-                    <br />
-                    <input type="text" id="title" name="title" placeholder="title" />
-                    <br />
-                    <input type="text" id="body" name="body" placeholder="body" />
-                    <br />
-                    <input type="submit" />
+                    <div class="form-group">
+                        <label for="topic">Topic</label>
+                        <select class="form-control" id="topic" name="topic">
+                            {% for topic in topics %}
+                            <option value="{{topic}}">{{topic}}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="title">Title</label>
+                        <input type="text" class="form-control" id="title" name="title" aria-describedby="titleHelp">
+                        <small id="titleHelp" class="form-text text-muted">The push notication title.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="body">Body</label>
+                        <input type="text" class="form-control" id="body" name="body" aria-describedby="bodyHelp">
+                        <small id="titleHelp" class="form-text text-muted">The push notication body.</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Send</button>
                 </form>
             </div>
         </div>
+
+        <br />
 
         <div class="card">
             <div class="card-body">
                 <h5 class="card-title">Send to specific device</h5>
                 <form method="POST">
                     <input type="hidden" id="type" name="type" value="specific_device" />
-                    <input type="text" id="registration_token" name="registration_token" placeholder="registration token" />
-                    <br />
-                    <input type="text" id="title" name="title" placeholder="title" />
-                    <br />
-                    <input type="text" id="body" name="body" placeholder="body" />
-                    <br />
-                    <input type="submit" />
+                    <div class="form-group">
+                        <label for="registration_token">Registration token</label>
+                        <input type="text" class="form-control" id="registration_token" name="registration_token" aria-describedby="tokenHelp">
+                        <small id="tokenHelp" class="form-text text-muted">The Firebase registration token of the target device.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="title">Title</label>
+                        <input type="text" class="form-control" id="title" name="title" aria-describedby="titleHelp">
+                        <small id="titleHelp" class="form-text text-muted">The push notication title.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="body">Body</label>
+                        <input type="text" class="form-control" id="body" name="body" aria-describedby="bodyHelp">
+                        <small id="titleHelp" class="form-text text-muted">The push notication body.</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Send</button>
                 </form>
             </div>
         </div>

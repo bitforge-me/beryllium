@@ -11,7 +11,7 @@
     <title>{% block title %}{% endblock %}</title>
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
       <a class="navbar-brand" href="/">
-        <img src="/static/assets/img/logo.svg" alt="" height="30">
+        <img src="/static/assets/img/logo.svg" alt="" height="40">
       </a>
       <div class="collapse navbar-collapse" id="navbarNavDropdown">
         <ul class="navbar-nav">
@@ -33,6 +33,7 @@
     </nav>
   </head>
   <body>
+    <br />
     {%- with messages = get_flashed_messages(with_categories=true) -%}
     {% if messages %}
     <div id="flashes" class="container-sm">
@@ -42,6 +43,7 @@
         </div>
         {% endfor %}
     </div>
+    <br />
     {% endif %}
     {%- endwith %}
     <div id="content" class="container-sm">

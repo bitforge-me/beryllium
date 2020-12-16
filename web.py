@@ -79,23 +79,44 @@ def get(url):
 
 def dashboard_data():
     # get balance of local wallet
-    path = f"/assets/balance/{ADDRESS}/{ASSET_ID}"
-    response = requests.get(NODE_BASE_URL + path)
-    asset_balance = response.json()["balance"]
+    url = NODE_BASE_URL + f"/assets/balance/{ADDRESS}/{ASSET_ID}"
+    logger.info("requesting {}..".format(url))
+    response = requests.get(url)
+    try:
+        asset_balance = response.json()["balance"]
+    except:
+        logger.error("failed to parse response")
+        asset_balance = "n/a"
+    url = NODE_BASE_URL + f"/addresses/balance/{ADDRESS}"
+    logger.info("requesting {}..".format(url))
+    response = requests.get(url)
+    try:
+        waves_balance = response.json()["balance"]
+    except:
+        logger.error("failed to parse response")
+        waves_balance = "n/a"
     # get the balance of the main wallet
-    path = f"/transactions/info/{ASSET_ID}"
-    response = requests.get(NODE_BASE_URL + path)
+    url = NODE_BASE_URL + f"/transactions/info/{ASSET_ID}"
+    logger.info("requesting {}..".format(url))
+    response = requests.get(url)
     try:
         issuer = response.json()["sender"]
-        path = f"/addresses/balance/{issuer}"
-        response = requests.get(NODE_BASE_URL + path)
+        url = NODE_BASE_URL + f"/assets/balance/{issuer}/{ASSET_ID}"
+        logger.info("requesting {}..".format(url))
+        response = requests.get(url)
+        master_asset_balance = response.json()["balance"]
+        url = NODE_BASE_URL + f"/addresses/balance/{issuer}"
+        logger.info("requesting {}..".format(url))
+        response = requests.get(url)
         master_waves_balance = response.json()["balance"]
     except:
+        logger.error("failed to parse response")
         issuer = "n/a"
         master_waves_balance = "n/a"
+        master_asset_balance = "n/a"
     # return data
-    return {"asset_balance": asset_balance, "asset_address": ADDRESS, \
-            "master_waves_balance": master_waves_balance, "master_waves_address": issuer, \
+    return {"asset_balance": asset_balance, "asset_address": ADDRESS, "waves_balance": waves_balance, \
+            "master_asset_balance": master_asset_balance, "master_waves_balance": master_waves_balance, "master_waves_address": issuer, \
             "asset_id": ASSET_ID, \
             "testnet": app.config["TESTNET"], \
             "premio_qrcode": qrcode_svg_create(ADDRESS), \
@@ -170,9 +191,9 @@ def _broadcast_transaction(txid):
         raise err
     return dbtx
 
-def qrcode_svg_create(data):
+def qrcode_svg_create(data, box_size=10):
     factory = qrcode.image.svg.SvgPathImage
-    img = qrcode.make(data, image_factory=factory)
+    img = qrcode.make(data, image_factory=factory, box_size=box_size)
     output = io.BytesIO()
     img.save(output)
     svg = output.getvalue().decode('utf-8')
@@ -229,7 +250,7 @@ def int2asset(num):
 def inject_config_qrcode_svg():
     url_parts = urlparse(request.url)
     url = url_parts._replace(scheme="premiomwlink", path="/config").geturl()
-    qrcode_svg = qrcode_svg_create(url)
+    qrcode_svg = qrcode_svg_create(url, box_size=6)
     return dict(config_url=url, config_qrcode_svg=qrcode_svg)
 
 #
@@ -329,6 +350,8 @@ def claim_payment(token):
 def dashboard():
     data = dashboard_data()
     data["asset_balance"] = from_int_to_user_friendly(data["asset_balance"], 100)
+    data["waves_balance"] = from_int_to_user_friendly(data["waves_balance"], 10**8)
+    data["master_asset_balance"] = from_int_to_user_friendly(data["master_asset_balance"], 100)
     data["master_waves_balance"] = from_int_to_user_friendly(data["master_waves_balance"], 10**8)
     return render_template("dashboard.html", data=data)
 
