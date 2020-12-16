@@ -1,31 +1,53 @@
 {% extends "layout.html" %}
 
 {% block content %}
-<div class="container">
-    <div class="row">
-        <div class="col-sm-10 col-sm-offset-1">
-            <h3>You can claim a payment of {{payment.amount|int2asset}} {{ config["ASSET_NAME"] }}</h3>
-            <h4>Expiry Date:</h4>
-            <p>{{payment.proposal.date_expiry}}</p>
-            <h4>Message:</h4>
-            <p>{{payment.message}}</p>
-            <h4>Claim payment:</h4>
-            <form method="post">
-            {%if not recipient%}
-                <div class="card-body">
-                    <a href="{{ url }}">{{ qrcode_svg | safe }}</a><br/>
-		    <p>SCAN or CLICK the QR code to claim your {{config["ASSET_NAME"]}}.</p><br/>
-                </div>
-            {%else%}
-                Wallet address: {{recipient}}<br/>
-                {%if payment.status == payment.STATE_SENT_CLAIM_LINK%}
-                <input type="submit" value="Submit" />
-                {%endif%}
-            {%endif%}
-            </form>
-            {%if payment.status == payment.STATE_SENT_FUNDS%}
-                Sent!
-            {%endif%}
+    <div class="row justify-content-center">
+    <div class="col-sm-6">
+
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Claim Payment</h5>
+                <p class="card-text">
+                <center>
+                    <h6>You can claim a payment of {{payment.amount|int2asset}} {{ config["ASSET_NAME"] }}</h6>
+                    <p>Expiry Date: {{payment.proposal.date_expiry.strftime('%Y-%m-%d HH:mm')}}</p>
+                    <p>Message: {{payment.message}}</p>
+                    {%if not recipient%}
+                        <div id="qrcode">
+                            <a href="{{ url }}">
+                                {{ qrcode_svg | safe }}
+                                <br/>
+                                <p>Scan the QR code or click the link to claim your {{config["ASSET_NAME"]}}.</p>
+                                <br/>
+                            </a>
+                            <button type="submit" class="btn btn-primary"
+                                onclick="$('#form').show(); $('#qrcode').hide(); return false;">
+                                Submit manually</button>
+                        </div>
+                        <form method="post" id="form" style="display: none">
+                            <div class="form-group">
+                                <label for="recipient">Wallet address:</label>
+                                <input type="text" class="form-control" id="recipient" name="recipient" autocomplete="off" aria-describedby="recipientHelp">
+                                <small id="recipientHelp" class="form-text text-muted">The wallet address to send the funds to.</small>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Submit</button>
+                        </form>
+                    {%else%}
+                        <form method="post">
+                            <p>Wallet address: {{recipient}}</p>
+                            {%if payment.status == payment.STATE_SENT_CLAIM_LINK%}
+                            <button type="submit" class="btn btn-primary">Send</button>
+                            {%endif%}
+                        </form>
+                    {%endif%}
+                    {%if payment.status == payment.STATE_SENT_FUNDS%}
+                        Sent!
+                    {%endif%}
+                </center>
+                </p>
+            </div>
+        </div>
+
     </div>
-</div>
+    </div>
 {% endblock content %}
