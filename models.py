@@ -676,7 +676,7 @@ class TokenTx(db.Model):
         for sig in self.signatures:
             while sig.signer_index >= len(proofs):
                 proofs.append('todo')
-            proofs[signer_index] = sig.value
+            proofs[sig.signer_index] = sig.value
         return tx
 
 class TxSig(db.Model):
