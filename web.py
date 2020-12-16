@@ -365,6 +365,13 @@ def push_notifications_register():
 def config():
     return jsonify(dict(asset_id=app.config["ASSET_ID"], asset_name=app.config["ASSET_NAME"], testnet=app.config["TESTNET"], tx_signers=app.config["TX_SIGNERS"], tx_types=tx_utils.TYPES))
 
+@app.route("/tx_link/<txid>")
+def tx_link(txid):
+    url_parts = urlparse(request.url)
+    url = url_parts._replace(scheme="premiomwlink", path="/txid/" + txid).geturl()
+    qrcode_svg = qrcode_svg_create(url)
+    return render_template("tx_link.html", qrcode_svg=qrcode_svg, url=url)
+
 @app.route("/tx_create", methods=["POST"])
 def tx_create():
     tx_utils.tx_init_chain_id(app.config["TESTNET"])

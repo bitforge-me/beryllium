@@ -1,0 +1,20 @@
+{% extends "layout.html" %}
+
+{% block content %}
+    <div class="row justify-content-center">
+    <div class="col-sm-6">
+
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Import Transaction</h5>
+                <p class="card-text">
+                <center><a href="{{ url }}">{{ qrcode_svg | safe }}</a><br/></center>
+                <center><a href="{{ url }}">{{ url }}</a><br/></center>
+                </p>
+            </div>
+        </div>
+
+    </div>
+    </div>
+
+{% endblock %}
