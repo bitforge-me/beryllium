@@ -13,3 +13,4 @@ if testnet:
     pywaves.setChain('testnet')
 addr = pywaves.Address(seed=seed)
 print('ADDRESS: ' + str(addr.address))
+print('PUBKEY: ' + str(addr.publicKey))
