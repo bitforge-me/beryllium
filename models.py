@@ -612,6 +612,95 @@ class TopicModelView(RestrictedModelView):
     can_delete = True
     can_edit = False
 
+class TokenTxModelView(RestrictedModelView):
+    can_create = False
+    can_delete = False
+    can_edit = False
+
+    def _format_date(view, context, model, name):
+        if model.date:
+            return datetime.datetime.fromtimestamp(model.date).strftime('%Y-%m-%d %H:%M:%S')
+
+    def _format_json_data_html_link(view, context, model, name):
+        ids = model.id
+        json_obj = json.loads(model.json_data)
+        assetId = json_obj["assetId"]
+        feeAssetId = json_obj["feeAssetId"]
+        senderPublicKey = json_obj["senderPublicKey"]
+        recipient = json_obj["recipient"]
+        amount = json_obj["amount"]/100
+        fee = json_obj["fee"]/100
+        timestamp = json_obj["timestamp"]
+        attachment = json_obj["attachment"]
+        signature = json_obj["signature"]
+        txtype = json_obj["type"]
+
+        html = '''
+        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#TxDetailsModal{}">
+        Tx Details
+        </button>
+
+<div class="modal fade" id="TxDetailsModal{}" tabindex="-1" role="dialog" aria-labelledby="TxDetailsModalLabel{}" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title" id="TxDetailModalLabel{}">Transaction Details</h4>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+         assetId: {}<br/>
+         feeAssetId: {}<br/>
+         senderPublicKey: {}<br/>
+         recipient: {}<br/>
+         amount: {} {}<br/> 
+         fee: {}</br>
+         timestamp: {}<br/>
+         attachment: {}<br/>
+         signature: {}<br/>
+         type: {}<br/>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+        '''.format(ids, ids, ids, ids, assetId, feeAssetId, senderPublicKey, recipient, amount, app.config["ASSET_NAME"], fee, timestamp, attachment, signature, txtype)
+        return Markup(html)
+
+    def _format_txid_html(view, context, model, name):
+        ids = model.txid
+        truncate_txids = str(ids[:6]+'...')
+        html = '''
+        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#TxidModal{}">
+        {}
+        </button>
+<div class="modal fade" id="TxidModal{}" tabindex="-1" role="dialog" aria-labelledby="TxidModalLabel{}" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="TxidModalLabel{}">Transaction ID</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+         {}
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+        '''.format(ids, truncate_txids, ids, ids, ids, ids)
+        return Markup(html)
+
+    column_list = ['date', 'txid', 'type', 'state', 'amount', 'json_data_signed', 'json_data']
+    column_formatters = {'date': _format_date, 'txid':_format_txid_html, 'json_data': _format_json_data_html_link}
+
 ### define token distribution models
 
 class TokenTxSchema(Schema):
