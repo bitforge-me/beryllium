@@ -430,21 +430,21 @@ def tx_create():
         if err_response:
             return err_response
         recipient, amount = params
-        tx = tx_utils.transfer_asset_payload(address, pubkey, None, recipient, asset_id, amount, fee=fee, timestamp=timestamp)
+        tx = tx_utils.transfer_asset_payload(address, pubkey, None, recipient, asset_id, amount, "", None, fee, timestamp)
     elif type == "issue":
         fee = tx_utils.get_fee(app.config["NODE_BASE_URL"], tx_utils.DEFAULT_ASSET_FEE, address, None)
         params, err_response = _get_json_params(content, ["asset_name", "asset_description", "amount"])
         if err_response:
             return err_response
         asset_name, asset_description, amount = params
-        tx = tx_utils.issue_asset_payload(address, pubkey, None, asset_name, asset_description, amount, decimals=2, reissuable=True, fee=fee, timestamp=timestamp)
+        tx = tx_utils.issue_asset_payload(address, pubkey, None, asset_name, asset_description, amount, None, 2, True, fee, timestamp)
     elif type == "reissue":
         fee = tx_utils.get_fee(app.config["NODE_BASE_URL"], tx_utils.DEFAULT_ASSET_FEE, address, None)
         params, err_response = _get_json_params(content, ["amount"])
         if err_response:
             return err_response
         amount, = params
-        tx = tx_utils.reissue_asset_payload(address, pubkey, None, asset_id, amount, reissuable=True, fee=fee, timestamp=timestamp)
+        tx = tx_utils.reissue_asset_payload(address, pubkey, None, asset_id, amount, True, fee, timestamp)
     elif type == "sponsor":
         fee = tx_utils.get_fee(app.config["NODE_BASE_URL"], tx_utils.DEFAULT_SPONSOR_FEE, address, None)
         params, err_response = _get_json_params(content, ["asset_fee"])
@@ -452,14 +452,14 @@ def tx_create():
             return err_response
         asset_fee, = params
         amount = asset_fee
-        tx = tx_utils.sponsor_payload(address, pubkey, None, asset_id, asset_fee, fee=fee, timestamp=timestamp)
+        tx = tx_utils.sponsor_payload(address, pubkey, None, asset_id, asset_fee, fee, timestamp)
     elif type == "setscript":
         fee = tx_utils.get_fee(app.config["NODE_BASE_URL"], tx_utils.DEFAULT_SCRIPT_FEE, address, None)
         params, err_response = _get_json_params(content, ["script"])
         if err_response:
             return err_response
         script, = params
-        tx = tx_utils.set_script_payload(address, pubkey, None, script, fee=fee, timestamp=timestamp)
+        tx = tx_utils.set_script_payload(address, pubkey, None, script, fee, timestamp)
     else:
         return bad_request("invalid type")
 
@@ -514,6 +514,7 @@ def tx_signature():
     dbtx = TokenTx.from_txid(db.session, txid)
     if not dbtx:
         return bad_request('tx not found', 404)
+    logger.info(":: adding sig to tx - {}, {}, {}".format(txid, signer_index, signature))
     sig = TxSig(dbtx, signer_index, signature)
     db.session.add(sig)
     db.session.commit()
