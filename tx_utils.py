@@ -78,10 +78,9 @@ def transfer_asset_non_witness_bytes(pubkey, recipient, assetid, amount, attachm
         return sdata
 
 def transfer_asset_payload(address, pubkey, privkey, recipient, assetid, amount, attachment, feeAsset, fee, timestamp):
-    sdata = transfer_asset_non_witness_bytes(pubkey, recipient, assetid, amount, attachment, feeAsset, fee, timestamp)
-
     signature = ""
     if privkey:
+        sdata = transfer_asset_non_witness_bytes(pubkey, recipient, assetid, amount, attachment, feeAsset, fee, timestamp)
         signature = sign(privkey, sdata)
     return {
         "type": 4,
@@ -126,10 +125,9 @@ def issue_asset_non_witness_bytes(pubkey, name, description, quantity, script, d
 
 
 def issue_asset_payload(address, pubkey, privkey, name, description, quantity, script, decimals, reissuable, fee, timestamp):
-    sdata = issue_asset_non_witness_bytes(pubkey, name, description, quantity, script, decimals, reissuable, fee, timestamp)
-
     signature = ""
     if privkey:
+        sdata = issue_asset_non_witness_bytes(pubkey, name, description, quantity, script, decimals, reissuable, fee, timestamp)
         signature = sign(privkey, sdata)
     return {
         "type": 3,
@@ -160,10 +158,9 @@ def reissue_asset_non_witness_bytes(pubkey, assetid, quantity, reissuable, fee, 
     return sdata
 
 def reissue_asset_payload(address, pubkey, privkey, assetid, quantity, reissuable, fee, timestamp):
-    sdata = reissue_asset_non_witness_bytes(pubkey, assetid, quantity, reissuable, fee, timestamp)
-
     signature = ""
     if privkey:
+        sdata = reissue_asset_non_witness_bytes(pubkey, assetid, quantity, reissuable, fee, timestamp)
         signature = sign(privkey, sdata)
     return {
         "type": 5,
@@ -190,10 +187,9 @@ def sponsor_non_witness_bytes(pubkey, assetId, minimalFeeInAssets, fee, timestam
     return sdata
 
 def sponsor_payload(address, pubkey, privkey, assetId, minimalFeeInAssets, fee, timestamp):
-    sdata = sponsor_non_witness_bytes(pubkey, assetId, minimalFeeInAssets, fee, timestamp)
-
     signature = ""
     if privkey:
+        sdata = sponsor_non_witness_bytes(pubkey, assetId, minimalFeeInAssets, fee, timestamp)
         signature = sign(privkey, sdata)
 
     return {
@@ -211,6 +207,8 @@ def sponsor_payload(address, pubkey, privkey, assetId, minimalFeeInAssets, fee, 
 
 def set_script_non_witness_bytes(pubkey, script, fee, timestamp):
     if script:
+        if script.startswith('base64:'):
+            script = script[7:]
         raw_script = base64.b64decode(script)
         script_len = len(raw_script)
     sdata = b'\x0d' + \
@@ -223,10 +221,9 @@ def set_script_non_witness_bytes(pubkey, script, fee, timestamp):
     return sdata
 
 def set_script_payload(address, pubkey, privkey, script, fee, timestamp):
-    sdata = set_script_non_witness_bytes(pubkey, script, fee, timestamp)
-
     signature = ""
     if privkey:
+        sdata = set_script_non_witness_bytes(pubkey, script, fee, timestamp)
         signature = sign(privkey, sdata)
 
     return {
