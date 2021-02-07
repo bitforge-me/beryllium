@@ -18,8 +18,6 @@ from flask_security import current_user, roles_accepted
 #from flask_jsonrpc import JSONRPC
 from flask_jsonrpc.exceptions import OtherError
 import requests
-from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util.retry import Retry
 import base58
 import pywaves
 import pyblake2
@@ -32,6 +30,8 @@ import admin
 import utils
 import tx_utils
 from fcm import FCM
+from web_utils import bad_request, get, get_json_params
+from paydb_endpoint import paydb
 
 #jsonrpc = JSONRPC(app, "/api")
 logger = logging.getLogger(__name__)
@@ -39,6 +39,9 @@ fcm = FCM(app.config["FIREBASE_CREDENTIALS"])
 
 # our address object
 pw_address = None
+
+# paydb blueprint
+app.register_blueprint(paydb, url_prefix='/paydb')
 
 # created transaction states
 CTX_CREATED = "created"
@@ -56,26 +59,6 @@ NODE_BASE_URL = app.config["NODE_BASE_URL"]
 SEED = app.config["WALLET_SEED"]
 ADDRESS = app.config["WALLET_ADDRESS"]
 ASSET_ID = app.config["ASSET_ID"]
-
-#
-# helper functions
-#
-
-def bad_request(message, code=400):
-    response = jsonify({'message': message})
-    response.status_code = code
-    return response
-
-def get(url):
-    with requests.Session() as s:
-        retries = Retry(
-            total=10,
-            backoff_factor=0.2,
-            status_forcelist=[500, 502, 503, 504])
-        s.mount('http://', HTTPAdapter(max_retries=retries))
-        s.mount('https://', HTTPAdapter(max_retries=retries))
-        response = s.get(url)
-        return response
 
 def dashboard_data():
     # get balance of local wallet
@@ -237,19 +220,6 @@ def process_proposals():
         logger.info(f"payment statuses commited")
         return f"done (expired {expired}, emails {emails}, SMS messages {sms_messages})"
 
-def _get_json_params(content, param_names):
-    param_values = []
-    param_name = ''
-    try:
-        for param in param_names:
-            param_name = param
-            param_values.append(content[param])
-    except Exception as e:
-        logger.error(f"'{param_name}' not found")
-        logger.error(e)
-        return param_values, bad_request(f"'{param_name}' not found")
-    return param_values, None
-
 #
 # Jinja2 filters
 #
@@ -332,7 +302,7 @@ def claim_payment(token):
             content = request.get_json(force=True)
             if content is None:
                 return bad_request("failed to decode JSON object")
-            params, err_response = _get_json_params(content, ["recipient", "asset_id"])
+            params, err_response = get_json_params(logger, content, ["recipient", "asset_id"])
             if err_response:
                 return err_response
             recipient, asset_id = params
@@ -388,7 +358,7 @@ def push_notifications_register():
     content = request.get_json(force=True)
     if content is None:
        return bad_request("failed to decode JSON object")
-    params, err_response = _get_json_params(content, ["registration_token"])
+    params, err_response = get_json_params(logger, content, ["registration_token"])
     if err_response:
         return err_response
     registration_token, = params
@@ -414,7 +384,7 @@ def tx_create():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = _get_json_params(content, ["type", "timestamp"])
+    params, err_response = get_json_params(logger, content, ["type", "timestamp"])
     if err_response:
         return err_response
     type, timestamp = params
@@ -426,28 +396,28 @@ def tx_create():
     amount = 0
     if type == "transfer":
         fee = tx_utils.get_fee(app.config["NODE_BASE_URL"], tx_utils.DEFAULT_TX_FEE, address, None)
-        params, err_response = _get_json_params(content, ["recipient", "amount"])
+        params, err_response = get_json_params(logger, content, ["recipient", "amount"])
         if err_response:
             return err_response
         recipient, amount = params
         tx = tx_utils.transfer_asset_payload(address, pubkey, None, recipient, asset_id, amount, "", None, fee, timestamp)
     elif type == "issue":
         fee = tx_utils.get_fee(app.config["NODE_BASE_URL"], tx_utils.DEFAULT_ASSET_FEE, address, None)
-        params, err_response = _get_json_params(content, ["asset_name", "asset_description", "amount"])
+        params, err_response = get_json_params(logger, content, ["asset_name", "asset_description", "amount"])
         if err_response:
             return err_response
         asset_name, asset_description, amount = params
         tx = tx_utils.issue_asset_payload(address, pubkey, None, asset_name, asset_description, amount, None, 2, True, fee, timestamp)
     elif type == "reissue":
         fee = tx_utils.get_fee(app.config["NODE_BASE_URL"], tx_utils.DEFAULT_ASSET_FEE, address, None)
-        params, err_response = _get_json_params(content, ["amount"])
+        params, err_response = get_json_params(logger, content, ["amount"])
         if err_response:
             return err_response
         amount, = params
         tx = tx_utils.reissue_asset_payload(address, pubkey, None, asset_id, amount, True, fee, timestamp)
     elif type == "sponsor":
         fee = tx_utils.get_fee(app.config["NODE_BASE_URL"], tx_utils.DEFAULT_SPONSOR_FEE, address, None)
-        params, err_response = _get_json_params(content, ["asset_fee"])
+        params, err_response = get_json_params(logger, content, ["asset_fee"])
         if err_response:
             return err_response
         asset_fee, = params
@@ -455,7 +425,7 @@ def tx_create():
         tx = tx_utils.sponsor_payload(address, pubkey, None, asset_id, asset_fee, fee, timestamp)
     elif type == "setscript":
         fee = tx_utils.get_fee(app.config["NODE_BASE_URL"], tx_utils.DEFAULT_SCRIPT_FEE, address, None)
-        params, err_response = _get_json_params(content, ["script"])
+        params, err_response = get_json_params(logger, content, ["script"])
         if err_response:
             return err_response
         script, = params
@@ -477,7 +447,7 @@ def tx_status():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = _get_json_params(content, ["txid"])
+    params, err_response = get_json_params(logger, content, ["txid"])
     if err_response:
         return err_response
     txid, = params
@@ -492,7 +462,7 @@ def tx_serialize():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = _get_json_params(content, ["tx"])
+    params, err_response = get_json_params(logger, content, ["tx"])
     if err_response:
         return err_response
     tx, = params
@@ -507,7 +477,7 @@ def tx_signature():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = _get_json_params(content, ["txid", "signer_index", "signature"])
+    params, err_response = get_json_params(logger, content, ["txid", "signer_index", "signature"])
     if err_response:
         return err_response
     txid, signer_index, signature = params
@@ -526,7 +496,7 @@ def tx_broadcast():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = _get_json_params(content, ["txid"])
+    params, err_response = get_json_params(logger, content, ["txid"])
     if err_response:
         return err_response
     txid, = params

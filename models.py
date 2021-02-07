@@ -4,6 +4,7 @@ import decimal
 import csv
 import logging
 import json
+import secrets
 
 from flask import redirect, url_for, request, flash, has_app_context, g
 from flask_security import Security, SQLAlchemyUserDatastore, \
@@ -18,7 +19,7 @@ from wtforms.fields import TextField, DecimalField, FileField
 from wtforms import validators
 from marshmallow import Schema, fields
 from markupsafe import Markup
-from sqlalchemy import func
+from sqlalchemy import func, or_
 import requests
 
 from app_core import app, db
@@ -61,7 +62,13 @@ class User(db.Model, UserMixin):
     last_name = db.Column(db.String(255))
     email = db.Column(db.String(255), unique=True)
     password = db.Column(db.String(255))
+    last_login_at = db.Column(db.DateTime())
+    current_login_at = db.Column(db.DateTime())
+    last_login_ip = db.Column(db.String(100))
+    current_login_ip = db.Column(db.String(100))
+    login_count = db.Column(db.Integer)
     active = db.Column(db.Boolean())
+    fs_uniquifier = db.Column(db.String(255), unique=True, nullable=False)
     confirmed_at = db.Column(db.DateTime())
     roles = db.relationship('Role', secondary=roles_users,
                             backref=db.backref('users', lazy='dynamic'))
@@ -72,6 +79,81 @@ class User(db.Model, UserMixin):
 
     def __str__(self):
         return self.email
+
+class ApiKey(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String(255), unique=True, nullable=False)
+    secret = db.Column(db.String(255), nullable=False)
+    nonce = db.Column(db.Integer, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref=db.backref('api_keys', lazy='dynamic'))
+    device_name = db.Column(db.String(255))
+    expiry = db.Column(db.DateTime())
+
+    def __init__(self, user, device_name):
+        self.user_id = user.id
+        self.token = secrets.token_urlsafe(8)
+        self.secret = secrets.token_urlsafe(16)
+        self.nonce = 0
+        self.device_name = device_name
+        self.expiry = datetime.datetime.now() + datetime.timedelta(30)
+
+    @classmethod
+    def from_token(cls, session, token):
+        return session.query(cls).filter(cls.token == token).first()
+
+class TransactionSchema(Schema):
+    token = fields.String()
+    timestamp = fields.Date()
+    action = fields.String()
+    sender = fields.String()
+    recipient = fields.String()
+    amount = fields.Integer()
+    attachment = fields.String()
+
+class Transaction(db.Model):
+    ACTION_ISSUE = "issue"
+    ACTION_TRANSFER = "transfer"
+    ACTION_DESTROY = "destroy"
+
+    id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String(255), unique=True, nullable=False)
+    timestamp = db.Column(db.Integer)
+    action = db.Column(db.String(255), nullable=False)
+    sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    sender = db.relationship('User', foreign_keys=[sender_id], backref=db.backref('sent', lazy='dynamic'))
+    recipient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    recipient = db.relationship('User', foreign_keys=[recipient_id], backref=db.backref('recieved', lazy='dynamic'))
+    amount = db.Column(db.Integer())
+    attachment = db.Column(db.String(255))
+
+    def __init__(self, action, sender, recipient, amount, attachment):
+        self.token = secrets.token_urlsafe(8)
+        self.timestamp = int(time.time())
+        self.action = action
+        self.sender = sender
+        self.recipient = recipient
+        self.amount = amount
+        self.attachment = attachment
+
+    @classmethod
+    def from_token(cls, session, token):
+        return session.query(cls).filter(cls.token == token).first()
+
+    @classmethod
+    def related_to_user(cls, session, user, offset, limit):
+        return session.query(cls).filter(or_(cls.sender_id == user.id, cls.recipient_id == user.id)).order_by(cls.id.desc()).offset(offset).limit(limit)
+
+    @classmethod
+    def all(cls, session):
+        return session.query(cls).all()
+
+    def __str__(self):
+        return self.token
+
+    def to_json(self):
+        tx_schema = TransactionSchema()
+        return tx_schema.dump(self).data
 
 class Payment(db.Model):
     STATE_CREATED = "created"
