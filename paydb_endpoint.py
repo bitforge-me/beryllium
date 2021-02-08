@@ -129,14 +129,14 @@ def transaction_create():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["api_key", "nonce", "action", "recipient", "amount"])
+    params, err_response = get_json_params(logger, content, ["api_key", "nonce", "action", "recipient", "amount", "attachment"])
     if err_response:
         return err_response
-    api_key, nonce, action, recipient, amount = params
+    api_key, nonce, action, recipient, amount, attachment = params
     res, reason, api_key = check_auth(api_key, nonce, sig, request.data)
     if not res:
         return bad_request(reason)
-    tx, error = paydb_core.tx_create_and_play(db.session, api_key.user, action, recipient, amount)
+    tx, error = paydb_core.tx_create_and_play(db.session, api_key.user, action, recipient, amount, attachment)
     if not tx:
         return bad_request(error)
     return jsonify(dict(tx=tx.to_json()))

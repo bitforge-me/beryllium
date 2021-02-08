@@ -104,7 +104,7 @@ class ApiKey(db.Model):
 
 class TransactionSchema(Schema):
     token = fields.String()
-    timestamp = fields.Date()
+    timestamp = fields.Integer()
     action = fields.String()
     sender = fields.String()
     recipient = fields.String()

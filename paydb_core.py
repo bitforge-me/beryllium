@@ -15,39 +15,46 @@ def __balance(user):
 
 def __tx_play(tx):
     ## assumes lock is held
-    if not tx.user.email in balances:
-        balances[tx.user.email] = 0
+    if not tx.sender.email in balances:
+        balances[tx.sender.email] = 0
     if tx.recipient and not tx.recipient.email in balances:
         balances[tx.recipient.email] = 0
     if tx.action == tx.ACTION_ISSUE:
-        balances[tx.user.email] += tx.amount
+        balances[tx.sender.email] += tx.amount
     if tx.action == tx.ACTION_TRANSFER:
-        balances[tx.user.email] -= tx.amount
+        balances[tx.sender.email] -= tx.amount
         balances[tx.recipient.email] += tx.amount
     if tx.action == tx.ACTION_DESTROY:
-        balances[tx.user.email] -= tx.amount
+        balances[tx.sender.email] -= tx.amount
 
 def __tx_play_all(session):
+    ## assumes lock is held
     global balances
     assert(not balances)
     balances = {}
     for tx in Transaction.all(session):
         __tx_play(tx)
 
+def __check_balances_inited(session):
+    ## assumes lock is held
+    # check balances has been initialized
+    if balances == None:
+        logger.info('balances not initialized, initializing now..')
+        __tx_play_all(session)
+
 def user_balance(session, user):
     with lock:
-        # check balances has been initialized
-        if balances == None:
-            logger.info('balances not initialized, initializing now..')
-            __tx_play_all(session)
+        __check_balances_inited(session)
         return __balance(user)
 
 def tx_play_all(session):
     with lock:
         __tx_play_all(session)
 
-def tx_create_and_play(session, user, action, recipient_email, amount):
+def tx_create_and_play(session, user, action, recipient_email, amount, attachment):
+    logger.info('{}: {}: {}, {}, {}'.format(user.email, action, recipient_email, amount, attachment))
     with lock:
+        __check_balances_inited(session)
         error = ''
         if not user.is_active:
             error = '{}: {} is not active'.format(action, user.email)
@@ -60,8 +67,8 @@ def tx_create_and_play(session, user, action, recipient_email, amount):
         if action == Transaction.ACTION_ISSUE:
             if not user.has_role('admin'):
                 error = 'ACTION_ISSUE: {} is not authorized'.format(user.email)
-            elif recipient_email or recipient:
-                error = 'ACTION_ISSUE: recipient should be empty'
+            elif not recipient == user:
+                error = 'ACTION_ISSUE: recipient should be {}'.format(user.email)
         if action == Transaction.ACTION_TRANSFER:
             user_balance = __balance(user)
             if not recipient:
@@ -70,14 +77,14 @@ def tx_create_and_play(session, user, action, recipient_email, amount):
                 error = 'ACTION_TRANSFER: user balance ({}) is too low'.format(user_balance)
         if action == Transaction.ACTION_DESTROY:
             user_balance = __balance(user)
-            if recipient_email or recipient:
-                error = 'ACTION_DESTROY: recipient should be empty'
+            if not recipient == user:
+                error = 'ACTION_ISSUE: recipient should be {}'.format(user.email)
             elif user_balance < amount:
                 error = 'ACTION_DESTROY: user balance ({}) is too low'.format(user_balance)
         if error:
             logger.error(error)
             return None, error
-        tx = Transaction(action, user, recipient, amount)
+        tx = Transaction(action, user, recipient, amount, attachment)
         __tx_play(tx)
         session.add(tx)
         session.commit()
