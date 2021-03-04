@@ -297,6 +297,17 @@ class RestrictedModelView(BaseModelView):
                 current_user.is_authenticated and
                 current_user.has_role('admin'))
 
+class BaseOnlyUserOwnedModelView(BaseModelView):
+    def is_accessible(self):
+        return (current_user.is_active and
+                current_user.is_authenticated)
+
+    def get_query(self):
+        return self.session.query(self.model).filter(self.model.user==current_user)
+
+    def get_count_query(self):
+        return self.session.query(db.func.count('*')).filter(self.model.user==current_user)
+
 def validate_recipient(recipient):
     if not recipient or \
        (not is_email(recipient) and not is_mobile(recipient) and not is_address(recipient)):
@@ -894,3 +905,27 @@ class Setting(db.Model):
 
     def __repr__(self):
         return '<Setting %r %r>' % (self.key, self.value)
+
+### define user models
+
+class ApiKeyModelView(BaseOnlyUserOwnedModelView):
+    can_create = False
+    can_delete = False
+    can_edit = False
+    column_list = ('token', 'device_name', 'expiry')
+    column_labels = dict(token='API Key')
+
+class UserTransactionsView(BaseModelView):
+    can_create = False
+    can_delete = False
+    can_edit = False
+
+    def is_accessible(self):
+        return (current_user.is_active and
+                current_user.is_authenticated)
+
+    def get_query(self):
+        return self.session.query(self.model).filter(or_(self.model.sender_id == current_user.id, self.model.recipient_id == current_user.id))
+
+    def get_count_query(self):
+        return self.session.query(db.func.count('*')).filter(or_(self.model.sender_id == current_user.id, self.model.recipient_id == current_user.id))
