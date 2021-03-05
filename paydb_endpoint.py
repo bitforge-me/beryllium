@@ -3,13 +3,16 @@ import time
 import hmac
 import hashlib
 import base64
+import datetime
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, flash, redirect
 import flask_security
+from flask_security.utils import encrypt_password
 
 from web_utils import bad_request, get_json_params
+import utils
 from app_core import app, db
-from models import User, ApiKey, Transaction
+from models import user_datastore, User, UserCreateRequest, ApiKey, Transaction
 import paydb_core
 
 logger = logging.getLogger(__name__)
@@ -50,11 +53,50 @@ def check_auth(api_key_token, nonce, sig, body):
 
 @paydb.route('/user_register', methods=['POST'])
 def user_register():
-    return bad_request('not yet implemented')
+    content = request.get_json(force=True)
+    if content is None:
+        return bad_request("failed to decode JSON object")
+    params, err_response = get_json_params(logger, content, ["email", "password", "first_name", "last_name", "photo"])
+    if err_response:
+        return err_response
+    email, password, first_name, last_name, photo = params
+    if not utils.is_email(email):
+        return bad_request("invalid email address")
+    if photo:
+        photo = base64.b64decode(photo)
+    else:
+        photo = None
+    req = UserCreateRequest(first_name, last_name, email, photo, encrypt_password(password))
+    user = User.from_email(db.session, email)
+    if user:
+        time.sleep(5)
+        return 'ok'
+    utils.email_user_create_request(logger, req, req.MINUTES_EXPIRY)
+    db.session.add(req)
+    db.session.commit()
+    return 'ok'
 
-@paydb.route('/user_registration_check', methods=['POST'])
-def user_registration_check():
-    return bad_request('not yet implemented')
+@paydb.route('/user_registration_confirm/<token>', methods=['GET'])
+def user_registration_confirm(token=None):
+    req = UserCreateRequest.from_token(db.session, token)
+    if not req:
+        flash('User registration request not found.', 'error')
+        return redirect('/')
+    user = User.from_email(db.session, req.email)
+    if user:
+        flash('User already exists.', 'error')
+        return redirect('/')
+    now = datetime.datetime.now()
+    if now > req.expiry:
+        flash('User registration expired.', 'error')
+        return redirect('/')
+    user = user_datastore.create_user(email=req.email, password=req.password, first_name=req.first_name, last_name=req.last_name)
+    user.photo = req.photo
+    user.confirmed_at = now
+    db.session.delete(req)
+    db.session.commit();
+    flash('User registered.', 'success')
+    return redirect('/')
 
 @paydb.route('/api_key_create', methods=['POST'])
 def api_key_create():

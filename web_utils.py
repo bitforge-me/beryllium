@@ -1,10 +1,14 @@
 
+import logging
 from flask import jsonify
 import requests
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 
+logger = logging.getLogger(__name__)
+
 def bad_request(message, code=400):
+    logger.warning(message)
     response = jsonify({'message': message})
     response.status_code = code
     return response

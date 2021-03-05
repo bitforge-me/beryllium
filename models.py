@@ -58,9 +58,10 @@ class Role(db.Model, RoleMixin):
 
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String(255), unique=True, nullable=False)
     first_name = db.Column(db.String(255))
     last_name = db.Column(db.String(255))
-    email = db.Column(db.String(255), unique=True)
+    email = db.Column(db.String(255), unique=True, nullable=False)
     password = db.Column(db.String(255))
     last_login_at = db.Column(db.DateTime())
     current_login_at = db.Column(db.DateTime())
@@ -73,9 +74,45 @@ class User(db.Model, UserMixin):
     roles = db.relationship('Role', secondary=roles_users,
                             backref=db.backref('users', lazy='dynamic'))
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.token = secrets.token_urlsafe(8)
+
     @classmethod
     def from_email(cls, session, email):
         return session.query(cls).filter(cls.email == email).first()
+
+    def __str__(self):
+        return self.email
+
+class UserCreateRequest(db.Model, UserMixin):
+    MINUTES_EXPIRY = 30
+
+    id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String(255), unique=True, nullable=False)
+    first_name = db.Column(db.String(255))
+    last_name = db.Column(db.String(255))
+    email = db.Column(db.String(255))
+    photo = db.Column(db.Binary())
+    password = db.Column(db.String(255))
+    expiry = db.Column(db.DateTime())
+
+    def __init__(self, first_name, last_name, email, photo, password):
+        self.token = secrets.token_urlsafe(8)
+        self.first_name = first_name
+        self.last_name = last_name
+        self.email = email
+        self.photo = photo
+        self.password = password
+        self.expiry = datetime.datetime.now() + datetime.timedelta(self.MINUTES_EXPIRY)
+
+    @classmethod
+    def from_email(cls, session, email):
+        return session.query(cls).filter(cls.email == email).first()
+
+    @classmethod
+    def from_token(cls, session, token):
+        return session.query(cls).filter(cls.token == token).first()
 
     def __str__(self):
         return self.email
@@ -120,10 +157,10 @@ class Transaction(db.Model):
     token = db.Column(db.String(255), unique=True, nullable=False)
     timestamp = db.Column(db.Integer)
     action = db.Column(db.String(255), nullable=False)
-    sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    sender = db.relationship('User', foreign_keys=[sender_id], backref=db.backref('sent', lazy='dynamic'))
-    recipient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
-    recipient = db.relationship('User', foreign_keys=[recipient_id], backref=db.backref('recieved', lazy='dynamic'))
+    sender_token = db.Column(db.Integer, db.ForeignKey('user.token'), nullable=False)
+    sender = db.relationship('User', foreign_keys=[sender_token], backref=db.backref('sent', lazy='dynamic'))
+    recipient_token = db.Column(db.Integer, db.ForeignKey('user.token'), nullable=True)
+    recipient = db.relationship('User', foreign_keys=[recipient_token], backref=db.backref('recieved', lazy='dynamic'))
     amount = db.Column(db.Integer())
     attachment = db.Column(db.String(255))
 
@@ -142,7 +179,7 @@ class Transaction(db.Model):
 
     @classmethod
     def related_to_user(cls, session, user, offset, limit):
-        return session.query(cls).filter(or_(cls.sender_id == user.id, cls.recipient_id == user.id)).order_by(cls.id.desc()).offset(offset).limit(limit)
+        return session.query(cls).filter(or_(cls.sender_token == user.token, cls.recipient_token == user.token)).order_by(cls.id.desc()).offset(offset).limit(limit)
 
     @classmethod
     def all(cls, session):
@@ -692,8 +729,8 @@ class UserModelView(BaseModelView):
     can_create = False
     can_delete = False
     can_edit = False
-    column_list = ['email', 'roles']
-    column_editable_list = ['roles']
+    column_list = ['token', 'email', 'roles', 'active', 'confirmed_at']
+    column_editable_list = ['roles', 'active']
 
     def is_accessible(self):
         return (current_user.is_active and
@@ -925,7 +962,7 @@ class UserTransactionsView(BaseModelView):
                 current_user.is_authenticated)
 
     def get_query(self):
-        return self.session.query(self.model).filter(or_(self.model.sender_id == current_user.id, self.model.recipient_id == current_user.id))
+        return self.session.query(self.model).filter(or_(self.model.sender_token == current_user.token, self.model.recipient_token == current_user.token))
 
     def get_count_query(self):
-        return self.session.query(db.func.count('*')).filter(or_(self.model.sender_id == current_user.id, self.model.recipient_id == current_user.id))
+        return self.session.query(db.func.count('*')).filter(or_(self.model.sender_token == current_user.token, self.model.recipient_token == current_user.token))

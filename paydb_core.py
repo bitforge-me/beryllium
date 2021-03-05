@@ -9,23 +9,23 @@ balances = None
 
 def __balance(user):
     ## assumes lock is held
-    if not user.email in balances:
+    if not user.token in balances:
         return 0
-    return balances[user.email]
+    return balances[user.token]
 
 def __tx_play(tx):
     ## assumes lock is held
-    if not tx.sender.email in balances:
-        balances[tx.sender.email] = 0
-    if tx.recipient and not tx.recipient.email in balances:
-        balances[tx.recipient.email] = 0
+    if not tx.sender.token in balances:
+        balances[tx.sender.token] = 0
+    if tx.recipient and not tx.recipient.token in balances:
+        balances[tx.recipient.token] = 0
     if tx.action == tx.ACTION_ISSUE:
-        balances[tx.sender.email] += tx.amount
+        balances[tx.sender.token] += tx.amount
     if tx.action == tx.ACTION_TRANSFER:
-        balances[tx.sender.email] -= tx.amount
-        balances[tx.recipient.email] += tx.amount
+        balances[tx.sender.token] -= tx.amount
+        balances[tx.recipient.token] += tx.amount
     if tx.action == tx.ACTION_DESTROY:
-        balances[tx.sender.email] -= tx.amount
+        balances[tx.sender.token] -= tx.amount
 
 def __tx_play_all(session):
     ## assumes lock is held
@@ -52,7 +52,7 @@ def tx_play_all(session):
         __tx_play_all(session)
 
 def tx_create_and_play(session, user, action, recipient_email, amount, attachment):
-    logger.info('{}: {}: {}, {}, {}'.format(user.email, action, recipient_email, amount, attachment))
+    logger.info('{}({}): {}: {}, {}, {}'.format(user.token, user.email, action, recipient_email, amount, attachment))
     with lock:
         __check_balances_inited(session)
         error = ''
