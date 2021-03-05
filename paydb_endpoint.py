@@ -56,17 +56,15 @@ def user_register():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["email", "password", "first_name", "last_name", "photo"])
+    params, err_response = get_json_params(logger, content, ["email", "password", "first_name", "last_name", "photo", "photo_type"])
     if err_response:
         return err_response
-    email, password, first_name, last_name, photo = params
+    email, password, first_name, last_name, photo, photo_type = params
     if not utils.is_email(email):
         return bad_request("invalid email address")
-    if photo:
-        photo = base64.b64decode(photo)
-    else:
-        photo = None
-    req = UserCreateRequest(first_name, last_name, email, photo, encrypt_password(password))
+    if not password:
+        return bad_request("empty password")
+    req = UserCreateRequest(first_name, last_name, email, photo, photo_type, encrypt_password(password))
     user = User.from_email(db.session, email)
     if user:
         time.sleep(5)
@@ -92,6 +90,7 @@ def user_registration_confirm(token=None):
         return redirect('/')
     user = user_datastore.create_user(email=req.email, password=req.password, first_name=req.first_name, last_name=req.last_name)
     user.photo = req.photo
+    user.photo_type = req.photo_type
     user.confirmed_at = now
     db.session.delete(req)
     db.session.commit();
@@ -142,9 +141,9 @@ def user_info():
         balance = paydb_core.user_balance(db.session, user)
         roles = [role.name for role in api_key.user.roles]
         # todo photo
-        return jsonify(dict(email=user.email, balance=balance, photo='', roles=roles))
+        return jsonify(dict(email=user.email, balance=balance, photo=user.photo, photo_type=user.photo_type, roles=roles))
     # todo photo
-    return jsonify(dict(email=user.email, balance=-1, photo='', roles=[]))
+    return jsonify(dict(email=user.email, balance=-1, photo=user.photo, photo_type=user.photo_type, roles=[]))
 
 @paydb.route('/user_transactions', methods=['POST'])
 def user_transactions():

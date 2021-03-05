@@ -73,6 +73,8 @@ class User(db.Model, UserMixin):
     confirmed_at = db.Column(db.DateTime())
     roles = db.relationship('Role', secondary=roles_users,
                             backref=db.backref('users', lazy='dynamic'))
+    photo = db.Column(db.String())
+    photo_type = db.Column(db.String(255))
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -93,16 +95,18 @@ class UserCreateRequest(db.Model, UserMixin):
     first_name = db.Column(db.String(255))
     last_name = db.Column(db.String(255))
     email = db.Column(db.String(255))
-    photo = db.Column(db.Binary())
+    photo = db.Column(db.String())
+    photo_type = db.Column(db.String(255))
     password = db.Column(db.String(255))
     expiry = db.Column(db.DateTime())
 
-    def __init__(self, first_name, last_name, email, photo, password):
+    def __init__(self, first_name, last_name, email, photo, photo_type, password):
         self.token = secrets.token_urlsafe(8)
         self.first_name = first_name
         self.last_name = last_name
         self.email = email
         self.photo = photo
+        self.photo_type = photo_type
         self.password = password
         self.expiry = datetime.datetime.now() + datetime.timedelta(self.MINUTES_EXPIRY)
 
