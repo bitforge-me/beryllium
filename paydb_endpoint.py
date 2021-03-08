@@ -64,6 +64,8 @@ def user_register():
         return bad_request("invalid email address")
     if not password:
         return bad_request("empty password")
+    if len(photo) > 50000:
+        return bad_request("photo data too large")
     req = UserCreateRequest(first_name, last_name, email, photo, photo_type, encrypt_password(password))
     user = User.from_email(db.session, email)
     if user:
@@ -140,9 +142,7 @@ def user_info():
     if user == api_key.user:
         balance = paydb_core.user_balance(db.session, user)
         roles = [role.name for role in api_key.user.roles]
-        # todo photo
         return jsonify(dict(email=user.email, balance=balance, photo=user.photo, photo_type=user.photo_type, roles=roles))
-    # todo photo
     return jsonify(dict(email=user.email, balance=-1, photo=user.photo, photo_type=user.photo_type, roles=[]))
 
 @paydb.route('/user_transactions', methods=['POST'])
