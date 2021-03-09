@@ -14,7 +14,7 @@ from flask_security.utils import encrypt_password
 import web
 import utils
 from app_core import missing_vital_setting, app, db
-from models import user_datastore, User, Role, Category
+from models import user_datastore, User, Role, Category, Permission
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +54,15 @@ def create_role(name, desc):
         role.description = desc
     db.session.add(role)
     return role
+
+def create_permission(name, desc):
+    permission = Permission.from_name(db.session, name)
+    if not permission:
+        permission = Permission(name=name, description=desc)
+    else:
+        permission.description = desc
+    db.session.add(permission)
+    return permission
 
 def create_category(name, desc):
     category = Category.from_name(db.session, name)
@@ -100,6 +109,11 @@ if __name__ == "__main__":
     create_role("admin", "super user")
     create_role("proposer", "Can propose payments")
     create_role("authorizer", "Can authorize payments")
+    create_permission(Permission.PERMISSION_RECIEVE, "view account name")
+    create_permission(Permission.PERMISSION_BALANCE, "view account balance")
+    create_permission(Permission.PERMISSION_HISTORY, "view account history")
+    create_permission(Permission.PERMISSION_TRANSFER, "transfer funds")
+    create_permission(Permission.PERMISSION_ISSUE, "issue funds")
     create_category("marketing", "")
     create_category("misc", "")
     create_category("testing", "")

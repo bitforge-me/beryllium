@@ -54,6 +54,11 @@ def email_user_create_request(logger, req, minutes_expiry):
     msg = f"You have a pending user registration waiting!<br/><br/>Confirm your registration <a href='{url}'>here</a><br/><br/>Confirm within {minutes_expiry} minutes"
     send_email(logger, f"Confirm your registration", msg, req.email)
 
+def email_api_key_request(logger, req, minutes_expiry):
+    url = url_for("paydb.api_key_confirm", token=req.token, _external=True)
+    msg = f"You have a pending api key request waiting!<br/><br/>Confirm your registration <a href='{url}'>here</a><br/><br/>Confirm within {minutes_expiry} minutes"
+    send_email(logger, f"Confirm your api key request", msg, req.user.email)
+
 def sms_payment_claim(logger, asset_name, payment, hours_expiry):
     # SMS messages are sent by burst SMS
     #  - the authorization is by the sender email

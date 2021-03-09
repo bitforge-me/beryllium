@@ -45,6 +45,10 @@ roles_users = db.Table(
 )
 
 class Role(db.Model, RoleMixin):
+    ROLE_ADMIN = 'admin'
+    ROLE_PROPOSER = 'proposer'
+    ROLE_AUTHORIZER = 'authorizer'
+
     id = db.Column(db.Integer(), primary_key=True)
     name = db.Column(db.String(80), unique=True)
     description = db.Column(db.String(255))
@@ -87,7 +91,7 @@ class User(db.Model, UserMixin):
     def __str__(self):
         return self.email
 
-class UserCreateRequest(db.Model, UserMixin):
+class UserCreateRequest(db.Model):
     MINUTES_EXPIRY = 30
 
     id = db.Column(db.Integer, primary_key=True)
@@ -121,6 +125,31 @@ class UserCreateRequest(db.Model, UserMixin):
     def __str__(self):
         return self.email
 
+permissions_api_keys = db.Table(
+    'permissions_api_keys',
+    db.Column('api_key_id', db.Integer(), db.ForeignKey('api_key.id')),
+    db.Column('permission_id', db.Integer(), db.ForeignKey('permission.id'))
+)
+
+class Permission(db.Model):
+    PERMISSION_RECIEVE = 'receive'
+    PERMISSION_BALANCE = 'balance'
+    PERMISSION_HISTORY = 'history'
+    PERMISSION_TRANSFER = 'transfer'
+    PERMISSION_ISSUE = 'issue'
+    PERMS_ALL = [PERMISSION_BALANCE, PERMISSION_HISTORY, PERMISSION_ISSUE, PERMISSION_RECIEVE, PERMISSION_TRANSFER]
+
+    id = db.Column(db.Integer(), primary_key=True)
+    name = db.Column(db.String(80), unique=True)
+    description = db.Column(db.String(255))
+
+    @classmethod
+    def from_name(cls, session, name):
+        return session.query(cls).filter(cls.name == name).first()
+
+    def __str__(self):
+        return self.name
+
 class ApiKey(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     token = db.Column(db.String(255), unique=True, nullable=False)
@@ -130,6 +159,8 @@ class ApiKey(db.Model):
     user = db.relationship('User', backref=db.backref('api_keys', lazy='dynamic'))
     device_name = db.Column(db.String(255))
     expiry = db.Column(db.DateTime())
+    permissions = db.relationship('Permission', secondary=permissions_api_keys,
+                            backref=db.backref('api_keys', lazy='dynamic'))
 
     def __init__(self, user, device_name):
         self.user_id = user.id
@@ -139,9 +170,40 @@ class ApiKey(db.Model):
         self.device_name = device_name
         self.expiry = datetime.datetime.now() + datetime.timedelta(30)
 
+    def has_permission(self, permission_name):
+        perm = Permission.from_name(db.session, permission_name)
+        if perm:
+            return perm in self.permissions
+        return False
+
     @classmethod
     def from_token(cls, session, token):
         return session.query(cls).filter(cls.token == token).first()
+
+class ApiKeyRequest(db.Model):
+    MINUTES_EXPIRY = 30
+
+    id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String(255), unique=True, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref=db.backref('api_key_requests', lazy='dynamic'))
+    device_name = db.Column(db.String(255))
+    expiry = db.Column(db.DateTime())
+    created_api_key_id = db.Column(db.Integer, db.ForeignKey('api_key.id'))
+    created_api_key = db.relationship('ApiKey')
+
+    def __init__(self, user, device_name):
+        self.token = secrets.token_urlsafe(8)
+        self.user = user
+        self.device_name = device_name
+        self.expiry = datetime.datetime.now() + datetime.timedelta(self.MINUTES_EXPIRY)
+
+    @classmethod
+    def from_token(cls, session, token):
+        return session.query(cls).filter(cls.token == token).first()
+
+    def __str__(self):
+        return self.token
 
 class TransactionSchema(Schema):
     token = fields.String()
@@ -336,7 +398,7 @@ class RestrictedModelView(BaseModelView):
     def is_accessible(self):
         return (current_user.is_active and
                 current_user.is_authenticated and
-                current_user.has_role('admin'))
+                current_user.has_role(Role.ROLE_ADMIN))
 
 class BaseOnlyUserOwnedModelView(BaseModelView):
     def is_accessible(self):
@@ -532,7 +594,7 @@ class ProposalModelView(BaseModelView):
     def _format_status_column(view, context, model, name):
         if model.status in (model.STATE_AUTHORIZED, model.STATE_DECLINED, model.STATE_EXPIRED):
             return model.status
-        if current_user.has_role('admin') or current_user.has_role('authorizer'):
+        if current_user.has_role(Role.ROLE_ADMIN) or current_user.has_role(Role.ROLE_AUTHORIZER):
             authorize_url = url_for('.authorize_view')
             decline_url = url_for('.decline_view')
             html = '''
@@ -638,10 +700,10 @@ class ProposalModelView(BaseModelView):
     def is_accessible(self):
         if not (current_user.is_active and current_user.is_authenticated):
             return False
-        if current_user.has_role('admin'):
+        if current_user.has_role(Role.ROLE_ADMIN):
             self.can_create = True
             return True
-        if current_user.has_role('proposer'):
+        if current_user.has_role(Role.ROLE_PROPOSER):
             self.can_create = True
             return True
         return False
@@ -650,7 +712,7 @@ class ProposalModelView(BaseModelView):
     def authorize_view(self):
         return_url = self.get_url('.index_view')
         # check permission
-        if not (current_user.has_role('admin') or current_user.has_role('authorizer')):
+        if not (current_user.has_role(Role.ROLE_ADMIN) or current_user.has_role(Role.ROLE_AUTHORIZER)):
             # permission denied
             flash('Not authorized.', 'error')
             return redirect(return_url)
@@ -685,7 +747,7 @@ class ProposalModelView(BaseModelView):
     def decline_view(self):
         return_url = self.get_url('.index_view')
         # check permission
-        if not (current_user.has_role('admin') or current_user.has_role('authorizer')):
+        if not (current_user.has_role(Role.ROLE_ADMIN) or current_user.has_role(Role.ROLE_AUTHORIZER)):
             # permission denied
             flash('Not authorized.', 'error')
             return redirect(return_url)
@@ -717,7 +779,7 @@ class ProposalModelView(BaseModelView):
     def payments_view(self, proposal_id):
         return_url = self.get_url('.index_view')
         # check permission
-        if not (current_user.has_role('admin') or current_user.has_role('authorizer') or current_user.has_role('proposer')):
+        if not (current_user.has_role(Role.ROLE_ADMIN) or current_user.has_role(Role.ROLE_AUTHORIZER) or current_user.has_role(Role.ROLE_PROPOSER)):
             # permission denied
             flash('Not authorized.', 'error')
             return redirect(return_url)
@@ -739,7 +801,7 @@ class UserModelView(BaseModelView):
     def is_accessible(self):
         return (current_user.is_active and
                 current_user.is_authenticated and
-                current_user.has_role('admin'))
+                current_user.has_role(Role.ROLE_ADMIN))
 
 class TopicModelView(RestrictedModelView):
     can_create = True
@@ -951,9 +1013,9 @@ class Setting(db.Model):
 
 class ApiKeyModelView(BaseOnlyUserOwnedModelView):
     can_create = False
-    can_delete = False
+    can_delete = True
     can_edit = False
-    column_list = ('token', 'device_name', 'expiry')
+    column_list = ('token', 'device_name', 'expiry', 'permissions')
     column_labels = dict(token='API Key')
 
 class UserTransactionsView(BaseModelView):

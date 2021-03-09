@@ -5,14 +5,14 @@ import hashlib
 import base64
 import datetime
 
-from flask import Blueprint, request, jsonify, flash, redirect
+from flask import Blueprint, request, jsonify, flash, redirect, render_template
 import flask_security
 from flask_security.utils import encrypt_password
 
 from web_utils import bad_request, get_json_params
 import utils
 from app_core import app, db
-from models import user_datastore, User, UserCreateRequest, ApiKey, Transaction
+from models import user_datastore, User, UserCreateRequest, Permission, ApiKey, ApiKeyRequest, Transaction
 import paydb_core
 
 logger = logging.getLogger(__name__)
@@ -80,15 +80,15 @@ def user_register():
 def user_registration_confirm(token=None):
     req = UserCreateRequest.from_token(db.session, token)
     if not req:
-        flash('User registration request not found.', 'error')
+        flash('User registration request not found.', 'danger')
         return redirect('/')
     user = User.from_email(db.session, req.email)
     if user:
-        flash('User already exists.', 'error')
+        flash('User already exists.', 'danger')
         return redirect('/')
     now = datetime.datetime.now()
     if now > req.expiry:
-        flash('User registration expired.', 'error')
+        flash('User registration expired.', 'danger')
         return redirect('/')
     user = user_datastore.create_user(email=req.email, password=req.password, first_name=req.first_name, last_name=req.last_name)
     user.photo = req.photo
@@ -116,9 +116,86 @@ def api_key_create():
         time.sleep(5)
         return bad_request('authentication failed')
     api_key = ApiKey(user, device_name)
+    for name in Permission.PERMS_ALL:
+        perm = Permission.from_name(db.session, name)
+        api_key.permissions.append(perm)
     db.session.add(api_key)
     db.session.commit()
     return jsonify(dict(token=api_key.token, secret=api_key.secret, device_name=api_key.device_name, expiry=api_key.expiry))
+
+@paydb.route('/api_key_request', methods=['POST'])
+def api_key_request():
+    content = request.get_json(force=True)
+    if content is None:
+        return bad_request("failed to decode JSON object")
+    params, err_response = get_json_params(logger, content, ["email", "device_name"])
+    if err_response:
+        return err_response
+    email, device_name = params
+    user = User.from_email(db.session, email)
+    if not user:
+        req = ApiKeyRequest(user, device_name)
+        return jsonify(dict(token=req.token))
+    req = ApiKeyRequest(user, device_name)
+    utils.email_api_key_request(logger, req, req.MINUTES_EXPIRY)
+    db.session.add(req)
+    db.session.commit()
+    return jsonify(dict(token=req.token))
+
+@paydb.route('/api_key_claim', methods=['POST'])
+def api_key_claim():
+    content = request.get_json(force=True)
+    if content is None:
+        return bad_request("failed to decode JSON object")
+    params, err_response = get_json_params(logger, content, ["token"])
+    if err_response:
+        return err_response
+    token, = params
+    req = ApiKeyRequest.from_token(db.session, token)
+    if not token:
+        time.sleep(5)
+        return bad_request("not found")
+    req = ApiKeyRequest.from_token(db.session, token)
+    if not req.created_api_key:
+        time.sleep(5)
+        return bad_request("not created")
+    api_key = req.created_api_key
+    db.session.delete(req)
+    db.session.commit()
+    return jsonify(dict(token=api_key.token, secret=api_key.secret, device_name=api_key.device_name, expiry=api_key.expiry))
+
+@paydb.route('/api_key_confirm/<token>', methods=['GET', 'POST'])
+def api_key_confirm(token=None):
+    req = ApiKeyRequest.from_token(db.session, token)
+    if not req:
+        time.sleep(5)
+        flash('API KEY request not found.', 'danger')
+        return redirect('/')
+    now = datetime.datetime.now()
+    if now > req.expiry:
+        time.sleep(5)
+        flash('API KEY request expired.', 'danger')
+        return redirect('/')
+    if request.method == 'POST':
+        confirm = request.form.get('confirm') == 'true'
+        if not confirm:
+            db.session.delete(req)
+            db.session.commit()
+            flash('API KEY cancelled.', 'success')
+            return redirect('/')
+        perms = request.form.getlist('perms')
+        api_key = ApiKey(req.user, req.device_name)
+        for name in perms:
+            perm = Permission.from_name(db.session, name)
+            api_key.permissions.append(perm)
+        req.created_api_key = api_key
+        db.session.add(req)
+        db.session.add(api_key)
+        db.session.commit()
+        flash('API KEY confirmed.', 'success')
+        return redirect('/')
+    else:
+        return render_template('paydb/api_key_confirm.html', req=req, perms=Permission.PERMS_ALL)
 
 @paydb.route('/user_info', methods=['POST'])
 def user_info():
@@ -140,10 +217,11 @@ def user_info():
         time.sleep(5)
         return bad_request('authentication failed')
     if user == api_key.user:
-        balance = paydb_core.user_balance(db.session, user)
+        balance = paydb_core.user_balance(db.session, api_key)
         roles = [role.name for role in api_key.user.roles]
-        return jsonify(dict(email=user.email, balance=balance, photo=user.photo, photo_type=user.photo_type, roles=roles))
-    return jsonify(dict(email=user.email, balance=-1, photo=user.photo, photo_type=user.photo_type, roles=[]))
+        perms = [perm.name for perm in api_key.permissions]
+        return jsonify(dict(email=user.email, balance=balance, photo=user.photo, photo_type=user.photo_type, roles=roles, permissions=perms))
+    return jsonify(dict(email=user.email, balance=-1, photo=user.photo, photo_type=user.photo_type, roles=[], permissions=[]))
 
 @paydb.route('/user_transactions', methods=['POST'])
 def user_transactions():
@@ -160,6 +238,8 @@ def user_transactions():
     res, reason, api_key = check_auth(api_key, nonce, sig, request.data)
     if not res:
         return bad_request(reason)
+    if not api_key.has_permission(Permission.PERMISSION_HISTORY):
+        return bad_request('not authorized')
     txs = Transaction.related_to_user(db.session, api_key.user, offset, limit)
     txs = [tx.to_json() for tx in txs]
     return jsonify(dict(txs=txs))
@@ -177,7 +257,7 @@ def transaction_create():
     res, reason, api_key = check_auth(api_key, nonce, sig, request.data)
     if not res:
         return bad_request(reason)
-    tx, error = paydb_core.tx_create_and_play(db.session, api_key.user, action, recipient, amount, attachment)
+    tx, error = paydb_core.tx_create_and_play(db.session, api_key, action, recipient, amount, attachment)
     if not tx:
         return bad_request(error)
     return jsonify(dict(tx=tx.to_json()))

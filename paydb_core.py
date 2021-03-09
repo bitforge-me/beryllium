@@ -1,7 +1,7 @@
 import logging
 import threading
 
-from models import User, Transaction
+from models import Role, User, Permission, Transaction
 
 logger = logging.getLogger(__name__)
 lock = threading.Lock()
@@ -42,20 +42,23 @@ def __check_balances_inited(session):
         logger.info('balances not initialized, initializing now..')
         __tx_play_all(session)
 
-def user_balance(session, user):
+def user_balance(session, api_key):
+    if not api_key.has_permission(Permission.PERMISSION_BALANCE):
+        return -1
     with lock:
         __check_balances_inited(session)
-        return __balance(user)
+        return __balance(api_key.user)
 
 def tx_play_all(session):
     with lock:
         __tx_play_all(session)
 
-def tx_create_and_play(session, user, action, recipient_email, amount, attachment):
-    logger.info('{}({}): {}: {}, {}, {}'.format(user.token, user.email, action, recipient_email, amount, attachment))
+def tx_create_and_play(session, api_key, action, recipient_email, amount, attachment):
+    logger.info('{} ({}): {}: {}, {}, {}'.format(api_key.token, api_key.user.email, action, recipient_email, amount, attachment))
     with lock:
         __check_balances_inited(session)
         error = ''
+        user = api_key.user
         if not user.is_active:
             error = '{}: {} is not active'.format(action, user.email)
         elif amount <= 0:
@@ -65,19 +68,25 @@ def tx_create_and_play(session, user, action, recipient_email, amount, attachmen
             return None, error
         recipient = User.from_email(session, recipient_email)
         if action == Transaction.ACTION_ISSUE:
-            if not user.has_role('admin'):
+            if not api_key.has_permission(Permission.PERMISSION_ISSUE):
+                error = 'ACTION_ISSUE: {} is not authorized'.format(api_key.token)
+            elif not user.has_role(Role.ROLE_ADMIN):
                 error = 'ACTION_ISSUE: {} is not authorized'.format(user.email)
             elif not recipient == user:
                 error = 'ACTION_ISSUE: recipient should be {}'.format(user.email)
         if action == Transaction.ACTION_TRANSFER:
             user_balance = __balance(user)
-            if not recipient:
+            if not api_key.has_permission(Permission.PERMISSION_TRANSFER):
+                error = 'ACTION_TRANSFER: {} is not authorized'.format(api_key.token)
+            elif not recipient:
                 error = 'ACTION_TRANSFER: recipient ({}) is not valid'.format(recipient_email)
             elif user_balance < amount:
                 error = 'ACTION_TRANSFER: user balance ({}) is too low'.format(user_balance)
         if action == Transaction.ACTION_DESTROY:
             user_balance = __balance(user)
-            if not recipient == user:
+            if not api_key.has_permission(Permission.PERMISSION_TRANSFER):
+                error = 'ACTION_TRANSFER: {} is not authorized'.format(api_key.token)
+            elif not recipient == user:
                 error = 'ACTION_ISSUE: recipient should be {}'.format(user.email)
             elif user_balance < amount:
                 error = 'ACTION_DESTROY: user balance ({}) is too low'.format(user_balance)
