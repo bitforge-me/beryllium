@@ -12,15 +12,38 @@ import base58
 import axolotl_curve25519 as curve
 import sha3
 import pyblake2
+import pywaves
+from flask_jsonrpc.exceptions import OtherError
+
+import utils
+from models import WavesTx
+from app_core import app
 
 CHAIN_ID = None
 
 TYPES = dict(issue=3, transfer=4, reissue=5, setscript=13, sponsor=14)
 
+# waves default tx fees
 DEFAULT_TX_FEE = 100000
 DEFAULT_ASSET_FEE = 100000000
 DEFAULT_SPONSOR_FEE = 100000000
 DEFAULT_SCRIPT_FEE = 1000000
+
+# waves created transaction states
+CTX_CREATED = "created"
+CTX_EXPIRED = "expired"
+CTX_BROADCAST = "broadcast"
+
+# waves tx creation/broadcast response error codes
+ERR_FAILED_TO_BROADCAST = 0
+ERR_NO_TXID = 1
+ERR_TX_EXPIRED = 2
+ERR_FAILED_TO_GET_ASSET_INFO = 3
+ERR_EMPTY_ADDRESS = 4
+
+# wave specific config settings
+NODE_BASE_URL = app.config["NODE_BASE_URL"]
+TESTNET = app.config["TESTNET"]
 
 logger = logging.getLogger(__name__)
 
@@ -300,3 +323,36 @@ def get_fee(host, default_fee, address, user_provided_fee):
             throw_error(f"unable to check script fees on address ({address})")
 
     return fee
+
+def txid_from_txdata(serialized_txdata):
+    txid = pyblake2.blake2b(serialized_txdata, digest_size=32).digest()
+    return base58.b58encode(txid)
+
+def tx_to_txid(tx):
+    logger.info("tx_to_txid - tx: {}".format(tx))
+    tx_init_chain_id(TESTNET)
+    return txid_from_txdata(tx_serialize(tx))
+
+def broadcast_transaction(session, txid):
+    dbtx = WavesTx.from_txid(session, txid)
+    if not dbtx:
+        raise OtherError("transaction not found", ERR_NO_TXID)
+    if dbtx.state == CTX_EXPIRED:
+        raise OtherError("transaction expired", ERR_TX_EXPIRED)
+    signed_tx = dbtx.tx_with_sigs()
+    logger.info("broadcasting tx: {}".format(signed_tx))
+    # broadcast
+    logger.debug(f"requesting broadcast of tx:\n\t{signed_tx}")
+    path = f"/transactions/broadcast"
+    headers = {"Content-Type": "application/json"}
+    response = requests.post(NODE_BASE_URL + path, headers=headers, data=json.dumps(signed_tx))
+    if response.ok:
+        # update tx in db
+        dbtx.state = CTX_BROADCAST
+    else:
+        short_msg = "failed to broadcast"
+        logger.error(f"{short_msg}: ({response.status_code}, {response.request.method} {response.url}):\n\t{response.text}")
+        err = OtherError(short_msg, ERR_FAILED_TO_BROADCAST)
+        err.data = response.text
+        raise err
+    return dbtx

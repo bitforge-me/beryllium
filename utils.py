@@ -5,20 +5,17 @@ import base64
 import smtplib
 import binascii
 import re
+import io
 
 import requests
-import base58
 import pywaves
-import pyblake2
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, From
 from flask import url_for
+import qrcode
+import qrcode.image.svg
 
 from app_core import app
-
-def txid_from_txdata(serialized_txdata):
-    txid = pyblake2.blake2b(serialized_txdata, digest_size=32).digest()
-    return base58.b58encode(txid)
 
 def create_sig_from_msg(key, msg):
     sig = hmac.HMAC(key.encode(), msg.encode(), "sha256").digest()
@@ -82,6 +79,14 @@ def is_address(s):
         return pywaves.validateAddress(s)
     except:
         return False
+
+def qrcode_svg_create(data, box_size=10):
+    factory = qrcode.image.svg.SvgPathImage
+    img = qrcode.make(data, image_factory=factory, box_size=box_size)
+    output = io.BytesIO()
+    img.save(output)
+    svg = output.getvalue().decode('utf-8')
+    return svg
 
 if __name__ == "__main__":
     import sys

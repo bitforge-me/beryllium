@@ -3,35 +3,27 @@
 import sys
 import logging
 import json
-import struct
-import time
 import datetime
 import decimal
-import base64
-import io
 from urllib.parse import urlparse
 
 import gevent
 from gevent.pywsgi import WSGIServer
-from flask import Flask, render_template, request, flash, jsonify
-from flask_security import current_user, roles_accepted
+from flask import render_template, request, flash, jsonify
+from flask_security import roles_accepted
 #from flask_jsonrpc import JSONRPC
 from flask_jsonrpc.exceptions import OtherError
 import requests
 import base58
 import pywaves
 import pyblake2
-import qrcode
-import qrcode.image.svg
 
 from app_core import app, db, SERVER_MODE_WAVES, SERVER_MODE_PAYDB
 from models import User, WavesTx, WavesTxSig, Proposal, Payment, Topic
 import admin
 import utils
-import tx_utils
 from fcm import FCM
 from web_utils import bad_request, get, get_json_params
-from paydb_endpoint import paydb
 import paydb_core
 
 #jsonrpc = JSONRPC(app, "/api")
@@ -40,6 +32,7 @@ fcm = FCM(app.config["FIREBASE_CREDENTIALS"])
 
 SERVER_MODE = app.config["SERVER_MODE"]
 if SERVER_MODE == SERVER_MODE_WAVES:
+    import tx_utils
     # our pywaves address object
     pw_address = None
     # wave specific config settings
@@ -47,18 +40,13 @@ if SERVER_MODE == SERVER_MODE_WAVES:
     SEED = app.config["WALLET_SEED"]
     ADDRESS = app.config["WALLET_ADDRESS"]
     ASSET_ID = app.config["ASSET_ID"]
-    # waves created transaction states
-    CTX_CREATED = "created"
-    CTX_EXPIRED = "expired"
-    CTX_BROADCAST = "broadcast"
-    # waves tx creation/broadcast response error codes
-    ERR_FAILED_TO_BROADCAST = 0
-    ERR_NO_TXID = 1
-    ERR_TX_EXPIRED = 2
-    ERR_FAILED_TO_GET_ASSET_INFO = 3
-    ERR_EMPTY_ADDRESS = 4
+    TESTNET = app.config["TESTNET"]
+    # paydb blueprint
+    from mw_endpoint import mw
+    app.register_blueprint(mw, url_prefix='/mw')
 elif SERVER_MODE == SERVER_MODE_PAYDB:
     # paydb blueprint
+    from paydb_endpoint import paydb
     app.register_blueprint(paydb, url_prefix='/paydb')
 
 def dashboard_data_waves():
@@ -102,9 +90,9 @@ def dashboard_data_waves():
     return {"asset_balance": asset_balance, "asset_address": ADDRESS, "waves_balance": waves_balance, \
             "master_asset_balance": master_asset_balance, "master_waves_balance": master_waves_balance, "master_waves_address": issuer, \
             "asset_id": ASSET_ID, \
-            "testnet": app.config["TESTNET"], \
-            "premio_qrcode": qrcode_svg_create(ADDRESS), \
-            "issuer_qrcode": qrcode_svg_create(issuer), \
+            "testnet": TESTNET, \
+            "premio_qrcode": utils.qrcode_svg_create(ADDRESS), \
+            "issuer_qrcode": utils.qrcode_svg_create(issuer), \
             "wavesexplorer": app.config["WAVESEXPLORER"]}
 
 def dashboard_data_paydb():
@@ -124,11 +112,6 @@ def from_int_to_user_friendly(val, divisor, decimal_places=4):
     val = val / divisor
     return round(val, decimal_places)
 
-def tx_to_txid(tx):
-    logger.info("tx_to_txid - tx: {}".format(tx))
-    tx_utils.tx_init_chain_id(app.config["TESTNET"])
-    return utils.txid_from_txdata(tx_utils.tx_serialize(tx))
-
 def _create_transaction(recipient, amount, attachment):
     # get fee
     path = f"/assets/details/{ASSET_ID}"
@@ -138,18 +121,18 @@ def _create_transaction(recipient, amount, attachment):
     else:
         short_msg = "failed to get asset info"
         logger.error(f"{short_msg}: ({response.status_code}, {response.request.method} {response.url}):\n\t{response.text}")
-        err = OtherError(short_msg, ERR_FAILED_TO_GET_ASSET_INFO)
+        err = OtherError(short_msg, tx_utils.ERR_FAILED_TO_GET_ASSET_INFO)
         err.data = response.text
         raise err
     if not recipient:
         short_msg = "recipient is null or an empty string"
         logger.error(short_msg)
-        err = OtherError(short_msg, ERR_EMPTY_ADDRESS)
+        err = OtherError(short_msg, tx_utils.ERR_EMPTY_ADDRESS)
         raise err
     if not utils.is_address(recipient):
         short_msg = "recipient is not a valid address"
         logger.error(short_msg)
-        err = OtherError(short_msg, ERR_EMPTY_ADDRESS)
+        err = OtherError(short_msg, tx_utils.ERR_EMPTY_ADDRESS)
         raise err
     recipient = pywaves.Address(recipient)
     asset = pywaves.Asset(ASSET_ID)
@@ -157,42 +140,10 @@ def _create_transaction(recipient, amount, attachment):
     signed_tx = json.loads(address_data["api-data"])
     signed_tx["type"] = 4 # sendAsset does not include "type" - https://github.com/PyWaves/PyWaves/issues/131
     # calc txid properly
-    txid = tx_to_txid(signed_tx)
+    txid = tx_utils.tx_to_txid(signed_tx)
     # store tx in db
-    dbtx = WavesTx(txid, "transfer", CTX_CREATED, signed_tx["amount"], True, json.dumps(signed_tx))
+    dbtx = WavesTx(txid, "transfer", tx_utils.CTX_CREATED, signed_tx["amount"], True, json.dumps(signed_tx))
     return dbtx
-
-def _broadcast_transaction(txid):
-    dbtx = WavesTx.from_txid(db.session, txid)
-    if not dbtx:
-        raise OtherError("transaction not found", ERR_NO_TXID)
-    if dbtx.state == CTX_EXPIRED:
-        raise OtherError("transaction expired", ERR_TX_EXPIRED)
-    signed_tx = dbtx.tx_with_sigs()
-    logger.info("broadcasting tx: {}".format(signed_tx))
-    # broadcast
-    logger.debug(f"requesting broadcast of tx:\n\t{signed_tx}")
-    path = f"/transactions/broadcast"
-    headers = {"Content-Type": "application/json"}
-    response = requests.post(NODE_BASE_URL + path, headers=headers, data=json.dumps(signed_tx))
-    if response.ok:
-        # update tx in db
-        dbtx.state = CTX_BROADCAST
-    else:
-        short_msg = "failed to broadcast"
-        logger.error(f"{short_msg}: ({response.status_code}, {response.request.method} {response.url}):\n\t{response.text}")
-        err = OtherError(short_msg, ERR_FAILED_TO_BROADCAST)
-        err.data = response.text
-        raise err
-    return dbtx
-
-def qrcode_svg_create(data, box_size=10):
-    factory = qrcode.image.svg.SvgPathImage
-    img = qrcode.make(data, image_factory=factory, box_size=box_size)
-    output = io.BytesIO()
-    img.save(output)
-    svg = output.getvalue().decode('utf-8')
-    return svg
 
 def process_proposals():
     with app.app_context():
@@ -241,13 +192,6 @@ def int2asset(num):
     num = decimal.Decimal(num)
     return num/100
 
-@app.context_processor
-def inject_config_qrcode_svg():
-    url_parts = urlparse(request.url)
-    url = url_parts._replace(scheme="premiomwlink", path="/config").geturl()
-    qrcode_svg = qrcode_svg_create(url, box_size=6)
-    return dict(config_url=url, config_qrcode_svg=qrcode_svg)
-
 #
 # Flask views
 #
@@ -277,7 +221,7 @@ def process_claim(payment, dbtx, recipient, asset_id):
             return dbtx, ex
     # broadcast transaction
     try:
-        dbtx = _broadcast_transaction(dbtx.txid)
+        dbtx = tx_utils.broadcast_transaction(db.session, dbtx.txid)
         payment.status = payment.STATE_SENT_FUNDS
         db.session.add(dbtx)
         db.session.commit()
@@ -301,7 +245,7 @@ def claim_payment(token):
             recipient = dbtx.tx_with_sigs()["recipient"]
         url_parts = urlparse(request.url)
         url = url_parts._replace(scheme="premiostagelink").geturl()
-        qrcode_svg = qrcode_svg_create(url)
+        qrcode_svg = utils.qrcode_svg_create(url)
         return render_template("claim_payment.html", payment=payment, recipient=recipient, qrcode_svg=qrcode_svg, url=url)
 
     if request.method == "POST":
@@ -383,156 +327,6 @@ def push_notifications_register():
     topics = Topic.topic_list(db.session)
     fcm.subscribe_to_topics(registration_token, topics)
     return jsonify(dict(result="ok"))
-
-@app.route("/config")
-def config():
-    return jsonify(dict(asset_id=app.config["ASSET_ID"], asset_name=app.config["ASSET_NAME"], testnet=app.config["TESTNET"], tx_signers=app.config["TX_SIGNERS"], tx_types=tx_utils.TYPES))
-
-@app.route("/tx_link/<txid>")
-def tx_link(txid):
-    url_parts = urlparse(request.url)
-    url = url_parts._replace(scheme="premiomwlink", path="/txid/" + txid).geturl()
-    qrcode_svg = qrcode_svg_create(url)
-    return render_template("tx_link.html", qrcode_svg=qrcode_svg, url=url)
-
-@app.route("/tx_create", methods=["POST"])
-def tx_create():
-    tx_utils.tx_init_chain_id(app.config["TESTNET"])
-
-    content = request.get_json(force=True)
-    if content is None:
-        return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["type", "timestamp"])
-    if err_response:
-        return err_response
-    type, timestamp = params
-    if not type in tx_utils.TYPES:
-        return bad_request("'type' not valid")
-    pubkey = app.config["ASSET_MASTER_PUBKEY"]
-    address = tx_utils.generate_address(pubkey)
-    asset_id = app.config["ASSET_ID"]
-    amount = 0
-    if type == "transfer":
-        fee = tx_utils.get_fee(app.config["NODE_BASE_URL"], tx_utils.DEFAULT_TX_FEE, address, None)
-        params, err_response = get_json_params(logger, content, ["recipient", "amount"])
-        if err_response:
-            return err_response
-        recipient, amount = params
-        tx = tx_utils.transfer_asset_payload(address, pubkey, None, recipient, asset_id, amount, "", None, fee, timestamp)
-    elif type == "issue":
-        fee = tx_utils.get_fee(app.config["NODE_BASE_URL"], tx_utils.DEFAULT_ASSET_FEE, address, None)
-        params, err_response = get_json_params(logger, content, ["asset_name", "asset_description", "amount"])
-        if err_response:
-            return err_response
-        asset_name, asset_description, amount = params
-        tx = tx_utils.issue_asset_payload(address, pubkey, None, asset_name, asset_description, amount, None, 2, True, fee, timestamp)
-    elif type == "reissue":
-        fee = tx_utils.get_fee(app.config["NODE_BASE_URL"], tx_utils.DEFAULT_ASSET_FEE, address, None)
-        params, err_response = get_json_params(logger, content, ["amount"])
-        if err_response:
-            return err_response
-        amount, = params
-        tx = tx_utils.reissue_asset_payload(address, pubkey, None, asset_id, amount, True, fee, timestamp)
-    elif type == "sponsor":
-        fee = tx_utils.get_fee(app.config["NODE_BASE_URL"], tx_utils.DEFAULT_SPONSOR_FEE, address, None)
-        params, err_response = get_json_params(logger, content, ["asset_fee"])
-        if err_response:
-            return err_response
-        asset_fee, = params
-        amount = asset_fee
-        tx = tx_utils.sponsor_payload(address, pubkey, None, asset_id, asset_fee, fee, timestamp)
-    elif type == "setscript":
-        fee = tx_utils.get_fee(app.config["NODE_BASE_URL"], tx_utils.DEFAULT_SCRIPT_FEE, address, None)
-        params, err_response = get_json_params(logger, content, ["script"])
-        if err_response:
-            return err_response
-        script, = params
-        tx = tx_utils.set_script_payload(address, pubkey, None, script, fee, timestamp)
-    else:
-        return bad_request("invalid type")
-
-    txid = tx_to_txid(tx)
-    dbtx = WavesTx.from_txid(db.session, txid)
-    if dbtx:
-        return bad_request("txid already exists")
-    dbtx = WavesTx(txid, type, CTX_CREATED, amount, False, json.dumps(tx))
-    db.session.add(dbtx)
-    db.session.commit()
-    return jsonify(dict(txid=txid, state=CTX_CREATED, tx=tx))
-
-@app.route("/tx_status", methods=["POST"])
-def tx_status():
-    content = request.get_json(force=True)
-    if content is None:
-        return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["txid"])
-    if err_response:
-        return err_response
-    txid, = params
-    dbtx = WavesTx.from_txid(db.session, txid)
-    if not dbtx:
-        return bad_request('tx not found', 404)
-    tx = dbtx.tx_with_sigs()
-    return jsonify(dict(txid=txid, state=dbtx.state, tx=tx))
-
-@app.route("/tx_serialize", methods=["POST"])
-def tx_serialize():
-    content = request.get_json(force=True)
-    if content is None:
-        return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["tx"])
-    if err_response:
-        return err_response
-    tx, = params
-    if not "type" in tx:
-        return bad_request("tx does not contain 'type' field")
-    tx_serialized = tx_utils.tx_serialize(tx)
-    res = {"bytes": base64.b64encode(tx_serialized).decode("utf-8", "ignore")}
-    return jsonify(res)
-
-@app.route("/tx_signature", methods=["POST"])
-def tx_signature():
-    content = request.get_json(force=True)
-    if content is None:
-        return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["txid", "signer_index", "signature"])
-    if err_response:
-        return err_response
-    txid, signer_index, signature = params
-    dbtx = WavesTx.from_txid(db.session, txid)
-    if not dbtx:
-        return bad_request('tx not found', 404)
-    logger.info(":: adding sig to tx - {}, {}, {}".format(txid, signer_index, signature))
-    sig = WavesTxSig(dbtx, signer_index, signature)
-    db.session.add(sig)
-    db.session.commit()
-    tx = dbtx.tx_with_sigs()
-    return jsonify(dict(txid=txid, state=dbtx.state, tx=tx))
-
-@app.route("/tx_broadcast", methods=["POST"])
-def tx_broadcast():
-    content = request.get_json(force=True)
-    if content is None:
-        return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["txid"])
-    if err_response:
-        return err_response
-    txid, = params
-    dbtx = WavesTx.from_txid(db.session, txid)
-    if not dbtx:
-        return bad_request('tx not found', 404)
-    tx = dbtx.tx_with_sigs()
-    error = ""
-    # broadcast transaction
-    try:
-        dbtx = _broadcast_transaction(dbtx.txid)
-        db.session.add(dbtx)
-        db.session.commit()
-    except OtherError as ex:
-        error = ex.message
-        if hasattr(ex, 'data'):
-            error = "{} - {}".format(ex.message, ex.data)
-    return jsonify(dict(txid=txid, state=dbtx.state, tx=tx, error=error))
 
 ##
 ## JSON-RPC
