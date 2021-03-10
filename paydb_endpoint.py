@@ -12,7 +12,7 @@ from flask_security.utils import encrypt_password
 from web_utils import bad_request, get_json_params
 import utils
 from app_core import app, db
-from models import user_datastore, User, UserCreateRequest, Permission, ApiKey, ApiKeyRequest, Transaction
+from models import user_datastore, User, UserCreateRequest, Permission, ApiKey, ApiKeyRequest, PayDbTransaction
 import paydb_core
 
 logger = logging.getLogger(__name__)
@@ -240,7 +240,7 @@ def user_transactions():
         return bad_request(reason)
     if not api_key.has_permission(Permission.PERMISSION_HISTORY):
         return bad_request('not authorized')
-    txs = Transaction.related_to_user(db.session, api_key.user, offset, limit)
+    txs = PayDbTransaction.related_to_user(db.session, api_key.user, offset, limit)
     txs = [tx.to_json() for tx in txs]
     return jsonify(dict(txs=txs))
 
@@ -275,7 +275,7 @@ def transaction_info():
     res, reason, api_key = check_auth(api_key, nonce, sig, request.data)
     if not res:
         return bad_request(reason)
-    tx = Transaction.from_token(token)
+    tx = PayDbTransaction.from_token(token)
     if not tx:
         return bad_request('invalid tx')
     if tx.user != api_key.user and tx.recipient != api_key.user:

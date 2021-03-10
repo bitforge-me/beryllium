@@ -2,9 +2,9 @@ from flask import url_for
 import flask_admin
 from flask_admin import helpers as admin_helpers
 
-from app_core import app, db
-from models import security, RestrictedModelView, ProposalModelView, UserModelView, TopicModelView, TokenTxModelView, ApiKeyModelView, UserTransactionsView, \
-    Role, User, ApiKey, Transaction, Category, Proposal, TokenTx, Topic
+from app_core import app, db, SERVER_MODE_WAVES, SERVER_MODE_PAYDB
+from models import security, RestrictedModelView, ProposalModelView, UserModelView, TopicModelView, WavesTxModelView, PayDbApiKeyModelView, PayDbUserTransactionsView, \
+    Role, User, ApiKey, PayDbTransaction, Category, Proposal, WavesTx, Topic
 
 # Create admin
 admin = flask_admin.Admin(
@@ -19,11 +19,13 @@ admin.add_view(UserModelView(User, db.session, category='Admin'))
 admin.add_view(RestrictedModelView(Role, db.session, category='Admin'))
 admin.add_view(RestrictedModelView(Category, db.session, category='Admin'))
 admin.add_view(TopicModelView(Topic, db.session, category='Admin'))
-admin.add_view(RestrictedModelView(Transaction, db.session, category='Admin'))
 admin.add_view(ProposalModelView(Proposal, db.session))
-admin.add_view(TokenTxModelView(TokenTx, db.session))
-admin.add_view(ApiKeyModelView(ApiKey, db.session, category='User'))
-admin.add_view(UserTransactionsView(Transaction, db.session, category='User', endpoint='UserTransactions'))
+if app.config['SERVER_MODE'] == SERVER_MODE_WAVES:
+    admin.add_view(WavesTxModelView(WavesTx, db.session))
+else: # paydb
+    admin.add_view(RestrictedModelView(PayDbTransaction, db.session, name='Transactions', category='Admin'))
+    admin.add_view(PayDbApiKeyModelView(ApiKey, db.session, category='User'))
+    admin.add_view(PayDbUserTransactionsView(PayDbTransaction, db.session, category='User', name='Transactions', endpoint='UserTransactions'))
 
 # define a context processor for merging flask-admin's template context into the
 # flask-security views.

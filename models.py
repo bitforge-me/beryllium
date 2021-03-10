@@ -205,7 +205,7 @@ class ApiKeyRequest(db.Model):
     def __str__(self):
         return self.token
 
-class TransactionSchema(Schema):
+class PayDbTransactionSchema(Schema):
     token = fields.String()
     timestamp = fields.Integer()
     action = fields.String()
@@ -214,7 +214,7 @@ class TransactionSchema(Schema):
     amount = fields.Integer()
     attachment = fields.String()
 
-class Transaction(db.Model):
+class PayDbTransaction(db.Model):
     ACTION_ISSUE = "issue"
     ACTION_TRANSFER = "transfer"
     ACTION_DESTROY = "destroy"
@@ -255,7 +255,7 @@ class Transaction(db.Model):
         return self.token
 
     def to_json(self):
-        tx_schema = TransactionSchema()
+        tx_schema = PayDbTransactionSchema()
         return tx_schema.dump(self).data
 
 class Payment(db.Model):
@@ -808,7 +808,7 @@ class TopicModelView(RestrictedModelView):
     can_delete = True
     can_edit = False
 
-class TokenTxModelView(RestrictedModelView):
+class WavesTxModelView(RestrictedModelView):
     can_create = False
     can_delete = False
     can_edit = False
@@ -899,7 +899,7 @@ class TokenTxModelView(RestrictedModelView):
 
 ### define token distribution models
 
-class TokenTxSchema(Schema):
+class WavesTxSchema(Schema):
     date = fields.Date()
     txid = fields.String()
     type = fields.String()
@@ -908,8 +908,7 @@ class TokenTxSchema(Schema):
     json_data_signed = fields.Boolean()
     json_data = fields.String()
 
-class TokenTx(db.Model):
-    __tablename__ = 'token_txs'
+class WavesTx(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.Integer, nullable=False)
     txid = db.Column(db.String, nullable=False, unique=True)
@@ -947,10 +946,10 @@ class TokenTx(db.Model):
         return session.query(cls).count()
 
     def __repr__(self):
-        return '<TokenTx %r>' % (self.txid)
+        return '<WavesTx %r>' % (self.txid)
 
     def to_json(self):
-        tx_schema = TokenTxSchema()
+        tx_schema = WavesTxSchema()
         return tx_schema.dump(self).data
 
     def tx_with_sigs(self):
@@ -964,16 +963,15 @@ class TokenTx(db.Model):
             proofs[sig.signer_index] = sig.value
         return tx
 
-class TxSig(db.Model):
-    __tablename__ = 'tx_sigs'
+class WavesTxSig(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    token_tx_id = db.Column(db.Integer, db.ForeignKey('token_txs.id'), nullable=False)
-    token_tx = db.relationship('TokenTx', backref=db.backref('signatures', lazy='dynamic'))
+    waves_tx_id = db.Column(db.Integer, db.ForeignKey('waves_tx.id'), nullable=False)
+    waves_tx = db.relationship('WavesTx', backref=db.backref('signatures', lazy='dynamic'))
     signer_index = db.Column(db.Integer, nullable=False)
     value = db.Column(db.String, unique=False)
 
-    def __init__(self, token_tx, signer_index, value):
-        self.token_tx = token_tx
+    def __init__(self, waves_tx, signer_index, value):
+        self.waves_tx = waves_tx
         self.signer_index = signer_index
         self.value = value
 
@@ -1011,14 +1009,14 @@ class Setting(db.Model):
 
 ### define user models
 
-class ApiKeyModelView(BaseOnlyUserOwnedModelView):
+class PayDbApiKeyModelView(BaseOnlyUserOwnedModelView):
     can_create = False
     can_delete = True
     can_edit = False
     column_list = ('token', 'device_name', 'expiry', 'permissions')
     column_labels = dict(token='API Key')
 
-class UserTransactionsView(BaseModelView):
+class PayDbUserTransactionsView(BaseModelView):
     can_create = False
     can_delete = False
     can_edit = False

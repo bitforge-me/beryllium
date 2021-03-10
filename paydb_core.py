@@ -1,7 +1,7 @@
 import logging
 import threading
 
-from models import Role, User, Permission, Transaction
+from models import Role, User, Permission, PayDbTransaction
 
 logger = logging.getLogger(__name__)
 lock = threading.Lock()
@@ -39,7 +39,7 @@ def __tx_play_all(session):
     global balances
     assert(not balances)
     balances = {}
-    for tx in Transaction.all(session):
+    for tx in PayDbTransaction.all(session):
         __tx_play(tx)
 
 def __check_balances_inited(session):
@@ -82,14 +82,14 @@ def tx_create_and_play(session, api_key, action, recipient_email, amount, attach
             logger.error(error)
             return None, error
         recipient = User.from_email(session, recipient_email)
-        if action == Transaction.ACTION_ISSUE:
+        if action == PayDbTransaction.ACTION_ISSUE:
             if not api_key.has_permission(Permission.PERMISSION_ISSUE):
                 error = 'ACTION_ISSUE: {} is not authorized'.format(api_key.token)
             elif not user.has_role(Role.ROLE_ADMIN):
                 error = 'ACTION_ISSUE: {} is not authorized'.format(user.email)
             elif not recipient == user:
                 error = 'ACTION_ISSUE: recipient should be {}'.format(user.email)
-        if action == Transaction.ACTION_TRANSFER:
+        if action == PayDbTransaction.ACTION_TRANSFER:
             user_balance = __balance(user)
             if not api_key.has_permission(Permission.PERMISSION_TRANSFER):
                 error = 'ACTION_TRANSFER: {} is not authorized'.format(api_key.token)
@@ -97,7 +97,7 @@ def tx_create_and_play(session, api_key, action, recipient_email, amount, attach
                 error = 'ACTION_TRANSFER: recipient ({}) is not valid'.format(recipient_email)
             elif user_balance < amount:
                 error = 'ACTION_TRANSFER: user balance ({}) is too low'.format(user_balance)
-        if action == Transaction.ACTION_DESTROY:
+        if action == PayDbTransaction.ACTION_DESTROY:
             user_balance = __balance(user)
             if not api_key.has_permission(Permission.PERMISSION_TRANSFER):
                 error = 'ACTION_TRANSFER: {} is not authorized'.format(api_key.token)
@@ -108,7 +108,7 @@ def tx_create_and_play(session, api_key, action, recipient_email, amount, attach
         if error:
             logger.error(error)
             return None, error
-        tx = Transaction(action, user, recipient, amount, attachment)
+        tx = PayDbTransaction(action, user, recipient, amount, attachment)
         __tx_play(tx)
         session.add(tx)
         session.commit()

@@ -25,7 +25,7 @@ import qrcode
 import qrcode.image.svg
 
 from app_core import app, db, SERVER_MODE_WAVES, SERVER_MODE_PAYDB
-from models import User, TokenTx, TxSig, Proposal, Payment, Topic
+from models import User, WavesTx, WavesTxSig, Proposal, Payment, Topic
 import admin
 import utils
 import tx_utils
@@ -159,11 +159,11 @@ def _create_transaction(recipient, amount, attachment):
     # calc txid properly
     txid = tx_to_txid(signed_tx)
     # store tx in db
-    dbtx = TokenTx(txid, "transfer", CTX_CREATED, signed_tx["amount"], True, json.dumps(signed_tx))
+    dbtx = WavesTx(txid, "transfer", CTX_CREATED, signed_tx["amount"], True, json.dumps(signed_tx))
     return dbtx
 
 def _broadcast_transaction(txid):
-    dbtx = TokenTx.from_txid(db.session, txid)
+    dbtx = WavesTx.from_txid(db.session, txid)
     if not dbtx:
         raise OtherError("transaction not found", ERR_NO_TXID)
     if dbtx.state == CTX_EXPIRED:
@@ -293,7 +293,7 @@ def claim_payment(token):
     payment = Payment.from_token(db.session, token)
     if not payment:
         return bad_request('payment not found', 404)
-    dbtx = TokenTx.from_txid(db.session, payment.txid)
+    dbtx = WavesTx.from_txid(db.session, payment.txid)
 
     def render(dbtx):
         recipient = None
@@ -452,10 +452,10 @@ def tx_create():
         return bad_request("invalid type")
 
     txid = tx_to_txid(tx)
-    dbtx = TokenTx.from_txid(db.session, txid)
+    dbtx = WavesTx.from_txid(db.session, txid)
     if dbtx:
         return bad_request("txid already exists")
-    dbtx = TokenTx(txid, type, CTX_CREATED, amount, False, json.dumps(tx))
+    dbtx = WavesTx(txid, type, CTX_CREATED, amount, False, json.dumps(tx))
     db.session.add(dbtx)
     db.session.commit()
     return jsonify(dict(txid=txid, state=CTX_CREATED, tx=tx))
@@ -469,7 +469,7 @@ def tx_status():
     if err_response:
         return err_response
     txid, = params
-    dbtx = TokenTx.from_txid(db.session, txid)
+    dbtx = WavesTx.from_txid(db.session, txid)
     if not dbtx:
         return bad_request('tx not found', 404)
     tx = dbtx.tx_with_sigs()
@@ -499,11 +499,11 @@ def tx_signature():
     if err_response:
         return err_response
     txid, signer_index, signature = params
-    dbtx = TokenTx.from_txid(db.session, txid)
+    dbtx = WavesTx.from_txid(db.session, txid)
     if not dbtx:
         return bad_request('tx not found', 404)
     logger.info(":: adding sig to tx - {}, {}, {}".format(txid, signer_index, signature))
-    sig = TxSig(dbtx, signer_index, signature)
+    sig = WavesTxSig(dbtx, signer_index, signature)
     db.session.add(sig)
     db.session.commit()
     tx = dbtx.tx_with_sigs()
@@ -518,7 +518,7 @@ def tx_broadcast():
     if err_response:
         return err_response
     txid, = params
-    dbtx = TokenTx.from_txid(db.session, txid)
+    dbtx = WavesTx.from_txid(db.session, txid)
     if not dbtx:
         return bad_request('tx not found', 404)
     tx = dbtx.tx_with_sigs()
@@ -576,7 +576,7 @@ def tx_broadcast():
 #
 #@jsonrpc.method("expiretransactions")
 #def expiretransactions(above_age=60*60*24):
-#    count = TokenTx.expire_transactions(db.session, above_age, CTX_CREATED, CTX_EXPIRED)
+#    count = WavesTx.expire_transactions(db.session, above_age, CTX_CREATED, CTX_EXPIRED)
 #    db.session.commit()
 #    return {"count": count}
 #
