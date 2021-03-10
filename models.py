@@ -6,7 +6,7 @@ import logging
 import json
 import secrets
 
-from flask import redirect, url_for, request, flash, has_app_context, g
+from flask import redirect, url_for, request, flash, has_app_context, g, abort
 from flask_security import Security, SQLAlchemyUserDatastore, \
     UserMixin, RoleMixin, login_required, current_user
 from flask_admin import expose
@@ -223,9 +223,9 @@ class Transaction(db.Model):
     token = db.Column(db.String(255), unique=True, nullable=False)
     timestamp = db.Column(db.Integer)
     action = db.Column(db.String(255), nullable=False)
-    sender_token = db.Column(db.Integer, db.ForeignKey('user.token'), nullable=False)
+    sender_token = db.Column(db.String(255), db.ForeignKey('user.token'), nullable=False)
     sender = db.relationship('User', foreign_keys=[sender_token], backref=db.backref('sent', lazy='dynamic'))
-    recipient_token = db.Column(db.Integer, db.ForeignKey('user.token'), nullable=True)
+    recipient_token = db.Column(db.String(255), db.ForeignKey('user.token'), nullable=True)
     recipient = db.relationship('User', foreign_keys=[recipient_token], backref=db.backref('recieved', lazy='dynamic'))
     amount = db.Column(db.Integer())
     attachment = db.Column(db.String(255))
