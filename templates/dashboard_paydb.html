@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+    <div class="row justify-content-center">
+    <div class="col-sm-6">
+
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Operations Account</h5>
+                <p class="card-text">
+                <center>
+                    {{ data["premio_stage_account"] }}
+                    <br/>
+                    {{ data["premio_stage_balance"] }} {{ config["ASSET_NAME"] }}
+                    <br/>
+                </center>
+                </p>
+            </div>
+        </div>
+
+        <br/>
+
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Total Balance</h5>
+                <p class="card-text">
+                <center>
+                    {{ data["total_balance"] }} {{ config["ASSET_NAME"] }}
+                    <br/>
+                </center>
+                </p>
+            </div>
+        </div>
+
+    </div>
+    </div>
+
+{% endif %}
+{% endblock %}

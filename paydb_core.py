@@ -13,6 +13,13 @@ def __balance(user):
         return 0
     return balances[user.token]
 
+def __balance_total():
+    ## assumes lock is held
+    balance = 0
+    for val in balances.values():
+        balance += val
+    return balance
+
 def __tx_play(tx):
     ## assumes lock is held
     if not tx.sender.token in balances:
@@ -42,12 +49,20 @@ def __check_balances_inited(session):
         logger.info('balances not initialized, initializing now..')
         __tx_play_all(session)
 
+def user_balance_from_user(session, user):
+    with lock:
+        __check_balances_inited(session)
+        return __balance(user)
+
 def user_balance(session, api_key):
     if not api_key.has_permission(Permission.PERMISSION_BALANCE):
         return -1
+    return user_balance_from_user(session, api_key.user)
+
+def balance_total(session):
     with lock:
         __check_balances_inited(session)
-        return __balance(api_key.user)
+        return __balance_total()
 
 def tx_play_all(session):
     with lock:

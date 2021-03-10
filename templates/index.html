@@ -25,6 +25,7 @@
 {% block footer %}
     <div class="row justify-content-center">
     <div class="col-sm-6">
+        {% if config["SERVER_MODE"] == "waves" %}
         <div class="card">
             <div class="card-body">
                 <p class="card-title">Master Wallet Configuration QR Code</p>
@@ -38,6 +39,7 @@
                 </p>
             </div>
         </div>
+        {% endif %}
         <small class="text-muted">
         Logo made by <a href="https://www.flaticon.com/authors/freepik">Freepik</a> from <a href="http://www.flaticon.com/">www.flaticon.com"</a>
         </small>

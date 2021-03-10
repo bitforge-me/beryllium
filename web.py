@@ -24,43 +24,44 @@ import pyblake2
 import qrcode
 import qrcode.image.svg
 
-from app_core import app, db
-from models import TokenTx, TxSig, Proposal, Payment, Topic
+from app_core import app, db, SERVER_MODE_WAVES, SERVER_MODE_PAYDB
+from models import User, TokenTx, TxSig, Proposal, Payment, Topic
 import admin
 import utils
 import tx_utils
 from fcm import FCM
 from web_utils import bad_request, get, get_json_params
 from paydb_endpoint import paydb
+import paydb_core
 
 #jsonrpc = JSONRPC(app, "/api")
 logger = logging.getLogger(__name__)
 fcm = FCM(app.config["FIREBASE_CREDENTIALS"])
 
-# our address object
-pw_address = None
+SERVER_MODE = app.config["SERVER_MODE"]
+if SERVER_MODE == SERVER_MODE_WAVES:
+    # our pywaves address object
+    pw_address = None
+    # wave specific config settings
+    NODE_BASE_URL = app.config["NODE_BASE_URL"]
+    SEED = app.config["WALLET_SEED"]
+    ADDRESS = app.config["WALLET_ADDRESS"]
+    ASSET_ID = app.config["ASSET_ID"]
+    # waves created transaction states
+    CTX_CREATED = "created"
+    CTX_EXPIRED = "expired"
+    CTX_BROADCAST = "broadcast"
+    # waves tx creation/broadcast response error codes
+    ERR_FAILED_TO_BROADCAST = 0
+    ERR_NO_TXID = 1
+    ERR_TX_EXPIRED = 2
+    ERR_FAILED_TO_GET_ASSET_INFO = 3
+    ERR_EMPTY_ADDRESS = 4
+elif SERVER_MODE == SERVER_MODE_PAYDB:
+    # paydb blueprint
+    app.register_blueprint(paydb, url_prefix='/paydb')
 
-# paydb blueprint
-app.register_blueprint(paydb, url_prefix='/paydb')
-
-# created transaction states
-CTX_CREATED = "created"
-CTX_EXPIRED = "expired"
-CTX_BROADCAST = "broadcast"
-
-# response error codes
-ERR_FAILED_TO_BROADCAST = 0
-ERR_NO_TXID = 1
-ERR_TX_EXPIRED = 2
-ERR_FAILED_TO_GET_ASSET_INFO = 3
-ERR_EMPTY_ADDRESS = 4
-
-NODE_BASE_URL = app.config["NODE_BASE_URL"]
-SEED = app.config["WALLET_SEED"]
-ADDRESS = app.config["WALLET_ADDRESS"]
-ASSET_ID = app.config["ASSET_ID"]
-
-def dashboard_data():
+def dashboard_data_waves():
     # get balance of local wallet
     url = NODE_BASE_URL + f"/assets/balance/{ADDRESS}/{ASSET_ID}"
     logger.info("requesting {}..".format(url))
@@ -105,6 +106,17 @@ def dashboard_data():
             "premio_qrcode": qrcode_svg_create(ADDRESS), \
             "issuer_qrcode": qrcode_svg_create(issuer), \
             "wavesexplorer": app.config["WAVESEXPLORER"]}
+
+def dashboard_data_paydb():
+    premio_stage_balance = -1
+    premio_stage_account = app.config['OPERATIONS_ACCOUNT']
+    user = User.from_email(db.session, premio_stage_account)
+    if user:
+        premio_stage_balance = paydb_core.user_balance_from_user(db.session, user)
+    total_balance = paydb_core.balance_total(db.session)
+    # return data
+    return {"premio_stage_balance": premio_stage_balance, "premio_stage_account": premio_stage_account, \
+            "total_balance": total_balance}
 
 def from_int_to_user_friendly(val, divisor, decimal_places=4):
     if not isinstance(val, int):
@@ -327,12 +339,18 @@ def claim_payment(token):
 @app.route("/dashboard")
 @roles_accepted("admin")
 def dashboard():
-    data = dashboard_data()
-    data["asset_balance"] = from_int_to_user_friendly(data["asset_balance"], 100)
-    data["waves_balance"] = from_int_to_user_friendly(data["waves_balance"], 10**8)
-    data["master_asset_balance"] = from_int_to_user_friendly(data["master_asset_balance"], 100)
-    data["master_waves_balance"] = from_int_to_user_friendly(data["master_waves_balance"], 10**8)
-    return render_template("dashboard.html", data=data)
+    if SERVER_MODE == SERVER_MODE_WAVES:
+        data = dashboard_data_waves()
+        data["asset_balance"] = from_int_to_user_friendly(data["asset_balance"], 100)
+        data["waves_balance"] = from_int_to_user_friendly(data["waves_balance"], 10**8)
+        data["master_asset_balance"] = from_int_to_user_friendly(data["master_asset_balance"], 100)
+        data["master_waves_balance"] = from_int_to_user_friendly(data["master_waves_balance"], 10**8)
+        return render_template("dashboard_waves.html", data=data)
+    else: # paydb
+        data = dashboard_data_paydb()
+        data["premio_stage_balance"] = from_int_to_user_friendly(data["premio_stage_balance"], 100)
+        data["total_balance"] = from_int_to_user_friendly(data["total_balance"], 100)
+        return render_template("dashboard_paydb.html", data=data)
 
 @app.route("/push_notifications", methods=["GET", "POST"])
 @roles_accepted("admin")
@@ -607,8 +625,9 @@ class WebGreenlet():
                 gevent.sleep(30)
 
         def start_greenlets():
-            logger.info("checking wallet...")
-            self.check_wallet()
+            if SERVER_MODE == SERVER_MODE_WAVES:
+                logger.info("checking wallet...")
+                self.check_wallet()
             logger.info("starting WebGreenlet runloop...")
             self.runloop_greenlet.start()
             self.process_proposals_greenlet.start()

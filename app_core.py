@@ -5,6 +5,8 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_mail_sendgrid import MailSendGrid
 
+SERVER_MODE_WAVES = 'waves'
+SERVER_MODE_PAYDB = 'paydb'
 missing_vital_setting = False
 
 # Create Flask application
@@ -42,8 +44,8 @@ def set_vital_setting(env_name, setting_name=None, acceptable_values=None):
         print("no " + env_name)
         missing_vital_setting = True
 
-set_vital_setting("SERVER_MODE", acceptable_values=["waves", "paydb"])
-if app.config["SERVER_MODE"] == "waves":
+set_vital_setting("SERVER_MODE", acceptable_values=[SERVER_MODE_WAVES, SERVER_MODE_PAYDB])
+if app.config["SERVER_MODE"] == SERVER_MODE_WAVES:
     set_vital_setting("ASSET_NAME")
     if app.config["TESTNET"]:
         app.config["WAVESEXPLORER"] = 'https://testnet.wavesexplorer.com'
@@ -61,6 +63,7 @@ if app.config["SERVER_MODE"] == "waves":
         raise Exception('TX_SIGNERS is not valid json')
 else: # paydb
     set_vital_setting("ASSET_NAME")
+    set_vital_setting("OPERATIONS_ACCOUNT")
 
 set_vital_setting("ADMIN_EMAIL")
 set_vital_setting("FROM_EMAIL", "SECURITY_EMAIL_SENDER")
