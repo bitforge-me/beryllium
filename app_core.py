@@ -2,6 +2,7 @@ import os
 import json
 
 from flask import Flask
+from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_sqlalchemy import SQLAlchemy
 from flask_mail_sendgrid import MailSendGrid
 
@@ -11,6 +12,7 @@ missing_vital_setting = False
 
 # Create Flask application
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app)
 
 if os.getenv("DEBUG"):
     app.config["DEBUG"] = True
