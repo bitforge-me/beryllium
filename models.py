@@ -270,18 +270,18 @@ class Payment(db.Model):
     token = db.Column(db.String(255), unique=True, nullable=False)
     mobile = db.Column(db.String(255))
     email = db.Column(db.String(255))
-    wallet_address = db.Column(db.String(255))
+    recipient = db.Column(db.String(255))
     message = db.Column(db.String())
     amount = db.Column(db.Integer)
     status = db.Column(db.String(255))
     txid = db.Column(db.String(255))
 
-    def __init__(self, proposal, mobile, email, wallet_address, message, amount):
+    def __init__(self, proposal, mobile, email, recipient, message, amount):
         self.proposal = proposal
         self.token = generate_key(8)
         self.mobile = mobile
         self.email = email
-        self.wallet_address = wallet_address
+        self.recipient = recipient
         self.message = message
         self.amount = amount
         self.status = self.STATE_CREATED

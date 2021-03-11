@@ -9,11 +9,11 @@
                     <tr>
                     <th>Email</th>
                     <th>Mobile</th>
-                    <th>Wallet Address</th>
+                    <th>Recipient</th>
                     <th>Message</th>
                     <th>Amount</th>
                     <th>Status</th>
-                    <th>TransactionID</th>
+                    <th>Transaction ID/Token</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -21,7 +21,7 @@
                     <tr>
                         <td>{{payment.email}}</td>
                         <td>{{payment.mobile}}</td>
-                        <td>{{payment.wallet_address}}</td>
+                        <td>{{payment.recipient}}</td>
                         <td>{{payment.message}}</td>
                         <td>{{payment.amount|int2asset}} {{ config["ASSET_NAME"] }}</td>
                         <td>{{payment.status}}</td>

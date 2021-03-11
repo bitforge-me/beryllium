@@ -68,6 +68,31 @@ def tx_play_all(session):
     with lock:
         __tx_play_all(session)
 
+def tx_transfer_authorized(session, sender_email, recipient_email, amount, attachment):
+    logger.info('{}:  {}: {}, {}'.format(sender_email, recipient_email, amount, attachment))
+    with lock:
+        __check_balances_inited(session)
+        error = ''
+        sender = User.from_email(session, sender_email)
+        recipient = User.from_email(session, recipient_email)
+        if not sender:
+            error = 'ACTION_TRANSFER: sender ({}) is not valid'.format(sender_email)
+        elif not recipient:
+            error = 'ACTION_TRANSFER: recipient ({}) is not valid'.format(recipient_email)
+        if error:
+            logger.error(error)
+            return None, error
+        sender_balance = __balance(sender)
+        if sender_balance < amount:
+            error = 'ACTION_TRANSFER: user balance ({}) is too low'.format(sender_balance)
+            logger.error(error)
+            return None, error
+        tx = PayDbTransaction(PayDbTransaction.ACTION_TRANSFER, sender, recipient, amount, attachment)
+        __tx_play(tx)
+        session.add(tx)
+        session.commit()
+        return tx, ''
+
 def tx_create_and_play(session, api_key, action, recipient_email, amount, attachment):
     logger.info('{} ({}): {}: {}, {}, {}'.format(api_key.token, api_key.user.email, action, recipient_email, amount, attachment))
     with lock:

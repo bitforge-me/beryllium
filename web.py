@@ -45,6 +45,7 @@ if SERVER_MODE == SERVER_MODE_WAVES:
     from mw_endpoint import mw
     app.register_blueprint(mw, url_prefix='/mw')
 elif SERVER_MODE == SERVER_MODE_PAYDB:
+    OPERATIONS_ACCOUNT = app.config["OPERATIONS_ACCOUNT"]
     # paydb blueprint
     from paydb_endpoint import paydb
     app.register_blueprint(paydb, url_prefix='/paydb')
@@ -112,7 +113,7 @@ def from_int_to_user_friendly(val, divisor, decimal_places=4):
     val = val / divisor
     return round(val, decimal_places)
 
-def _create_transaction(recipient, amount, attachment):
+def _create_transaction_waves(recipient, amount, attachment):
     # get fee
     path = f"/assets/details/{ASSET_ID}"
     response = requests.get(NODE_BASE_URL + path)
@@ -176,11 +177,11 @@ def process_proposals():
                         db.session.add(payment)
                         logger.info(f"Sent payment claim url to {payment.mobile}")
                         sms_messages += 1
-                    elif payment.wallet_address:
+                    elif payment.recipient:
                         ##TODO: set status and commit before sending so we cannot send twice
                         raise Exception("not yet implemented")
         db.session.commit()
-        logger.info(f"payment statuses commited")
+        #logger.info(f"payment statuses commited")
         return f"done (expired {expired}, emails {emails}, SMS messages {sms_messages})"
 
 #
@@ -200,17 +201,17 @@ def int2asset(num):
 def index():
     return render_template("index.html")
 
-def process_claim(payment, dbtx, recipient, asset_id):
+def process_claim_waves(payment, dbtx, recipient, asset_id):
     if payment.proposal.status != payment.proposal.STATE_AUTHORIZED:
         return dbtx, "payment not authorized"
     if payment.status != payment.STATE_SENT_CLAIM_LINK:
         return dbtx, "payment not authorized"
     # create/get transaction
     if not dbtx:
-        if asset_id and asset_id != app.config["ASSET_ID"]:
+        if asset_id and asset_id != ASSET_ID:
             return dbtx, "'asset_id' does not match server"
         try:
-            dbtx = _create_transaction(recipient, payment.amount, "")
+            dbtx = _create_transaction_waves(recipient, payment.amount, "")
             payment.txid = dbtx.txid
             db.session.add(dbtx)
             db.session.add(payment)
@@ -229,6 +230,22 @@ def process_claim(payment, dbtx, recipient, asset_id):
         return dbtx, ex.message
     return dbtx, None
 
+def process_claim_paydb(payment, recipient):
+    if payment.proposal.status != payment.proposal.STATE_AUTHORIZED:
+        return "payment not authorized"
+    if payment.status != payment.STATE_SENT_CLAIM_LINK:
+        return "payment not authorized"
+    # create transaction
+    tx, error = paydb_core.tx_transfer_authorized(db.session, OPERATIONS_ACCOUNT, recipient, payment.amount, "")
+    if tx:
+        payment.txid = tx.token
+        payment.status = payment.STATE_SENT_FUNDS
+        db.session.add(payment)
+        db.session.commit()
+        return None
+    else:
+        return 'claim failed'
+
 @app.route("/claim_payment/<token>", methods=["GET", "POST"])
 def claim_payment(token):
     qrcode = None
@@ -237,16 +254,20 @@ def claim_payment(token):
     payment = Payment.from_token(db.session, token)
     if not payment:
         return bad_request('payment not found', 404)
-    dbtx = WavesTx.from_txid(db.session, payment.txid)
 
-    def render(dbtx):
+    def render(recipient):
+        url_parts = urlparse(request.url)
+        url = url_parts._replace(scheme="premiostagelink", query='scheme={}'.format(url_parts.scheme)).geturl()
+        qrcode_svg = utils.qrcode_svg_create(url)
+        return render_template("claim_payment.html", payment=payment, recipient=recipient, qrcode_svg=qrcode_svg, url=url)
+    def render_waves(dbtx):
         recipient = None
         if dbtx:
             recipient = dbtx.tx_with_sigs()["recipient"]
-        url_parts = urlparse(request.url)
-        url = url_parts._replace(scheme="premiostagelink").geturl()
-        qrcode_svg = utils.qrcode_svg_create(url)
-        return render_template("claim_payment.html", payment=payment, recipient=recipient, qrcode_svg=qrcode_svg, url=url)
+        return render(recipient)
+
+    if SERVER_MODE == SERVER_MODE_WAVES:
+        dbtx = WavesTx.from_txid(db.session, payment.txid)
 
     if request.method == "POST":
         content_type = request.content_type
@@ -258,27 +279,39 @@ def claim_payment(token):
             content = request.get_json(force=True)
             if content is None:
                 return bad_request("failed to decode JSON object")
-            params, err_response = get_json_params(logger, content, ["recipient", "asset_id"])
-            if err_response:
-                return err_response
-            recipient, asset_id = params
+            if SERVER_MODE == SERVER_MODE_WAVES:
+                params, err_response = get_json_params(logger, content, ["recipient", "asset_id"])
+                if err_response:
+                    return err_response
+                recipient, asset_id = params
+            else: # paydb
+                params, err_response = get_json_params(logger, content, ["recipient"])
+                if err_response:
+                    return err_response
+                recipient, = params
         else: # using html form
             try:
                 recipient = request.form["recipient"]
             except:
                 flash("'recipient' parameter not present", "danger")
-                return render(dbtx)
+                return render_waves(dbtx)
             try:
                 asset_id = request.form["asset_id"]
             except:
                 pass
-        dbtx, err_msg = process_claim(payment, dbtx, recipient, asset_id)
+        if SERVER_MODE == SERVER_MODE_WAVES:
+            dbtx, err_msg = process_claim_waves(payment, dbtx, recipient, asset_id)
+        else: # paydb
+            err_msg = process_claim_paydb(payment, recipient)
         if err_msg:
             logger.error("claim_payment: {}".format(err_msg))
             if using_app:
                 return bad_request(err_msg)
             flash(err_msg, "danger")
-    return render(dbtx)
+    if SERVER_MODE == SERVER_MODE_WAVES:
+        return render_waves(dbtx)
+    else: # paydb
+        return render(None)
 
 @app.route("/dashboard")
 @roles_accepted("admin")
