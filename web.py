@@ -311,6 +311,9 @@ def claim_payment(token):
     payment = Payment.from_token(db.session, token)
     if not payment:
         return bad_request('payment not found', 404)
+    now = datetime.datetime.now()
+    if now > payment.proposal.date_expiry and payment.status != payment.STATE_SENT_FUNDS:
+        return bad_request('expired', 404)
     dbtx = TokenTx.from_txid(db.session, payment.txid)
 
     def render(dbtx):
