@@ -21,11 +21,11 @@ admin.add_view(RestrictedModelView(Category, db.session, category='Admin'))
 admin.add_view(TopicModelView(Topic, db.session, category='Admin'))
 admin.add_view(ProposalModelView(Proposal, db.session))
 if app.config['SERVER_MODE'] == SERVER_MODE_WAVES:
-    admin.add_view(WavesTxModelView(WavesTx, db.session))
+    admin.add_view(WavesTxModelView(WavesTx, db.session, name='Waves Transactions', category='Admin'))
 else: # paydb
-    admin.add_view(RestrictedModelView(PayDbTransaction, db.session, name='Transactions', category='Admin'))
+    admin.add_view(RestrictedModelView(PayDbTransaction, db.session, name='PremioPay Transactions', category='Admin'))
     admin.add_view(PayDbApiKeyModelView(ApiKey, db.session, category='User'))
-    admin.add_view(PayDbUserTransactionsView(PayDbTransaction, db.session, category='User', name='Transactions', endpoint='UserTransactions'))
+    admin.add_view(PayDbUserTransactionsView(PayDbTransaction, db.session, category='User', name='PremioPay Transactions', endpoint='UserTransactions'))
 
 # define a context processor for merging flask-admin's template context into the
 # flask-security views.
