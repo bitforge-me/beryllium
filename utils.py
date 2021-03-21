@@ -11,6 +11,7 @@ import requests
 import pywaves
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, From
+from premailer import transform
 from flask import url_for
 import qrcode
 import qrcode.image.svg
@@ -31,6 +32,7 @@ def send_email(logger, subject, msg, to=None):
         html = input_file.read()
     logo_src = "http://" + app.config["SERVER_NAME"] + "/static/assets/img/logo.png"
     html = html.replace("<LOGOSRC/>", logo_src).replace("<EMAILCONTENT/>", msg)
+    html = transform(html)
     message = Mail(from_email=from_email, to_emails=to, subject=subject, html_content=html)
     try:
         sg = SendGridAPIClient(app.config["MAIL_SENDGRID_API_KEY"])
