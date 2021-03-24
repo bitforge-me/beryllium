@@ -47,6 +47,7 @@ def set_vital_setting(env_name, setting_name=None, acceptable_values=None):
         missing_vital_setting = True
 
 set_vital_setting("SERVER_MODE", acceptable_values=[SERVER_MODE_WAVES, SERVER_MODE_PAYDB])
+set_vital_setting("DEEP_LINK_SCHEME")
 if app.config["SERVER_MODE"] == SERVER_MODE_WAVES:
     set_vital_setting("ASSET_NAME")
     if app.config["TESTNET"]:

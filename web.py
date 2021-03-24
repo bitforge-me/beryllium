@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 fcm = FCM(app.config["FIREBASE_CREDENTIALS"])
 
 SERVER_MODE = app.config["SERVER_MODE"]
+DEEP_LINK_SCHEME = app.config["DEEP_LINK_SCHEME"]
 if SERVER_MODE == SERVER_MODE_WAVES:
     import tx_utils
     # our pywaves address object
@@ -260,7 +261,7 @@ def claim_payment(token):
 
     def render(recipient):
         url_parts = urlparse(request.url)
-        url = url_parts._replace(scheme="premiostagelink", query='scheme={}'.format(url_parts.scheme)).geturl()
+        url = url_parts._replace(scheme=DEEP_LINK_SCHEME, query='scheme={}'.format(url_parts.scheme)).geturl()
         qrcode_svg = utils.qrcode_svg_create(url)
         return render_template("claim_payment.html", payment=payment, recipient=recipient, qrcode_svg=qrcode_svg, url=url)
     def render_waves(dbtx):
