@@ -8,6 +8,8 @@
             <div class="card-body">
                 <h5 class="card-title">API KEY Request</h5>
                 <form method="POST">
+                    <h6>Device Name:</h6>
+                    <span>{{req.device_name | e}}</span>
                     <h6>Permissions:</h6>
                     <div class="form-group">
                         {% for perm in perms %}
