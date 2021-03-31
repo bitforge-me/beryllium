@@ -1,5 +1,8 @@
 #!/usr/bin/python3
 
+# pylint: disable=invalid-name
+# pylint: disable=unused-variable
+
 import sys
 import argparse
 import time
@@ -147,7 +150,7 @@ def transaction_info(args):
     check_request_status(r)
     print(r.text)
 
-if __name__ == "__main__":
+def run_parser():
     # parse arguments
     parser = construct_parser()
     args = parser.parse_args()
@@ -170,3 +173,6 @@ if __name__ == "__main__":
 
     if function:
         function(args)
+
+if __name__ == "__main__":
+    run_parser()

@@ -16,7 +16,7 @@ import secrets
 
 from flask import redirect, url_for, request, flash, has_app_context, g, abort
 from flask_security import Security, SQLAlchemyUserDatastore, \
-    UserMixin, RoleMixin, login_required, current_user
+    UserMixin, RoleMixin, current_user
 from flask_admin import expose
 from flask_admin.babel import lazy_gettext
 from flask_admin.helpers import get_form_data
@@ -27,9 +27,8 @@ from wtforms.fields import TextField, DecimalField, FileField
 from wtforms import validators
 from marshmallow import Schema, fields
 from markupsafe import Markup
-from sqlalchemy import func, or_
+from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError, DBAPIError
-import requests
 
 from app_core import app, db
 from utils import generate_key, is_email, is_mobile, is_address
@@ -826,13 +825,14 @@ class WavesTxModelView(RestrictedModelView):
     def _format_date(view, context, model, name):
         if model.date:
             return datetime.datetime.fromtimestamp(model.date).strftime('%Y-%m-%d %H:%M:%S')
+        return None
 
     def _format_json_data_html_link(view, context, model, name):
         ids = model.id
         json_obj = json.loads(model.json_data)
-        assetId = json_obj["assetId"]
-        feeAssetId = json_obj["feeAssetId"]
-        senderPublicKey = json_obj["senderPublicKey"]
+        asset_id = json_obj["assetId"]
+        fee_asset_id = json_obj["feeAssetId"]
+        sender_public_key = json_obj["senderPublicKey"]
         recipient = json_obj["recipient"]
         amount = json_obj["amount"]/100
         fee = json_obj["fee"]/100
@@ -873,7 +873,7 @@ class WavesTxModelView(RestrictedModelView):
     </div>
   </div>
 </div>
-        '''.format(ids, ids, ids, ids, assetId, feeAssetId, senderPublicKey, recipient, amount, app.config["ASSET_NAME"], fee, timestamp, attachment, signature, txtype)
+        '''.format(ids, ids, ids, ids, asset_id, fee_asset_id, sender_public_key, recipient, amount, app.config["ASSET_NAME"], fee, timestamp, attachment, signature, txtype)
         return Markup(html)
 
     def _format_txid_html(view, context, model, name):
@@ -928,9 +928,9 @@ class WavesTx(db.Model):
     json_data_signed = db.Column(db.Boolean, nullable=False)
     json_data = db.Column(db.String, nullable=False)
 
-    def __init__(self, txid, type, state, amount, json_data_signed, json_data):
+    def __init__(self, txid, type_, state, amount, json_data_signed, json_data):
         self.date = time.time()
-        self.type = type
+        self.type = type_
         self.state = state
         self.txid = txid
         self.amount = amount

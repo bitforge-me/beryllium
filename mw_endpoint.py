@@ -15,8 +15,6 @@ from web_utils import bad_request, get_json_params
 logger = logging.getLogger(__name__)
 mw = Blueprint('mw', __name__, template_folder='templates')
 
-# our pywaves address object
-pw_address = None
 # wave specific config settings
 NODE_BASE_URL = app.config["NODE_BASE_URL"]
 SEED = app.config["WALLET_SEED"]
@@ -63,34 +61,34 @@ def tx_create():
     params, err_response = get_json_params(logger, content, ["type", "timestamp"])
     if err_response:
         return err_response
-    type, timestamp = params
-    if not type in tx_utils.TYPES:
+    type_, timestamp = params
+    if not type_ in tx_utils.TYPES:
         return bad_request("'type' not valid")
     pubkey = ASSET_MASTER_PUBKEY
     address = tx_utils.generate_address(pubkey)
     amount = 0
-    if type == "transfer":
+    if type_ == "transfer":
         fee = tx_utils.get_fee(NODE_BASE_URL, tx_utils.DEFAULT_TX_FEE, address, None)
         params, err_response = get_json_params(logger, content, ["recipient", "amount"])
         if err_response:
             return err_response
         recipient, amount = params
         tx = tx_utils.transfer_asset_payload(address, pubkey, None, recipient, ASSET_ID, amount, "", None, fee, timestamp)
-    elif type == "issue":
+    elif type_ == "issue":
         fee = tx_utils.get_fee(NODE_BASE_URL, tx_utils.DEFAULT_ASSET_FEE, address, None)
         params, err_response = get_json_params(logger, content, ["asset_name", "asset_description", "amount"])
         if err_response:
             return err_response
         asset_name, asset_description, amount = params
         tx = tx_utils.issue_asset_payload(address, pubkey, None, asset_name, asset_description, amount, None, 2, True, fee, timestamp)
-    elif type == "reissue":
+    elif type_ == "reissue":
         fee = tx_utils.get_fee(NODE_BASE_URL, tx_utils.DEFAULT_ASSET_FEE, address, None)
         params, err_response = get_json_params(logger, content, ["amount"])
         if err_response:
             return err_response
         amount, = params
         tx = tx_utils.reissue_asset_payload(address, pubkey, None, ASSET_ID, amount, True, fee, timestamp)
-    elif type == "sponsor":
+    elif type_ == "sponsor":
         fee = tx_utils.get_fee(NODE_BASE_URL, tx_utils.DEFAULT_SPONSOR_FEE, address, None)
         params, err_response = get_json_params(logger, content, ["asset_fee"])
         if err_response:
@@ -98,7 +96,7 @@ def tx_create():
         asset_fee, = params
         amount = asset_fee
         tx = tx_utils.sponsor_payload(address, pubkey, None, ASSET_ID, asset_fee, fee, timestamp)
-    elif type == "setscript":
+    elif type_ == "setscript":
         fee = tx_utils.get_fee(NODE_BASE_URL, tx_utils.DEFAULT_SCRIPT_FEE, address, None)
         params, err_response = get_json_params(logger, content, ["script"])
         if err_response:

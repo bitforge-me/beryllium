@@ -13,7 +13,7 @@ from flask_socketio import Namespace, emit, join_room, leave_room
 
 from web_utils import bad_request, get_json_params
 import utils
-from app_core import app, db, socketio
+from app_core import db, socketio
 from models import user_datastore, User, UserCreateRequest, Permission, ApiKey, ApiKeyRequest, PayDbTransaction
 import paydb_core
 
@@ -58,45 +58,45 @@ def check_auth(api_key_token, nonce, sig, body):
 # Websocket events
 #
 
-ns = '/paydb'
+NS = '/paydb'
 
-def tx_event(tx):
-    txt = json.dumps(tx.to_json())
-    socketio.emit("tx", txt, json=True, room=tx.sender.email, namespace=ns)
+def tx_event(txn):
+    txt = json.dumps(txn.to_json())
+    socketio.emit("tx", txt, json=True, room=tx.sender.email, namespace=NS)
     if tx.recipient and tx.recipient != tx.sender:
-        socketio.emit("tx", txt, json=True, room=tx.recipient.email, namespace=ns)
+        socketio.emit("tx", txt, json=True, room=tx.recipient.email, namespace=NS)
 
 class PayDbNamespace(Namespace):
 
-    def on_error(self, e):
-        logger.error(e)
+    def on_error(self, err):
+        logger.error(err)
 
     def on_connect(self):
-        logger.info("connect sid: %s" % request.sid)
+        logger.info("connect sid: %s", request.sid)
 
     def on_auth(self, auth):
         # check auth
         res, reason, api_key = check_auth(auth["api_key"], auth["nonce"], auth["signature"], str(auth["nonce"]))
         if res:
-            emit("info", "authenticated!", namespace=ns)
+            emit("info", "authenticated!", namespace=NS)
             # join room and store user
-            logger.info("join room for email: %s" % api_key.user.email)
+            logger.info("join room for email: %s", api_key.user.email)
             join_room(api_key.user.email)
             # store sid -> email map
             ws_sids[request.sid] = api_key.user.email
         else:
-            logger.info("failed authentication (%s): %s" % (auth["api_key"], reason))
+            logger.info("failed authentication (%s): %s", auth["api_key"], reason)
 
     def on_disconnect(self):
-        logger.info("disconnect sid: %s" % request.sid)
+        logger.info("disconnect sid: %s", request.sid)
         if request.sid in ws_sids:
             # remove sid -> email map
             email = ws_sids[request.sid]
-            logger.info("leave room for email: %s" % email)
+            logger.info("leave room for email: %s", email)
             leave_room(email)
             del ws_sids[request.sid]
 
-socketio.on_namespace(PayDbNamespace(ns))
+socketio.on_namespace(PayDbNamespace(NS))
 
 #
 # Private (paydb) API
@@ -146,7 +146,7 @@ def user_registration_confirm(token=None):
     user.photo_type = req.photo_type
     user.confirmed_at = now
     db.session.delete(req)
-    db.session.commit();
+    db.session.commit()
     flash('User registered.', 'success')
     return redirect('/')
 
