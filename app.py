@@ -1,27 +1,20 @@
 #!/usr/bin/python3
 
-import os
 import sys
 import logging
 import signal
+import traceback
 
 import gevent
 import gevent.pool
-import base58
-import pywaves
 from flask_security.utils import encrypt_password
 
 import web
 import utils
-from app_core import missing_vital_setting, app, db
+from app_core import MISSING_VITAL_SETTING, app, db
 from models import user_datastore, User, Role, Category, Permission
 
 logger = logging.getLogger(__name__)
-
-# set pywaves to offline mode
-pywaves.setOffline()
-if app.config["TESTNET"]:
-    pywaves.setChain("testnet")
 
 def setup_logging(level):
     # setup logging
@@ -91,20 +84,21 @@ def add_role(email, role_name):
         db.session.commit()
 
 def sigint_handler(signum, frame):
-    global keep_running
+    # pylint: disable=global-statement
+    global KEEP_RUNNING
     logger.warning("SIGINT caught, attempting to exit gracefully")
-    keep_running = False
+    KEEP_RUNNING = False
 
-def g_exception(g):
+def g_exception(greenlet):
+    # pylint diable=broad-except
     try:
-        g.get()
+        greenlet.get()
     except Exception as e:
-        import traceback
         stack_trace = traceback.format_exc()
         msg = f"{e}\n---\n{stack_trace}"
         utils.email_exception(logger, msg)
 
-keep_running = True
+KEEP_RUNNING = True
 if __name__ == "__main__":
     setup_logging(logging.DEBUG)
 
@@ -130,7 +124,7 @@ if __name__ == "__main__":
         if sys.argv[1] == "add_role":
             add_role(sys.argv[2], sys.argv[3])
     else:
-        if missing_vital_setting:
+        if MISSING_VITAL_SETTING:
             logger.error('missing vital setting')
             sys.exit(1)
         else:
@@ -141,7 +135,7 @@ if __name__ == "__main__":
         logger.info("starting greenlets")
         web_greenlet = web.WebGreenlet(g_exception)
         web_greenlet.start()
-        while keep_running:
+        while KEEP_RUNNING:
             gevent.sleep(1)
         logger.info("stopping greenlets")
         web_greenlet.stop()

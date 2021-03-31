@@ -2,7 +2,7 @@ from flask import url_for
 import flask_admin
 from flask_admin import helpers as admin_helpers
 
-from app_core import app, db, SERVER_MODE_WAVES, SERVER_MODE_PAYDB
+from app_core import app, db, SERVER_MODE_WAVES
 from models import security, RestrictedModelView, ProposalModelView, UserModelView, TopicModelView, WavesTxModelView, PayDbApiKeyModelView, PayDbUserTransactionsView, \
     Role, User, ApiKey, PayDbTransaction, Category, Proposal, WavesTx, Topic
 
@@ -37,4 +37,3 @@ def security_context_processor():
         h=admin_helpers,
         get_url=url_for
     )
-
