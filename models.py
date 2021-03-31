@@ -1,3 +1,11 @@
+# pylint: disable=too-many-instance-attributes
+# pylint: disable=too-many-arguments
+# pylint: disable=no-self-use
+# pylint: disable=no-self-argument
+# pylint: disable=too-few-public-methods
+# pylint: disable=too-many-locals
+# pylint: disable=too-many-lines
+
 import time
 import datetime
 import decimal
@@ -20,6 +28,7 @@ from wtforms import validators
 from marshmallow import Schema, fields
 from markupsafe import Markup
 from sqlalchemy import func, or_
+from sqlalchemy.exc import SQLAlchemyError, DBAPIError
 import requests
 
 from app_core import app, db
@@ -58,7 +67,7 @@ class Role(db.Model, RoleMixin):
         return session.query(cls).filter(cls.name == name).first()
 
     def __str__(self):
-        return self.name
+        return f'{self.name}'
 
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -89,9 +98,10 @@ class User(db.Model, UserMixin):
         return session.query(cls).filter(cls.email == email).first()
 
     def __str__(self):
-        return self.email
+        return f'{self.email}'
 
 class UserCreateRequest(db.Model):
+
     MINUTES_EXPIRY = 30
 
     id = db.Column(db.Integer, primary_key=True)
@@ -148,7 +158,7 @@ class Permission(db.Model):
         return session.query(cls).filter(cls.name == name).first()
 
     def __str__(self):
-        return self.name
+        return f'{self.name}'
 
 class ApiKey(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -314,7 +324,7 @@ class Category(db.Model):
         return session.query(cls).filter(cls.name == name).first()
 
     def __str__(self):
-        return self.name
+        return f'{self.name}'
 
 class Proposal(db.Model):
     STATE_CREATED = "created"
@@ -424,7 +434,7 @@ def validate_csv(data):
     rows = []
     try:
         data = data.decode('utf-8')
-    except:
+    except: # pylint: disable=bare-except
         return False
     data = data.splitlines()
     reader = csv.reader(data)
@@ -512,8 +522,8 @@ def get_statuses():
         if not hasattr(g, 'statuses'):
             query = Proposal.query.distinct(Proposal.status)
             g.statuses = [(proposal.status, proposal.status) for proposal in query]
-        for proposal_status, proposal_status in g.statuses:
-            yield proposal_status, proposal_status
+        for proposal_status_a, proposal_status_b in g.statuses:
+            yield proposal_status_a, proposal_status_b
 
 class FilterByProposer(BaseSQLAFilter):
     def apply(self, query, value, alias=None):
@@ -671,7 +681,7 @@ class ProposalModelView(BaseModelView):
         return True, "", csv_rows
 
     def _add_payment(self, model, recipient, message, amount):
-        email = recipient if is_email(recipient) else None 
+        email = recipient if is_email(recipient) else None
         mobile = recipient if is_mobile(recipient) else None
         address = recipient if is_address(recipient) else None
         amount = int(amount * 100)
@@ -737,7 +747,7 @@ class ProposalModelView(BaseModelView):
         try:
             self.session.commit()
             flash('Proposal {proposal_id} set as authorized'.format(proposal_id=proposal_id))
-        except Exception as ex:
+        except (SQLAlchemyError, DBAPIError) as ex:
             if not self.handle_view_exception(ex):
                 raise
             flash('Failed to set proposal {proposal_id} as authorized'.format(proposal_id=proposal_id), 'error')
@@ -769,7 +779,7 @@ class ProposalModelView(BaseModelView):
         try:
             self.session.commit()
             flash('Proposal {proposal_id} set as declined'.format(proposal_id=proposal_id))
-        except Exception as ex:
+        except (SQLAlchemyError, DBAPIError) as ex:
             if not self.handle_view_exception(ex):
                 raise
             flash('Failed to set proposal {proposal_id} as declined'.format(proposal_id=proposal_id), 'error')
