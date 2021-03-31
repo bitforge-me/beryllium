@@ -5,6 +5,7 @@ from flask import Flask
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_sqlalchemy import SQLAlchemy
 from flask_mail_sendgrid import MailSendGrid
+from flask_socketio import SocketIO
 
 SERVER_MODE_WAVES = 'waves'
 SERVER_MODE_PAYDB = 'paydb'
@@ -80,3 +81,4 @@ set_vital_setting("FIREBASE_CREDENTIALS")
 
 db = SQLAlchemy(app)
 mail = MailSendGrid(app)
+socketio = SocketIO(app)

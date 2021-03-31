@@ -4,19 +4,22 @@ import hmac
 import hashlib
 import base64
 import datetime
+import json
 
 from flask import Blueprint, request, jsonify, flash, redirect, render_template
 import flask_security
 from flask_security.utils import encrypt_password
+from flask_socketio import Namespace, emit, join_room, leave_room
 
 from web_utils import bad_request, get_json_params
 import utils
-from app_core import app, db
+from app_core import app, db, socketio
 from models import user_datastore, User, UserCreateRequest, Permission, ApiKey, ApiKeyRequest, PayDbTransaction
 import paydb_core
 
 logger = logging.getLogger(__name__)
 paydb = Blueprint('paydb', __name__, template_folder='templates')
+ws_sids = {}
 
 def to_bytes(data):
     if not isinstance(data, (bytes, bytearray)):
@@ -50,6 +53,54 @@ def check_auth(api_key_token, nonce, sig, body):
     # update api key nonce
     db.session.commit()
     return True, "", api_key
+
+#
+# Websocket events
+#
+
+ns = '/paydb'
+
+def tx_event(tx):
+    txt = json.dumps(tx.to_json())
+    socketio.emit("tx", txt, json=True, room=tx.sender.email, namespace=ns)
+    if tx.recipient and tx.recipient != tx.sender:
+        socketio.emit("tx", txt, json=True, room=tx.recipient.email, namespace=ns)
+
+class PayDbNamespace(Namespace):
+
+    def on_error(self, e):
+        logger.error(e)
+
+    def on_connect(self):
+        logger.info("connect sid: %s" % request.sid)
+
+    def on_auth(self, auth):
+        # check auth
+        res, reason, api_key = check_auth(auth["api_key"], auth["nonce"], auth["signature"], str(auth["nonce"]))
+        if res:
+            emit("info", "authenticated!", namespace=ns)
+            # join room and store user
+            logger.info("join room for email: %s" % api_key.user.email)
+            join_room(api_key.user.email)
+            # store sid -> email map
+            ws_sids[request.sid] = api_key.user.email
+        else:
+            logger.info("failed authentication (%s): %s" % (auth["api_key"], reason))
+
+    def on_disconnect(self):
+        logger.info("disconnect sid: %s" % request.sid)
+        if request.sid in ws_sids:
+            # remove sid -> email map
+            email = ws_sids[request.sid]
+            logger.info("leave room for email: %s" % email)
+            leave_room(email)
+            del ws_sids[request.sid]
+
+socketio.on_namespace(PayDbNamespace(ns))
+
+#
+# Private (paydb) API
+#
 
 @paydb.route('/user_register', methods=['POST'])
 def user_register():
@@ -260,6 +311,7 @@ def transaction_create():
     tx, error = paydb_core.tx_create_and_play(db.session, api_key, action, recipient, amount, attachment)
     if not tx:
         return bad_request(error)
+    tx_event(tx)
     return jsonify(dict(tx=tx.to_json()))
 
 @paydb.route('/transaction_info', methods=['POST'])

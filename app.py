@@ -26,14 +26,18 @@ if app.config["TESTNET"]:
 def setup_logging(level):
     # setup logging
     logger.setLevel(level)
-    web.logger.setLevel(level)
     ch = logging.StreamHandler()
     ch.setLevel(level)
     ch.setFormatter(logging.Formatter('[%(name)s %(levelname)s] %(message)s'))
     logger.addHandler(ch)
-    web.logger.addHandler(ch)
+    web.logger_setup(level, ch)
     # clear loggers set by any imported modules
     logging.getLogger().handlers.clear()
+
+def teardown_logging():
+    # fix this bug: https://bugs.python.org/issue21149
+    logger.handlers.clear()
+    web.logger_clear()
 
 def add_user(email, password):
     with app.app_context():
@@ -141,3 +145,5 @@ if __name__ == "__main__":
             gevent.sleep(1)
         logger.info("stopping greenlets")
         web_greenlet.stop()
+        logger.info("teardown logging")
+        teardown_logging()

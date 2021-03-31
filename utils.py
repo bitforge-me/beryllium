@@ -1,7 +1,5 @@
 import os
 import json
-import hmac
-import base64
 import smtplib
 import binascii
 import re
@@ -16,11 +14,6 @@ import qrcode
 import qrcode.image.svg
 
 from app_core import app
-
-def create_sig_from_msg(key, msg):
-    sig = hmac.HMAC(key.encode(), msg.encode(), "sha256").digest()
-    sig = base64.b64encode(sig)
-    return sig
 
 def send_email(logger, subject, msg, to=None):
     if not to:
@@ -87,10 +80,3 @@ def qrcode_svg_create(data, box_size=10):
     img.save(output)
     svg = output.getvalue().decode('utf-8')
     return svg
-
-if __name__ == "__main__":
-    import sys
-    key = sys.argv[1]
-    msg = sys.argv[2]
-    sig = create_sig_from_msg(key, msg)
-    print(sig)

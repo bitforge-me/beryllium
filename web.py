@@ -8,7 +8,6 @@ import decimal
 from urllib.parse import urlparse
 
 import gevent
-from gevent.pywsgi import WSGIServer
 from flask import render_template, request, flash, jsonify
 from flask_security import roles_accepted
 #from flask_jsonrpc import JSONRPC
@@ -18,7 +17,7 @@ import base58
 import pywaves
 import pyblake2
 
-from app_core import app, db, SERVER_MODE_WAVES, SERVER_MODE_PAYDB
+from app_core import app, db, socketio, SERVER_MODE_WAVES, SERVER_MODE_PAYDB
 from models import User, WavesTx, WavesTxSig, Proposal, Payment, Topic
 import admin
 import utils
@@ -50,6 +49,27 @@ elif SERVER_MODE == SERVER_MODE_PAYDB:
     # paydb blueprint
     from paydb_endpoint import paydb
     app.register_blueprint(paydb, url_prefix='/paydb')
+
+def logger_setup(level, ch):
+    logger.setLevel(level)
+    logger.addHandler(ch)
+    if SERVER_MODE == SERVER_MODE_WAVES:
+        import mw_endpoint
+        mw_endpoint.logger.setLevel(level)
+        mw_endpoint.logger.addHandler(ch)
+    if SERVER_MODE == SERVER_MODE_PAYDB:
+        import paydb_endpoint
+        paydb_endpoint.logger.setLevel(level)
+        paydb_endpoint.logger.addHandler(ch)
+
+def logger_clear():
+    logger.handlers.clear()
+    if SERVER_MODE == SERVER_MODE_WAVES:
+        import mw_endpoint
+        mw_endpoint.logger.handlers.clear()
+    if SERVER_MODE == SERVER_MODE_PAYDB:
+        import paydb_endpoint
+        paydb_endpoint.logger.handlers.clear()
 
 def dashboard_data_waves():
     # get balance of local wallet
@@ -447,8 +467,7 @@ class WebGreenlet():
         def runloop():
             logger.info("WebGreenlet runloop started")
             logger.info(f"WebGreenlet webserver starting (addr: {self.addr}, port: {self.port})")
-            http_server = WSGIServer((self.addr, self.port), app)
-            http_server.serve_forever()
+            socketio.run(app, host=self.addr, port=self.port)
 
         def process_proposals_loop():
             while True:
@@ -474,6 +493,7 @@ class WebGreenlet():
     def stop(self):
         self.runloop_greenlet.kill()
         self.process_proposals_greenlet.kill()
+        gevent.joinall([self.runloop_greenlet, self.process_proposals_greenlet])
 
 if __name__ == "__main__":
     # setup logging
