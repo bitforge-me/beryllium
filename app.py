@@ -90,7 +90,7 @@ def sigint_handler(signum, frame):
     KEEP_RUNNING = False
 
 def g_exception(greenlet):
-    # pylint diable=broad-except
+    # pylint: disable=broad-except
     try:
         greenlet.get()
     except Exception as e:
