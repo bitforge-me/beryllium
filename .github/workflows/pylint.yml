@@ -20,4 +20,4 @@ jobs:
         pip install -r requirements.txt
     - name: Analysing the code with pylint
       run: |
-        pylint `ls -R|grep .py$|xargs` --disable=line-too-long,missing-module-docstring,missing-function-docstring
+        pylint `ls -R|grep .py$|xargs` --disable=line-too-long,missing-module-docstring,missing-function-docstring --variable-rgx="[a-z_][a-z0-9_]{0,30}$"
