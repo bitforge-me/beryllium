@@ -12,16 +12,16 @@ import qrcode.image.svg
 
 from app_core import app
 
-def send_email(logger, subject, msg, to=None):
-    if not to:
-        to = app.config["ADMIN_EMAIL"]
+def send_email(logger, subject, msg, recipient=None):
+    if not recipient:
+        recipient = app.config["ADMIN_EMAIL"]
     from_email = From(app.config["FROM_EMAIL"], app.config["FROM_NAME"])
     template_path = "templates/email_template.html"
     with open(os.path.join(os.path.dirname(__file__), template_path), 'r') as input_file:
         html = input_file.read()
     logo_src = "http://" + app.config["SERVER_NAME"] + "/static/assets/img/logo.png"
     html = html.replace("<LOGOSRC/>", logo_src).replace("<EMAILCONTENT/>", msg)
-    message = Mail(from_email=from_email, to_emails=to, subject=subject, html_content=html)
+    message = Mail(from_email=from_email, to_emails=recipient, subject=subject, html_content=html)
     try:
         sg = SendGridAPIClient(app.config["MAIL_SENDGRID_API_KEY"])
         sg.send(message)
@@ -64,9 +64,9 @@ def is_email(val):
 def is_mobile(val):
     return val.isnumeric()
 
-def is_address(s):
+def is_address(val):
     try:
-        return pywaves.validateAddress(s)
+        return pywaves.validateAddress(val)
     except:
         return False
 

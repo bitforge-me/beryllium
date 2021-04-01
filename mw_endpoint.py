@@ -60,7 +60,7 @@ def tx_create():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["type", "timestamp"])
+    params, err_response = get_json_params(content, ["type", "timestamp"])
     if err_response:
         return err_response
     type_, timestamp = params
@@ -71,28 +71,28 @@ def tx_create():
     amount = 0
     if type_ == "transfer":
         fee = tx_utils.get_fee(NODE_BASE_URL, tx_utils.DEFAULT_TX_FEE, address, None)
-        params, err_response = get_json_params(logger, content, ["recipient", "amount"])
+        params, err_response = get_json_params(content, ["recipient", "amount"])
         if err_response:
             return err_response
         recipient, amount = params
         tx = tx_utils.transfer_asset_payload(address, pubkey, None, recipient, ASSET_ID, amount, "", None, fee, timestamp)
     elif type_ == "issue":
         fee = tx_utils.get_fee(NODE_BASE_URL, tx_utils.DEFAULT_ASSET_FEE, address, None)
-        params, err_response = get_json_params(logger, content, ["asset_name", "asset_description", "amount"])
+        params, err_response = get_json_params(content, ["asset_name", "asset_description", "amount"])
         if err_response:
             return err_response
         asset_name, asset_description, amount = params
         tx = tx_utils.issue_asset_payload(address, pubkey, None, asset_name, asset_description, amount, None, 2, True, fee, timestamp)
     elif type_ == "reissue":
         fee = tx_utils.get_fee(NODE_BASE_URL, tx_utils.DEFAULT_ASSET_FEE, address, None)
-        params, err_response = get_json_params(logger, content, ["amount"])
+        params, err_response = get_json_params(content, ["amount"])
         if err_response:
             return err_response
         amount, = params
         tx = tx_utils.reissue_asset_payload(address, pubkey, None, ASSET_ID, amount, True, fee, timestamp)
     elif type_ == "sponsor":
         fee = tx_utils.get_fee(NODE_BASE_URL, tx_utils.DEFAULT_SPONSOR_FEE, address, None)
-        params, err_response = get_json_params(logger, content, ["asset_fee"])
+        params, err_response = get_json_params(content, ["asset_fee"])
         if err_response:
             return err_response
         asset_fee, = params
@@ -100,7 +100,7 @@ def tx_create():
         tx = tx_utils.sponsor_payload(address, pubkey, None, ASSET_ID, asset_fee, fee, timestamp)
     elif type_ == "setscript":
         fee = tx_utils.get_fee(NODE_BASE_URL, tx_utils.DEFAULT_SCRIPT_FEE, address, None)
-        params, err_response = get_json_params(logger, content, ["script"])
+        params, err_response = get_json_params(content, ["script"])
         if err_response:
             return err_response
         script, = params
@@ -122,7 +122,7 @@ def tx_status():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["txid"])
+    params, err_response = get_json_params(content, ["txid"])
     if err_response:
         return err_response
     txid, = params
@@ -137,7 +137,7 @@ def tx_serialize():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["tx"])
+    params, err_response = get_json_params(content, ["tx"])
     if err_response:
         return err_response
     tx, = params
@@ -152,14 +152,14 @@ def tx_signature():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["txid", "signer_index", "signature"])
+    params, err_response = get_json_params(content, ["txid", "signer_index", "signature"])
     if err_response:
         return err_response
     txid, signer_index, signature = params
     dbtx = WavesTx.from_txid(db.session, txid)
     if not dbtx:
         return bad_request('tx not found', 404)
-    logger.info(":: adding sig to tx - {}, {}, {}".format(txid, signer_index, signature))
+    logger.info(":: adding sig to tx - %s, %d, %s", txid, signer_index, signature)
     sig = WavesTxSig(dbtx, signer_index, signature)
     db.session.add(sig)
     db.session.commit()
@@ -171,7 +171,7 @@ def tx_broadcast():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["txid"])
+    params, err_response = get_json_params(content, ["txid"])
     if err_response:
         return err_response
     txid, = params

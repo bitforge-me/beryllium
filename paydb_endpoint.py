@@ -110,7 +110,7 @@ def user_register():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["email", "password", "first_name", "last_name", "photo", "photo_type"])
+    params, err_response = get_json_params(content, ["email", "password", "first_name", "last_name", "photo", "photo_type"])
     if err_response:
         return err_response
     email, password, first_name, last_name, photo, photo_type = params
@@ -158,7 +158,7 @@ def api_key_create():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["email", "password", "device_name"])
+    params, err_response = get_json_params(content, ["email", "password", "device_name"])
     if err_response:
         return err_response
     email, password, device_name = params
@@ -182,7 +182,7 @@ def api_key_request():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["email", "device_name"])
+    params, err_response = get_json_params(content, ["email", "device_name"])
     if err_response:
         return err_response
     email, device_name = params
@@ -201,7 +201,7 @@ def api_key_claim():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["token"])
+    params, err_response = get_json_params(content, ["token"])
     if err_response:
         return err_response
     token, = params
@@ -248,8 +248,7 @@ def api_key_confirm(token=None):
         db.session.commit()
         flash('API KEY confirmed.', 'success')
         return redirect('/')
-    else:
-        return render_template('paydb/api_key_confirm.html', req=req, perms=Permission.PERMS_ALL)
+    return render_template('paydb/api_key_confirm.html', req=req, perms=Permission.PERMS_ALL)
 
 @paydb.route('/user_info', methods=['POST'])
 def user_info():
@@ -257,7 +256,7 @@ def user_info():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["api_key", "nonce", "email"])
+    params, err_response = get_json_params(content, ["api_key", "nonce", "email"])
     if err_response:
         return err_response
     api_key, nonce, email = params
@@ -283,7 +282,7 @@ def user_transactions():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["api_key", "nonce", "offset", "limit"])
+    params, err_response = get_json_params(content, ["api_key", "nonce", "offset", "limit"])
     if err_response:
         return err_response
     api_key, nonce, offset, limit = params
@@ -304,7 +303,7 @@ def transaction_create():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["api_key", "nonce", "action", "recipient", "amount", "attachment"])
+    params, err_response = get_json_params(content, ["api_key", "nonce", "action", "recipient", "amount", "attachment"])
     if err_response:
         return err_response
     api_key, nonce, action, recipient, amount, attachment = params
@@ -323,7 +322,7 @@ def transaction_info():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["api_key", "nonce", "token"])
+    params, err_response = get_json_params(content, ["api_key", "nonce", "token"])
     if err_response:
         return err_response
     api_key, nonce, token = params

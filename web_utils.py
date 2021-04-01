@@ -24,7 +24,7 @@ def get(url):
         response = s.get(url)
         return response
 
-def get_json_params(logger, json_content, param_names):
+def get_json_params(json_content, param_names):
     param_values = []
     param_name = ''
     try:

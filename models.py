@@ -393,7 +393,7 @@ class BaseModelView(sqla.ModelView):
         if not self.is_accessible():
             if current_user.is_authenticated:
                 # permission denied
-                abort(403)
+                return abort(403)
             else:
                 # login
                 return redirect(url_for('security.login', next=request.url))

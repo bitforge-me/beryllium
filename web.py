@@ -71,7 +71,7 @@ def logger_clear():
 def dashboard_data_waves():
     # get balance of local wallet
     url = NODE_BASE_URL + f"/assets/balance/{ADDRESS}/{ASSET_ID}"
-    logger.info("requesting {}..".format(url))
+    logger.info("requesting %s..", url)
     response = requests.get(url)
     try:
         asset_balance = response.json()["balance"]
@@ -79,7 +79,7 @@ def dashboard_data_waves():
         logger.error("failed to parse response")
         asset_balance = "n/a"
     url = NODE_BASE_URL + f"/addresses/balance/{ADDRESS}"
-    logger.info("requesting {}..".format(url))
+    logger.info("requesting %s..", url)
     response = requests.get(url)
     try:
         waves_balance = response.json()["balance"]
@@ -88,16 +88,16 @@ def dashboard_data_waves():
         waves_balance = "n/a"
     # get the balance of the main wallet
     url = NODE_BASE_URL + f"/transactions/info/{ASSET_ID}"
-    logger.info("requesting {}..".format(url))
+    logger.info("requesting %s..", url)
     response = requests.get(url)
     try:
         issuer = response.json()["sender"]
         url = NODE_BASE_URL + f"/assets/balance/{issuer}/{ASSET_ID}"
-        logger.info("requesting {}..".format(url))
+        logger.info("requesting %s..", url)
         response = requests.get(url)
         master_asset_balance = response.json()["balance"]
         url = NODE_BASE_URL + f"/addresses/balance/{issuer}"
-        logger.info("requesting {}..".format(url))
+        logger.info("requesting %s..", url)
         response = requests.get(url)
         master_waves_balance = response.json()["balance"]
     except:
@@ -187,13 +187,13 @@ def process_proposals():
                         utils.email_payment_claim(logger, app.config["ASSET_NAME"], payment, proposal.HOURS_EXPIRY)
                         payment.status = payment.STATE_SENT_CLAIM_LINK
                         db.session.add(payment)
-                        logger.info(f"Sent payment claim url to {payment.email}")
+                        logger.info("Sent payment claim url to %s", payment.email)
                         emails += 1
                     elif payment.mobile:
                         utils.sms_payment_claim(logger, app.config["ASSET_NAME"], payment, proposal.HOURS_EXPIRY)
                         payment.status = payment.STATE_SENT_CLAIM_LINK
                         db.session.add(payment)
-                        logger.info(f"Sent payment claim url to {payment.mobile}")
+                        logger.info("Sent payment claim url to %s", payment.mobile)
                         sms_messages += 1
                     elif payment.recipient:
                         ##TODO: set status and commit before sending so we cannot send twice
@@ -254,21 +254,17 @@ def process_claim_paydb(payment, recipient):
     if payment.status != payment.STATE_SENT_CLAIM_LINK:
         return "payment not authorized"
     # create transaction
-    tx, error = paydb_core.tx_transfer_authorized(db.session, OPERATIONS_ACCOUNT, recipient, payment.amount, "")
+    tx, _ = paydb_core.tx_transfer_authorized(db.session, OPERATIONS_ACCOUNT, recipient, payment.amount, "")
     if tx:
         payment.txid = tx.token
         payment.status = payment.STATE_SENT_FUNDS
         db.session.add(payment)
         db.session.commit()
         return None
-    else:
-        return 'claim failed'
+    return 'claim failed'
 
 @app.route("/claim_payment/<token>", methods=["GET", "POST"])
 def claim_payment(token):
-    qrcode = None
-    url = None
-    attachment = None
     payment = Payment.from_token(db.session, token)
     if not payment:
         return bad_request('payment not found', 404)
@@ -293,7 +289,7 @@ def claim_payment(token):
     if request.method == "POST":
         content_type = request.content_type
         using_app = content_type.startswith('application/json')
-        logger.info("claim_payment: content type - {}, using_app - {}".format(content_type, using_app))
+        logger.info("claim_payment: content type - %s, using_app - %b", content_type, using_app)
         recipient = ""
         asset_id = ""
         if using_app:
@@ -301,12 +297,12 @@ def claim_payment(token):
             if content is None:
                 return bad_request("failed to decode JSON object")
             if SERVER_MODE == SERVER_MODE_WAVES:
-                params, err_response = get_json_params(logger, content, ["recipient", "asset_id"])
+                params, err_response = get_json_params(content, ["recipient", "asset_id"])
                 if err_response:
                     return err_response
                 recipient, asset_id = params
             else: # paydb
-                params, err_response = get_json_params(logger, content, ["recipient"])
+                params, err_response = get_json_params(content, ["recipient"])
                 if err_response:
                     return err_response
                 recipient, = params
@@ -325,14 +321,13 @@ def claim_payment(token):
         else: # paydb
             err_msg = process_claim_paydb(payment, recipient)
         if err_msg:
-            logger.error("claim_payment: {}".format(err_msg))
+            logger.error("claim_payment: %s", err_msg)
             if using_app:
                 return bad_request(err_msg)
             flash(err_msg, "danger")
     if SERVER_MODE == SERVER_MODE_WAVES:
         return render_waves(dbtx)
-    else: # paydb
-        return render(None)
+    return render(None)
 
 @app.route("/dashboard")
 @roles_accepted("admin")
@@ -344,11 +339,10 @@ def dashboard():
         data["master_asset_balance"] = from_int_to_user_friendly(data["master_asset_balance"], 100)
         data["master_waves_balance"] = from_int_to_user_friendly(data["master_waves_balance"], 10**8)
         return render_template("dashboard_waves.html", data=data)
-    else: # paydb
-        data = dashboard_data_paydb()
-        data["premio_stage_balance"] = from_int_to_user_friendly(data["premio_stage_balance"], 100)
-        data["total_balance"] = from_int_to_user_friendly(data["total_balance"], 100)
-        return render_template("dashboard_paydb.html", data=data)
+    data = dashboard_data_paydb()
+    data["premio_stage_balance"] = from_int_to_user_friendly(data["premio_stage_balance"], 100)
+    data["total_balance"] = from_int_to_user_friendly(data["total_balance"], 100)
+    return render_template("dashboard_paydb.html", data=data)
 
 @app.route("/push_notifications", methods=["GET", "POST"])
 @roles_accepted("admin")
@@ -374,7 +368,7 @@ def push_notifications_register():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["registration_token"])
+    params, err_response = get_json_params(content, ["registration_token"])
     if err_response:
         return err_response
     registration_token, = params
