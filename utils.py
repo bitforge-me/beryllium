@@ -25,7 +25,7 @@ def send_email(logger, subject, msg, recipient=None):
     try:
         sg = SendGridAPIClient(app.config["MAIL_SENDGRID_API_KEY"])
         sg.send(message)
-    except Exception as ex:
+    except Exception as ex: # pylint: disable=broad-except
         logger.error(f"email '{subject}': {ex}")
 
 def email_exception(logger, msg):
@@ -67,7 +67,7 @@ def is_mobile(val):
 def is_address(val):
     try:
         return pywaves.validateAddress(val)
-    except:
+    except: # pylint: disable=bare-except
         return False
 
 def qrcode_svg_create(data, box_size=10):

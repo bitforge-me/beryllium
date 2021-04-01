@@ -316,7 +316,7 @@ def get_fee(host, default_fee, address, user_provided_fee):
                 throw_error(f"unable to check script fees on address ({address})")
             else:
                 fee += data["extraFee"]
-        except:
+        except: # pylint: disable=bare-except
             throw_error(f"unable to check script fees on address ({address})")
 
     return fee
@@ -348,7 +348,7 @@ def broadcast_transaction(session, txid):
         dbtx.state = CTX_BROADCAST
     else:
         short_msg = "failed to broadcast"
-        logger.error(f"{short_msg}: ({response.status_code}, {response.request.method} {response.url}):\n\t{response.text}")
+        logger.error("%s: (%d, %s, %s):\n\t%s", short_msg, response.status_code, response.request.method, response.url, response.text)
         err = OtherError(short_msg, ERR_FAILED_TO_BROADCAST)
         err.data = response.text
         raise err

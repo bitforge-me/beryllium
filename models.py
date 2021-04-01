@@ -1,6 +1,5 @@
 # pylint: disable=too-many-instance-attributes
 # pylint: disable=too-many-arguments
-# pylint: disable=no-self-use
 # pylint: disable=no-self-argument
 # pylint: disable=too-few-public-methods
 # pylint: disable=too-many-locals

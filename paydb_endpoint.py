@@ -1,4 +1,3 @@
-# pylint: disable=no-self-use
 # pylint: disable=unbalanced-tuple-unpacking
 
 import logging
@@ -329,7 +328,7 @@ def transaction_info():
     res, reason, api_key = check_auth(api_key, nonce, sig, request.data)
     if not res:
         return bad_request(reason)
-    tx = PayDbTransaction.from_token(token)
+    tx = PayDbTransaction.from_token(db.session, token)
     if not tx:
         return bad_request('invalid tx')
     if tx.user != api_key.user and tx.recipient != api_key.user:

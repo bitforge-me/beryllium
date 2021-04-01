@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 # pylint: disable=import-outside-toplevel
+# pylint: disable=unbalanced-tuple-unpacking
 
 import sys
 import logging
@@ -442,6 +443,7 @@ class WebGreenlet():
         self.addr = addr
         self.port = port
         self.runloop_greenlet = None
+        self.process_proposals_greenlet = None
         self.exception_func = exception_func
 
     def check_wallet(self):
@@ -459,7 +461,7 @@ class WebGreenlet():
     def start(self):
         def runloop():
             logger.info("WebGreenlet runloop started")
-            logger.info(f"WebGreenlet webserver starting (addr: {self.addr}, port: {self.port})")
+            logger.info("WebGreenlet webserver starting (addr: %s, port: %d)", self.addr, self.port)
             socketio.run(app, host=self.addr, port=self.port)
 
         def process_proposals_loop():
@@ -488,7 +490,7 @@ class WebGreenlet():
         self.process_proposals_greenlet.kill()
         gevent.joinall([self.runloop_greenlet, self.process_proposals_greenlet])
 
-if __name__ == "__main__":
+def run():
     # setup logging
     logger.setLevel(logging.DEBUG)
     handler = logging.StreamHandler()
@@ -505,3 +507,6 @@ if __name__ == "__main__":
         gevent.sleep(1)
 
     web_greenlet.stop()
+
+if __name__ == "__main__":
+    run()

@@ -22,4 +22,4 @@ jobs:
         pip install -r requirements.txt
     - name: Analysing the code with pylint
       run: |
-        pylint `ls -R|grep .py$|xargs` --disable=line-too-long,unused-argument,missing-module-docstring,missing-function-docstring,missing-class-docstring --variable-rgx="[a-z_][a-z0-9_]{0,30}$" --load-plugins=pylint_flask_sqlalchemy,pylint_flask --max-parents=10 --max-args=10 --max-branches=16 --max-returns=12 --max-locals=20
+        pylint `ls -R|grep .py$|xargs` --disable=line-too-long,unused-argument,missing-module-docstring,missing-function-docstring,missing-class-docstring,no-self-use --variable-rgx="[a-z_][a-z0-9_]{0,30}$" --load-plugins=pylint_flask_sqlalchemy,pylint_flask --max-parents=10 --max-args=10 --max-branches=16 --max-returns=12 --max-locals=20 --extension-pkg-whitelist=pyblake2,axolotl_curve25519

@@ -1,8 +1,6 @@
 
 import logging
 from flask import jsonify
-import requests
-from requests.adapters import HTTPAdapter
 
 logger = logging.getLogger(__name__)
 
