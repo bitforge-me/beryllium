@@ -13,16 +13,13 @@ from flask_security import roles_accepted
 #from flask_jsonrpc import JSONRPC
 from flask_jsonrpc.exceptions import OtherError
 import requests
-import base58
 import pywaves
-import pyblake2
 
 from app_core import app, db, socketio, SERVER_MODE_WAVES, SERVER_MODE_PAYDB
-from models import User, WavesTx, WavesTxSig, Proposal, Payment, Topic
-import admin
+from models import User, WavesTx, Proposal, Payment, Topic
 import utils
 from fcm import FCM
-from web_utils import bad_request, get, get_json_params
+from web_utils import bad_request, get_json_params
 import paydb_core
 
 #jsonrpc = JSONRPC(app, "/api")
@@ -376,7 +373,7 @@ def push_notifications():
 def push_notifications_register():
     content = request.get_json(force=True)
     if content is None:
-       return bad_request("failed to decode JSON object")
+        return bad_request("failed to decode JSON object")
     params, err_response = get_json_params(logger, content, ["registration_token"])
     if err_response:
         return err_response

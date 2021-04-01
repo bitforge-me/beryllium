@@ -1,11 +1,8 @@
 import os
-import json
-import smtplib
 import binascii
 import re
 import io
 
-import requests
 import pywaves
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, From
@@ -27,7 +24,7 @@ def send_email(logger, subject, msg, to=None):
     message = Mail(from_email=from_email, to_emails=to, subject=subject, html_content=html)
     try:
         sg = SendGridAPIClient(app.config["MAIL_SENDGRID_API_KEY"])
-        response = sg.send(message)
+        sg.send(message)
     except Exception as ex:
         logger.error(f"email '{subject}': {ex}")
 
@@ -42,12 +39,12 @@ def email_payment_claim(logger, asset_name, payment, hours_expiry):
 def email_user_create_request(logger, req, minutes_expiry):
     url = url_for("paydb.user_registration_confirm", token=req.token, _external=True)
     msg = f"You have a pending user registration waiting!<br/><br/>Confirm your registration <a href='{url}'>here</a><br/><br/>Confirm within {minutes_expiry} minutes"
-    send_email(logger, f"Confirm your registration", msg, req.email)
+    send_email(logger, "Confirm your registration", msg, req.email)
 
 def email_api_key_request(logger, req, minutes_expiry):
     url = url_for("paydb.api_key_confirm", token=req.token, _external=True)
     msg = f"You have a pending api key request waiting!<br/><br/>Confirm your registration <a href='{url}'>here</a><br/><br/>Confirm within {minutes_expiry} minutes"
-    send_email(logger, f"Confirm your api key request", msg, req.user.email)
+    send_email(logger, "Confirm your api key request", msg, req.user.email)
 
 def sms_payment_claim(logger, asset_name, payment, hours_expiry):
     # SMS messages are sent by burst SMS
@@ -61,11 +58,11 @@ def sms_payment_claim(logger, asset_name, payment, hours_expiry):
 def generate_key(num=20):
     return binascii.hexlify(os.urandom(num)).decode()
 
-def is_email(s):
-    return re.match("[^@]+@[^@]+\.[^@]+", s)
+def is_email(val):
+    return re.match("[^@]+@[^@]+\.[^@]+", val) # pylint: disable=anomalous-backslash-in-string
 
-def is_mobile(s):
-    return s.isnumeric()
+def is_mobile(val):
+    return val.isnumeric()
 
 def is_address(s):
     try:

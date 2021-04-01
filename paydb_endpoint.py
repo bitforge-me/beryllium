@@ -1,3 +1,6 @@
+# pylint: disable=no-self-use
+# pylint: disable=unbalanced-tuple-unpacking
+
 import logging
 import time
 import hmac
@@ -62,9 +65,9 @@ NS = '/paydb'
 
 def tx_event(txn):
     txt = json.dumps(txn.to_json())
-    socketio.emit("tx", txt, json=True, room=tx.sender.email, namespace=NS)
-    if tx.recipient and tx.recipient != tx.sender:
-        socketio.emit("tx", txt, json=True, room=tx.recipient.email, namespace=NS)
+    socketio.emit("tx", txt, json=True, room=txn.sender.email, namespace=NS)
+    if txn.recipient and txn.recipient != txn.sender:
+        socketio.emit("tx", txt, json=True, room=txn.recipient.email, namespace=NS)
 
 class PayDbNamespace(Namespace):
 

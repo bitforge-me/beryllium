@@ -1,3 +1,5 @@
+# pylint: disable=unbalanced-tuple-unpacking
+
 import logging
 import json
 import base64
