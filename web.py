@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+# pylint: disable=import-outside-toplevel
+
 import sys
 import logging
 import json
@@ -31,7 +33,7 @@ DEEP_LINK_SCHEME = app.config["DEEP_LINK_SCHEME"]
 if SERVER_MODE == SERVER_MODE_WAVES:
     import tx_utils
     # our pywaves address object
-    pw_address = None
+    PW_ADDRESS = None
     # wave specific config settings
     NODE_BASE_URL = app.config["NODE_BASE_URL"]
     SEED = app.config["WALLET_SEED"]
@@ -47,17 +49,17 @@ elif SERVER_MODE == SERVER_MODE_PAYDB:
     from paydb_endpoint import paydb
     app.register_blueprint(paydb, url_prefix='/paydb')
 
-def logger_setup(level, ch):
+def logger_setup(level, handler):
     logger.setLevel(level)
-    logger.addHandler(ch)
+    logger.addHandler(handler)
     if SERVER_MODE == SERVER_MODE_WAVES:
         import mw_endpoint
         mw_endpoint.logger.setLevel(level)
-        mw_endpoint.logger.addHandler(ch)
+        mw_endpoint.logger.addHandler(handler)
     if SERVER_MODE == SERVER_MODE_PAYDB:
         import paydb_endpoint
         paydb_endpoint.logger.setLevel(level)
-        paydb_endpoint.logger.addHandler(ch)
+        paydb_endpoint.logger.addHandler(handler)
 
 def logger_clear():
     logger.handlers.clear()
@@ -75,7 +77,7 @@ def dashboard_data_waves():
     response = requests.get(url)
     try:
         asset_balance = response.json()["balance"]
-    except:
+    except: # pylint: disable=bare-except
         logger.error("failed to parse response")
         asset_balance = "n/a"
     url = NODE_BASE_URL + f"/addresses/balance/{ADDRESS}"
@@ -83,7 +85,7 @@ def dashboard_data_waves():
     response = requests.get(url)
     try:
         waves_balance = response.json()["balance"]
-    except:
+    except: # pylint: disable=bare-except
         logger.error("failed to parse response")
         waves_balance = "n/a"
     # get the balance of the main wallet
@@ -100,7 +102,7 @@ def dashboard_data_waves():
         logger.info("requesting %s..", url)
         response = requests.get(url)
         master_waves_balance = response.json()["balance"]
-    except:
+    except: # pylint: disable=bare-except
         logger.error("failed to parse response")
         issuer = "n/a"
         master_waves_balance = "n/a"
@@ -139,7 +141,7 @@ def _create_transaction_waves(recipient, amount, attachment):
         asset_fee = response.json()["minSponsoredAssetFee"]
     else:
         short_msg = "failed to get asset info"
-        logger.error(f"{short_msg}: ({response.status_code}, {response.request.method} {response.url}):\n\t{response.text}")
+        logger.error("%s: (%d, %s, %s):\n\t%s", short_msg, response.status_code, response.request.method, response.url, response.text)
         err = OtherError(short_msg, tx_utils.ERR_FAILED_TO_GET_ASSET_INFO)
         err.data = response.text
         raise err
@@ -155,7 +157,7 @@ def _create_transaction_waves(recipient, amount, attachment):
         raise err
     recipient = pywaves.Address(recipient)
     asset = pywaves.Asset(ASSET_ID)
-    address_data = pw_address.sendAsset(recipient, asset, amount, attachment, feeAsset=asset, txFee=asset_fee)
+    address_data = PW_ADDRESS.sendAsset(recipient, asset, amount, attachment, feeAsset=asset, txFee=asset_fee)
     signed_tx = json.loads(address_data["api-data"])
     signed_tx["type"] = 4 # sendAsset does not include "type" - https://github.com/PyWaves/PyWaves/issues/131
     # calc txid properly
@@ -289,7 +291,7 @@ def claim_payment(token):
     if request.method == "POST":
         content_type = request.content_type
         using_app = content_type.startswith('application/json')
-        logger.info("claim_payment: content type - %s, using_app - %b", content_type, using_app)
+        logger.info("claim_payment: content type - %s, using_app - %s", content_type, using_app)
         recipient = ""
         asset_id = ""
         if using_app:
@@ -309,12 +311,12 @@ def claim_payment(token):
         else: # using html form
             try:
                 recipient = request.form["recipient"]
-            except:
+            except: # pylint: disable=bare-except
                 flash("'recipient' parameter not present", "danger")
                 return render_waves(dbtx)
             try:
                 asset_id = request.form["asset_id"]
-            except:
+            except: # pylint: disable=bare-except
                 pass
         if SERVER_MODE == SERVER_MODE_WAVES:
             dbtx, err_msg = process_claim_waves(payment, dbtx, recipient, asset_id)
@@ -358,7 +360,7 @@ def push_notifications():
                 registration_token = request.form["registration_token"]
                 fcm.send_to_token(registration_token, title, body)
             flash("sent push noticiation", "success")
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-except
             flash("{}".format(str(e.args[0])), "danger")
     topics = Topic.topic_list(db.session)
     return render_template("push_notifications.html", topics=topics)
@@ -444,13 +446,13 @@ class WebGreenlet():
 
     def check_wallet(self):
         # check address object matches our configured address
-        global pw_address
-        pw_address = pywaves.Address(seed=SEED)
-        addr = pw_address.address
+        global PW_ADDRESS
+        PW_ADDRESS = pywaves.Address(seed=SEED)
+        addr = PW_ADDRESS.address
         if isinstance(addr, bytes):
             addr = addr.decode()
         if addr != ADDRESS:
-            msg = f"pw_address ({addr}) does not match {ADDRESS}"
+            msg = f"PW_ADDRESS ({addr}) does not match {ADDRESS}"
             logger.error(msg)
             sys.exit(1)
 
@@ -489,10 +491,10 @@ class WebGreenlet():
 if __name__ == "__main__":
     # setup logging
     logger.setLevel(logging.DEBUG)
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
-    ch.setFormatter(logging.Formatter('[%(name)s %(levelname)s] %(message)s'))
-    logger.addHandler(ch)
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.DEBUG)
+    handler.setFormatter(logging.Formatter('[%(name)s %(levelname)s] %(message)s'))
+    logger.addHandler(handler)
     # clear loggers set by any imported modules
     logging.getLogger().handlers.clear()
 
