@@ -2,6 +2,7 @@
 
 # pylint: disable=invalid-name
 # pylint: disable=unused-variable
+# pylint: disable=duplicate-code
 
 import sys
 import argparse

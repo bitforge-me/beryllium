@@ -880,6 +880,7 @@ class WavesTxModelView(RestrictedModelView):
     def _format_txid_html(view, context, model, name):
         ids = model.txid
         truncate_txids = str(ids[:6]+'...')
+        # pylint: disable=duplicate-string-formatting-argument
         html = '''
         <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#TxidModal{}">
         {}

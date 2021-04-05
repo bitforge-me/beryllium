@@ -500,7 +500,7 @@ def run():
     # clear loggers set by any imported modules
     logging.getLogger().handlers.clear()
 
-    web_greenlet = WebGreenlet()
+    web_greenlet = WebGreenlet(None)
     web_greenlet.start()
 
     while 1:
