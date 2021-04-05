@@ -1,0 +1,25 @@
+name: Pylint
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.8
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pylint
+        pip install pylint-flask
+        pip install pylint-flask-sqlalchemy
+        pip install -r requirements.txt
+    - name: Analysing the code with pylint
+      run: |
+        pylint `ls -R|grep .py$|xargs` --disable=fixme,line-too-long,unused-argument,missing-module-docstring,missing-function-docstring,missing-class-docstring,no-self-use --variable-rgx="[a-z_][a-z0-9_]{0,30}$" --load-plugins=pylint_flask_sqlalchemy,pylint_flask --max-parents=10 --max-args=12 --max-branches=18 --max-returns=12 --max-locals=20 --extension-pkg-whitelist=pyblake2,axolotl_curve25519

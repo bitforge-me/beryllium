@@ -1,9 +1,7 @@
 import json
 import base64
-import time
 import struct
 import os
-import random
 import hashlib
 import logging
 
@@ -12,10 +10,8 @@ import base58
 import axolotl_curve25519 as curve
 import sha3
 import pyblake2
-import pywaves
 from flask_jsonrpc.exceptions import OtherError
 
-import utils
 from models import WavesTx
 from app_core import app
 
@@ -50,9 +46,9 @@ logger = logging.getLogger(__name__)
 def throw_error(msg):
     raise Exception(msg)
 
-def str2bytes(s):
+def str2bytes(string):
     # warning this method is flawed with some input
-    return s.encode("latin-1")
+    return string.encode("latin-1")
 
 def sign(privkey, message):
     random64 = os.urandom(64)
@@ -82,7 +78,7 @@ def generate_address(pubkey):
     address = base58.b58encode(address + checksum)
     return address
 
-def transfer_asset_non_witness_bytes(pubkey, recipient, assetid, amount, attachment, feeAsset, fee, timestamp):
+def transfer_asset_non_witness_bytes(pubkey, recipient, assetid, amount, attachment, fee_asset, fee, timestamp):
     if amount <= 0:
         msg = 'Amount must be > 0'
         throw_error(msg)
@@ -91,7 +87,7 @@ def transfer_asset_non_witness_bytes(pubkey, recipient, assetid, amount, attachm
             b'\2' + \
             base58.b58decode(pubkey) + \
             (b'\1' + base58.b58decode(assetid) if assetid else b'\0') + \
-            (b'\1' + base58.b58decode(feeAsset) if feeAsset else b'\0') + \
+            (b'\1' + base58.b58decode(fee_asset) if fee_asset else b'\0') + \
             struct.pack(">Q", timestamp) + \
             struct.pack(">Q", amount) + \
             struct.pack(">Q", fee) + \
@@ -99,11 +95,12 @@ def transfer_asset_non_witness_bytes(pubkey, recipient, assetid, amount, attachm
             struct.pack(">H", len(attachment)) + \
             str2bytes(attachment)
         return sdata
+    return None
 
-def transfer_asset_payload(address, pubkey, privkey, recipient, assetid, amount, attachment, feeAsset, fee, timestamp):
+def transfer_asset_payload(address, pubkey, privkey, recipient, assetid, amount, attachment, fee_asset, fee, timestamp):
     signature = ""
     if privkey:
-        sdata = transfer_asset_non_witness_bytes(pubkey, recipient, assetid, amount, attachment, feeAsset, fee, timestamp)
+        sdata = transfer_asset_non_witness_bytes(pubkey, recipient, assetid, amount, attachment, fee_asset, fee, timestamp)
         signature = sign(privkey, sdata)
     return {
         "type": 4,
@@ -111,7 +108,7 @@ def transfer_asset_payload(address, pubkey, privkey, recipient, assetid, amount,
         "senderPublicKey": pubkey,
         "recipient": recipient,
         "assetId": (assetid if assetid else ""),
-        "feeAssetId": (feeAsset if feeAsset else ""),
+        "feeAssetId": (fee_asset if fee_asset else ""),
         "amount": amount,
         "fee": fee,
         "timestamp": timestamp,
@@ -145,7 +142,7 @@ def issue_asset_non_witness_bytes(pubkey, name, description, quantity, script, d
             struct.pack(">Q", timestamp) + \
             (b'\1' + struct.pack(">H", script_len) + raw_script if script else b'\0')
         return sdata
-
+    return None
 
 def issue_asset_payload(address, pubkey, privkey, name, description, quantity, script, decimals, reissuable, fee, timestamp):
     signature = ""
@@ -199,30 +196,30 @@ def reissue_asset_payload(address, pubkey, privkey, assetid, quantity, reissuabl
         ]
     }
 
-def sponsor_non_witness_bytes(pubkey, assetId, minimalFeeInAssets, fee, timestamp):
+def sponsor_non_witness_bytes(pubkey, asset_id, minimal_fee_in_assets, fee, timestamp):
     sdata = b'\x0e' + \
         b'\1' + \
         base58.b58decode(pubkey) + \
-        base58.b58decode(assetId) + \
-        struct.pack(">Q", minimalFeeInAssets) + \
+        base58.b58decode(asset_id) + \
+        struct.pack(">Q", minimal_fee_in_assets) + \
         struct.pack(">Q", fee) + \
         struct.pack(">Q", timestamp)
     return sdata
 
-def sponsor_payload(address, pubkey, privkey, assetId, minimalFeeInAssets, fee, timestamp):
+def sponsor_payload(address, pubkey, privkey, asset_id, minimal_fee_in_assets, fee, timestamp):
     signature = ""
     if privkey:
-        sdata = sponsor_non_witness_bytes(pubkey, assetId, minimalFeeInAssets, fee, timestamp)
+        sdata = sponsor_non_witness_bytes(pubkey, asset_id, minimal_fee_in_assets, fee, timestamp)
         signature = sign(privkey, sdata)
 
     return {
         "type": 14,
         "version": 1,
         "senderPublicKey": pubkey,
-        "assetId": assetId,
+        "assetId": asset_id,
         "fee": fee,
         "timestamp": timestamp,
-        "minSponsoredAssetFee": minimalFeeInAssets,
+        "minSponsoredAssetFee": minimal_fee_in_assets,
         "proofs": [
             signature
         ]
@@ -262,38 +259,38 @@ def set_script_payload(address, pubkey, privkey, script, fee, timestamp):
     }
 
 def tx_init_chain_id(testnet):
-    global CHAIN_ID
+    global CHAIN_ID # pylint: disable=global-statement
     if testnet:
         CHAIN_ID = 'T'
     else:
         CHAIN_ID = 'W'
 
-def tx_serialize(tx):
+def tx_serialize(txn):
     if not CHAIN_ID:
         raise Exception('CHAIN_ID not initialized')
 
     # serialize
-    type = tx["type"]
-    if type == 4:
+    type_ = txn["type"]
+    if type_ == 4:
         print(":: transfer tx")
-        data = transfer_asset_non_witness_bytes(tx["senderPublicKey"], tx["recipient"], tx["assetId"], \
-            tx["amount"], tx["attachment"], tx["feeAssetId"], tx["fee"], tx["timestamp"])
-    elif type == 3:
+        data = transfer_asset_non_witness_bytes(txn["senderPublicKey"], txn["recipient"], txn["assetId"], \
+            txn["amount"], txn["attachment"], txn["feeAssetId"], txn["fee"], txn["timestamp"])
+    elif type_ == 3:
         print(":: issue tx")
-        data = issue_asset_non_witness_bytes(tx["senderPublicKey"], tx["name"], tx["description"], \
-            tx["quantity"], None, tx["decimals"], tx["reissuable"], tx["fee"], tx["timestamp"])
-    elif type == 5:
+        data = issue_asset_non_witness_bytes(txn["senderPublicKey"], txn["name"], txn["description"], \
+            txn["quantity"], None, txn["decimals"], txn["reissuable"], txn["fee"], txn["timestamp"])
+    elif type_ == 5:
         print(":: reissue tx")
-        data = reissue_asset_non_witness_bytes(tx["senderPublicKey"], tx["assetId"], tx["quantity"], \
-            tx["reissuable"], tx["fee"], tx["timestamp"])
-    elif type == 14:
+        data = reissue_asset_non_witness_bytes(txn["senderPublicKey"], txn["assetId"], txn["quantity"], \
+            txn["reissuable"], txn["fee"], txn["timestamp"])
+    elif type_ == 14:
         print(":: sponsor tx")
-        data = sponsor_non_witness_bytes(tx["senderPublicKey"], tx["assetId"], \
-            tx["minSponsoredAssetFee"], tx["fee"], tx["timestamp"])
-    elif type == 13:
+        data = sponsor_non_witness_bytes(txn["senderPublicKey"], txn["assetId"], \
+            txn["minSponsoredAssetFee"], txn["fee"], txn["timestamp"])
+    elif type_ == 13:
         print(":: set script tx")
-        data = set_script_non_witness_bytes(tx["senderPublicKey"], tx["script"], tx["fee"], \
-            tx["timestamp"])
+        data = set_script_non_witness_bytes(txn["senderPublicKey"], txn["script"], txn["fee"], \
+            txn["timestamp"])
     else:
         return None
 
@@ -319,7 +316,7 @@ def get_fee(host, default_fee, address, user_provided_fee):
                 throw_error(f"unable to check script fees on address ({address})")
             else:
                 fee += data["extraFee"]
-        except:
+        except: # pylint: disable=bare-except
             throw_error(f"unable to check script fees on address ({address})")
 
     return fee
@@ -328,10 +325,10 @@ def txid_from_txdata(serialized_txdata):
     txid = pyblake2.blake2b(serialized_txdata, digest_size=32).digest()
     return base58.b58encode(txid)
 
-def tx_to_txid(tx):
-    logger.info("tx_to_txid - tx: {}".format(tx))
+def tx_to_txid(txn):
+    logger.info("tx_to_txid - tx: %s", str(txn))
     tx_init_chain_id(TESTNET)
-    return txid_from_txdata(tx_serialize(tx))
+    return txid_from_txdata(tx_serialize(txn))
 
 def broadcast_transaction(session, txid):
     dbtx = WavesTx.from_txid(session, txid)
@@ -340,10 +337,10 @@ def broadcast_transaction(session, txid):
     if dbtx.state == CTX_EXPIRED:
         raise OtherError("transaction expired", ERR_TX_EXPIRED)
     signed_tx = dbtx.tx_with_sigs()
-    logger.info("broadcasting tx: {}".format(signed_tx))
+    logger.info("broadcasting tx: %s", str(signed_tx))
     # broadcast
-    logger.debug(f"requesting broadcast of tx:\n\t{signed_tx}")
-    path = f"/transactions/broadcast"
+    logger.debug("requesting broadcast of tx:\n\t%s, ", str(signed_tx))
+    path = "/transactions/broadcast"
     headers = {"Content-Type": "application/json"}
     response = requests.post(NODE_BASE_URL + path, headers=headers, data=json.dumps(signed_tx))
     if response.ok:
@@ -351,7 +348,7 @@ def broadcast_transaction(session, txid):
         dbtx.state = CTX_BROADCAST
     else:
         short_msg = "failed to broadcast"
-        logger.error(f"{short_msg}: ({response.status_code}, {response.request.method} {response.url}):\n\t{response.text}")
+        logger.error("%s: (%d, %s, %s):\n\t%s", short_msg, response.status_code, response.request.method, response.url, response.text)
         err = OtherError(short_msg, ERR_FAILED_TO_BROADCAST)
         err.data = response.text
         raise err

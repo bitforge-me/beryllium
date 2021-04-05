@@ -18,12 +18,12 @@ class FCM:
                 fp.write(firebase_credentials)
                 fp.flush()
                 self.init_firebase(fp.name)
-            except Exception as e:
+            except Exception as e: # pylint: disable=broad-except
                 logger.error(e)
                 logger.error('"firebase_credentials" failed to load from json')
 
     def init_firebase(self, cred_filename):
-        logger.info('loading firebase creds from "{}"'.format(cred_filename))
+        logger.info('loading firebase creds from "%s"', cred_filename)
         cred = credentials.Certificate(cred_filename)
         self.default_app = firebase_admin.initialize_app(cred)
         logger.info('loading firebase creds')
@@ -33,16 +33,16 @@ class FCM:
             notification=messaging.Notification(title=title, body=body),
             token=registration_token,
         )
-        response = messaging.send(message)
+        messaging.send(message)
 
     def send_to_topic(self, topic, title, body):
         message = messaging.Message(
             notification=messaging.Notification(title=title, body=body),
             topic=topic,
         )
-        response = messaging.send(message)
+        messaging.send(message)
 
     def subscribe_to_topics(self, registration_token, topics):
         registration_tokens = [registration_token]
         for topic in topics:
-            response = messaging.subscribe_to_topic(registration_tokens, topic)
+            messaging.subscribe_to_topic(registration_tokens, topic)

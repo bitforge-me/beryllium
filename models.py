@@ -1,3 +1,10 @@
+# pylint: disable=too-many-instance-attributes
+# pylint: disable=too-many-arguments
+# pylint: disable=no-self-argument
+# pylint: disable=too-few-public-methods
+# pylint: disable=too-many-locals
+# pylint: disable=too-many-lines
+
 import time
 import datetime
 import decimal
@@ -8,7 +15,7 @@ import secrets
 
 from flask import redirect, url_for, request, flash, has_app_context, g, abort
 from flask_security import Security, SQLAlchemyUserDatastore, \
-    UserMixin, RoleMixin, login_required, current_user
+    UserMixin, RoleMixin, current_user
 from flask_admin import expose
 from flask_admin.babel import lazy_gettext
 from flask_admin.helpers import get_form_data
@@ -19,8 +26,8 @@ from wtforms.fields import TextField, DecimalField, FileField
 from wtforms import validators
 from marshmallow import Schema, fields
 from markupsafe import Markup
-from sqlalchemy import func, or_
-import requests
+from sqlalchemy import or_
+from sqlalchemy.exc import SQLAlchemyError, DBAPIError
 
 from app_core import app, db
 from utils import generate_key, is_email, is_mobile, is_address
@@ -58,7 +65,7 @@ class Role(db.Model, RoleMixin):
         return session.query(cls).filter(cls.name == name).first()
 
     def __str__(self):
-        return self.name
+        return f'{self.name}'
 
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -89,9 +96,10 @@ class User(db.Model, UserMixin):
         return session.query(cls).filter(cls.email == email).first()
 
     def __str__(self):
-        return self.email
+        return f'{self.email}'
 
 class UserCreateRequest(db.Model):
+
     MINUTES_EXPIRY = 30
 
     id = db.Column(db.Integer, primary_key=True)
@@ -148,7 +156,7 @@ class Permission(db.Model):
         return session.query(cls).filter(cls.name == name).first()
 
     def __str__(self):
-        return self.name
+        return f'{self.name}'
 
 class ApiKey(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -173,7 +181,7 @@ class ApiKey(db.Model):
     def has_permission(self, permission_name):
         perm = Permission.from_name(db.session, permission_name)
         if perm:
-            return perm in self.permissions
+            return perm in self.permissions # pylint: disable=unsupported-membership-test
         return False
 
     @classmethod
@@ -314,7 +322,7 @@ class Category(db.Model):
         return session.query(cls).filter(cls.name == name).first()
 
     def __str__(self):
-        return self.name
+        return f'{self.name}'
 
 class Proposal(db.Model):
     STATE_CREATED = "created"
@@ -384,10 +392,10 @@ class BaseModelView(sqla.ModelView):
         if not self.is_accessible():
             if current_user.is_authenticated:
                 # permission denied
-                abort(403)
-            else:
-                # login
-                return redirect(url_for('security.login', next=request.url))
+                return abort(403)
+            # login
+            return redirect(url_for('security.login', next=request.url))
+        return None
 
 class RestrictedModelView(BaseModelView):
     can_create = False
@@ -409,7 +417,7 @@ class BaseOnlyUserOwnedModelView(BaseModelView):
         return self.session.query(self.model).filter(self.model.user==current_user)
 
     def get_count_query(self):
-        return self.session.query(db.func.count('*')).filter(self.model.user==current_user)
+        return self.session.query(db.func.count('*')).filter(self.model.user==current_user) # pylint: disable=no-member
 
 def validate_recipient(recipient):
     if not recipient or \
@@ -424,7 +432,7 @@ def validate_csv(data):
     rows = []
     try:
         data = data.decode('utf-8')
-    except:
+    except: # pylint: disable=bare-except
         return False
     data = data.splitlines()
     reader = csv.reader(data)
@@ -445,6 +453,7 @@ def validate_csv(data):
 
 class DateBetweenFilter(BaseSQLAFilter, filters.BaseDateBetweenFilter):
     def __init__(self, column, name, options=None, data_type=None):
+        # pylint: disable=super-with-arguments
         super(DateBetweenFilter, self).__init__(column,
                                                 name,
                                                 options,
@@ -512,8 +521,8 @@ def get_statuses():
         if not hasattr(g, 'statuses'):
             query = Proposal.query.distinct(Proposal.status)
             g.statuses = [(proposal.status, proposal.status) for proposal in query]
-        for proposal_status, proposal_status in g.statuses:
-            yield proposal_status, proposal_status
+        for proposal_status_a, proposal_status_b in g.statuses:
+            yield proposal_status_a, proposal_status_b
 
 class FilterByProposer(BaseSQLAFilter):
     def apply(self, query, value, alias=None):
@@ -671,7 +680,7 @@ class ProposalModelView(BaseModelView):
         return True, "", csv_rows
 
     def _add_payment(self, model, recipient, message, amount):
-        email = recipient if is_email(recipient) else None 
+        email = recipient if is_email(recipient) else None
         mobile = recipient if is_mobile(recipient) else None
         address = recipient if is_address(recipient) else None
         amount = int(amount * 100)
@@ -737,7 +746,7 @@ class ProposalModelView(BaseModelView):
         try:
             self.session.commit()
             flash('Proposal {proposal_id} set as authorized'.format(proposal_id=proposal_id))
-        except Exception as ex:
+        except (SQLAlchemyError, DBAPIError) as ex:
             if not self.handle_view_exception(ex):
                 raise
             flash('Failed to set proposal {proposal_id} as authorized'.format(proposal_id=proposal_id), 'error')
@@ -769,7 +778,7 @@ class ProposalModelView(BaseModelView):
         try:
             self.session.commit()
             flash('Proposal {proposal_id} set as declined'.format(proposal_id=proposal_id))
-        except Exception as ex:
+        except (SQLAlchemyError, DBAPIError) as ex:
             if not self.handle_view_exception(ex):
                 raise
             flash('Failed to set proposal {proposal_id} as declined'.format(proposal_id=proposal_id), 'error')
@@ -816,13 +825,14 @@ class WavesTxModelView(RestrictedModelView):
     def _format_date(view, context, model, name):
         if model.date:
             return datetime.datetime.fromtimestamp(model.date).strftime('%Y-%m-%d %H:%M:%S')
+        return None
 
     def _format_json_data_html_link(view, context, model, name):
         ids = model.id
         json_obj = json.loads(model.json_data)
-        assetId = json_obj["assetId"]
-        feeAssetId = json_obj["feeAssetId"]
-        senderPublicKey = json_obj["senderPublicKey"]
+        asset_id = json_obj["assetId"]
+        fee_asset_id = json_obj["feeAssetId"]
+        sender_public_key = json_obj["senderPublicKey"]
         recipient = json_obj["recipient"]
         amount = json_obj["amount"]/100
         fee = json_obj["fee"]/100
@@ -831,6 +841,7 @@ class WavesTxModelView(RestrictedModelView):
         signature = json_obj["signature"]
         txtype = json_obj["type"]
 
+        # pylint: disable=duplicate-string-formatting-argument
         html = '''
         <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#TxDetailsModal{}">
         Tx Details
@@ -863,12 +874,13 @@ class WavesTxModelView(RestrictedModelView):
     </div>
   </div>
 </div>
-        '''.format(ids, ids, ids, ids, assetId, feeAssetId, senderPublicKey, recipient, amount, app.config["ASSET_NAME"], fee, timestamp, attachment, signature, txtype)
+        '''.format(ids, ids, ids, ids, asset_id, fee_asset_id, sender_public_key, recipient, amount, app.config["ASSET_NAME"], fee, timestamp, attachment, signature, txtype)
         return Markup(html)
 
     def _format_txid_html(view, context, model, name):
         ids = model.txid
         truncate_txids = str(ids[:6]+'...')
+        # pylint: disable=duplicate-string-formatting-argument
         html = '''
         <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#TxidModal{}">
         {}
@@ -918,9 +930,9 @@ class WavesTx(db.Model):
     json_data_signed = db.Column(db.Boolean, nullable=False)
     json_data = db.Column(db.String, nullable=False)
 
-    def __init__(self, txid, type, state, amount, json_data_signed, json_data):
+    def __init__(self, txid, type_, state, amount, json_data_signed, json_data):
         self.date = time.time()
-        self.type = type
+        self.type = type_
         self.state = state
         self.txid = txid
         self.amount = amount
@@ -1029,4 +1041,4 @@ class PayDbUserTransactionsView(BaseModelView):
         return self.session.query(self.model).filter(or_(self.model.sender_token == current_user.token, self.model.recipient_token == current_user.token))
 
     def get_count_query(self):
-        return self.session.query(db.func.count('*')).filter(or_(self.model.sender_token == current_user.token, self.model.recipient_token == current_user.token))
+        return self.session.query(db.func.count('*')).filter(or_(self.model.sender_token == current_user.token, self.model.recipient_token == current_user.token)) # pylint: disable=no-member

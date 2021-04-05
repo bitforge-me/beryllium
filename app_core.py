@@ -1,6 +1,7 @@
 import os
 import json
 
+import pywaves
 from flask import Flask
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_sqlalchemy import SQLAlchemy
@@ -9,7 +10,7 @@ from flask_socketio import SocketIO
 
 SERVER_MODE_WAVES = 'waves'
 SERVER_MODE_PAYDB = 'paydb'
-missing_vital_setting = False
+MISSING_VITAL_SETTING = False
 
 # Create Flask application
 app = Flask(__name__)
@@ -34,7 +35,8 @@ else:
     app.config["SQLALCHEMY_DATABASE_URI"] = 'sqlite:///' + DATABASE_FILE
 
 def set_vital_setting(env_name, setting_name=None, acceptable_values=None):
-    global missing_vital_setting
+    # pylint: disable=global-statement
+    global MISSING_VITAL_SETTING
     if not setting_name:
         setting_name = env_name
     if os.getenv(env_name):
@@ -42,10 +44,10 @@ def set_vital_setting(env_name, setting_name=None, acceptable_values=None):
         app.config[env_name] = os.getenv(env_name)
         if acceptable_values and value not in acceptable_values:
             print(env_name + " not in range of acceptable values: " + str(acceptable_values))
-            missing_vital_setting = True
+            MISSING_VITAL_SETTING = True
     else:
         print("no " + env_name)
-        missing_vital_setting = True
+        MISSING_VITAL_SETTING = True
 
 set_vital_setting("SERVER_MODE", acceptable_values=[SERVER_MODE_WAVES, SERVER_MODE_PAYDB])
 set_vital_setting("DEEP_LINK_SCHEME")
@@ -64,7 +66,13 @@ if app.config["SERVER_MODE"] == SERVER_MODE_WAVES:
     try:
         app.config["TX_SIGNERS"] = json.loads(app.config["TX_SIGNERS"])
     except:
-        raise Exception('TX_SIGNERS is not valid json')
+        raise Exception('TX_SIGNERS is not valid json') from None
+
+    # set pywaves to offline mode and testnet
+    pywaves.setOffline()
+    if app.config["TESTNET"]:
+        pywaves.setChain("testnet")
+
 else: # paydb
     set_vital_setting("ASSET_NAME")
     set_vital_setting("OPERATIONS_ACCOUNT")

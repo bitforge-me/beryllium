@@ -1,8 +1,7 @@
+# pylint: disable=unbalanced-tuple-unpacking
+
 import logging
 import time
-import hmac
-import hashlib
-import base64
 import datetime
 import json
 
@@ -11,26 +10,15 @@ import flask_security
 from flask_security.utils import encrypt_password
 from flask_socketio import Namespace, emit, join_room, leave_room
 
-from web_utils import bad_request, get_json_params
+from web_utils import bad_request, get_json_params, create_hmac_sig
 import utils
-from app_core import app, db, socketio
+from app_core import db, socketio
 from models import user_datastore, User, UserCreateRequest, Permission, ApiKey, ApiKeyRequest, PayDbTransaction
 import paydb_core
 
 logger = logging.getLogger(__name__)
 paydb = Blueprint('paydb', __name__, template_folder='templates')
 ws_sids = {}
-
-def to_bytes(data):
-    if not isinstance(data, (bytes, bytearray)):
-        return data.encode("utf-8")
-    return data
-
-def create_hmac_sig(api_secret, message):
-    _hmac = hmac.new(to_bytes(api_secret), msg=to_bytes(message), digestmod=hashlib.sha256)
-    signature = _hmac.digest()
-    signature = base64.b64encode(signature).decode("utf-8")
-    return signature
 
 def check_hmac_auth(api_key, nonce, sig, body):
     if nonce <= api_key.nonce:
@@ -58,45 +46,45 @@ def check_auth(api_key_token, nonce, sig, body):
 # Websocket events
 #
 
-ns = '/paydb'
+NS = '/paydb'
 
-def tx_event(tx):
-    txt = json.dumps(tx.to_json())
-    socketio.emit("tx", txt, json=True, room=tx.sender.email, namespace=ns)
-    if tx.recipient and tx.recipient != tx.sender:
-        socketio.emit("tx", txt, json=True, room=tx.recipient.email, namespace=ns)
+def tx_event(txn):
+    txt = json.dumps(txn.to_json())
+    socketio.emit("tx", txt, json=True, room=txn.sender.email, namespace=NS)
+    if txn.recipient and txn.recipient != txn.sender:
+        socketio.emit("tx", txt, json=True, room=txn.recipient.email, namespace=NS)
 
 class PayDbNamespace(Namespace):
 
-    def on_error(self, e):
-        logger.error(e)
+    def on_error(self, err):
+        logger.error(err)
 
     def on_connect(self):
-        logger.info("connect sid: %s" % request.sid)
+        logger.info("connect sid: %s", request.sid)
 
     def on_auth(self, auth):
         # check auth
         res, reason, api_key = check_auth(auth["api_key"], auth["nonce"], auth["signature"], str(auth["nonce"]))
         if res:
-            emit("info", "authenticated!", namespace=ns)
+            emit("info", "authenticated!", namespace=NS)
             # join room and store user
-            logger.info("join room for email: %s" % api_key.user.email)
+            logger.info("join room for email: %s", api_key.user.email)
             join_room(api_key.user.email)
             # store sid -> email map
             ws_sids[request.sid] = api_key.user.email
         else:
-            logger.info("failed authentication (%s): %s" % (auth["api_key"], reason))
+            logger.info("failed authentication (%s): %s", auth["api_key"], reason)
 
     def on_disconnect(self):
-        logger.info("disconnect sid: %s" % request.sid)
+        logger.info("disconnect sid: %s", request.sid)
         if request.sid in ws_sids:
             # remove sid -> email map
             email = ws_sids[request.sid]
-            logger.info("leave room for email: %s" % email)
+            logger.info("leave room for email: %s", email)
             leave_room(email)
             del ws_sids[request.sid]
 
-socketio.on_namespace(PayDbNamespace(ns))
+socketio.on_namespace(PayDbNamespace(NS))
 
 #
 # Private (paydb) API
@@ -107,7 +95,7 @@ def user_register():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["email", "password", "first_name", "last_name", "photo", "photo_type"])
+    params, err_response = get_json_params(content, ["email", "password", "first_name", "last_name", "photo", "photo_type"])
     if err_response:
         return err_response
     email, password, first_name, last_name, photo, photo_type = params
@@ -146,7 +134,7 @@ def user_registration_confirm(token=None):
     user.photo_type = req.photo_type
     user.confirmed_at = now
     db.session.delete(req)
-    db.session.commit();
+    db.session.commit()
     flash('User registered.', 'success')
     return redirect('/')
 
@@ -155,7 +143,7 @@ def api_key_create():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["email", "password", "device_name"])
+    params, err_response = get_json_params(content, ["email", "password", "device_name"])
     if err_response:
         return err_response
     email, password, device_name = params
@@ -179,7 +167,7 @@ def api_key_request():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["email", "device_name"])
+    params, err_response = get_json_params(content, ["email", "device_name"])
     if err_response:
         return err_response
     email, device_name = params
@@ -198,7 +186,7 @@ def api_key_claim():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["token"])
+    params, err_response = get_json_params(content, ["token"])
     if err_response:
         return err_response
     token, = params
@@ -245,8 +233,7 @@ def api_key_confirm(token=None):
         db.session.commit()
         flash('API KEY confirmed.', 'success')
         return redirect('/')
-    else:
-        return render_template('paydb/api_key_confirm.html', req=req, perms=Permission.PERMS_ALL)
+    return render_template('paydb/api_key_confirm.html', req=req, perms=Permission.PERMS_ALL)
 
 @paydb.route('/user_info', methods=['POST'])
 def user_info():
@@ -254,7 +241,7 @@ def user_info():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["api_key", "nonce", "email"])
+    params, err_response = get_json_params(content, ["api_key", "nonce", "email"])
     if err_response:
         return err_response
     api_key, nonce, email = params
@@ -280,7 +267,7 @@ def user_transactions():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["api_key", "nonce", "offset", "limit"])
+    params, err_response = get_json_params(content, ["api_key", "nonce", "offset", "limit"])
     if err_response:
         return err_response
     api_key, nonce, offset, limit = params
@@ -301,7 +288,7 @@ def transaction_create():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["api_key", "nonce", "action", "recipient", "amount", "attachment"])
+    params, err_response = get_json_params(content, ["api_key", "nonce", "action", "recipient", "amount", "attachment"])
     if err_response:
         return err_response
     api_key, nonce, action, recipient, amount, attachment = params
@@ -320,14 +307,14 @@ def transaction_info():
     content = request.get_json(force=True)
     if content is None:
         return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["api_key", "nonce", "token"])
+    params, err_response = get_json_params(content, ["api_key", "nonce", "token"])
     if err_response:
         return err_response
     api_key, nonce, token = params
     res, reason, api_key = check_auth(api_key, nonce, sig, request.data)
     if not res:
         return bad_request(reason)
-    tx = PayDbTransaction.from_token(token)
+    tx = PayDbTransaction.from_token(db.session, token)
     if not tx:
         return bad_request('invalid tx')
     if tx.user != api_key.user and tx.recipient != api_key.user:

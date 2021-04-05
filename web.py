@@ -1,5 +1,8 @@
 #!/usr/bin/python3
 
+# pylint: disable=import-outside-toplevel
+# pylint: disable=unbalanced-tuple-unpacking
+
 import sys
 import logging
 import json
@@ -13,16 +16,13 @@ from flask_security import roles_accepted
 #from flask_jsonrpc import JSONRPC
 from flask_jsonrpc.exceptions import OtherError
 import requests
-import base58
 import pywaves
-import pyblake2
 
 from app_core import app, db, socketio, SERVER_MODE_WAVES, SERVER_MODE_PAYDB
-from models import User, WavesTx, WavesTxSig, Proposal, Payment, Topic
-import admin
+from models import User, WavesTx, Proposal, Payment, Topic
 import utils
 from fcm import FCM
-from web_utils import bad_request, get, get_json_params
+from web_utils import bad_request, get_json_params
 import paydb_core
 
 #jsonrpc = JSONRPC(app, "/api")
@@ -34,7 +34,7 @@ DEEP_LINK_SCHEME = app.config["DEEP_LINK_SCHEME"]
 if SERVER_MODE == SERVER_MODE_WAVES:
     import tx_utils
     # our pywaves address object
-    pw_address = None
+    PW_ADDRESS = None
     # wave specific config settings
     NODE_BASE_URL = app.config["NODE_BASE_URL"]
     SEED = app.config["WALLET_SEED"]
@@ -50,17 +50,17 @@ elif SERVER_MODE == SERVER_MODE_PAYDB:
     from paydb_endpoint import paydb
     app.register_blueprint(paydb, url_prefix='/paydb')
 
-def logger_setup(level, ch):
+def logger_setup(level, handler):
     logger.setLevel(level)
-    logger.addHandler(ch)
+    logger.addHandler(handler)
     if SERVER_MODE == SERVER_MODE_WAVES:
         import mw_endpoint
         mw_endpoint.logger.setLevel(level)
-        mw_endpoint.logger.addHandler(ch)
+        mw_endpoint.logger.addHandler(handler)
     if SERVER_MODE == SERVER_MODE_PAYDB:
         import paydb_endpoint
         paydb_endpoint.logger.setLevel(level)
-        paydb_endpoint.logger.addHandler(ch)
+        paydb_endpoint.logger.addHandler(handler)
 
 def logger_clear():
     logger.handlers.clear()
@@ -74,36 +74,36 @@ def logger_clear():
 def dashboard_data_waves():
     # get balance of local wallet
     url = NODE_BASE_URL + f"/assets/balance/{ADDRESS}/{ASSET_ID}"
-    logger.info("requesting {}..".format(url))
+    logger.info("requesting %s..", url)
     response = requests.get(url)
     try:
         asset_balance = response.json()["balance"]
-    except:
+    except: # pylint: disable=bare-except
         logger.error("failed to parse response")
         asset_balance = "n/a"
     url = NODE_BASE_URL + f"/addresses/balance/{ADDRESS}"
-    logger.info("requesting {}..".format(url))
+    logger.info("requesting %s..", url)
     response = requests.get(url)
     try:
         waves_balance = response.json()["balance"]
-    except:
+    except: # pylint: disable=bare-except
         logger.error("failed to parse response")
         waves_balance = "n/a"
     # get the balance of the main wallet
     url = NODE_BASE_URL + f"/transactions/info/{ASSET_ID}"
-    logger.info("requesting {}..".format(url))
+    logger.info("requesting %s..", url)
     response = requests.get(url)
     try:
         issuer = response.json()["sender"]
         url = NODE_BASE_URL + f"/assets/balance/{issuer}/{ASSET_ID}"
-        logger.info("requesting {}..".format(url))
+        logger.info("requesting %s..", url)
         response = requests.get(url)
         master_asset_balance = response.json()["balance"]
         url = NODE_BASE_URL + f"/addresses/balance/{issuer}"
-        logger.info("requesting {}..".format(url))
+        logger.info("requesting %s..", url)
         response = requests.get(url)
         master_waves_balance = response.json()["balance"]
-    except:
+    except: # pylint: disable=bare-except
         logger.error("failed to parse response")
         issuer = "n/a"
         master_waves_balance = "n/a"
@@ -142,7 +142,7 @@ def _create_transaction_waves(recipient, amount, attachment):
         asset_fee = response.json()["minSponsoredAssetFee"]
     else:
         short_msg = "failed to get asset info"
-        logger.error(f"{short_msg}: ({response.status_code}, {response.request.method} {response.url}):\n\t{response.text}")
+        logger.error("%s: (%d, %s, %s):\n\t%s", short_msg, response.status_code, response.request.method, response.url, response.text)
         err = OtherError(short_msg, tx_utils.ERR_FAILED_TO_GET_ASSET_INFO)
         err.data = response.text
         raise err
@@ -158,7 +158,7 @@ def _create_transaction_waves(recipient, amount, attachment):
         raise err
     recipient = pywaves.Address(recipient)
     asset = pywaves.Asset(ASSET_ID)
-    address_data = pw_address.sendAsset(recipient, asset, amount, attachment, feeAsset=asset, txFee=asset_fee)
+    address_data = PW_ADDRESS.sendAsset(recipient, asset, amount, attachment, feeAsset=asset, txFee=asset_fee)
     signed_tx = json.loads(address_data["api-data"])
     signed_tx["type"] = 4 # sendAsset does not include "type" - https://github.com/PyWaves/PyWaves/issues/131
     # calc txid properly
@@ -190,13 +190,13 @@ def process_proposals():
                         utils.email_payment_claim(logger, app.config["ASSET_NAME"], payment, proposal.HOURS_EXPIRY)
                         payment.status = payment.STATE_SENT_CLAIM_LINK
                         db.session.add(payment)
-                        logger.info(f"Sent payment claim url to {payment.email}")
+                        logger.info("Sent payment claim url to %s", payment.email)
                         emails += 1
                     elif payment.mobile:
                         utils.sms_payment_claim(logger, app.config["ASSET_NAME"], payment, proposal.HOURS_EXPIRY)
                         payment.status = payment.STATE_SENT_CLAIM_LINK
                         db.session.add(payment)
-                        logger.info(f"Sent payment claim url to {payment.mobile}")
+                        logger.info("Sent payment claim url to %s", payment.mobile)
                         sms_messages += 1
                     elif payment.recipient:
                         ##TODO: set status and commit before sending so we cannot send twice
@@ -257,21 +257,17 @@ def process_claim_paydb(payment, recipient):
     if payment.status != payment.STATE_SENT_CLAIM_LINK:
         return "payment not authorized"
     # create transaction
-    tx, error = paydb_core.tx_transfer_authorized(db.session, OPERATIONS_ACCOUNT, recipient, payment.amount, "")
+    tx, _ = paydb_core.tx_transfer_authorized(db.session, OPERATIONS_ACCOUNT, recipient, payment.amount, "")
     if tx:
         payment.txid = tx.token
         payment.status = payment.STATE_SENT_FUNDS
         db.session.add(payment)
         db.session.commit()
         return None
-    else:
-        return 'claim failed'
+    return 'claim failed'
 
 @app.route("/claim_payment/<token>", methods=["GET", "POST"])
 def claim_payment(token):
-    qrcode = None
-    url = None
-    attachment = None
     payment = Payment.from_token(db.session, token)
     if not payment:
         return bad_request('payment not found', 404)
@@ -296,7 +292,7 @@ def claim_payment(token):
     if request.method == "POST":
         content_type = request.content_type
         using_app = content_type.startswith('application/json')
-        logger.info("claim_payment: content type - {}, using_app - {}".format(content_type, using_app))
+        logger.info("claim_payment: content type - %s, using_app - %s", content_type, using_app)
         recipient = ""
         asset_id = ""
         if using_app:
@@ -304,38 +300,37 @@ def claim_payment(token):
             if content is None:
                 return bad_request("failed to decode JSON object")
             if SERVER_MODE == SERVER_MODE_WAVES:
-                params, err_response = get_json_params(logger, content, ["recipient", "asset_id"])
+                params, err_response = get_json_params(content, ["recipient", "asset_id"])
                 if err_response:
                     return err_response
                 recipient, asset_id = params
             else: # paydb
-                params, err_response = get_json_params(logger, content, ["recipient"])
+                params, err_response = get_json_params(content, ["recipient"])
                 if err_response:
                     return err_response
                 recipient, = params
         else: # using html form
             try:
                 recipient = request.form["recipient"]
-            except:
+            except: # pylint: disable=bare-except
                 flash("'recipient' parameter not present", "danger")
                 return render_waves(dbtx)
             try:
                 asset_id = request.form["asset_id"]
-            except:
+            except: # pylint: disable=bare-except
                 pass
         if SERVER_MODE == SERVER_MODE_WAVES:
             dbtx, err_msg = process_claim_waves(payment, dbtx, recipient, asset_id)
         else: # paydb
             err_msg = process_claim_paydb(payment, recipient)
         if err_msg:
-            logger.error("claim_payment: {}".format(err_msg))
+            logger.error("claim_payment: %s", err_msg)
             if using_app:
                 return bad_request(err_msg)
             flash(err_msg, "danger")
     if SERVER_MODE == SERVER_MODE_WAVES:
         return render_waves(dbtx)
-    else: # paydb
-        return render(None)
+    return render(None)
 
 @app.route("/dashboard")
 @roles_accepted("admin")
@@ -347,11 +342,10 @@ def dashboard():
         data["master_asset_balance"] = from_int_to_user_friendly(data["master_asset_balance"], 100)
         data["master_waves_balance"] = from_int_to_user_friendly(data["master_waves_balance"], 10**8)
         return render_template("dashboard_waves.html", data=data)
-    else: # paydb
-        data = dashboard_data_paydb()
-        data["premio_stage_balance"] = from_int_to_user_friendly(data["premio_stage_balance"], 100)
-        data["total_balance"] = from_int_to_user_friendly(data["total_balance"], 100)
-        return render_template("dashboard_paydb.html", data=data)
+    data = dashboard_data_paydb()
+    data["premio_stage_balance"] = from_int_to_user_friendly(data["premio_stage_balance"], 100)
+    data["total_balance"] = from_int_to_user_friendly(data["total_balance"], 100)
+    return render_template("dashboard_paydb.html", data=data)
 
 @app.route("/push_notifications", methods=["GET", "POST"])
 @roles_accepted("admin")
@@ -367,7 +361,7 @@ def push_notifications():
                 registration_token = request.form["registration_token"]
                 fcm.send_to_token(registration_token, title, body)
             flash("sent push noticiation", "success")
-        except Exception as e:
+        except Exception as e: # pylint: disable=broad-except
             flash("{}".format(str(e.args[0])), "danger")
     topics = Topic.topic_list(db.session)
     return render_template("push_notifications.html", topics=topics)
@@ -376,8 +370,8 @@ def push_notifications():
 def push_notifications_register():
     content = request.get_json(force=True)
     if content is None:
-       return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(logger, content, ["registration_token"])
+        return bad_request("failed to decode JSON object")
+    params, err_response = get_json_params(content, ["registration_token"])
     if err_response:
         return err_response
     registration_token, = params
@@ -449,24 +443,25 @@ class WebGreenlet():
         self.addr = addr
         self.port = port
         self.runloop_greenlet = None
+        self.process_proposals_greenlet = None
         self.exception_func = exception_func
 
     def check_wallet(self):
         # check address object matches our configured address
-        global pw_address
-        pw_address = pywaves.Address(seed=SEED)
-        addr = pw_address.address
+        global PW_ADDRESS # pylint: disable=global-statement
+        PW_ADDRESS = pywaves.Address(seed=SEED)
+        addr = PW_ADDRESS.address
         if isinstance(addr, bytes):
             addr = addr.decode()
         if addr != ADDRESS:
-            msg = f"pw_address ({addr}) does not match {ADDRESS}"
+            msg = f"PW_ADDRESS ({addr}) does not match {ADDRESS}"
             logger.error(msg)
             sys.exit(1)
 
     def start(self):
         def runloop():
             logger.info("WebGreenlet runloop started")
-            logger.info(f"WebGreenlet webserver starting (addr: {self.addr}, port: {self.port})")
+            logger.info("WebGreenlet webserver starting (addr: %s, port: %d)", self.addr, self.port)
             socketio.run(app, host=self.addr, port=self.port)
 
         def process_proposals_loop():
@@ -495,20 +490,23 @@ class WebGreenlet():
         self.process_proposals_greenlet.kill()
         gevent.joinall([self.runloop_greenlet, self.process_proposals_greenlet])
 
-if __name__ == "__main__":
+def run():
     # setup logging
     logger.setLevel(logging.DEBUG)
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
-    ch.setFormatter(logging.Formatter('[%(name)s %(levelname)s] %(message)s'))
-    logger.addHandler(ch)
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.DEBUG)
+    handler.setFormatter(logging.Formatter('[%(name)s %(levelname)s] %(message)s'))
+    logger.addHandler(handler)
     # clear loggers set by any imported modules
     logging.getLogger().handlers.clear()
 
-    web_greenlet = WebGreenlet()
+    web_greenlet = WebGreenlet(None)
     web_greenlet.start()
 
     while 1:
         gevent.sleep(1)
 
     web_greenlet.stop()
+
+if __name__ == "__main__":
+    run()
