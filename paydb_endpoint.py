@@ -2,9 +2,6 @@
 
 import logging
 import time
-import hmac
-import hashlib
-import base64
 import datetime
 import json
 
@@ -13,7 +10,7 @@ import flask_security
 from flask_security.utils import encrypt_password
 from flask_socketio import Namespace, emit, join_room, leave_room
 
-from web_utils import bad_request, get_json_params
+from web_utils import bad_request, get_json_params, create_hmac_sig
 import utils
 from app_core import db, socketio
 from models import user_datastore, User, UserCreateRequest, Permission, ApiKey, ApiKeyRequest, PayDbTransaction
@@ -22,17 +19,6 @@ import paydb_core
 logger = logging.getLogger(__name__)
 paydb = Blueprint('paydb', __name__, template_folder='templates')
 ws_sids = {}
-
-def to_bytes(data):
-    if not isinstance(data, (bytes, bytearray)):
-        return data.encode("utf-8")
-    return data
-
-def create_hmac_sig(api_secret, message):
-    _hmac = hmac.new(to_bytes(api_secret), msg=to_bytes(message), digestmod=hashlib.sha256)
-    signature = _hmac.digest()
-    signature = base64.b64encode(signature).decode("utf-8")
-    return signature
 
 def check_hmac_auth(api_key, nonce, sig, body):
     if nonce <= api_key.nonce:

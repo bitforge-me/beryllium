@@ -1,5 +1,8 @@
-
+import hmac
+import hashlib
+import base64
 import logging
+
 from flask import jsonify
 
 logger = logging.getLogger(__name__)
@@ -22,3 +25,14 @@ def get_json_params(json_content, param_names):
         logger.error(e)
         return param_values, bad_request(f"'{param_name}' not found")
     return param_values, None
+
+def to_bytes(data):
+    if not isinstance(data, (bytes, bytearray)):
+        return data.encode("utf-8")
+    return data
+
+def create_hmac_sig(api_secret, message):
+    _hmac = hmac.new(to_bytes(api_secret), msg=to_bytes(message), digestmod=hashlib.sha256)
+    signature = _hmac.digest()
+    signature = base64.b64encode(signature).decode("utf-8")
+    return signature

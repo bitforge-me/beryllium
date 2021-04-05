@@ -2,34 +2,21 @@
 
 # pylint: disable=invalid-name
 # pylint: disable=unused-variable
-# pylint: disable=duplicate-code
 
 import sys
 import argparse
 import time
 import json
-import hmac
-import hashlib
-import base64
 
 import requests
 import socketio
+
+from web_utils import create_hmac_sig
 
 URL_BASE = "http://localhost:5000/paydb/"
 WS_URL = "ws://localhost:5000/"
 
 EXIT_NO_COMMAND = 1
-
-def to_bytes(data):
-    if not isinstance(data, (bytes, bytearray)):
-        return data.encode("utf-8")
-    return data
-
-def create_hmac_sig(api_secret, message):
-    _hmac = hmac.new(to_bytes(api_secret), msg=to_bytes(message), digestmod=hashlib.sha256)
-    signature = _hmac.digest()
-    signature = base64.b64encode(signature).decode("utf-8")
-    return signature
 
 def construct_parser():
     # construct argument parser
