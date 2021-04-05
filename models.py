@@ -181,7 +181,7 @@ class ApiKey(db.Model):
     def has_permission(self, permission_name):
         perm = Permission.from_name(db.session, permission_name)
         if perm:
-            return perm in self.permissions
+            return perm in self.permissions # pylint: disable=unsupported-membership-test
         return False
 
     @classmethod
@@ -393,9 +393,9 @@ class BaseModelView(sqla.ModelView):
             if current_user.is_authenticated:
                 # permission denied
                 return abort(403)
-            else:
-                # login
-                return redirect(url_for('security.login', next=request.url))
+            # login
+            return redirect(url_for('security.login', next=request.url))
+        return None
 
 class RestrictedModelView(BaseModelView):
     can_create = False
@@ -417,7 +417,7 @@ class BaseOnlyUserOwnedModelView(BaseModelView):
         return self.session.query(self.model).filter(self.model.user==current_user)
 
     def get_count_query(self):
-        return self.session.query(db.func.count('*')).filter(self.model.user==current_user)
+        return self.session.query(db.func.count('*')).filter(self.model.user==current_user) # pylint: disable=no-member
 
 def validate_recipient(recipient):
     if not recipient or \
@@ -453,6 +453,7 @@ def validate_csv(data):
 
 class DateBetweenFilter(BaseSQLAFilter, filters.BaseDateBetweenFilter):
     def __init__(self, column, name, options=None, data_type=None):
+        # pylint: disable=super-with-arguments
         super(DateBetweenFilter, self).__init__(column,
                                                 name,
                                                 options,
@@ -840,6 +841,7 @@ class WavesTxModelView(RestrictedModelView):
         signature = json_obj["signature"]
         txtype = json_obj["type"]
 
+        # pylint: disable=duplicate-string-formatting-argument
         html = '''
         <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#TxDetailsModal{}">
         Tx Details
@@ -1038,4 +1040,4 @@ class PayDbUserTransactionsView(BaseModelView):
         return self.session.query(self.model).filter(or_(self.model.sender_token == current_user.token, self.model.recipient_token == current_user.token))
 
     def get_count_query(self):
-        return self.session.query(db.func.count('*')).filter(or_(self.model.sender_token == current_user.token, self.model.recipient_token == current_user.token))
+        return self.session.query(db.func.count('*')).filter(or_(self.model.sender_token == current_user.token, self.model.recipient_token == current_user.token)) # pylint: disable=no-member

@@ -448,7 +448,7 @@ class WebGreenlet():
 
     def check_wallet(self):
         # check address object matches our configured address
-        global PW_ADDRESS
+        global PW_ADDRESS # pylint: disable=global-statement
         PW_ADDRESS = pywaves.Address(seed=SEED)
         addr = PW_ADDRESS.address
         if isinstance(addr, bytes):
