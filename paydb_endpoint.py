@@ -20,21 +20,34 @@ logger = logging.getLogger(__name__)
 paydb = Blueprint('paydb', __name__, template_folder='templates')
 ws_sids = {}
 
+SIGNATURE_HEADER = "X-Signature"
+AUTH_FAILED = 'authentication failed'
+OLD_NONCE = 'old nonce'
+INVALID_JSON = 'invalid json'
+INVALID_EMAIL = "invalid email"
+EMPTY_PASSWORD = "empty password"
+PHOTO_DATA_LARGE = "photo data too large"
+NOT_FOUND = "not found"
+NOT_CREATED = "not created"
+LIMIT_TOO_LARGE = 'limit too large'
+INVALID_TX = 'invalid tx'
+UNAUTHORIZED ='unauthorized'
+
 def check_hmac_auth(api_key, nonce, sig, body):
     if nonce <= api_key.nonce:
-        return False, "old nonce"
+        return False, OLD_NONCE
     our_sig = create_hmac_sig(api_key.secret, body)
     if sig == our_sig:
         api_key.nonce = nonce
         return True, ""
-    return False, "invalid signature"
+    return False, AUTH_FAILED
 
 def check_auth(api_key_token, nonce, sig, body):
     api_key = ApiKey.from_token(db.session, api_key_token)
     if not api_key:
-        return False, "not found", None
+        return False, AUTH_FAILED, None
     if not api_key.user.active:
-        return False, "inactive account", None
+        return False, AUTH_FAILED, None
     res, reason = check_hmac_auth(api_key, nonce, sig, body)
     if not res:
         return False, reason, None
@@ -94,17 +107,17 @@ socketio.on_namespace(PayDbNamespace(NS))
 def user_register():
     content = request.get_json(force=True)
     if content is None:
-        return bad_request("failed to decode JSON object")
+        return bad_request(INVALID_JSON)
     params, err_response = get_json_params(content, ["email", "password", "first_name", "last_name", "photo", "photo_type"])
     if err_response:
         return err_response
     email, password, first_name, last_name, photo, photo_type = params
     if not utils.is_email(email):
-        return bad_request("invalid email address")
+        return bad_request(INVALID_EMAIL)
     if not password:
-        return bad_request("empty password")
+        return bad_request(EMPTY_PASSWORD)
     if len(photo) > 50000:
-        return bad_request("photo data too large")
+        return bad_request(PHOTO_DATA_LARGE)
     req = UserCreateRequest(first_name, last_name, email, photo, photo_type, encrypt_password(password))
     user = User.from_email(db.session, email)
     if user:
@@ -142,7 +155,7 @@ def user_registration_confirm(token=None):
 def api_key_create():
     content = request.get_json(force=True)
     if content is None:
-        return bad_request("failed to decode JSON object")
+        return bad_request(INVALID_JSON)
     params, err_response = get_json_params(content, ["email", "password", "device_name"])
     if err_response:
         return err_response
@@ -150,10 +163,10 @@ def api_key_create():
     user = User.from_email(db.session, email)
     if not user:
         time.sleep(5)
-        return bad_request('authentication failed')
+        return bad_request(AUTH_FAILED)
     if not flask_security.verify_password(password, user.password):
         time.sleep(5)
-        return bad_request('authentication failed')
+        return bad_request(AUTH_FAILED)
     api_key = ApiKey(user, device_name)
     for name in Permission.PERMS_ALL:
         perm = Permission.from_name(db.session, name)
@@ -166,7 +179,7 @@ def api_key_create():
 def api_key_request():
     content = request.get_json(force=True)
     if content is None:
-        return bad_request("failed to decode JSON object")
+        return bad_request(INVALID_JSON)
     params, err_response = get_json_params(content, ["email", "device_name"])
     if err_response:
         return err_response
@@ -185,7 +198,7 @@ def api_key_request():
 def api_key_claim():
     content = request.get_json(force=True)
     if content is None:
-        return bad_request("failed to decode JSON object")
+        return bad_request(INVALID_JSON)
     params, err_response = get_json_params(content, ["token"])
     if err_response:
         return err_response
@@ -193,11 +206,11 @@ def api_key_claim():
     req = ApiKeyRequest.from_token(db.session, token)
     if not token:
         time.sleep(5)
-        return bad_request("not found")
+        return bad_request(NOT_FOUND)
     req = ApiKeyRequest.from_token(db.session, token)
     if not req.created_api_key:
         time.sleep(5)
-        return bad_request("not created")
+        return bad_request(NOT_CREATED)
     api_key = req.created_api_key
     db.session.delete(req)
     db.session.commit()
@@ -237,10 +250,10 @@ def api_key_confirm(token=None):
 
 @paydb.route('/user_info', methods=['POST'])
 def user_info():
-    sig = request.headers.get("X-Signature")
+    sig = request.headers.get(SIGNATURE_HEADER)
     content = request.get_json(force=True)
     if content is None:
-        return bad_request("failed to decode JSON object")
+        return bad_request(INVALID_JSON)
     params, err_response = get_json_params(content, ["api_key", "nonce", "email"])
     if err_response:
         return err_response
@@ -253,7 +266,7 @@ def user_info():
     user = User.from_email(db.session, email)
     if not user:
         time.sleep(5)
-        return bad_request('authentication failed')
+        return bad_request(AUTH_FAILED)
     if user == api_key.user:
         balance = paydb_core.user_balance(db.session, api_key)
         roles = [role.name for role in api_key.user.roles]
@@ -263,31 +276,31 @@ def user_info():
 
 @paydb.route('/user_transactions', methods=['POST'])
 def user_transactions():
-    sig = request.headers.get("X-Signature")
+    sig = request.headers.get(SIGNATURE_HEADER)
     content = request.get_json(force=True)
     if content is None:
-        return bad_request("failed to decode JSON object")
+        return bad_request(INVALID_JSON)
     params, err_response = get_json_params(content, ["api_key", "nonce", "offset", "limit"])
     if err_response:
         return err_response
     api_key, nonce, offset, limit = params
     if limit > 1000:
-        return bad_request('limit too large (max 1000)')
+        return bad_request(LIMIT_TOO_LARGE)
     res, reason, api_key = check_auth(api_key, nonce, sig, request.data)
     if not res:
         return bad_request(reason)
     if not api_key.has_permission(Permission.PERMISSION_HISTORY):
-        return bad_request('not authorized')
+        return bad_request(UNAUTHORIZED)
     txs = PayDbTransaction.related_to_user(db.session, api_key.user, offset, limit)
     txs = [tx.to_json() for tx in txs]
     return jsonify(dict(txs=txs))
 
 @paydb.route('/transaction_create', methods=['POST'])
 def transaction_create():
-    sig = request.headers.get("X-Signature")
+    sig = request.headers.get(SIGNATURE_HEADER)
     content = request.get_json(force=True)
     if content is None:
-        return bad_request("failed to decode JSON object")
+        return bad_request(INVALID_JSON)
     params, err_response = get_json_params(content, ["api_key", "nonce", "action", "recipient", "amount", "attachment"])
     if err_response:
         return err_response
@@ -303,10 +316,10 @@ def transaction_create():
 
 @paydb.route('/transaction_info', methods=['POST'])
 def transaction_info():
-    sig = request.headers.get("X-Signature")
+    sig = request.headers.get(SIGNATURE_HEADER)
     content = request.get_json(force=True)
     if content is None:
-        return bad_request("failed to decode JSON object")
+        return bad_request(INVALID_JSON)
     params, err_response = get_json_params(content, ["api_key", "nonce", "token"])
     if err_response:
         return err_response
@@ -316,7 +329,7 @@ def transaction_info():
         return bad_request(reason)
     tx = PayDbTransaction.from_token(db.session, token)
     if not tx:
-        return bad_request('invalid tx')
+        return bad_request(INVALID_TX)
     if tx.user != api_key.user and tx.recipient != api_key.user:
-        return bad_request('not authorized')
+        return bad_request(UNAUTHORIZED)
     return jsonify(dict(tx=tx.to_json()))
