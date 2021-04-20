@@ -19,7 +19,7 @@ def send_email(logger, subject, msg, recipient=None):
     template_path = "templates/email_template.html"
     with open(os.path.join(os.path.dirname(__file__), template_path), 'r') as input_file:
         html = input_file.read()
-    logo_src = "http://" + app.config["SERVER_NAME"] + "/static/assets/img/logo.png"
+    logo_src = app.config["LOGO_EMAIL_SRC"]
     html = html.replace("<LOGOSRC/>", logo_src).replace("<EMAILCONTENT/>", msg)
     message = Mail(from_email=from_email, to_emails=recipient, subject=subject, html_content=html)
     try:
