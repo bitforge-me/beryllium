@@ -3,7 +3,13 @@
 {% block content %}
     <div class="row justify-content-center">
     <div class="col-sm-6">
-
+        <!-- SVG Sprite-->
+        <div class="svg-icon" style="display: none;">
+            <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+                 <symbol id="icon-google"><path fill="currentColor" d="M8.2 4.912a1.671 1.671 0 00-1.603-.077l8.65 8.67 2.828-2.842L8.2 4.913zm-2.398.726c-.11.23-.168.488-.168.752v15.858c0 .265.059.519.17.745l8.646-8.688-8.648-8.667zm9.446 9.466l-8.636 8.678c.229.106.473.152.716.152.3 0 .6-.072.872-.235l9.877-5.76-2.829-2.835zm6.588-2.251l-.01-.006-2.742-1.597-3.04 3.054 3.042 3.047 2.75-1.603c.51-.31.815-.85.815-1.448a1.68 1.68 0 00-.815-1.447z"/></symbol>
+                 <symbol id="icon-apple"><path fill="currentColor" d="M14.13 9.633c-.814 0-2.075-.922-3.403-.889-1.752.022-3.359 1.011-4.263 2.578-1.819 3.144-.468 7.788 1.306 10.344.87 1.244 1.897 2.644 3.259 2.6 1.305-.056 1.796-.845 3.38-.845 1.574 0 2.02.845 3.404.811 1.407-.022 2.3-1.266 3.159-2.522a11.12 11.12 0 001.428-2.922c-.033-.011-2.734-1.044-2.768-4.155-.022-2.6 2.132-3.844 2.232-3.9-1.227-1.789-3.113-1.989-3.772-2.033-1.718-.134-3.158.933-3.961.933zm2.902-2.622c.726-.867 1.206-2.078 1.072-3.278-1.038.045-2.288.69-3.036 1.556-.67.766-1.25 2-1.093 3.177 1.149.09 2.332-.588 3.057-1.455"></path></symbol>
+            </svg>
+        </div>
         <div class="card">
             <div class="card-body">
                 <h5 class="card-title">Claim Payment</h5>
@@ -22,7 +28,6 @@
                                     {{ qrcode_svg | safe }}
                                     <br/>
                                     <p>Scan the QR code or click the link to claim your {{config["ASSET_NAME"]}}.</p>
-                                    <br/>
                                 </a>
                                 <button type="submit" class="btn btn-primary"
                                     onclick="$('#form').show(); $('#qrcode').hide(); return false;">
@@ -36,6 +41,19 @@
                                 </div>
                                 <button type="submit" class="btn btn-primary">Submit</button>
                             </form>
+                            <br/>
+                            <a href={{ config["APPLE_APP_STORE_URL"] }} target="_blank" class="btn btn-outline-secondary btn-sm">
+                                <svg viewBox="0 0 28 28" style="vertical-align: bottom" width="20" height="20">
+                                     <use xlink:href="#icon-apple"></use>
+                                </svg>
+                                {{config["ASSET_NAME"]}} app @ apple store
+                            </a>
+                            <a href={{ config["GOOGLE_PLAY_STORE_URL"] }} target="_blank" class="btn btn-outline-secondary btn-sm">
+                                <svg viewBox="0 0 28 28" style="vertical-align: bottom" width="20" height="20">
+                                     <use xlink:href="#icon-google"></use>
+                                </svg>
+                                {{config["ASSET_NAME"]}} app @ google play
+                            </a>
                         {%else%}
                             <form method="post">
                                 <p>{{ recipient_desc }}: {{recipient}}</p>
@@ -49,7 +67,7 @@
                 </p>
             </div>
         </div>
-
     </div>
     </div>
 {% endblock content %}
+

@@ -33,6 +33,25 @@ else:
     else:
         DATABASE_FILE = 'premio_stage.db'
     app.config["SQLALCHEMY_DATABASE_URI"] = 'sqlite:///' + DATABASE_FILE
+if os.getenv("LOGO_URL_SRC"):
+    app.config["LOGO_URL_SRC"] = os.getenv("LOGO_URL_SRC")
+else:
+    app.config["LOGO_URL_SRC"] = "http://" + os.getenv("SERVER_NAME") + "/static/assets/img/logo.svg"
+
+if os.getenv("LOGO_EMAIL_SRC"):
+    app.config["LOGO_EMAIL_SRC"] = os.getenv("LOGO_EMAIL_SRC") 
+else:
+    app.config["LOGO_EMAIL_SRC"] = "http://" + os.getenv("SERVER_NAME") + "/static/assets/img/logo.png"
+
+if os.getenv("APPLE_APP_STORE_URL"):
+    app.config["APPLE_APP_STORE_URL"] = os.getenv("APPLE_APP_STORE_URL")
+else:
+    app.config["APPLE_APP_STORE_URL"] = "https://apps.apple.com/nz/app/zap/id1445794886"
+
+if os.getenv("GOOGLE_PLAY_STORE_URL"):
+    app.config["GOOGLE_PLAY_STORE_URL"] = os.getenv("GOOGLE_PLAY_STORE_URL")
+else:
+    app.config["GOOGLE_PLAY_STORE_URL"] = "https://play.google.com/store/apps/details?id=me.zap.zapapp"
 
 def set_vital_setting(env_name, setting_name=None, acceptable_values=None):
     # pylint: disable=global-statement
