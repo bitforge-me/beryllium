@@ -104,9 +104,9 @@ if __name__ == "__main__":
 
     # create tables
     db.create_all()
-    create_role("admin", "super user")
-    create_role("proposer", "Can propose payments")
-    create_role("authorizer", "Can authorize payments")
+    create_role(Role.ROLE_ADMIN, "super user")
+    create_role(Role.ROLE_PROPOSER, "Can propose payments")
+    create_role(Role.ROLE_AUTHORIZER, "Can authorize payments")
     create_permission(Permission.PERMISSION_RECIEVE, "view account name")
     create_permission(Permission.PERMISSION_BALANCE, "view account balance")
     create_permission(Permission.PERMISSION_HISTORY, "view account history")

@@ -352,11 +352,18 @@ class Proposal(db.Model):
 
     def generate_defaults(self):
         self.date = datetime.datetime.now()
-        self.proposer = current_user
         self.authorizer = None
         self.date_authorized = None
         self.date_expiry = None
         self.status = self.STATE_CREATED
+
+    def authorize(self, user):
+        if self.status == Proposal.STATE_CREATED:
+            self.status = Proposal.STATE_AUTHORIZED
+            now = datetime.datetime.now()
+            self.date_authorized = now
+            self.date_expiry = now + datetime.timedelta(hours = Proposal.HOURS_EXPIRY)
+            self.authorizer = user
 
     @classmethod
     def count(cls, session):
@@ -695,6 +702,8 @@ class ProposalModelView(BaseModelView):
                 raise validators.ValidationError(msg)
             # generate model defaults
             model.generate_defaults()
+            # set proposer
+            model.proposer = current_user
             # check csv file first
             if form.csvfile.data:
                 for recipient, message, amount in csv_rows:
@@ -736,12 +745,7 @@ class ProposalModelView(BaseModelView):
             flash('Proposal not not found.', 'error')
             return redirect(return_url)
         # process the proposal
-        if proposal.status == proposal.STATE_CREATED:
-            proposal.status = proposal.STATE_AUTHORIZED
-            now = datetime.datetime.now()
-            proposal.date_authorized = now
-            proposal.date_expiry = now + datetime.timedelta(hours = Proposal.HOURS_EXPIRY)
-            proposal.authorizer = current_user
+        proposal.authorize(current_user)
         # commit to db
         try:
             self.session.commit()

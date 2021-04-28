@@ -3,9 +3,22 @@ import hashlib
 import base64
 import logging
 
-from flask import jsonify
+from flask import jsonify, request
 
 logger = logging.getLogger(__name__)
+
+AUTH_FAILED = 'authentication failed'
+OLD_NONCE = 'old nonce'
+INVALID_JSON = 'invalid json'
+INVALID_EMAIL = "invalid email"
+EMPTY_PASSWORD = "empty password"
+PHOTO_DATA_LARGE = "photo data too large"
+NOT_FOUND = "not found"
+NOT_CREATED = "not created"
+LIMIT_TOO_LARGE = 'limit too large'
+INVALID_TX = 'invalid tx'
+UNAUTHORIZED = 'unauthorized'
+INVALID_CATEGORY = 'invalid category'
 
 def bad_request(message, code=400):
     logger.warning(message)
@@ -36,3 +49,30 @@ def create_hmac_sig(api_secret, message):
     signature = _hmac.digest()
     signature = base64.b64encode(signature).decode("utf-8")
     return signature
+
+def request_get_signature():
+    return request.headers.get('X-Signature')
+
+def check_hmac_auth(api_key, nonce, sig, body):
+    if nonce <= api_key.nonce:
+        return False, OLD_NONCE
+    our_sig = create_hmac_sig(api_key.secret, body)
+    if sig == our_sig:
+        api_key.nonce = nonce
+        return True, ""
+    return False, AUTH_FAILED
+
+def check_auth(session, api_key_token, nonce, sig, body):
+    # pylint: disable=import-outside-toplevel
+    from models import ApiKey
+    api_key = ApiKey.from_token(session, api_key_token)
+    if not api_key:
+        return False, AUTH_FAILED, None
+    if not api_key.user.active:
+        return False, AUTH_FAILED, None
+    res, reason = check_hmac_auth(api_key, nonce, sig, body)
+    if not res:
+        return False, reason, None
+    # update api key nonce
+    session.commit()
+    return True, "", api_key

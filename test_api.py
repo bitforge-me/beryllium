@@ -13,7 +13,7 @@ import socketio
 
 from web_utils import create_hmac_sig
 
-URL_BASE = "http://localhost:5000/paydb/"
+URL_BASE = "http://localhost:5000/"
 WS_URL = "ws://localhost:5000/"
 
 EXIT_NO_COMMAND = 1
@@ -53,6 +53,15 @@ def construct_parser():
     parser_transaction_info.add_argument("api_key_token", metavar="API_KEY_TOKEN", type=str, help="the API KEY token")
     parser_transaction_info.add_argument("api_key_secret", metavar="API_KEY_SECRET", type=str, help="the API KEY secret")
     parser_transaction_info.add_argument("token", metavar="TOKEN", type=str, help="the unique transaction token")
+
+    parser_payment_create = subparsers.add_parser("payment_create", help="Create a token distribution payment (magic link)")
+    parser_payment_create.add_argument("api_key_token", metavar="API_KEY_TOKEN", type=str, help="the API KEY token")
+    parser_payment_create.add_argument("api_key_secret", metavar="API_KEY_SECRET", type=str, help="the API KEY secret")
+    parser_payment_create.add_argument("reason", metavar="REASON", type=str, help="the reason for the payment")
+    parser_payment_create.add_argument("category", metavar="CATEGORY", type=str, help="the category of the payment")
+    parser_payment_create.add_argument("recipient", metavar="RECIPIENT", type=str, help="the recipient of the payment")
+    parser_payment_create.add_argument("amount", metavar="AMOUNT", type=int, help="the payment amount (integer, cents)")
+    parser_payment_create.add_argument("message", metavar="MESSAGE", type=str, help="the message for the recipient")
     return parser
 
 def req(endpoint, params=None, api_key_token=None, api_key_secret=None):
@@ -73,6 +82,9 @@ def req(endpoint, params=None, api_key_token=None, api_key_secret=None):
         print("   GET - " + url)
         r = requests.get(url)
     return r
+
+def paydb_req(endpoint, params=None, api_key_token=None, api_key_secret=None):
+    return req('paydb/' + endpoint, params, api_key_token, api_key_secret)
 
 def check_request_status(r):
     try:
@@ -116,25 +128,31 @@ def websocket(args):
 
 def api_key_create(args):
     print(":: calling api_key_create..")
-    r = req("api_key_create", {"email": args.email, "password": args.password, "device_name": args.device_name})
+    r = paydb_req("api_key_create", {"email": args.email, "password": args.password, "device_name": args.device_name})
     check_request_status(r)
     print(r.text)
 
 def user_info(args):
     print(":: calling user_info..")
-    r = req("user_info", {"email": None}, args.api_key_token, args.api_key_secret)
+    r = paydb_req("user_info", {"email": None}, args.api_key_token, args.api_key_secret)
     check_request_status(r)
     print(r.text)
 
 def transaction_create(args):
     print(":: calling transaction_create..")
-    r = req("transaction_create", {"action": args.action, "recipient": args.recipient, "amount": args.amount, "attachment": args.attachment}, args.api_key_token, args.api_key_secret)
+    r = paydb_req("transaction_create", {"action": args.action, "recipient": args.recipient, "amount": args.amount, "attachment": args.attachment}, args.api_key_token, args.api_key_secret)
     check_request_status(r)
     print(r.text)
 
 def transaction_info(args):
     print(":: calling transaction_info..")
-    r = req("transaction_info", {"token": args.token}, args.api_key_token, args.api_key_secret)
+    r = paydb_req("transaction_info", {"token": args.token}, args.api_key_token, args.api_key_secret)
+    check_request_status(r)
+    print(r.text)
+
+def payment_create(args):
+    print(":: calling payment_create..")
+    r = req("payment_create", {"reason": args.reason, "category": args.category, "recipient": args.recipient, "amount": args.amount, "message": args.message}, args.api_key_token, args.api_key_secret)
     check_request_status(r)
     print(r.text)
 
@@ -155,6 +173,8 @@ def run_parser():
         function = transaction_create
     elif args.command == "transaction_info":
         function = transaction_info
+    elif args.command == "payment_create":
+        function = payment_create
     else:
         parser.print_help()
         sys.exit(EXIT_NO_COMMAND)
