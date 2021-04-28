@@ -14,10 +14,13 @@
             <div class="card-body">
                 <h5 class="card-title">Claim Payment</h5>
                 <p class="card-text">
+                    Amount: {{payment.amount|int2asset}} {{ config["ASSET_NAME"] }}
+                    <br/>
+                    Expiry Date: {{payment.proposal.date_expiry.strftime('%Y-%m-%d %H:%M')}}
+                    <br/>
+                    Message: {{payment.message}}
+                    <br/>
                 <center>
-                    <h6>You can claim a payment of {{payment.amount|int2asset}} {{ config["ASSET_NAME"] }}</h6>
-                    <p>Expiry Date: {{payment.proposal.date_expiry.strftime('%Y-%m-%d %H:%M')}}</p>
-                    <p>Message: {{payment.message}}</p>
                     {%if payment.status == payment.STATE_SENT_FUNDS%}
                         Sent!
                     {%else%}
@@ -29,7 +32,7 @@
                                     <br/>
                                     <p>Scan the QR code or click the link to claim your {{config["ASSET_NAME"]}}.</p>
                                 </a>
-                                <button type="submit" class="btn btn-primary"
+                                <button type="submit" class="btn btn-secondary btn-sm"
                                     onclick="$('#form').show(); $('#qrcode').hide(); return false;">
                                     Submit manually</button>
                             </div>
@@ -44,13 +47,13 @@
                             <br/>
                             <a href={{ config["APPLE_APP_STORE_URL"] }} target="_blank" class="btn btn-outline-secondary btn-sm">
                                 <svg viewBox="0 0 28 28" style="vertical-align: bottom" width="20" height="20">
-                                     <use xlink:href="#icon-apple"></use>
+                                    <use xlink:href="#icon-apple"></use>
                                 </svg>
                                 {{config["ASSET_NAME"]}} app @ apple store
                             </a>
                             <a href={{ config["GOOGLE_PLAY_STORE_URL"] }} target="_blank" class="btn btn-outline-secondary btn-sm">
                                 <svg viewBox="0 0 28 28" style="vertical-align: bottom" width="20" height="20">
-                                     <use xlink:href="#icon-google"></use>
+                                    <use xlink:href="#icon-google"></use>
                                 </svg>
                                 {{config["ASSET_NAME"]}} app @ google play
                             </a>
