@@ -39,7 +39,7 @@ else:
     app.config["LOGO_URL_SRC"] = "http://" + os.getenv("SERVER_NAME") + "/static/assets/img/logo.svg"
 
 if os.getenv("LOGO_EMAIL_SRC"):
-    app.config["LOGO_EMAIL_SRC"] = os.getenv("LOGO_EMAIL_SRC") 
+    app.config["LOGO_EMAIL_SRC"] = os.getenv("LOGO_EMAIL_SRC")
 else:
     app.config["LOGO_EMAIL_SRC"] = "http://" + os.getenv("SERVER_NAME") + "/static/assets/img/logo.png"
 

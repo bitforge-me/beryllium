@@ -14,10 +14,10 @@ class FCM:
         else:
             try:
                 json.loads(firebase_credentials)
-                fp = tempfile.NamedTemporaryFile(mode='w')
-                fp.write(firebase_credentials)
-                fp.flush()
-                self.init_firebase(fp.name)
+                with tempfile.NamedTemporaryFile(mode='w') as fp:
+                    fp.write(firebase_credentials)
+                    fp.flush()
+                    self.init_firebase(fp.name)
             except Exception as e: # pylint: disable=broad-except
                 logger.error(e)
                 logger.error('"firebase_credentials" failed to load from json')
