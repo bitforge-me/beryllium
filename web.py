@@ -363,7 +363,7 @@ def payment_create():
     payment = Payment(proposal, mobile, email, address, message, amount)
     db.session.add(payment)
     db.session.commit()
-    return jsonify(dict(proposal=dict(recipient=recipient, amount=amount, reason=reason, category=category, status=proposal.status, payment=dict(amount=amount, email=email, mobile=mobile, address=address, message=message, status=payment.status))))
+    return jsonify(dict(proposal=dict(reason=reason, category=category, status=proposal.status, payment=dict(amount=amount, email=email, mobile=mobile, address=address, message=message, status=payment.status))))
 
 @app.route("/dashboard")
 @roles_accepted(Role.ROLE_ADMIN)
