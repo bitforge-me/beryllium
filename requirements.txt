@@ -16,3 +16,6 @@ pywaves==0.8.14
 pysha3==1.0.2
 qrcode==6.1
 firebase-admin==4.5.0
+python-gettext==4.0
+duplicity==0.8.19
+b2sdk==1.7.0

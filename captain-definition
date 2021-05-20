@@ -5,10 +5,12 @@
                 "COPY ./ /app",
                 "WORKDIR /app",
                 "RUN apt-get update",
-                "RUN apt-get install -y build-essential libpq-dev",
+                "RUN apt-get install -y build-essential libpq-dev postgresql-client cron nano gettext librsync-dev",
                 "RUN pip3 install --upgrade pip",
                 "RUN pip3 install -r requirements.txt",
-                "CMD [ \"python3\", \"app.py\" ]",
+                "RUN chmod +x backup_cron.sh",
+                "RUN (crontab -l; echo '0 15 * * * /app/backup_cron.sh >> /var/log/cron.log 2>&1') | crontab -",
+                "CMD service cron start && python3 app.py",
                 "EXPOSE 5000"
         ]
 }
