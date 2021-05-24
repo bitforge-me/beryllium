@@ -82,7 +82,7 @@ def user_register():
         return bad_request(web_utils.INVALID_EMAIL)
     if not password:
         return bad_request(web_utils.EMPTY_PASSWORD)
-    if len(photo) > 50000:
+    if photo and len(photo) > 50000:
         return bad_request(web_utils.PHOTO_DATA_LARGE)
     req = UserCreateRequest(first_name, last_name, email, photo, photo_type, encrypt_password(password))
     user = User.from_email(db.session, email)
