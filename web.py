@@ -190,10 +190,15 @@ def process_proposals():
             for payment in proposal.payments:
                 if payment.status == payment.STATE_CREATED:
                     if payment.email:
-                        utils.email_payment_claim(logger, app.config["ASSET_NAME"], payment, proposal.HOURS_EXPIRY)
-                        payment.status = payment.STATE_SENT_CLAIM_LINK
-                        db.session.add(payment)
-                        logger.info("Sent payment claim url to %s", payment.email)
+                        if SERVER_MODE == SERVER_MODE_PAYDB and User.from_email(db.session, payment.email):
+                            _process_claim_paydb(payment, payment.email)
+                            utils.email_payment_sent(logger, app.config["ASSET_NAME"], payment)
+                            logger.info("Sent payment to %s", payment.email)
+                        else:
+                            utils.email_payment_claim(logger, app.config["ASSET_NAME"], payment, proposal.HOURS_EXPIRY)
+                            payment.status = payment.STATE_SENT_CLAIM_LINK
+                            db.session.add(payment)
+                            logger.info("Sent payment claim url to %s", payment.email)
                         emails += 1
                     elif payment.mobile:
                         utils.sms_payment_claim(logger, app.config["ASSET_NAME"], payment, proposal.HOURS_EXPIRY)
@@ -254,17 +259,23 @@ def process_claim_waves(payment, dbtx, recipient, asset_id):
         return dbtx, ex.message
     return dbtx, None
 
-def process_claim_paydb(payment, recipient):
-    if payment.proposal.status != payment.proposal.STATE_AUTHORIZED:
-        return "payment not authorized"
-    if payment.status != payment.STATE_SENT_CLAIM_LINK:
-        return "payment not authorized"
-    # create transaction
+def _process_claim_paydb(payment, recipient):
+    # create transaction, assumes payment hase been validated
     tx, _ = paydb_core.tx_transfer_authorized(db.session, OPERATIONS_ACCOUNT, recipient, payment.amount, "")
     if tx:
         payment.txid = tx.token
         payment.status = payment.STATE_SENT_FUNDS
         db.session.add(payment)
+        return tx
+    return None
+
+
+def process_claim_paydb(payment, recipient):
+    if payment.proposal.status != payment.proposal.STATE_AUTHORIZED:
+        return "payment not authorized"
+    if payment.status != payment.STATE_SENT_CLAIM_LINK:
+        return "payment not authorized"
+    if _process_claim_paydb(payment, recipient):
         db.session.commit()
         return None
     return 'claim failed'

@@ -36,6 +36,10 @@ def email_payment_claim(logger, asset_name, payment, hours_expiry):
     msg = f"You have a {asset_name} payment waiting!<br/><br/>Claim your payment <a href='{url}'>here</a><br/><br/>Claim within {hours_expiry} hours"
     send_email(logger, f"Claim your {asset_name} payment", msg, payment.email)
 
+def email_payment_sent(logger, asset_name, payment):
+    msg = f"You have been sent a {asset_name} payment!<br/><br/>Check your app for details"
+    send_email(logger, f"Received {asset_name} payment", msg, payment.email)
+
 def email_user_create_request(logger, req, minutes_expiry):
     url = url_for("paydb.user_registration_confirm", token=req.token, _external=True)
     msg = f"You have a pending user registration waiting!<br/><br/>Confirm your registration <a href='{url}'>here</a><br/><br/>Confirm within {minutes_expiry} minutes"
