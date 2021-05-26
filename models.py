@@ -193,6 +193,7 @@ class ApiKeyRequest(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     token = db.Column(db.String(255), unique=True, nullable=False)
+    secret = db.Column(db.String(255), unique=True, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     user = db.relationship('User', backref=db.backref('api_key_requests', lazy='dynamic'))
     device_name = db.Column(db.String(255))
@@ -202,6 +203,7 @@ class ApiKeyRequest(db.Model):
 
     def __init__(self, user, device_name):
         self.token = secrets.token_urlsafe(8)
+        self.secret = secrets.token_urlsafe(16)
         self.user = user
         self.device_name = device_name
         self.expiry = datetime.datetime.now() + datetime.timedelta(self.MINUTES_EXPIRY)

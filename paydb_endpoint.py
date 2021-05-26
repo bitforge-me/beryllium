@@ -182,12 +182,15 @@ def api_key_claim():
     db.session.commit()
     return jsonify(dict(token=api_key.token, secret=api_key.secret, device_name=api_key.device_name, expiry=api_key.expiry))
 
-@paydb.route('/api_key_confirm/<token>', methods=['GET', 'POST'])
-def api_key_confirm(token=None):
+@paydb.route('/api_key_confirm/<token>/<secret>', methods=['GET', 'POST'])
+def api_key_confirm(token=None, secret=None):
     req = ApiKeyRequest.from_token(db.session, token)
     if not req:
         time.sleep(5)
         flash('API KEY request not found.', 'danger')
+        return redirect('/')
+    if req.secret != secret:
+        flash('API KEY code invalid.', 'danger')
         return redirect('/')
     now = datetime.datetime.now()
     if now > req.expiry:
