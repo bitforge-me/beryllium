@@ -2,7 +2,6 @@ import json
 import base64
 import struct
 import os
-import hashlib
 import logging
 
 import requests
@@ -12,6 +11,7 @@ import sha3
 import pyblake2
 from flask_jsonrpc.exceptions import OtherError
 
+from utils import str2bytes
 from models import WavesTx
 from app_core import app
 
@@ -46,16 +46,9 @@ logger = logging.getLogger(__name__)
 def throw_error(msg):
     raise Exception(msg)
 
-def str2bytes(string):
-    # warning this method is flawed with some input
-    return string.encode("latin-1")
-
 def sign(privkey, message):
     random64 = os.urandom(64)
     return base58.b58encode(curve.calculateSignature(random64, base58.b58decode(privkey), message))
-
-def sha256(data):
-    return hashlib.sha256(data).digest()
 
 def waves_hash(data):
     hash1 = pyblake2.blake2b(data, digest_size=32).digest()

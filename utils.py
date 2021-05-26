@@ -2,6 +2,7 @@ import os
 import binascii
 import re
 import io
+import hashlib
 
 import pywaves
 from sendgrid import SendGridAPIClient
@@ -81,3 +82,12 @@ def qrcode_svg_create(data, box_size=10):
     img.save(output)
     svg = output.getvalue().decode('utf-8')
     return svg
+
+def str2bytes(string):
+    # warning this method is flawed with some input
+    return string.encode("latin-1")
+
+def sha256(string):
+    data = str2bytes(string)
+    hash = hashlib.sha256(data).digest()
+    return binascii.hexlify(hash).decode()
