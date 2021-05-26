@@ -89,5 +89,5 @@ def str2bytes(string):
 
 def sha256(string):
     data = str2bytes(string)
-    hash = hashlib.sha256(data).digest()
-    return binascii.hexlify(hash).decode()
+    raw_hash = hashlib.sha256(data).digest()
+    return binascii.hexlify(raw_hash).decode()
