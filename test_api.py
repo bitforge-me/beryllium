@@ -62,6 +62,16 @@ def construct_parser():
     parser_payment_create.add_argument("recipient", metavar="RECIPIENT", type=str, help="the recipient of the payment")
     parser_payment_create.add_argument("amount", metavar="AMOUNT", type=int, help="the payment amount (integer, cents)")
     parser_payment_create.add_argument("message", metavar="MESSAGE", type=str, help="the message for the recipient")
+
+    parser_stash_save = subparsers.add_parser("stash_save", help="Save a user stash")
+    parser_stash_save.add_argument("key", metavar="KEY", type=str, help="The name of the stash")
+    parser_stash_save.add_argument("email", metavar="EMAIL", type=str, help="The email address to send confirmation")
+    parser_stash_save.add_argument("iv", metavar="IV", type=str, help="IV")
+    parser_stash_save.add_argument("cyphertext", metavar="CYPHERTEXT", type=str, help="cyphertext")
+    parser_stash_save.add_argument("question", metavar="QUESTION", type=str, help="question")
+
+    parser_stash_save_check = subparsers.add_parser("stash_save_check", help="Check a user stash request")
+    parser_stash_save_check.add_argument("token", metavar="TOKEN", type=str, help="The request token")
     return parser
 
 def req(endpoint, params=None, api_key_token=None, api_key_secret=None):
@@ -85,6 +95,9 @@ def req(endpoint, params=None, api_key_token=None, api_key_secret=None):
 
 def paydb_req(endpoint, params=None, api_key_token=None, api_key_secret=None):
     return req('paydb/' + endpoint, params, api_key_token, api_key_secret)
+
+def stash_req(endpoint, params=None):
+    return req('stash/' + endpoint, params)
 
 def check_request_status(r):
     try:
@@ -156,6 +169,18 @@ def payment_create(args):
     check_request_status(r)
     print(r.text)
 
+def stash_save(args):
+    print(":: calling save..")
+    r = stash_req("save", {"key": args.key, "email": args.email, "iv": args.iv, "cyphertext": args.cyphertext, "question": args.question})
+    check_request_status(r)
+    print(r.text)
+
+def stash_save_check(args):
+    print(":: calling save_check..")
+    r = stash_req("save_check/" +  args.token)
+    check_request_status(r)
+    print(r.text)
+
 def run_parser():
     # parse arguments
     parser = construct_parser()
@@ -175,6 +200,10 @@ def run_parser():
         function = transaction_info
     elif args.command == "payment_create":
         function = payment_create
+    elif args.command == "stash_save":
+        function = stash_save
+    elif args.command == "stash_save_check":
+        function = stash_save_check
     else:
         parser.print_help()
         sys.exit(EXIT_NO_COMMAND)

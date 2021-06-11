@@ -12,7 +12,7 @@ from flask_security.utils import encrypt_password
 import web
 import utils
 from app_core import MISSING_VITAL_SETTING, app, db
-from models import user_datastore, User, Role, Category, Permission
+from models import user_datastore, User, Role, Category, Permission, Topic
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +70,13 @@ def create_category(name, desc):
     db.session.add(category)
     return category
 
+def create_topic(name):
+    topic = Topic.from_name(db.session, name)
+    if not topic:
+        topic = Topic(topic=name)
+    db.session.add(topic)
+    return topic
+
 def add_role(email, role_name):
     with app.app_context():
         user = User.from_email(db.session, email)
@@ -115,6 +122,8 @@ if __name__ == "__main__":
     create_category("marketing", "")
     create_category("misc", "")
     create_category("testing", "")
+    create_topic("test")
+    create_topic("general")
     db.session.commit()
 
     # process commands

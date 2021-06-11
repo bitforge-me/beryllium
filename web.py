@@ -9,6 +9,7 @@ import json
 import datetime
 import decimal
 from urllib.parse import urlparse
+import math
 
 import gevent
 from flask import render_template, request, flash, jsonify
@@ -19,11 +20,11 @@ import requests
 import pywaves
 
 from app_core import app, db, socketio, SERVER_MODE_WAVES, SERVER_MODE_PAYDB
-from models import Role, User, WavesTx, Proposal, Payment, Topic, Category
+from models import Role, User, WavesTx, Proposal, Payment, Topic, Category, PushNotificationLocation
 import utils
 from fcm import FCM
 import web_utils
-from web_utils import bad_request, get_json_params, request_get_signature, check_auth
+from web_utils import bad_request, get_json_params, get_json_params_optional, request_get_signature, check_auth
 import paydb_core
 # pylint: disable=unused-import
 import admin
@@ -44,7 +45,7 @@ if SERVER_MODE == SERVER_MODE_WAVES:
     ADDRESS = app.config["WALLET_ADDRESS"]
     ASSET_ID = app.config["ASSET_ID"]
     TESTNET = app.config["TESTNET"]
-    # paydb blueprint
+    # master wallet blueprint
     from mw_endpoint import mw
     app.register_blueprint(mw, url_prefix='/mw')
 elif SERVER_MODE == SERVER_MODE_PAYDB:
@@ -52,6 +53,10 @@ elif SERVER_MODE == SERVER_MODE_PAYDB:
     # paydb blueprint
     from paydb_endpoint import paydb
     app.register_blueprint(paydb, url_prefix='/paydb')
+if app.config["USE_STASH"]:
+    # stash blueprint
+    from stash_endpoint import stash_bp
+    app.register_blueprint(stash_bp, url_prefix='/stash')
 
 def logger_setup(level, handler):
     logger.setLevel(level)
@@ -391,24 +396,58 @@ def dashboard():
     data["total_balance"] = from_int_to_user_friendly(data["total_balance"], 100)
     return render_template("dashboard_paydb.html", data=data)
 
+# https://gis.stackexchange.com/a/2964
+def meters_to_lat_lon_displacement(meters, origin_latitude):
+    lat = meters / 111111
+    lon = meters / (111111 * math.cos(math.radians(origin_latitude)))
+    return lat, lon
+
 @app.route("/push_notifications", methods=["GET", "POST"])
 @roles_accepted(Role.ROLE_ADMIN)
 def push_notifications():
+    type_ = ''
+    topic = ''
+    title = ''
+    body = ''
+    image = ''
+    html = ''
+    location = ''
+    registration_token = ''
     if request.method == "POST":
         title = request.form["title"]
         body = request.form["body"]
+        image = request.form["image"]
+        html = request.form["html"]
         try:
-            if request.form["type"] == "topic":
+            type_ = request.form["type"]
+            if type_ == "topic":
                 topic = request.form["topic"]
-                fcm.send_to_topic(topic, title, body)
+                fcm.send_to_topic(topic, title, body, image, html)
+                flash(f"sent push notification ({topic})", "success")
+            elif type_ == "location":
+                location = request.form["location"]
+                parts = location.split(',')
+                if len(parts) != 4:
+                    raise Exception('invalid location parameter')
+                latitude, longitude, max_dist_meters, max_age_minutes = parts
+                latitude = float(latitude)
+                longitude = float(longitude)
+                max_dist_meters = int(max_dist_meters)
+                max_age_minutes = int(max_age_minutes)
+                max_lat_delta, max_long_delta = meters_to_lat_lon_displacement(max_dist_meters, latitude)
+                tokens = PushNotificationLocation.tokens_at_location(db.session, latitude, max_lat_delta, longitude, max_long_delta, max_age_minutes)
+                tokens = [x.fcm_registration_token for x in tokens]
+                fcm.send_to_tokens(tokens, title, body, image, html)
+                count = len(tokens)
+                flash(f"sent push notification ({count} devices)", "success")
             else:
                 registration_token = request.form["registration_token"]
-                fcm.send_to_token(registration_token, title, body)
-            flash("sent push notification", "success")
+                fcm.send_to_tokens([registration_token], title, body, image, html)
+                flash("sent push notification", "success")
         except Exception as e: # pylint: disable=broad-except
             flash("{}".format(str(e.args[0])), "danger")
     topics = Topic.topic_list(db.session)
-    return render_template("push_notifications.html", topics=topics)
+    return render_template("push_notifications.html", topics=topics, type_=type_, topic=topic, location=location, title=title, body=body, image=image, html=html, registration_token=registration_token)
 
 @app.route("/push_notifications_register", methods=["POST"])
 def push_notifications_register():
@@ -419,8 +458,19 @@ def push_notifications_register():
     if err_response:
         return err_response
     registration_token, = params
+    latitude, longitude = get_json_params_optional(content, ["latitude", "longitude"])
     topics = Topic.topic_list(db.session)
     fcm.subscribe_to_topics(registration_token, topics)
+    if latitude and longitude:
+        latitude = float(latitude)
+        longitude = float(longitude)
+        push_location = PushNotificationLocation.from_token(db.session, registration_token)
+        if push_location:
+            push_location.update(latitude, longitude)
+        else:
+            push_location = PushNotificationLocation(registration_token, latitude, longitude)
+        db.session.add(push_location)
+        db.session.commit()
     return jsonify(dict(result="ok"))
 
 ##

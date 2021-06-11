@@ -39,6 +39,15 @@ def get_json_params(json_content, param_names):
         return param_values, bad_request(f"'{param_name}' not found")
     return param_values, None
 
+def get_json_params_optional(json_content, param_names):
+    param_values = []
+    for param in param_names:
+        try:
+            param_values.append(json_content[param])
+        except Exception: # pylint: disable=broad-except
+            param_values.append(None)
+    return param_values
+
 def to_bytes(data):
     if not isinstance(data, (bytes, bytearray)):
         return data.encode("utf-8")

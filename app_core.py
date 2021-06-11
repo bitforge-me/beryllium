@@ -53,6 +53,11 @@ if os.getenv("GOOGLE_PLAY_STORE_URL"):
 else:
     app.config["GOOGLE_PLAY_STORE_URL"] = "https://play.google.com/store/apps/details?id=me.zap.zapapp"
 
+if os.getenv("USE_STASH"):
+    app.config["USE_STASH"] = True
+else:
+    app.config["USE_STASH"] = False
+
 def set_vital_setting(env_name, setting_name=None, acceptable_values=None):
     # pylint: disable=global-statement
     global MISSING_VITAL_SETTING

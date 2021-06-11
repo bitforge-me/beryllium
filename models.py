@@ -26,11 +26,11 @@ from wtforms.fields import TextField, DecimalField, FileField
 from wtforms import validators
 from marshmallow import Schema, fields
 from markupsafe import Markup
-from sqlalchemy import or_
+from sqlalchemy import or_, and_
 from sqlalchemy.exc import SQLAlchemyError, DBAPIError
 
 from app_core import app, db
-from utils import generate_key, is_email, is_mobile, is_address
+from utils import generate_key, is_email, is_mobile, is_address, sha256
 
 logger = logging.getLogger(__name__)
 
@@ -1007,6 +1007,10 @@ class Topic(db.Model):
     def topic_list(cls, session):
         return [row.topic for row in session.query(cls.topic)]
 
+    @classmethod
+    def from_name(cls, session, name):
+        return session.query(cls).filter(cls.topic == name).first()
+
     def __repr__(self):
         return '<Topic %r %r>' % self.topic
 
@@ -1048,3 +1052,102 @@ class PayDbUserTransactionsView(BaseModelView):
 
     def get_count_query(self):
         return self.session.query(db.func.count('*')).filter(or_(self.model.sender_token == current_user.token, self.model.recipient_token == current_user.token)) # pylint: disable=no-member
+
+class UserStash(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String)
+    email_hash = db.Column(db.String, nullable=False, unique=True)
+    iv = db.Column(db.String)
+    cyphertext = db.Column(db.String)
+    question = db.Column(db.String)
+
+    def __init__(self, stash_request):
+        self.key = stash_request.key
+        self.email_hash = stash_request.email_hash
+        self.iv = stash_request.iv # pylint: disable=invalid-name
+        self.cyphertext = stash_request.cyphertext
+        self.question = stash_request.question
+
+    @classmethod
+    def from_email_hash(cls, session, key, email_hash):
+        return session.query(cls).filter(and_(cls.key == key, cls.email_hash == email_hash)).first()
+
+class UserStashRequest(db.Model):
+    MINUTES_EXPIRY = 30
+    ACTION_SAVE = 'save'
+    ACTION_LOAD = 'load'
+
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String)
+    email_hash = db.Column(db.String, nullable=False)
+    iv = db.Column(db.String)
+    cyphertext = db.Column(db.String)
+    question = db.Column(db.String)
+
+    action = db.Column(db.String)
+    token = db.Column(db.String, unique=True)
+    secret = db.Column(db.String)
+    expiry = db.Column(db.DateTime())
+
+    created_stash_id = db.Column(db.Integer, db.ForeignKey('user_stash.id'))
+    created_stash = db.relationship('UserStash', foreign_keys=[created_stash_id])
+    loaded_stash_id = db.Column(db.Integer, db.ForeignKey('user_stash.id'))
+    loaded_stash = db.relationship('UserStash', foreign_keys=[loaded_stash_id])
+
+    def __init__(self, key, email, iv, cyphertext, question, action):
+        self.key = key
+        self.email_hash = sha256(email)
+        self.iv = iv # pylint: disable=invalid-name
+        self.cyphertext = cyphertext
+        self.question = question
+        self.action = action
+        self.token = secrets.token_urlsafe(8)
+        self.secret = secrets.token_urlsafe(16)
+        self.expiry = datetime.datetime.now() + datetime.timedelta(self.MINUTES_EXPIRY)
+
+    @classmethod
+    def from_token(cls, session, token):
+        return session.query(cls).filter(cls.token == token).first()
+
+class PushNotificationLocation(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    fcm_registration_token = db.Column(db.String, nullable=False)
+    latitude = db.Column(db.Float, nullable=False)
+    longitude = db.Column(db.Float, nullable=False)
+    date = db.Column(db.DateTime(), nullable=False)
+
+    def __init__(self, registration_token, latitude, longitude):
+        self.fcm_registration_token = registration_token
+        self.update(latitude, longitude)
+
+    def update(self, latitude, longitude):
+        self.latitude = latitude
+        self.longitude = longitude
+        self.date = datetime.datetime.now()
+
+    @classmethod
+    def from_token(cls, session, token):
+        return session.query(cls).filter(cls.fcm_registration_token == token).first()
+
+    @classmethod
+    def tokens_at_location(cls, session, latitude, max_lat_delta, longitude, max_long_delta, max_age_minutes):
+        since = datetime.datetime.now() - datetime.timedelta(minutes=max_age_minutes)
+        return session.query(cls).filter(and_(cls.date >= since, and_(and_(cls.latitude <= latitude + max_lat_delta, cls.latitude >= latitude - max_lat_delta), and_(cls.longitude <= longitude + max_long_delta, cls.longitude >= longitude - max_long_delta)))).all()
+
+class PushNotificationLocationModelView(RestrictedModelView):
+    can_create = False
+    can_delete = False
+    can_edit = False
+
+    def _format_location(view, context, model, name):
+        lat = model.latitude
+        lon = model.longitude
+
+        # pylint: disable=duplicate-string-formatting-argument
+        html = '''
+        <a href="http://www.google.com/maps/place/{},{}">{}, {}</a>
+        '''.format(lat, lon, lat, lon)
+        return Markup(html)
+
+    column_list = ['date', 'location', 'fcm_registration_token']
+    column_formatters = {'location': _format_location}

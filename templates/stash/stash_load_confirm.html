@@ -1,0 +1,21 @@
+{% extends "layout.html" %}
+
+{% block content %}
+    <div class="row justify-content-center">
+    <div class="col-sm-6">
+
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">STASH Load Request</h5>
+                <form method="POST">
+                    <h6>Key:</h6>
+                    <span>{{req.key}}</span>
+                    <br>
+                    <br>
+                    <button type="submit" class="btn btn-primary" name="confirm" value="true">Load STASH</button>
+                    <button type="submit" class="btn btn-primary" name="confirm" value="false">Cancel</button>
+                </form>
+            </div>
+        </div>
+
+{% endblock %}
