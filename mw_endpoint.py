@@ -112,7 +112,7 @@ def tx_create():
     dbtx = WavesTx.from_txid(db.session, txid)
     if dbtx:
         return bad_request("txid already exists")
-    dbtx = WavesTx(txid, type, tx_utils.CTX_CREATED, amount, False, json.dumps(tx))
+    dbtx = WavesTx(txid, type_, tx_utils.CTX_CREATED, amount, False, json.dumps(tx))
     db.session.add(dbtx)
     db.session.commit()
     return jsonify(dict(txid=txid, state=tx_utils.CTX_CREATED, tx=tx))
