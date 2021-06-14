@@ -133,6 +133,34 @@ class UserCreateRequest(db.Model):
     def __str__(self):
         return self.email
 
+class UserUpdateEmailRequest(db.Model):
+
+    MINUTES_EXPIRY = 30
+
+    id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String(255), unique=True, nullable=False)
+    email = db.Column(db.String(255))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref=db.backref('update_email_requests', lazy='dynamic'))
+    expiry = db.Column(db.DateTime())
+
+    def __init__(self, user, email):
+        self.token = secrets.token_urlsafe(8)
+        self.user = user
+        self.email = email
+        self.expiry = datetime.datetime.now() + datetime.timedelta(self.MINUTES_EXPIRY)
+
+    @classmethod
+    def from_email(cls, session, email):
+        return session.query(cls).filter(cls.email == email).first()
+
+    @classmethod
+    def from_token(cls, session, token):
+        return session.query(cls).filter(cls.token == token).first()
+
+    def __str__(self):
+        return self.email
+
 permissions_api_keys = db.Table(
     'permissions_api_keys',
     db.Column('api_key_id', db.Integer(), db.ForeignKey('api_key.id')),

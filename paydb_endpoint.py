@@ -14,7 +14,7 @@ import web_utils
 from web_utils import bad_request, get_json_params, request_get_signature, check_auth
 import utils
 from app_core import db, socketio
-from models import user_datastore, User, UserCreateRequest, Permission, ApiKey, ApiKeyRequest, PayDbTransaction
+from models import user_datastore, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, PayDbTransaction
 import paydb_core
 
 logger = logging.getLogger(__name__)
@@ -242,6 +242,71 @@ def user_info():
         perms = [perm.name for perm in api_key.permissions]
         return jsonify(dict(email=user.email, balance=balance, photo=user.photo, photo_type=user.photo_type, roles=roles, permissions=perms))
     return jsonify(dict(email=user.email, balance=-1, photo=user.photo, photo_type=user.photo_type, roles=[], permissions=[]))
+
+@paydb.route('/user_update_email', methods=['GET', 'POST'])
+def user_update_email():
+    sig = request_get_signature()
+    content = request.get_json(force=True)
+    if content is None:
+        return bad_request(web_utils.INVALID_JSON)
+    params, err_response = get_json_params(content, ["api_key", "nonce", "email"])
+    if err_response:
+        return err_response
+    api_key, nonce, email = params
+    res, reason, api_key = check_auth(db.session, api_key, nonce, sig, request.data)
+    if not res:
+        return bad_request(reason)
+    user = User.from_email(db.session, email)
+    if user:
+        time.sleep(5)
+        return bad_request(web_utils.USER_EXISTS)
+    req = UserUpdateEmailRequest(api_key.user, email)
+    utils.email_user_update_email_request(logger, req, req.MINUTES_EXPIRY)
+    db.session.add(req)
+    db.session.commit()
+    return 'ok'
+
+@paydb.route('/user_update_email_confirm/<token>', methods=['GET'])
+def user_update_email_confirm(token=None):
+    req = UserUpdateEmailRequest.from_token(db.session, token)
+    if not req:
+        flash('User update email request not found.', 'danger')
+        return redirect('/')
+    now = datetime.datetime.now()
+    if now > req.expiry:
+        flash('User update email request expired.', 'danger')
+        return redirect('/')
+    user = User.from_email(db.session, req.email)
+    if user:
+        time.sleep(5)
+        return bad_request(web_utils.USER_EXISTS)
+    user = req.user
+    user.email = req.email
+    db.session.add(user)
+    db.session.delete(req)
+    db.session.commit()
+    flash('User email updated.', 'success')
+    return redirect('/')
+
+@paydb.route('/user_update_photo', methods=['GET', 'POST'])
+def user_update_photo():
+    sig = request_get_signature()
+    content = request.get_json(force=True)
+    if content is None:
+        return bad_request(web_utils.INVALID_JSON)
+    params, err_response = get_json_params(content, ["api_key", "nonce", "photo", "photo_type"])
+    if err_response:
+        return err_response
+    api_key, nonce, photo, photo_type = params
+    res, reason, api_key = check_auth(db.session, api_key, nonce, sig, request.data)
+    if not res:
+        return bad_request(reason)
+    user = api_key.user
+    user.photo = photo
+    user.photo_type = photo_type
+    db.session.add(user)
+    db.session.commit()
+    return jsonify(dict(photo=user.photo, photo_type=user.photo_type))
 
 @paydb.route('/user_transactions', methods=['POST'])
 def user_transactions():
