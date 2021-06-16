@@ -113,4 +113,4 @@ set_vital_setting("FIREBASE_CREDENTIALS")
 
 db = SQLAlchemy(app)
 mail = MailSendGrid(app)
-socketio = SocketIO(app)
+socketio = SocketIO(app, cors_allowed_origins='*')
