@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en-US">
+    <head>
+        <meta charset="utf-8">
+    </head>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.2/rollups/hmac-sha256.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.2/components/enc-base64-min.js"></script>
+<script>
+
+    const URL_BASE = "https://premio-demo.caprover.acuerdo.dev/"
+    const WS_URL = "wws://premio-demo.caprover.acuerdo.dev/"
+    
+    const apikey = 'XXXXX';
+    const apisecret = 'XXXXX';
+
+    async function postPayDb(endpoint, params) {
+        params['api_key'] = apikey;
+        params['nonce'] = Math.floor(new Date().getTime() / 1000);
+        var body = JSON.stringify(params);
+        console.log(body);
+
+        var hash = CryptoJS.HmacSHA256(body, apisecret);
+        var sig = CryptoJS.enc.Base64.stringify(hash);
+        console.log(sig);
+
+        const response = await fetch(URL_BASE + endpoint, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-Signature': sig},
+            body: body
+        });
+        console.log(response.status);
+    
+        return await response.json();
+    }
+
+    postPayDb('paydb/user_info', {email: null}).then((res) => console.log(JSON.stringify(res)));
+</script>
+
+</html>
