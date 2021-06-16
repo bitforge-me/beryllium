@@ -7,11 +7,15 @@ import sys
 import argparse
 import time
 import json
+import logging
 
 import requests
 import socketio
 
 from web_utils import create_hmac_sig
+from utils import log_socketio_version, setup_logging
+
+logger = logging.getLogger(__name__)
 
 URL_BASE = "http://localhost:5000/"
 WS_URL = "ws://localhost:5000/"
@@ -240,4 +244,6 @@ def run_parser():
         function(args)
 
 if __name__ == "__main__":
+    setup_logging(logger, logging.DEBUG)
+    log_socketio_version(logger)
     run_parser()

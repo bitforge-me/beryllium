@@ -16,17 +16,6 @@ from models import user_datastore, User, Role, Category, Permission, Topic
 
 logger = logging.getLogger(__name__)
 
-def setup_logging(level):
-    # setup logging
-    logger.setLevel(level)
-    ch = logging.StreamHandler()
-    ch.setLevel(level)
-    ch.setFormatter(logging.Formatter('[%(name)s %(levelname)s] %(message)s'))
-    logger.addHandler(ch)
-    web.logger_setup(level, ch)
-    # clear loggers set by any imported modules
-    logging.getLogger().handlers.clear()
-
 def teardown_logging():
     # fix this bug: https://bugs.python.org/issue21149
     logger.handlers.clear()
@@ -107,7 +96,9 @@ def g_exception(greenlet):
 
 KEEP_RUNNING = True
 if __name__ == "__main__":
-    setup_logging(logging.DEBUG)
+    ch = utils.setup_logging(logger, logging.DEBUG)
+    web.logger_setup(logging.DEBUG, ch)
+    utils.log_socketio_version(logger)
 
     # create tables
     db.create_all()

@@ -3,6 +3,8 @@ import binascii
 import re
 import io
 import hashlib
+import logging
+from importlib.metadata import version
 
 import pywaves
 from sendgrid import SendGridAPIClient
@@ -110,3 +112,18 @@ def sha256(string):
     data = str2bytes(string)
     raw_hash = hashlib.sha256(data).digest()
     return binascii.hexlify(raw_hash).decode()
+
+def log_socketio_version(logger):
+    logger.info('python-socketio version: %s', version('python-socketio'))
+    logger.info('python-engineio version: %s', version('python-engineio'))
+
+def setup_logging(logger, level):
+    # setup logging
+    logger.setLevel(level)
+    ch = logging.StreamHandler()
+    ch.setLevel(level)
+    ch.setFormatter(logging.Formatter('[%(name)s %(levelname)s] %(message)s'))
+    logger.addHandler(ch)
+    # clear loggers set by any imported modules
+    logging.getLogger().handlers.clear()
+    return ch
