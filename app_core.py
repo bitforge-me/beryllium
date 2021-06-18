@@ -7,6 +7,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_sqlalchemy import SQLAlchemy
 from flask_mail_sendgrid import MailSendGrid
 from flask_socketio import SocketIO
+from flask_cors import CORS
 
 SERVER_MODE_WAVES = 'waves'
 SERVER_MODE_PAYDB = 'paydb'
@@ -15,6 +16,8 @@ MISSING_VITAL_SETTING = False
 # Create Flask application
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
+all_origins = {"origins": "*"}
+cors = CORS(app, resources={r"/paydb/*": all_origins, r"/payment_create": all_origins})
 
 if os.getenv("DEBUG"):
     app.config["DEBUG"] = True
