@@ -80,6 +80,7 @@ def user_register():
     email, password, first_name, last_name, photo, photo_type = params
     if not utils.is_email(email):
         return bad_request(web_utils.INVALID_EMAIL)
+    email = email.lower()
     if not password:
         return bad_request(web_utils.EMPTY_PASSWORD)
     if photo and len(photo) > 50000:
@@ -88,7 +89,7 @@ def user_register():
     user = User.from_email(db.session, email)
     if user:
         time.sleep(5)
-        return 'ok'
+        return bad_request(web_utils.USER_EXISTS)
     utils.email_user_create_request(logger, req, req.MINUTES_EXPIRY)
     db.session.add(req)
     db.session.commit()
@@ -126,6 +127,9 @@ def api_key_create():
     if err_response:
         return err_response
     email, password, device_name = params
+    if not email:
+        return bad_request(web_utils.INVALID_EMAIL)
+    email = email.lower()
     user = User.from_email(db.session, email)
     if not user:
         time.sleep(5)
@@ -150,6 +154,9 @@ def api_key_request():
     if err_response:
         return err_response
     email, device_name = params
+    if not email:
+        return bad_request(web_utils.INVALID_EMAIL)
+    email = email.lower()
     user = User.from_email(db.session, email)
     if not user:
         req = ApiKeyRequest(user, device_name)
@@ -232,6 +239,8 @@ def user_info():
         return bad_request(reason)
     if not email:
         email = api_key.user.email
+    else:
+        email = email.lower()
     user = User.from_email(db.session, email)
     if not user:
         time.sleep(5)
@@ -253,6 +262,9 @@ def user_update_email():
     if err_response:
         return err_response
     api_key, nonce, email = params
+    if not email:
+        return bad_request(web_utils.INVALID_EMAIL)
+    email = email.lower()
     res, reason, api_key = check_auth(db.session, api_key, nonce, sig, request.data)
     if not res:
         return bad_request(reason)
