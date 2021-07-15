@@ -20,6 +20,7 @@ INVALID_TX = 'invalid tx'
 UNAUTHORIZED = 'unauthorized'
 INVALID_CATEGORY = 'invalid category'
 USER_EXISTS = 'user exists'
+INCORRECT_PASSWORD = 'incorrect password'
 
 def bad_request(message, code=400):
     logger.warning(message)

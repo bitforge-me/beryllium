@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 from flask import Blueprint, render_template, request, jsonify
 from flask_jsonrpc.exceptions import OtherError
 
-from app_core import app, db
+from app_core import app, db, limiter
 from models import WavesTx, WavesTxSig
 import utils
 import tx_utils
@@ -16,6 +16,7 @@ from web_utils import bad_request, get_json_params
 
 logger = logging.getLogger(__name__)
 mw = Blueprint('mw', __name__, template_folder='templates')
+limiter.limit("100 per hour")(mw)
 
 # wave specific config settings
 NODE_BASE_URL = app.config["NODE_BASE_URL"]

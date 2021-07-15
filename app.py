@@ -22,6 +22,7 @@ def teardown_logging():
     web.logger_clear()
 
 def add_user(email, password):
+    email = email.lower()
     with app.app_context():
         user = User.from_email(db.session, email)
         if user:

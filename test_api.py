@@ -2,12 +2,14 @@
 
 # pylint: disable=invalid-name
 # pylint: disable=unused-variable
+# pylint: disable-msg=too-many-statements
 
 import sys
 import argparse
 import time
 import json
 import logging
+import os
 
 import requests
 import socketio
@@ -17,8 +19,18 @@ from utils import log_socketio_version, setup_logging
 
 logger = logging.getLogger(__name__)
 
-URL_BASE = "http://localhost:5000/"
-WS_URL = "ws://localhost:5000/"
+if os.getenv("SERVER_NAME"):
+    SERVER_NAME = os.getenv("SERVER_NAME")
+else:
+    SERVER_NAME = "localhost:5000"
+
+if os.getenv("URL_SCHEMA"):
+    URL_SCHEMA = os.getenv("URL_SCHEMA")
+else:
+    URL_SCHEMA = "http"
+
+URL_BASE = "{url_schema}://{server_name}/".format(url_schema=URL_SCHEMA, server_name=SERVER_NAME)
+WS_URL = "ws://{server_name}/".format(server_name=SERVER_NAME)
 
 EXIT_NO_COMMAND = 1
 
@@ -45,10 +57,20 @@ def construct_parser():
     parser_user_info.add_argument("api_key_token", metavar="API_KEY_TOKEN", type=str, help="the API KEY token")
     parser_user_info.add_argument("api_key_secret", metavar="API_KEY_SECRET", type=str, help="the API KEY secret")
 
+    parser_user_reset_password = subparsers.add_parser("user_reset_password", help="Reset password instruction")
+    parser_user_reset_password.add_argument("api_key_token", metavar="API_KEY_TOKEN", type=str, help="the API KEY token")
+    parser_user_reset_password.add_argument("api_key_secret", metavar="API_KEY_SECRET", type=str, help="the API KEY secret")
+
     parser_user_update_email = subparsers.add_parser("user_update_email", help="Update user email")
     parser_user_update_email.add_argument("api_key_token", metavar="API_KEY_TOKEN", type=str, help="the API KEY token")
     parser_user_update_email.add_argument("api_key_secret", metavar="API_KEY_SECRET", type=str, help="the API KEY secret")
     parser_user_update_email.add_argument("email", metavar="EMAIL", type=str, help="the email address to change to")
+
+    parser_user_update_password = subparsers.add_parser("user_update_password", help="Update user password")
+    parser_user_update_password.add_argument("api_key_token", metavar="API_KEY_TOKEN", type=str, help="the API KEY token")
+    parser_user_update_password.add_argument("api_key_secret", metavar="API_KEY_SECRET", type=str, help="the API KEY secret")
+    parser_user_update_password.add_argument("current_password", metavar="CURRENT_PASSWORD", type=str, help="current user password")
+    parser_user_update_password.add_argument("new_password", metavar="NEW_PASSWORD", type=str, help="new user password")
 
     parser_user_update_photo = subparsers.add_parser("user_update_photo", help="Update user photo and photo_type")
     parser_user_update_photo.add_argument("api_key_token", metavar="API_KEY_TOKEN", type=str, help="the API KEY token")
@@ -167,9 +189,21 @@ def user_info(args):
     check_request_status(r)
     print(r.text)
 
+def user_reset_password(args):
+    print(":: calling user_reset_password..")
+    r = paydb_req("user_reset_password", {"email": None}, args.api_key_token, args.api_key_secret)
+    check_request_status(r)
+    print(r.text)
+
 def user_update_email(args):
     print(":: calling user_update_email..")
     r = paydb_req("user_update_email", {"email": args.email}, args.api_key_token, args.api_key_secret)
+    check_request_status(r)
+    print(r.text)
+
+def user_update_password(args):
+    print(":: calling user_update_password..")
+    r = paydb_req("user_update_password", {"current_password": args.current_password, "new_password": args.new_password}, args.api_key_token, args.api_key_secret)
     check_request_status(r)
     print(r.text)
 
@@ -222,8 +256,12 @@ def run_parser():
         function = api_key_create
     elif args.command == "user_info":
         function = user_info
+    elif args.command == "user_reset_password":
+        function = user_reset_password
     elif args.command == "user_update_email":
         function = user_update_email
+    elif args.command == "user_update_password":
+        function = user_update_password
     elif args.command == "user_update_photo":
         function = user_update_photo
     elif args.command == "transaction_create":

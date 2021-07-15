@@ -8,6 +8,8 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_mail_sendgrid import MailSendGrid
 from flask_socketio import SocketIO
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 SERVER_MODE_WAVES = 'waves'
 SERVER_MODE_PAYDB = 'paydb'
@@ -117,3 +119,4 @@ set_vital_setting("FIREBASE_CREDENTIALS")
 db = SQLAlchemy(app)
 mail = MailSendGrid(app)
 socketio = SocketIO(app, cors_allowed_origins='*')
+limiter = Limiter(app, key_func=get_remote_address, headers_enabled=True, default_limits=["3000 per minute"])
