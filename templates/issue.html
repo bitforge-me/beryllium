@@ -1,0 +1,56 @@
+{% extends "layout.html" %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+    <div class="row justify-content-center">
+    <div class="col-sm-10">
+
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Issue New Tokens</h5>
+                <form id="form" method="POST">
+                    <div class="form-group" id="topic-group">
+                    <div class="form-group">
+                        <label for="title">Amount</label>
+                        <input type="number" class="form-control" id="amount" name="amount" aria-describedby="amountHelp" value="{{amount}}">
+                        <small id="amountHelp" class="form-text text-muted">The amount of tokens to issue.</small>
+                    </div>
+                    <button id="form-submit" type="submit" class="btn btn-primary">Issue</button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+    </div>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+
+    $(document).ready(function() {
+        $('#form-submit').click(function() {
+            let amount = $('#amount').val();
+            bootbox.confirm({
+                message: `Are you sure you want to issue ${amount} new tokens?`,
+                buttons: {
+                    confirm: {
+                        label: 'Yes',
+                        className: 'btn-success'
+                    },
+                    cancel: {
+                        label: 'No',
+                        className: 'btn-danger'
+                    }
+                },
+                callback: function (result) {
+                    if (result)
+                        $('#form').submit();
+                }
+            });
+            return false;
+        });
+    });
+</script>
+{% endblock %}

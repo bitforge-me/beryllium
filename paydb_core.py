@@ -68,7 +68,7 @@ def tx_play_all(session):
         __tx_play_all(session)
 
 def tx_transfer_authorized(session, sender_email, recipient_email, amount, attachment):
-    logger.info('%s:  %s: %s, %s', sender_email, recipient_email, amount, attachment)
+    logger.info('%s: %s: %s, %s', sender_email, recipient_email, amount, attachment)
     with user_balances.lock:
         __check_balances_inited(session)
         error = ''
@@ -87,6 +87,23 @@ def tx_transfer_authorized(session, sender_email, recipient_email, amount, attac
             logger.error(error)
             return None, error
         tx = PayDbTransaction(PayDbTransaction.ACTION_TRANSFER, sender, recipient, amount, attachment)
+        __tx_play(tx)
+        session.add(tx)
+        session.commit()
+        return tx, ''
+
+def tx_issue_authorized(session, sender_email, amount, attachment):
+    logger.info('%s: %s, %s', sender_email, amount, attachment)
+    with user_balances.lock:
+        __check_balances_inited(session)
+        error = ''
+        sender = User.from_email(session, sender_email)
+        if not sender:
+            error = 'ACTION_ISSUE: sender ({}) is not valid'.format(sender_email)
+        if error:
+            logger.error(error)
+            return None, error
+        tx = PayDbTransaction(PayDbTransaction.ACTION_ISSUE, sender, sender, amount, attachment)
         __tx_play(tx)
         session.add(tx)
         session.commit()

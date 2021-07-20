@@ -12,6 +12,11 @@
             <li>
                 <a href="/push_notifications">Push Notifications</a>
             </li>
+            {% if config["SERVER_MODE"] == "paydb" %}
+            <li>
+                <a href="/issue">Issue Tokens</a>
+            </li>
+            {% endif %}
             <li>
                 <a href="{{ url_for('admin.index') }}">Admin</a>
             </li>

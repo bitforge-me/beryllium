@@ -12,7 +12,7 @@ import math
 
 import gevent
 from flask import render_template, request, flash, jsonify
-from flask_security import roles_accepted
+from flask_security import roles_accepted, current_user
 #from flask_jsonrpc import JSONRPC
 from flask_jsonrpc.exceptions import OtherError
 import requests
@@ -446,6 +446,20 @@ def push_notifications_register():
         db.session.add(push_location)
         db.session.commit()
     return jsonify(dict(result="ok"))
+
+@app.route("/issue", methods=["GET", "POST"])
+@roles_accepted(Role.ROLE_ADMIN)
+def issue():
+    amount = ''
+    if request.method == "POST":
+        amount = request.form["amount"]
+        amount_int = int(float(amount) * 100)
+        tx, error = paydb_core.tx_issue_authorized(db.session, current_user.email, amount_int, None)
+        if tx:
+            flash(f"issued {amount}", "success")
+        else:
+            flash(error, "danger")
+    return render_template("issue.html", amount=amount)
 
 ##
 ## JSON-RPC
