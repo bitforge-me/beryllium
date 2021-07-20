@@ -3,8 +3,8 @@ import flask_admin
 from flask_admin import helpers as admin_helpers
 
 from app_core import app, db, SERVER_MODE_WAVES
-from models import security, RestrictedModelView, ProposalModelView, UserModelView, TopicModelView, WavesTxModelView, PayDbApiKeyModelView, PayDbUserTransactionsView, PushNotificationLocationModelView, \
-    Role, User, ApiKey, PayDbTransaction, Category, Proposal, WavesTx, Topic, UserStash, UserStashRequest, PushNotificationLocation
+from models import security, RestrictedModelView, BaseOnlyUserOwnedModelView, ProposalModelView, UserModelView, TopicModelView, WavesTxModelView, PayDbApiKeyModelView, PayDbUserTransactionsView, PushNotificationLocationModelView, \
+    Role, User, ApiKey, PayDbTransaction, Category, Proposal, WavesTx, Topic, UserStash, UserStashRequest, PushNotificationLocation, Referral
 
 # Create admin
 admin = flask_admin.Admin(
@@ -22,6 +22,7 @@ admin.add_view(TopicModelView(Topic, db.session, category='Admin'))
 admin.add_view(RestrictedModelView(UserStash, db.session, category='Admin'))
 admin.add_view(RestrictedModelView(UserStashRequest, db.session, category='Admin'))
 admin.add_view(PushNotificationLocationModelView(PushNotificationLocation, db.session, category='Admin'))
+admin.add_view(RestrictedModelView(Referral, db.session, category='Admin', name='Referrals'))
 admin.add_view(ProposalModelView(Proposal, db.session))
 if app.config['SERVER_MODE'] == SERVER_MODE_WAVES:
     admin.add_view(WavesTxModelView(WavesTx, db.session, name='Waves Transactions', category='Admin'))
@@ -29,6 +30,7 @@ else: # paydb
     admin.add_view(RestrictedModelView(PayDbTransaction, db.session, name='PremioPay Transactions', category='Admin'))
     admin.add_view(PayDbApiKeyModelView(ApiKey, db.session, category='User'))
     admin.add_view(PayDbUserTransactionsView(PayDbTransaction, db.session, category='User', name='PremioPay Transactions', endpoint='UserTransactions'))
+admin.add_view(BaseOnlyUserOwnedModelView(Referral, db.session, category='User', name='Referrals', endpoint='UserReferrals'))
 
 # define a context processor for merging flask-admin's template context into the
 # flask-security views.

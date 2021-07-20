@@ -19,7 +19,7 @@ MISSING_VITAL_SETTING = False
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
 all_origins = {"origins": "*"}
-cors = CORS(app, resources={r"/paydb/*": all_origins, r"/payment_create": all_origins})
+cors = CORS(app, resources={r"/paydb/*": all_origins, r"/reward/*": all_origins, r"/payment_create": all_origins})
 
 if os.getenv("DEBUG"):
     app.config["DEBUG"] = True
@@ -57,6 +57,43 @@ if os.getenv("GOOGLE_PLAY_STORE_URL"):
     app.config["GOOGLE_PLAY_STORE_URL"] = os.getenv("GOOGLE_PLAY_STORE_URL")
 else:
     app.config["GOOGLE_PLAY_STORE_URL"] = "https://play.google.com/store/apps/details?id=me.zap.zapapp"
+
+if os.getenv("USE_REFERRALS"):
+    app.config["USE_REFERRALS"] = True
+else:
+    app.config["USE_REFERRALS"] = False
+#if os.getenv("REFERRAL_REWARD_TYPE_SENDER"):
+#    app.config["REFERRAL_REWARD_TYPE_SENDER"] = os.getenv("REFERRAL_REWARD_TYPE_SENDER")
+#else:
+app.config["REFERRAL_REWARD_TYPE_SENDER"] = 'fixed'
+if os.getenv("REFERRAL_REWARD_SENDER"):
+    app.config["REFERRAL_REWARD_SENDER"] = int(os.getenv("REFERRAL_REWARD_SENDER"))
+else:
+    app.config["REFERRAL_REWARD_SENDER"] = 1000
+if os.getenv("REFERRAL_REWARD_TYPE_RECIPIENT"):
+    app.config["REFERRAL_REWARD_TYPE_RECIPIENT"] = os.getenv("REFERRAL_REWARD_TYPE_RECIPIENT")
+else:
+    app.config["REFERRAL_REWARD_TYPE_RECIPIENT"] = 'fixed'
+if os.getenv("REFERRAL_REWARD_RECIPIENT"):
+    app.config["REFERRAL_REWARD_RECIPIENT"] = int(os.getenv("REFERRAL_REWARD_RECIPIENT"))
+else:
+    app.config["REFERRAL_REWARD_RECIPIENT"] = 1000
+if os.getenv("REFERRAL_RECIPIENT_MIN_SPEND"):
+    app.config["REFERRAL_RECIPIENT_MIN_SPEND"] = int(os.getenv("REFERRAL_RECIPIENT_MIN_SPEND"))
+else:
+    app.config["REFERRAL_RECIPIENT_MIN_SPEND"] = 5000
+if os.getenv("REFERRAL_ECOMMERCE_URL"):
+    app.config["REFERRAL_ECOMMERCE_URL"] = os.getenv("REFERRAL_ECOMMERCE_URL")
+else:
+    app.config["REFERRAL_ECOMMERCE_URL"] = None
+if os.getenv("REFERRAL_STORE_NAME"):
+    app.config["REFERRAL_STORE_NAME"] = os.getenv("REFERRAL_STORE_NAME")
+else:
+    app.config["REFERRAL_STORE_NAME"] = "Change My Name Inc"
+if os.getenv("REFERRAL_SPEND_ASSET"):
+    app.config["REFERRAL_SPEND_ASSET"] = os.getenv("REFERRAL_SPEND_ASSET")
+else:
+    app.config["REFERRAL_SPEND_ASSET"] = "NZD"
 
 if os.getenv("USE_STASH"):
     app.config["USE_STASH"] = True

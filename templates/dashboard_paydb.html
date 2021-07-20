@@ -33,6 +33,12 @@
             </div>
         </div>
 
+        <br/>
+
+        {% if config["USE_REFERRALS"] %}
+            {% include 'referral_settings.html' %}
+        {% endif %}
+
     </div>
     </div>
 

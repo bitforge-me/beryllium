@@ -12,7 +12,7 @@ from flask_security.recoverable import send_reset_password_instructions
 from flask_socketio import Namespace, emit, join_room, leave_room
 
 import web_utils
-from web_utils import bad_request, get_json_params, request_get_signature, check_auth
+from web_utils import bad_request, get_json_params, request_get_signature, check_auth, auth_request, auth_request_get_single_param
 import utils
 from app_core import db, socketio, limiter
 from models import user_datastore, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, PayDbTransaction
@@ -234,17 +234,9 @@ def api_key_confirm(token=None, secret=None):
 
 @paydb.route('/user_info', methods=['POST'])
 def user_info():
-    sig = request_get_signature()
-    content = request.get_json(force=True)
-    if content is None:
-        return bad_request(web_utils.INVALID_JSON)
-    params, err_response = get_json_params(content, ["api_key", "nonce", "email"])
+    email, api_key, err_response = auth_request_get_single_param(db, "email")
     if err_response:
         return err_response
-    api_key, nonce, email = params
-    res, reason, api_key = check_auth(db.session, api_key, nonce, sig, request.data)
-    if not res:
-        return bad_request(reason)
     if not email:
         email = api_key.user.email
     else:
@@ -260,41 +252,25 @@ def user_info():
         return jsonify(dict(email=user.email, balance=balance, photo=user.photo, photo_type=user.photo_type, roles=roles, permissions=perms))
     return jsonify(dict(email=user.email, balance=-1, photo=user.photo, photo_type=user.photo_type, roles=[], permissions=[]))
 
-@paydb.route('/user_reset_password', methods=['GET', 'POST'])
+@paydb.route('/user_reset_password', methods=['POST'])
 @limiter.limit("10/hour")
 def user_reset_password():
-    sig = request_get_signature()
-    content = request.get_json(force=True)
-    if content is None:
-        return bad_request(web_utils.INVALID_JSON)
-    params, err_response = get_json_params(content, ["api_key", "nonce"])
+    api_key, err_response = auth_request(db)
     if err_response:
         return err_response
-    api_key, nonce = params
-    res, reason, api_key = check_auth(db.session, api_key, nonce, sig, request.data)
-    if not res:
-        return bad_request(reason)
     user = api_key.user
     send_reset_password_instructions(user)
-    return 'reset password instructions sent'
+    return 'ok'
 
-@paydb.route('/user_update_email', methods=['GET', 'POST'])
+@paydb.route('/user_update_email', methods=['POST'])
 @limiter.limit("10/hour")
 def user_update_email():
-    sig = request_get_signature()
-    content = request.get_json(force=True)
-    if content is None:
-        return bad_request(web_utils.INVALID_JSON)
-    params, err_response = get_json_params(content, ["api_key", "nonce", "email"])
+    email, api_key, err_response = auth_request_get_single_param(db, "email")
     if err_response:
         return err_response
-    api_key, nonce, email = params
     if not email:
         return bad_request(web_utils.INVALID_EMAIL)
     email = email.lower()
-    res, reason, api_key = check_auth(db.session, api_key, nonce, sig, request.data)
-    if not res:
-        return bad_request(reason)
     user = User.from_email(db.session, email)
     if user:
         time.sleep(5)
@@ -415,17 +391,9 @@ def transaction_create():
 
 @paydb.route('/transaction_info', methods=['POST'])
 def transaction_info():
-    sig = request_get_signature()
-    content = request.get_json(force=True)
-    if content is None:
-        return bad_request(web_utils.INVALID_JSON)
-    params, err_response = get_json_params(content, ["api_key", "nonce", "token"])
+    token, api_key, err_response = auth_request_get_single_param(db, "token")
     if err_response:
         return err_response
-    api_key, nonce, token = params
-    res, reason, api_key = check_auth(db.session, api_key, nonce, sig, request.data)
-    if not res:
-        return bad_request(reason)
     tx = PayDbTransaction.from_token(db.session, token)
     if not tx:
         return bad_request(web_utils.INVALID_TX)

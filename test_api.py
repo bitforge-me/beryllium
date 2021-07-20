@@ -19,18 +19,21 @@ from utils import log_socketio_version, setup_logging
 
 logger = logging.getLogger(__name__)
 
+if os.getenv("URL_SCHEMA"):
+    URL_SCHEMA = os.getenv("URL_SCHEMA")
+else:
+    URL_SCHEMA = "http"
+if os.getenv("WS_SCHEMA"):
+    WS_SCHEMA = os.getenv("WS_SCHEMA")
+else:
+    WS_SCHEMA = "ws"
 if os.getenv("SERVER_NAME"):
     SERVER_NAME = os.getenv("SERVER_NAME")
 else:
     SERVER_NAME = "localhost:5000"
 
-if os.getenv("URL_SCHEMA"):
-    URL_SCHEMA = os.getenv("URL_SCHEMA")
-else:
-    URL_SCHEMA = "http"
-
-URL_BASE = "{url_schema}://{server_name}/".format(url_schema=URL_SCHEMA, server_name=SERVER_NAME)
-WS_URL = "ws://{server_name}/".format(server_name=SERVER_NAME)
+URL_BASE = f"{URL_SCHEMA}://{SERVER_NAME}/"
+WS_URL = f"{WS_SCHEMA}://{SERVER_NAME}/"
 
 EXIT_NO_COMMAND = 1
 
@@ -91,14 +94,42 @@ def construct_parser():
     parser_transaction_info.add_argument("api_key_secret", metavar="API_KEY_SECRET", type=str, help="the API KEY secret")
     parser_transaction_info.add_argument("token", metavar="TOKEN", type=str, help="the unique transaction token")
 
-    parser_payment_create = subparsers.add_parser("payment_create", help="Create a token distribution payment (magic link)")
-    parser_payment_create.add_argument("api_key_token", metavar="API_KEY_TOKEN", type=str, help="the API KEY token")
-    parser_payment_create.add_argument("api_key_secret", metavar="API_KEY_SECRET", type=str, help="the API KEY secret")
-    parser_payment_create.add_argument("reason", metavar="REASON", type=str, help="the reason for the payment")
-    parser_payment_create.add_argument("category", metavar="CATEGORY", type=str, help="the category of the payment")
-    parser_payment_create.add_argument("recipient", metavar="RECIPIENT", type=str, help="the recipient of the payment")
-    parser_payment_create.add_argument("amount", metavar="AMOUNT", type=int, help="the payment amount (integer, cents)")
-    parser_payment_create.add_argument("message", metavar="MESSAGE", type=str, help="the message for the recipient")
+    parser_reward_create = subparsers.add_parser("reward_create", help="Create a premio reward")
+    parser_reward_create.add_argument("api_key_token", metavar="API_KEY_TOKEN", type=str, help="the API KEY token")
+    parser_reward_create.add_argument("api_key_secret", metavar="API_KEY_SECRET", type=str, help="the API KEY secret")
+    parser_reward_create.add_argument("reason", metavar="REASON", type=str, help="the reason for the payment")
+    parser_reward_create.add_argument("category", metavar="CATEGORY", type=str, help="the category of the payment")
+    parser_reward_create.add_argument("recipient", metavar="RECIPIENT", type=str, help="the recipient of the payment")
+    parser_reward_create.add_argument("amount", metavar="AMOUNT", type=int, help="the payment amount (integer, cents)")
+    parser_reward_create.add_argument("message", metavar="MESSAGE", type=str, help="the message for the recipient")
+
+    parser_referral_config = subparsers.add_parser("referral_config", help="Get the premio referral config")
+    parser_referral_config.add_argument("api_key_token", metavar="API_KEY_TOKEN", type=str, help="the API KEY token")
+    parser_referral_config.add_argument("api_key_secret", metavar="API_KEY_SECRET", type=str, help="the API KEY secret")
+
+    parser_referral_create = subparsers.add_parser("referral_create", help="Create a premio referral")
+    parser_referral_create.add_argument("api_key_token", metavar="API_KEY_TOKEN", type=str, help="the API KEY token")
+    parser_referral_create.add_argument("api_key_secret", metavar="API_KEY_SECRET", type=str, help="the API KEY secret")
+    parser_referral_create.add_argument("recipient", metavar="RECIPIENT", type=str, help="the referral recipient (email)")
+
+    parser_referral_remind = subparsers.add_parser("referral_remind", help="Remind the recipient of a premio referral")
+    parser_referral_remind.add_argument("api_key_token", metavar="API_KEY_TOKEN", type=str, help="the API KEY token")
+    parser_referral_remind.add_argument("api_key_secret", metavar="API_KEY_SECRET", type=str, help="the API KEY secret")
+    parser_referral_remind.add_argument("token", metavar="TOKEN", type=str, help="the referral unique token")
+
+    parser_referral_list = subparsers.add_parser("referral_list", help="List a users referrals")
+    parser_referral_list.add_argument("api_key_token", metavar="API_KEY_TOKEN", type=str, help="the API KEY token")
+    parser_referral_list.add_argument("api_key_secret", metavar="API_KEY_SECRET", type=str, help="the API KEY secret")
+
+    parser_referral_validate = subparsers.add_parser("referral_validate", help="Validate a premio referral")
+    parser_referral_validate.add_argument("api_key_token", metavar="API_KEY_TOKEN", type=str, help="the API KEY token")
+    parser_referral_validate.add_argument("api_key_secret", metavar="API_KEY_SECRET", type=str, help="the API KEY secret")
+    parser_referral_validate.add_argument("token", metavar="TOKEN", type=str, help="the referral unique token")
+
+    parser_referral_claim = subparsers.add_parser("referral_claim", help="Claim a premio referral")
+    parser_referral_claim.add_argument("api_key_token", metavar="API_KEY_TOKEN", type=str, help="the API KEY token")
+    parser_referral_claim.add_argument("api_key_secret", metavar="API_KEY_SECRET", type=str, help="the API KEY secret")
+    parser_referral_claim.add_argument("token", metavar="TOKEN", type=str, help="the referral unique token")
 
     parser_stash_save = subparsers.add_parser("stash_save", help="Save a user stash")
     parser_stash_save.add_argument("key", metavar="KEY", type=str, help="The name of the stash")
@@ -133,6 +164,9 @@ def req(endpoint, params=None, api_key_token=None, api_key_secret=None):
 
 def paydb_req(endpoint, params=None, api_key_token=None, api_key_secret=None):
     return req('paydb/' + endpoint, params, api_key_token, api_key_secret)
+
+def reward_req(endpoint, params=None, api_key_token=None, api_key_secret=None):
+    return req('reward/' + endpoint, params, api_key_token, api_key_secret)
 
 def stash_req(endpoint, params=None):
     return req('stash/' + endpoint, params)
@@ -225,9 +259,45 @@ def transaction_info(args):
     check_request_status(r)
     print(r.text)
 
-def payment_create(args):
-    print(":: calling payment_create..")
-    r = req("payment_create", {"reason": args.reason, "category": args.category, "recipient": args.recipient, "amount": args.amount, "message": args.message}, args.api_key_token, args.api_key_secret)
+def reward_create(args):
+    print(":: calling reward_create..")
+    r = reward_req("reward_create", {"reason": args.reason, "category": args.category, "recipient": args.recipient, "amount": args.amount, "message": args.message}, args.api_key_token, args.api_key_secret)
+    check_request_status(r)
+    print(r.text)
+
+def referral_config(args):
+    print(":: calling referral_config..")
+    r = reward_req("referral_config", {}, args.api_key_token, args.api_key_secret)
+    check_request_status(r)
+    print(r.text)
+
+def referral_create(args):
+    print(":: calling referral_create..")
+    r = reward_req("referral_create", {"recipient": args.recipient}, args.api_key_token, args.api_key_secret)
+    check_request_status(r)
+    print(r.text)
+
+def referral_remind(args):
+    print(":: calling referral_remind..")
+    r = reward_req("referral_remind", {"token": args.token}, args.api_key_token, args.api_key_secret)
+    check_request_status(r)
+    print(r.text)
+
+def referral_list(args):
+    print(":: calling referral_list..")
+    r = reward_req("referral_list", {}, args.api_key_token, args.api_key_secret)
+    check_request_status(r)
+    print(r.text)
+
+def referral_validate(args):
+    print(":: calling referral_validate..")
+    r = reward_req("referral_validate", {"token": args.token}, args.api_key_token, args.api_key_secret)
+    check_request_status(r)
+    print(r.text)
+
+def referral_claim(args):
+    print(":: calling referral_claim..")
+    r = reward_req("referral_claim", {"token": args.token}, args.api_key_token, args.api_key_secret)
     check_request_status(r)
     print(r.text)
 
@@ -243,6 +313,7 @@ def stash_save_check(args):
     check_request_status(r)
     print(r.text)
 
+# pylint: disable=too-many-branches
 def run_parser():
     # parse arguments
     parser = construct_parser()
@@ -268,8 +339,20 @@ def run_parser():
         function = transaction_create
     elif args.command == "transaction_info":
         function = transaction_info
-    elif args.command == "payment_create":
-        function = payment_create
+    elif args.command == "reward_create":
+        function = reward_create
+    elif args.command == "referral_config":
+        function = referral_config
+    elif args.command == "referral_create":
+        function = referral_create
+    elif args.command == "referral_remind":
+        function = referral_remind
+    elif args.command == "referral_list":
+        function = referral_list
+    elif args.command == "referral_validate":
+        function = referral_validate
+    elif args.command == "referral_claim":
+        function = referral_claim
     elif args.command == "stash_save":
         function = stash_save
     elif args.command == "stash_save_check":

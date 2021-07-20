@@ -21,6 +21,8 @@ UNAUTHORIZED = 'unauthorized'
 INVALID_CATEGORY = 'invalid category'
 USER_EXISTS = 'user exists'
 INCORRECT_PASSWORD = 'incorrect password'
+NOT_IMPLEMENTED  = 'net yet implemented'
+NOT_AVAILABLE = 'not available'
 
 def bad_request(message, code=400):
     logger.warning(message)
@@ -87,3 +89,35 @@ def check_auth(session, api_key_token, nonce, sig, body):
     # update api key nonce
     session.commit()
     return True, "", api_key
+
+# pylint: disable=unbalanced-tuple-unpacking
+# pylint: disable=invalid-name
+def auth_request(db):
+    sig = request_get_signature()
+    content = request.get_json(force=True)
+    if content is None:
+        return None, bad_request(INVALID_JSON)
+    params, err_response = get_json_params(content, ["api_key", "nonce"])
+    if err_response:
+        return None, err_response
+    api_key, nonce = params
+    res, reason, api_key = check_auth(db.session, api_key, nonce, sig, request.data)
+    if not res:
+        return None, None, bad_request(reason)
+    return api_key, None
+
+# pylint: disable=unbalanced-tuple-unpacking
+# pylint: disable=invalid-name
+def auth_request_get_single_param(db, param_name):
+    sig = request_get_signature()
+    content = request.get_json(force=True)
+    if content is None:
+        return None, None, bad_request(INVALID_JSON)
+    params, err_response = get_json_params(content, ["api_key", "nonce", param_name])
+    if err_response:
+        return None, None, err_response
+    api_key, nonce, param = params
+    res, reason, api_key = check_auth(db.session, api_key, nonce, sig, request.data)
+    if not res:
+        return None, None, bad_request(reason)
+    return param, api_key, None
