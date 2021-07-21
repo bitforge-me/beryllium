@@ -202,22 +202,22 @@ def api_key_confirm(token=None, secret=None):
     req = ApiKeyRequest.from_token(db.session, token)
     if not req:
         time.sleep(5)
-        flash('API KEY request not found.', 'danger')
+        flash('Email login request not found.', 'danger')
         return redirect('/')
     if req.secret != secret:
-        flash('API KEY code invalid.', 'danger')
+        flash('Email login code invalid.', 'danger')
         return redirect('/')
     now = datetime.datetime.now()
     if now > req.expiry:
         time.sleep(5)
-        flash('API KEY request expired.', 'danger')
+        flash('Email login request expired.', 'danger')
         return redirect('/')
     if request.method == 'POST':
         confirm = request.form.get('confirm') == 'true'
         if not confirm:
             db.session.delete(req)
             db.session.commit()
-            flash('API KEY cancelled.', 'success')
+            flash('Email login cancelled.', 'success')
             return redirect('/')
         perms = request.form.getlist('perms')
         api_key = ApiKey(req.user, req.device_name)
@@ -228,7 +228,7 @@ def api_key_confirm(token=None, secret=None):
         db.session.add(req)
         db.session.add(api_key)
         db.session.commit()
-        flash('API KEY confirmed.', 'success')
+        flash('Email login confirmed.', 'success')
         return redirect('/')
     return render_template('paydb/api_key_confirm.html', req=req, perms=Permission.PERMS_ALL)
 
