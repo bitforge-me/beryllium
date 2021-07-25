@@ -75,6 +75,8 @@ class User(db.Model, UserMixin):
     last_name = db.Column(db.String(255))
     email = db.Column(db.String(255), unique=True, nullable=False)
     password = db.Column(db.String(255))
+    mobile_number = db.Column(db.String(255))
+    address = db.Column(db.String(255))
     last_login_at = db.Column(db.DateTime())
     current_login_at = db.Column(db.DateTime())
     last_login_ip = db.Column(db.String(100))
@@ -83,6 +85,9 @@ class User(db.Model, UserMixin):
     active = db.Column(db.Boolean())
     fs_uniquifier = db.Column(db.String(255), unique=True, nullable=False)
     confirmed_at = db.Column(db.DateTime())
+    tf_totp_secret = db.Column(db.String(255))
+    tf_primary_method = db.Column(db.String(255))
+    tf_phone_number = db.Column(db.String(255))
     roles = db.relationship('Role', secondary=roles_users,
                             backref=db.backref('users', lazy='dynamic'))
     photo = db.Column(db.String())
@@ -108,16 +113,20 @@ class UserCreateRequest(db.Model):
     first_name = db.Column(db.String(255))
     last_name = db.Column(db.String(255))
     email = db.Column(db.String(255))
+    mobile_number = db.Column(db.String(255))
+    address = db.Column(db.String(255))
     photo = db.Column(db.String())
     photo_type = db.Column(db.String(255))
     password = db.Column(db.String(255))
     expiry = db.Column(db.DateTime())
 
-    def __init__(self, first_name, last_name, email, photo, photo_type, password):
+    def __init__(self, first_name, last_name, email, mobile_number, address, photo, photo_type, password):
         self.token = secrets.token_urlsafe(8)
         self.first_name = first_name
         self.last_name = last_name
         self.email = email
+        self.mobile_number = mobile_number
+        self.address = address
         self.photo = photo
         self.photo_type = photo_type
         self.password = password

@@ -77,10 +77,10 @@ def user_register():
     content = request.get_json(force=True)
     if content is None:
         return bad_request(web_utils.INVALID_JSON)
-    params, err_response = get_json_params(content, ["email", "password", "first_name", "last_name", "photo", "photo_type"])
+    params, err_response = get_json_params(content, ["email", "password", "first_name", "last_name", "mobile_number", "address", "photo", "photo_type"])
     if err_response:
         return err_response
-    email, password, first_name, last_name, photo, photo_type = params
+    email, password, first_name, last_name, mobile_number, address, photo, photo_type = params
     if not utils.is_email(email):
         return bad_request(web_utils.INVALID_EMAIL)
     email = email.lower()
@@ -88,7 +88,7 @@ def user_register():
         return bad_request(web_utils.EMPTY_PASSWORD)
     if photo and len(photo) > 50000:
         return bad_request(web_utils.PHOTO_DATA_LARGE)
-    req = UserCreateRequest(first_name, last_name, email, photo, photo_type, encrypt_password(password))
+    req = UserCreateRequest(first_name, last_name, email, mobile_number, address, photo, photo_type, encrypt_password(password))
     user = User.from_email(db.session, email)
     if user:
         time.sleep(5)
@@ -114,6 +114,8 @@ def user_registration_confirm(token=None):
         flash('User registration expired.', 'danger')
         return redirect('/')
     user = user_datastore.create_user(email=req.email, password=req.password, first_name=req.first_name, last_name=req.last_name)
+    user.mobile_number = req.mobile_number
+    user.address = req.address
     user.photo = req.photo
     user.photo_type = req.photo_type
     user.confirmed_at = now
