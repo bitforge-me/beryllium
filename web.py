@@ -360,14 +360,14 @@ def payment_create():
 def dashboard():
     if SERVER_MODE == SERVER_MODE_WAVES:
         data = dashboard_data_waves()
-        data["asset_balance"] = from_int_to_user_friendly(data["asset_balance"], 100)
+        data["asset_balance"] = int2asset(data["asset_balance"])
         data["waves_balance"] = from_int_to_user_friendly(data["waves_balance"], 10**8)
-        data["master_asset_balance"] = from_int_to_user_friendly(data["master_asset_balance"], 100)
+        data["master_asset_balance"] = int2asset(data["master_asset_balance"])
         data["master_waves_balance"] = from_int_to_user_friendly(data["master_waves_balance"], 10**8)
         return render_template("dashboard_waves.html", data=data)
     data = dashboard_data_paydb()
-    data["premio_stage_balance"] = from_int_to_user_friendly(data["premio_stage_balance"], 100)
-    data["total_balance"] = from_int_to_user_friendly(data["total_balance"], 100)
+    data["premio_stage_balance"] = int2asset(data["premio_stage_balance"])
+    data["total_balance"] = int2asset(data["total_balance"])
     return render_template("dashboard_paydb.html", data=data)
 
 # https://gis.stackexchange.com/a/2964
