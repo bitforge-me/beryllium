@@ -19,8 +19,8 @@ import qrcode.image.pil
 from app_core import app
 
 def int2asset(num):
-    num = decimal.Decimal(num)
-    return num/100
+    num = decimal.Decimal(num)/100
+    return '{num:0.2f}'.format(num=num)
 
 def _attachment(b64data, mime_type, filename, content_id, disposition='attachment'):
     attachment = Attachment()

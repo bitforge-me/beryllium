@@ -30,7 +30,7 @@ from sqlalchemy import or_, and_
 from sqlalchemy.exc import SQLAlchemyError, DBAPIError
 
 from app_core import app, db
-from utils import generate_key, is_email, is_mobile, is_address, sha256
+from utils import generate_key, is_email, is_mobile, is_address, sha256, int2asset
 
 logger = logging.getLogger(__name__)
 
@@ -255,7 +255,7 @@ class ApiKeyRequest(db.Model):
 
 class PayDbTransactionSchema(Schema):
     token = fields.String()
-    timestamp = fields.Integer()
+    date = fields.String()
     action = fields.String()
     sender = fields.String()
     recipient = fields.String()
@@ -269,7 +269,7 @@ class PayDbTransaction(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     token = db.Column(db.String(255), unique=True, nullable=False)
-    timestamp = db.Column(db.Integer)
+    date = db.Column(db.DateTime())
     action = db.Column(db.String(255), nullable=False)
     sender_token = db.Column(db.String(255), db.ForeignKey('user.token'), nullable=False)
     sender = db.relationship('User', foreign_keys=[sender_token], backref=db.backref('sent', lazy='dynamic'))
@@ -281,6 +281,7 @@ class PayDbTransaction(db.Model):
     def __init__(self, action, sender, recipient, amount, attachment):
         self.token = secrets.token_urlsafe(8)
         self.timestamp = int(time.time())
+        self.date = datetime.datetime.now()
         self.action = action
         self.sender = sender
         self.recipient = recipient
@@ -508,6 +509,19 @@ def validate_csv(data):
         rows.append((recipient, message, amount))
     return rows
 
+def format_amount(self, context, model, name):
+    amount = int2asset(model.amount)
+    html = '''
+    {amount} {asset}
+    '''.format(amount=amount, asset=app.config["ASSET_NAME"])
+    return Markup(html)
+
+def format_date(self, context, model, name):
+    if model.date:
+        format_curdate = model.date
+        return format_curdate.strftime('%Y.%m.%d %H:%M')
+    return None
+
 class DateBetweenFilter(BaseSQLAFilter, filters.BaseDateBetweenFilter):
     def __init__(self, column, name, options=None, data_type=None):
         # pylint: disable=super-with-arguments
@@ -635,6 +649,32 @@ class FilterByStatusNotEqual(BaseSQLAFilter):
     def get_options(self, view):
         # return a generator that is reloaded each time it is used
         return ReloadingIterator(get_statuses)
+
+class FilterBySenderTokenSearch(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        result = User.query.filter(User.id==value).one()
+        user_token = result.token
+        return query.filter(PayDbTransaction.sender_token == user_token)
+
+    def operation(self):
+        return u'equals'
+
+    def get_options(self, view):
+        # return a generator that is reloaded each time it is used
+        return ReloadingIterator(get_users)
+
+class FilterByRecipientTokenSearch(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        result = User.query.filter(User.id==value).one()
+        user_token = result.token
+        return query.filter(PayDbTransaction.recipient_token == user_token)
+
+    def operation(self):
+        return u'equals'
+
+    def get_options(self, view):
+        # return a generator that is reloaded each time it is used
+        return ReloadingIterator(get_users)
 
 class ProposalModelView(BaseModelView):
     can_create = False
@@ -1090,6 +1130,7 @@ class PayDbUserTransactionsView(BaseModelView):
     can_create = False
     can_delete = False
     can_edit = False
+    can_export = True
 
     def is_accessible(self):
         return (current_user.is_active and
@@ -1100,6 +1141,22 @@ class PayDbUserTransactionsView(BaseModelView):
 
     def get_count_query(self):
         return self.session.query(db.func.count('*')).filter(or_(self.model.sender_token == current_user.token, self.model.recipient_token == current_user.token)) # pylint: disable=no-member
+
+    column_list = ('sender', 'recipient', 'token', 'date', 'action', 'amount', 'attachment')
+    column_formatters = {'amount': format_amount, 'date': format_date}
+    column_filters = [ DateBetweenFilter(PayDbTransaction.date, 'Search Date') ]
+
+class PayDbAdminTransactionsView(RestrictedModelView):
+    can_create = False
+    can_delete = False
+    can_edit = False
+    can_export = True
+
+    column_list = ('sender', 'recipient', 'token', 'date', 'action', 'amount', 'attachment')
+    column_formatters = {'amount': format_amount, 'date': format_date}
+    column_filters = [ DateBetweenFilter(PayDbTransaction.date, 'Search Date'), \
+            FilterBySenderTokenSearch(PayDbTransaction.sender_token, 'Search Sender'), \
+            FilterByRecipientTokenSearch(PayDbTransaction.recipient_token, 'Search Recipient') ]
 
 class UserStash(db.Model):
     id = db.Column(db.Integer, primary_key=True)
