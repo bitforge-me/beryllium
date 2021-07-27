@@ -20,7 +20,7 @@ import paydb_core
 
 logger = logging.getLogger(__name__)
 paydb = Blueprint('paydb', __name__, template_folder='templates')
-limiter.limit("100/minute")(paydb)
+limiter.limit('100/minute')(paydb)
 ws_sids = {}
 
 #
@@ -72,7 +72,7 @@ socketio.on_namespace(PayDbNamespace(NS))
 #
 
 @paydb.route('/user_register', methods=['POST'])
-@limiter.limit("2/minute;40/hour")
+@limiter.limit('10/hour')
 def user_register():
     content = request.get_json(force=True)
     if content is None:
@@ -99,7 +99,7 @@ def user_register():
     return 'ok'
 
 @paydb.route('/user_registration_confirm/<token>', methods=['GET'])
-@limiter.limit("2/minute;40/hour")
+@limiter.limit('20/minute')
 def user_registration_confirm(token=None):
     req = UserCreateRequest.from_token(db.session, token)
     if not req:
@@ -125,7 +125,7 @@ def user_registration_confirm(token=None):
     return redirect('/')
 
 @paydb.route('/api_key_create', methods=['POST'])
-@limiter.limit("10/hour")
+@limiter.limit('10/hour')
 def api_key_create():
     content = request.get_json(force=True)
     if content is None:
@@ -153,7 +153,7 @@ def api_key_create():
     return jsonify(dict(token=api_key.token, secret=api_key.secret, device_name=api_key.device_name, expiry=api_key.expiry))
 
 @paydb.route('/api_key_request', methods=['POST'])
-@limiter.limit("10/hour")
+@limiter.limit('10/hour')
 def api_key_request():
     content = request.get_json(force=True)
     if content is None:
@@ -176,7 +176,7 @@ def api_key_request():
     return jsonify(dict(token=req.token))
 
 @paydb.route('/api_key_claim', methods=['POST'])
-@limiter.limit("10/hour")
+@limiter.limit('20/minute')
 def api_key_claim():
     content = request.get_json(force=True)
     if content is None:
@@ -199,7 +199,7 @@ def api_key_claim():
     return jsonify(dict(token=api_key.token, secret=api_key.secret, device_name=api_key.device_name, expiry=api_key.expiry))
 
 @paydb.route('/api_key_confirm/<token>/<secret>', methods=['GET', 'POST'])
-@limiter.limit("2/minute")
+@limiter.limit('20/minute')
 def api_key_confirm(token=None, secret=None):
     req = ApiKeyRequest.from_token(db.session, token)
     if not req:
@@ -255,7 +255,7 @@ def user_info():
     return jsonify(dict(email=user.email, balance=-1, photo=user.photo, photo_type=user.photo_type, roles=[], permissions=[]))
 
 @paydb.route('/user_reset_password', methods=['POST'])
-@limiter.limit("10/hour")
+@limiter.limit('10/hour')
 def user_reset_password():
     api_key, err_response = auth_request(db)
     if err_response:
@@ -265,7 +265,7 @@ def user_reset_password():
     return 'ok'
 
 @paydb.route('/user_update_email', methods=['POST'])
-@limiter.limit("10/hour")
+@limiter.limit('10/hour')
 def user_update_email():
     email, api_key, err_response = auth_request_get_single_param(db, "email")
     if err_response:
@@ -284,7 +284,7 @@ def user_update_email():
     return 'ok'
 
 @paydb.route('/user_update_email_confirm/<token>', methods=['GET'])
-@limiter.limit("10/hour")
+@limiter.limit('10/hour')
 def user_update_email_confirm(token=None):
     req = UserUpdateEmailRequest.from_token(db.session, token)
     if not req:
@@ -307,7 +307,7 @@ def user_update_email_confirm(token=None):
     return redirect('/')
 
 @paydb.route('/user_update_password', methods=['POST'])
-@limiter.limit("10/hour")
+@limiter.limit('10/hour')
 def user_update_password():
     sig = request_get_signature()
     content = request.get_json(force=True)
@@ -331,7 +331,7 @@ def user_update_password():
     return 'password changed.'
 
 @paydb.route('/user_update_photo', methods=['POST'])
-@limiter.limit("10/hour")
+@limiter.limit('10/hour')
 def user_update_photo():
     sig = request_get_signature()
     content = request.get_json(force=True)
