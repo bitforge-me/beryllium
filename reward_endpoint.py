@@ -32,6 +32,25 @@ def _reward_create(user, reason, category, recipient, amount, message):
 # Private (reward) API
 #
 
+@reward.route("/reward_categories", methods=["POST"])
+def reward_categories():
+    sig = request_get_signature()
+    content = request.get_json(force=True)
+    if content is None:
+        return bad_request(web_utils.INVALID_JSON)
+    params, err_response = get_json_params(content, ["api_key", "nonce"])
+    if err_response:
+        return err_response
+    api_key, nonce = params
+    res, auth_fail_reason, api_key = check_auth(db.session, api_key, nonce, sig, request.data)
+    if not res:
+        return bad_request(auth_fail_reason)
+    if not api_key.user.has_role(Role.ROLE_ADMIN) and not api_key.user.has_role(Role.ROLE_AUTHORIZER):
+        return bad_request(web_utils.UNAUTHORIZED)
+    cats = db.session.query(Category).all()
+    cats = [cat.name for cat in cats]
+    return jsonify(dict(categories=cats))
+
 @reward.route("/reward_create", methods=["POST"])
 def reward_create():
     sig = request_get_signature()
