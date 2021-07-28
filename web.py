@@ -192,6 +192,7 @@ def process_proposals():
         emails = 0
         sms_messages = 0
         proposals = Proposal.in_status(db.session, Proposal.STATE_AUTHORIZED)
+        # pylint: disable=too-many-nested-blocks
         for proposal in proposals:
             for payment in proposal.payments:
                 if payment.status == payment.STATE_CREATED:

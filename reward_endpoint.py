@@ -47,6 +47,7 @@ def reward_categories():
         return bad_request(auth_fail_reason)
     if not api_key.user.has_role(Role.ROLE_ADMIN) and not api_key.user.has_role(Role.ROLE_AUTHORIZER):
         return bad_request(web_utils.UNAUTHORIZED)
+    # pylint: disable=no-member
     cats = db.session.query(Category).all()
     cats = [cat.name for cat in cats]
     return jsonify(dict(categories=cats))
@@ -77,7 +78,7 @@ def reward_create():
 def referral_config():
     if not use_referrals:
         return bad_request(web_utils.NOT_AVAILABLE)
-    api_key, err_response = auth_request(db)
+    _, err_response = auth_request(db)
     if err_response:
         return err_response
     reward_sender_type = app.config["REFERRAL_REWARD_TYPE_SENDER"]

@@ -294,6 +294,7 @@ class PayDbTransaction(db.Model):
 
     @classmethod
     def related_to_user(cls, session, user, offset, limit):
+        # pylint: disable=no-member
         return session.query(cls).filter(or_(cls.sender_token == user.token, cls.recipient_token == user.token)).order_by(cls.id.desc()).offset(offset).limit(limit)
 
     @classmethod
@@ -573,6 +574,7 @@ def get_users():
     if has_app_context():
         if not hasattr(g, 'users'):
             query = User.query.order_by(User.email)
+            # pylint: disable=assigning-non-slot
             g.users = [(user.id, user.email) for user in query]
         for user_id, user_email in g.users:
             yield user_id, user_email
@@ -582,6 +584,7 @@ def get_categories():
     if has_app_context():
         if not hasattr(g, 'categories'):
             query = Category.query.order_by(Category.name)
+            # pylint: disable=assigning-non-slot
             g.categories = [(category.id, category.name) for category in query]
         for category_id, category_email in g.categories:
             yield category_id, category_email
@@ -591,6 +594,7 @@ def get_statuses():
     if has_app_context():
         if not hasattr(g, 'statuses'):
             query = Proposal.query.distinct(Proposal.status)
+            # pylint: disable=assigning-non-slot
             g.statuses = [(proposal.status, proposal.status) for proposal in query]
         for proposal_status_a, proposal_status_b in g.statuses:
             yield proposal_status_a, proposal_status_b
