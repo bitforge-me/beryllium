@@ -15,7 +15,7 @@ import requests
 import socketio
 
 from web_utils import create_hmac_sig
-from utils import log_socketio_version, setup_logging
+from log_utils import log_socketio_version, setup_logging
 
 logger = logging.getLogger(__name__)
 

@@ -11,6 +11,7 @@ from flask_security.utils import encrypt_password
 
 import web
 import utils
+import log_utils
 from app_core import MISSING_VITAL_SETTING, app, db
 from models import user_datastore, User, Role, Category, Permission, Topic
 
@@ -97,9 +98,9 @@ def g_exception(greenlet):
 
 KEEP_RUNNING = True
 if __name__ == "__main__":
-    ch = utils.setup_logging(logger, logging.DEBUG)
+    ch = log_utils.setup_logging(logger, logging.DEBUG)
     web.logger_setup(logging.DEBUG, ch)
-    utils.log_socketio_version(logger)
+    log_utils.log_socketio_version(logger)
 
     # create tables
     db.create_all()
