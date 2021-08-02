@@ -399,6 +399,6 @@ def transaction_info():
     tx = PayDbTransaction.from_token(db.session, token)
     if not tx:
         return bad_request(web_utils.INVALID_TX)
-    if tx.user != api_key.user and tx.recipient != api_key.user:
+    if tx.sender != api_key.user and tx.recipient != api_key.user:
         return bad_request(web_utils.UNAUTHORIZED)
     return jsonify(dict(tx=tx.to_json()))

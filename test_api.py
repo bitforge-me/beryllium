@@ -81,6 +81,11 @@ def construct_parser():
     parser_user_update_photo.add_argument("photo", metavar="PHOTO", type=str, help="user photo")
     parser_user_update_photo.add_argument("photo_type", metavar="PHOTO_TYPE", type=str, help="type of photo")
 
+    parser_user_transactions = subparsers.add_parser("user_transactions", help="List a users transactions")
+    parser_user_transactions.add_argument("api_key_token", metavar="API_KEY_TOKEN", type=str, help="the API KEY token")
+    parser_user_transactions.add_argument("api_key_secret", metavar="API_KEY_SECRET", type=str, help="the API KEY secret")
+    parser_user_transactions.add_argument("email", metavar="EMAIL", type=str, nargs="?", help="the user to list")
+
     parser_transaction_create = subparsers.add_parser("transaction_create", help="Create a transaction")
     parser_transaction_create.add_argument("api_key_token", metavar="API_KEY_TOKEN", type=str, help="the API KEY token")
     parser_transaction_create.add_argument("api_key_secret", metavar="API_KEY_SECRET", type=str, help="the API KEY secret")
@@ -247,6 +252,12 @@ def user_update_photo(args):
     check_request_status(r)
     print(r.text)
 
+def user_transactions(args):
+    print(":: calling user_transactions..")
+    r = paydb_req("user_transactions", {"email": args.email, "offset": 0, "limit": 100}, args.api_key_token, args.api_key_secret)
+    check_request_status(r)
+    print(r.text)
+
 def transaction_create(args):
     print(":: calling transaction_create..")
     r = paydb_req("transaction_create", {"action": args.action, "recipient": args.recipient, "amount": args.amount, "attachment": args.attachment}, args.api_key_token, args.api_key_secret)
@@ -335,6 +346,8 @@ def run_parser():
         function = user_update_password
     elif args.command == "user_update_photo":
         function = user_update_photo
+    elif args.command == "user_transactions":
+        function = user_transactions
     elif args.command == "transaction_create":
         function = transaction_create
     elif args.command == "transaction_info":
