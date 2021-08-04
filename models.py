@@ -200,7 +200,7 @@ class ApiKey(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     token = db.Column(db.String(255), unique=True, nullable=False)
     secret = db.Column(db.String(255), nullable=False)
-    nonce = db.Column(db.Integer, nullable=False)
+    nonce = db.Column(db.BigInteger, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     user = db.relationship('User', backref=db.backref('api_keys', lazy='dynamic'))
     device_name = db.Column(db.String(255))
