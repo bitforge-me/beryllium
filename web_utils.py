@@ -10,11 +10,11 @@ logger = logging.getLogger(__name__)
 AUTH_FAILED = 'authentication failed'
 OLD_NONCE = 'old nonce'
 INVALID_JSON = 'invalid json'
-INVALID_EMAIL = "invalid email"
-EMPTY_PASSWORD = "empty password"
-PHOTO_DATA_LARGE = "photo data too large"
-NOT_FOUND = "not found"
-NOT_CREATED = "not created"
+INVALID_EMAIL = 'invalid email'
+EMPTY_PASSWORD = 'empty password'
+PHOTO_DATA_LARGE = 'photo data too large'
+NOT_FOUND = 'not found'
+NOT_CREATED = 'not created'
 LIMIT_TOO_LARGE = 'limit too large'
 INVALID_TX = 'invalid tx'
 UNAUTHORIZED = 'unauthorized'
@@ -23,6 +23,7 @@ USER_EXISTS = 'user exists'
 INCORRECT_PASSWORD = 'incorrect password'
 NOT_IMPLEMENTED  = 'net yet implemented'
 NOT_AVAILABLE = 'not available'
+INVALID_AMOUNT = 'invalid amount'
 
 def bad_request(message, code=400):
     logger.warning(message)

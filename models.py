@@ -333,6 +333,7 @@ class Payment(db.Model):
     txid = db.Column(db.String(255))
 
     def __init__(self, proposal, mobile, email, recipient, message, amount):
+        assert amount > 0
         self.proposal = proposal
         self.token = generate_key(8)
         self.mobile = mobile

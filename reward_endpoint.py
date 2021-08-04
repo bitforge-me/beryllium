@@ -70,6 +70,8 @@ def reward_create():
     cat = Category.from_name(db.session, category)
     if not cat:
         return bad_request(web_utils.INVALID_CATEGORY)
+    if amount <= 0:
+        return bad_request(web_utils.INVALID_AMOUNT)
     proposal, payment = _reward_create(api_key.user, reason, cat, recipient, amount, message)
     db.session.commit()
     return jsonify(dict(proposal=dict(reason=reason, category=category, status=proposal.status, payment=dict(amount=amount, email=payment.email, mobile=payment.mobile, address=payment.recipient, message=message, status=payment.status))))
@@ -174,6 +176,10 @@ def referral_claim():
     category = Category.from_name(db.session, Category.CATEGORY_REFERRAL)
     if not category:
         return bad_request(web_utils.INVALID_CATEGORY)
+    if ref.reward_sender <= 0:
+        return bad_request(web_utils.INVALID_AMOUNT)
+    if ref.reward_recipient_type == ref.REWARD_TYPE_FIXED and ref.reward_recipient <= 0:
+        return bad_request(web_utils.INVALID_AMOUNT)
     reason = f'{ref.token}: reward for referral'
     _reward_create(api_key.user, reason, category, ref.recipient, ref.reward_sender, 'Thank you for referring a friend')
     if ref.reward_recipient_type == ref.REWARD_TYPE_FIXED:
