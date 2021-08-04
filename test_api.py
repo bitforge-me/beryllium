@@ -37,6 +37,7 @@ WS_URL = f"{WS_SCHEMA}://{SERVER_NAME}/"
 
 EXIT_NO_COMMAND = 1
 
+# pylint: disable=too-many-locals
 def construct_parser():
     # construct argument parser
     parser = argparse.ArgumentParser()
