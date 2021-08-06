@@ -333,6 +333,7 @@ class Payment(db.Model):
     txid = db.Column(db.String(255))
 
     def __init__(self, proposal, mobile, email, recipient, message, amount):
+        assert amount is not None
         assert amount > 0
         self.proposal = proposal
         self.token = generate_key(8)
@@ -751,6 +752,8 @@ class ProposalModelView(BaseModelView):
             return Markup('-')
         total = 0
         for payment in model.payments:
+            if payment.amount is None:
+                return '!ERR!'
             total += payment.amount
         total = total / 100
         return Markup(total)
