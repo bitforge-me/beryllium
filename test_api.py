@@ -44,6 +44,13 @@ def construct_parser():
 
     subparsers = parser.add_subparsers(dest="command")
 
+    ## General
+
+    parser_sign = subparsers.add_parser("sign", help="Sign an arbritrary message")
+    parser_sign.add_argument("api_key_token", metavar="API_KEY_TOKEN", type=str, help="the API KEY token")
+    parser_sign.add_argument("api_key_secret", metavar="API_KEY_SECRET", type=str, help="the API KEY secret")
+    parser_sign.add_argument("message", metavar="MESSAGE", type=str, help="the message")
+
     ## Websocket
 
     parser_ws = subparsers.add_parser("websocket", help="Listen to a websocket")
@@ -185,6 +192,11 @@ def check_request_status(r):
         print(str(r.status_code) + " - " + r.url)
         print(r.text)
         raise e
+
+def sign(args):
+    print(":: signing message")
+    sig = create_hmac_sig(args.api_key_secret, args.message)
+    print("Signature: ", sig)
 
 def websocket(args):
     print(":: calling websocket..")
@@ -333,7 +345,9 @@ def run_parser():
 
     # set appropriate function
     function = None
-    if args.command == "websocket":
+    if args.command == "sign":
+        function = sign
+    elif args.command == "websocket":
         function = websocket
     elif args.command == "api_key_create":
         function = api_key_create
