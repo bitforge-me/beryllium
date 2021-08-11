@@ -44,6 +44,22 @@ class PayDbNamespace(Namespace):
         logger.info("connect sid: %s", request.sid)
 
     def on_auth(self, auth):
+        if not isinstance(auth, dict):
+            # pylint: disable=broad-except
+            try:
+                auth = json.loads(auth)
+            except:
+                emit("info", "invalid json", namespace=NS)
+                return
+        if "api_key" not in auth:
+            emit("info", "'api_key' param missing", namespace=NS)
+            return
+        if "nonce" not in auth:
+            emit("info", "'nonce' param missing", namespace=NS)
+            return
+        if "signature" not in auth:
+            emit("info", "'signature' param missing", namespace=NS)
+            return
         # check auth
         res, reason, api_key = check_auth(db.session, auth["api_key"], auth["nonce"], auth["signature"], str(auth["nonce"]))
         if res:
@@ -54,7 +70,9 @@ class PayDbNamespace(Namespace):
             # store sid -> email map
             ws_sids[request.sid] = api_key.user.email
         else:
-            logger.info("failed authentication (%s): %s", auth["api_key"], reason)
+            api_key = auth["api_key"]
+            emit("info", f"failed authentication ({api_key}): {reason}", namespace=NS)
+            logger.info("failed authentication (%s): %s", api_key, reason)
 
     def on_disconnect(self):
         logger.info("disconnect sid: %s", request.sid)
