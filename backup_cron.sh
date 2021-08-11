@@ -55,6 +55,6 @@ else
     if [ $? = 0 ]; then
         echo "${date_format} - duplicity backup successful" >> "${result_dir}/db_backup.log"
     else
-        echo "${date_format} - duplicity backup failed" >> "${result_dir}/db_backup.log"
+        echo "${date_format} - duplicity backup failed ($?)" >> "${result_dir}/db_backup.log"
     fi
 fi
