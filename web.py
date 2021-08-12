@@ -19,12 +19,13 @@ import requests
 import pywaves
 
 from app_core import app, db, socketio, SERVER_MODE_WAVES, SERVER_MODE_PAYDB
-from models import Role, User, WavesTx, Proposal, Payment, Topic, PushNotificationLocation
+from models import Role, WavesTx, Proposal, Payment, Topic, PushNotificationLocation
 import utils
 from fcm import FCM
 from web_utils import bad_request, get_json_params, get_json_params_optional
 import paydb_core
 from reward_endpoint import reward, reward_create
+from reporting_endpoint import reporting
 # pylint: disable=unused-import
 import admin
 
@@ -58,6 +59,7 @@ if app.config["USE_STASH"]:
     app.register_blueprint(stash_bp, url_prefix='/stash')
 # reward blueprint
 app.register_blueprint(reward, url_prefix='/reward')
+app.register_blueprint(reporting, url_prefix='/reporting')
 
 def logger_setup(level, handler):
     logger.setLevel(level)
@@ -79,69 +81,6 @@ def logger_clear():
     if SERVER_MODE == SERVER_MODE_PAYDB:
         import paydb_endpoint
         paydb_endpoint.logger.handlers.clear()
-
-def dashboard_data_waves():
-    # get balance of local wallet
-    url = NODE_BASE_URL + f"/assets/balance/{ADDRESS}/{ASSET_ID}"
-    logger.info("requesting %s..", url)
-    response = requests.get(url)
-    try:
-        asset_balance = response.json()["balance"]
-    except: # pylint: disable=bare-except
-        logger.error("failed to parse response")
-        asset_balance = "n/a"
-    url = NODE_BASE_URL + f"/addresses/balance/{ADDRESS}"
-    logger.info("requesting %s..", url)
-    response = requests.get(url)
-    try:
-        waves_balance = response.json()["balance"]
-    except: # pylint: disable=bare-except
-        logger.error("failed to parse response")
-        waves_balance = "n/a"
-    # get the balance of the main wallet
-    url = NODE_BASE_URL + f"/transactions/info/{ASSET_ID}"
-    logger.info("requesting %s..", url)
-    response = requests.get(url)
-    try:
-        issuer = response.json()["sender"]
-        url = NODE_BASE_URL + f"/assets/balance/{issuer}/{ASSET_ID}"
-        logger.info("requesting %s..", url)
-        response = requests.get(url)
-        master_asset_balance = response.json()["balance"]
-        url = NODE_BASE_URL + f"/addresses/balance/{issuer}"
-        logger.info("requesting %s..", url)
-        response = requests.get(url)
-        master_waves_balance = response.json()["balance"]
-    except: # pylint: disable=bare-except
-        logger.error("failed to parse response")
-        issuer = "n/a"
-        master_waves_balance = "n/a"
-        master_asset_balance = "n/a"
-    # return data
-    return {"asset_balance": asset_balance, "asset_address": ADDRESS, "waves_balance": waves_balance, \
-            "master_asset_balance": master_asset_balance, "master_waves_balance": master_waves_balance, "master_waves_address": issuer, \
-            "asset_id": ASSET_ID, \
-            "testnet": TESTNET, \
-            "premio_qrcode": utils.qrcode_svg_create(ADDRESS), \
-            "issuer_qrcode": utils.qrcode_svg_create(issuer), \
-            "wavesexplorer": app.config["WAVESEXPLORER"]}
-
-def dashboard_data_paydb():
-    premio_stage_balance = -1
-    premio_stage_account = app.config['OPERATIONS_ACCOUNT']
-    user = User.from_email(db.session, premio_stage_account)
-    if user:
-        premio_stage_balance = paydb_core.user_balance_from_user(db.session, user)
-    total_balance = paydb_core.balance_total(db.session)
-    # return data
-    return {"premio_stage_balance": premio_stage_balance, "premio_stage_account": premio_stage_account, \
-            "total_balance": total_balance}
-
-def from_int_to_user_friendly(val, divisor, decimal_places=4):
-    if not isinstance(val, int):
-        return val
-    val = val / divisor
-    return round(val, decimal_places)
 
 def _create_transaction_waves(recipient, amount, attachment):
     # get fee
@@ -350,21 +289,6 @@ def claim_payment(token):
 @app.route("/payment_create", methods=["POST"])
 def payment_create():
     return reward_create()
-
-@app.route("/dashboard")
-@roles_accepted(Role.ROLE_ADMIN)
-def dashboard():
-    if SERVER_MODE == SERVER_MODE_WAVES:
-        data = dashboard_data_waves()
-        data["asset_balance"] = int2asset(data["asset_balance"])
-        data["waves_balance"] = from_int_to_user_friendly(data["waves_balance"], 10**8)
-        data["master_asset_balance"] = int2asset(data["master_asset_balance"])
-        data["master_waves_balance"] = from_int_to_user_friendly(data["master_waves_balance"], 10**8)
-        return render_template("dashboard_waves.html", data=data)
-    data = dashboard_data_paydb()
-    data["premio_stage_balance"] = int2asset(data["premio_stage_balance"])
-    data["total_balance"] = int2asset(data["total_balance"])
-    return render_template("dashboard_paydb.html", data=data)
 
 # https://gis.stackexchange.com/a/2964
 def meters_to_lat_lon_displacement(meters, origin_latitude):

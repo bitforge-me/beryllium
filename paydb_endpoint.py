@@ -45,10 +45,9 @@ class PayDbNamespace(Namespace):
 
     def on_auth(self, auth):
         if not isinstance(auth, dict):
-            # pylint: disable=broad-except
             try:
                 auth = json.loads(auth)
-            except:
+            except: # pylint: disable=bare-except
                 emit("info", "invalid json", namespace=NS)
                 return
         if "api_key" not in auth:

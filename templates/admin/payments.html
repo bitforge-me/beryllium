@@ -25,7 +25,11 @@
                         <td>{{payment.message}}</td>
                         <td>{{payment.amount|int2asset}} {{ config["ASSET_NAME"] }}</td>
                         <td>{{payment.status}}</td>
+			{% if config["SERVER_MODE"] == "paydb" %}
+			<td><a href="/admin/paydbtransaction/?flt1_7={{payment.txid}}">{{payment.txid}}</a></td>
+			{% else %}
                         <td>{{payment.txid}}</td>
+			{% endif %}
                     </tr>
                 {% endfor %}
                 </tbody>

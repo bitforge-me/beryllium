@@ -1,0 +1,332 @@
+.some-page-wrapper {
+  margin: 15px;
+  background-color: white;
+}
+.row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  width: 100%;
+}
+.column {
+  display: flex;
+  flex-direction: column;
+  flex-basis: 100%;
+  flex: 1;
+}
+.row-divider {
+  background-color: #efefef;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #add3e6;
+  border-radius: 10px;
+  height: 30px;
+  margin: 5px;
+  text-align: center;
+  font-weight: bold;
+}
+
+/* DASHBOARD */
+.row-1line-title-white {
+  background-color: white;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #add3e6;
+  border-radius: 10px;
+  height: 100px;
+  margin: 5px;
+  text-align: center;
+  padding: 35px;
+  font-weight: bold;
+  font-size: 100%;
+}
+.row-2line-title-white {
+  background-color: white;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #add3e6;
+  border-radius: 10px;
+  height: 100px;
+  margin: 5px;
+  text-align: center;
+  padding: 25px;
+  font-weight: bold;
+  font-size: 100%;
+}
+.row-2line-title-white-transactioncount {
+  background-color: white;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #add3e6;
+  border-radius: 10px;
+  height: 100px;
+  margin: 5px;
+  text-align: center;
+  padding: 25px;
+  font-weight: bold;
+  font-size: 100%;
+}
+.row-2line-title-white-transactioncount:hover + .hide{
+  display: block;
+}
+.row-2line-title-white-noofproposals {
+  position: relative;
+  background-color: white;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #add3e6;
+  border-radius: 10px;
+  height: 100px;
+  margin: 5px;
+  text-align: center;
+  text-decoration: none;
+  padding: 25px;
+  font-weight: bold;
+  font-size: 100%;
+}
+.row-2line-title-white-noofproposals:hover + .hide{
+  display: block;
+}
+.hide{
+  display: none;
+  position: absolute;
+  background-color: #ebfbfb;
+  border-width: 1px;
+  border-style: dashed;
+  border-color: #add3e6;
+  border-radius: 10px; 
+  height: 50px;
+  margin: 5px;
+  text-align: center;
+  text-decoration: none;
+  padding: 10px;
+  font-size: 100%;
+  left: 25%;
+}
+.white-row {
+  background-color: white;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #add3e6;
+  border-radius: 10px;
+  height: 100px;
+  margin: 5px;
+  text-align: center;
+  padding: 30px;
+  font-size: 150%;
+}
+.white-nohover-row {
+  background-color: white;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #add3e6;
+  border-radius: 10px;
+  height: 100px;
+  margin: 5px;
+  text-align: center;
+  padding: 30px;
+  font-size: 150%;
+}
+.white-row:hover {
+  background-color:#e6ebff;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #add3e6;
+  border-radius: 10px;
+  height: 100px;
+  margin: 5px;
+  text-align: center;
+  padding: 30px;
+  font-size: 150%;
+}
+.green-row {
+  background-color: #d9fce9;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #add3e6;
+  border-radius: 10px;
+  height: 100px;
+  margin: 5px;
+  text-align: center;
+  padding: 30px;
+  font-size: 150%;
+}
+.red-row {
+  background-color: #fff9fa;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #add3e6;
+  border-radius: 10px;
+  height: 100px;
+  margin: 5px;
+  text-align: center;
+  padding: 30px;
+  font-size: 150%;
+}
+.orange-row {
+  background-color: #f8e9d0;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #add3e6;
+  border-radius: 10px;
+  height: 100px;
+  margin: 5px;
+  text-align: center;
+  padding: 30px;
+  font-size: 150%;
+}
+.blue-row {
+  background-color: #ebfbfb;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #add3e6;
+  border-radius: 10px;
+  height: 65px;
+  margin: 5px;
+  text-align: center;
+  padding: 10px;
+  font-size: 150%;
+}
+.row-1line-title-green:hover + .hide{
+  display: block;
+}
+.row-1line-title-green {
+  position: relative;
+  background-color: #d9fce9;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #add3e6;
+  border-radius: 10px;
+  height: 100px;
+  margin: 5px;
+  text-align: center;
+  padding: 35px;
+  font-weight: bold;
+  font-size: 100%;
+}
+.row-1line-title-orange:hover + .hide{
+  display: block;
+}
+.row-1line-title-orange {
+  position: relative;
+  background-color: #f8e9d0;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #add3e6;
+  border-radius: 10px;
+  height: 100px;
+  margin: 5px;
+  text-align: center;
+  padding: 35px;
+  font-weight: bold;
+  font-size: 100%;
+}
+.row-1line-title-red:hover + .hide{
+  display: block;
+}
+.row-1line-title-red {
+  position: relative;
+  background-color: #fff9fa;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #add3e6;
+  border-radius: 10px;
+  height: 100px;
+  margin: 5px;
+  text-align: center;
+  padding: 35px;
+  font-weight: bold;
+  font-size: 100%;
+}
+.title_1line-column {
+  background-color: white;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #add3e6;
+  border-radius: 10px;
+  padding: 14px;
+  height: 60px;
+  margin: 5px;
+  text-align: center;
+}
+.title_download-user_balance {
+  background-color: white;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #add3e6;
+  border-radius: 10px;
+  height: 30px;
+  margin: 5px;
+  text-align: center;
+}
+.title_download-user_balance:hover {
+  background-color: #e6ebff;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #add3e6;
+  border-radius: 10px;
+  height: 30px;
+  margin: 5px;
+  text-align: center;
+}
+.title_1line-column-borderless {
+  background-color: white;
+  padding: 14px;
+  height: 30px;
+  margin: 5px;
+  text-align: center;
+}
+.title_2lines-column {
+  background-color: white;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #add3e6;
+  border-radius: 10px;
+  padding: 3px;
+  height: 60px;
+  margin: 5px;
+  text-align: center;
+}
+.operations_account_column {
+  background-color: white;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #add3e6;
+  border-radius: 10px;
+  height: 100px;
+  margin: 5px;
+  text-align: center;
+}
+.operations_account_column_waves {
+  background-color: white;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #add3e6;
+  border-radius: 10px;
+  height: 400px;
+  margin: 5px;
+  text-align: center;
+}
+.blue-row-waves {
+  background-color: #ebfbfb;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #add3e6;
+  border-radius: 10px;
+  height: 90px;
+  margin: 5px;
+  text-align: center;
+  padding: 10px;
+  font-size: 150%;
+}
+/* USER BALANCE*/
+.title-column {
+  background-color: white;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #add3e6;
+  border-radius: 10px;
+  height: 27px;
+  margin: 1px;
+  text-align: center;
+}

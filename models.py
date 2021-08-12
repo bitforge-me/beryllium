@@ -23,6 +23,7 @@ from flask_admin.contrib import sqla
 from flask_admin.contrib.sqla.filters import BaseSQLAFilter
 from flask_admin.model import filters, typefmt
 from wtforms.fields import TextField, DecimalField, FileField
+from wtforms.validators import DataRequired
 from wtforms import validators
 from marshmallow import Schema, fields
 from markupsafe import Markup
@@ -518,6 +519,10 @@ def validate_csv(data):
         rows.append((recipient, message, amount))
     return rows
 
+def format_amount_text(self, context, model, name):
+    amount = int2asset(model.amount)
+    return Markup(amount)
+
 def format_amount(self, context, model, name):
     amount = int2asset(model.amount)
     html = '''
@@ -607,6 +612,36 @@ def get_statuses():
         for proposal_status_a, proposal_status_b in g.statuses:
             yield proposal_status_a, proposal_status_b
 
+def get_actions():
+    # prevent database access when app is not yet ready
+    if has_app_context():
+        if not hasattr(g, 'actions'):
+            query = PayDbTransaction.query.group_by(PayDbTransaction.action).distinct(PayDbTransaction.action)
+            # pylint: disable=assigning-non-slot
+            g.actions = [(PayDbTransaction.action, PayDbTransaction.action) for PayDbTransaction in query]
+        for pay_db_transaction_action_a, pay_db_transaction_action_b in g.actions:
+            yield pay_db_transaction_action_a, pay_db_transaction_action_b
+
+def get_user_tokens():
+    # prevent database access when app is not yet ready
+    if has_app_context():
+        if not hasattr(g, 'tokens'):
+            query = User.query.group_by(User.token).distinct(User.token)
+            # pylint: disable=assigning-non-slot
+            g.tokens = [(User.token, User.token) for User in query]
+        for user_token_a, user_token_b in g.tokens:
+            yield user_token_a, user_token_b
+
+def get_paydbtransaction_tokens():
+    # prevent database access when app is not yet ready
+    if has_app_context():
+        if not hasattr(g, 'paydbtransaction_tokens'):
+            query = PayDbTransaction.query.group_by(PayDbTransaction.token).distinct(PayDbTransaction.token)
+            # pylint: disable=assigning-non-slot
+            g.tokens = [(PayDbTransaction.token, PayDbTransaction.token) for PayDbTransaction in query]
+        for pay_db_transaction_token_a, pay_db_transaction_token_b in g.tokens:
+            yield pay_db_transaction_token_a, pay_db_transaction_token_b
+
 class FilterByProposer(BaseSQLAFilter):
     def apply(self, query, value, alias=None):
         return query.filter(Proposal.proposer_id == value)
@@ -675,6 +710,19 @@ class FilterBySenderTokenSearch(BaseSQLAFilter):
         # return a generator that is reloaded each time it is used
         return ReloadingIterator(get_users)
 
+class FilterBySenderTokenSearchNotEqual(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        result = User.query.filter(User.id==value).one()
+        user_token = result.token
+        return query.filter(PayDbTransaction.sender_token != user_token)
+
+    def operation(self):
+        return u'not equals'
+
+    def get_options(self, view):
+        # return a generator that is reloaded each time it is used
+        return ReloadingIterator(get_users)
+
 class FilterByRecipientTokenSearch(BaseSQLAFilter):
     def apply(self, query, value, alias=None):
         result = User.query.filter(User.id==value).one()
@@ -687,6 +735,63 @@ class FilterByRecipientTokenSearch(BaseSQLAFilter):
     def get_options(self, view):
         # return a generator that is reloaded each time it is used
         return ReloadingIterator(get_users)
+
+class FilterByRecipientTokenSearchNotEqual(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        result = User.query.filter(User.id==value).one()
+        user_token = result.token
+        return query.filter(PayDbTransaction.recipient_token != user_token)
+
+    def operation(self):
+        return u'not equals'
+
+    def get_options(self, view):
+        # return a generator that is reloaded each time it is used
+        return ReloadingIterator(get_users)
+
+class FilterByAction(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        return query.filter(PayDbTransaction.action == value)
+
+    def operation(self):
+        return u'equals'
+
+    def get_options(self, view):
+        # return a generator that is reloaded each time it is used
+        return ReloadingIterator(get_actions)
+
+class FilterByUserEmail(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        return query.filter(User.id == value)
+
+    def operation(self):
+        return u'equals'
+
+    def get_options(self, view):
+        # return a generator that is reloaded each time it is used
+        return ReloadingIterator(get_users)
+
+class FilterByUserToken(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        return query.filter(User.token == value)
+
+    def operation(self):
+        return u'equals'
+
+    def get_options(self, view):
+        # return a generator that is reloaded each time it is used
+        return ReloadingIterator(get_user_tokens)
+
+class FilterByPayDbTransactionToken(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        return query.filter(PayDbTransaction.token == value)
+
+    def operation(self):
+        return u'equals'
+
+    def get_options(self, view):
+        # return a generator that is reloaded each time it is used
+        return ReloadingIterator(get_paydbtransaction_tokens)
 
 class ProposalModelView(BaseModelView):
     can_create = False
@@ -735,8 +840,8 @@ class ProposalModelView(BaseModelView):
         for payment in model.payments:
             if payment.status == payment.STATE_SENT_FUNDS:
                 total_claimed += payment.amount
-        total_claimed = decimal.Decimal(total_claimed) / 100
-        return total_claimed
+        total_claimed = decimal.Decimal(total_claimed)
+        return int2asset(total_claimed)
 
     def _format_claimed_column(view, context, model, name):
         total_claimed = view._format_claimed(model)
@@ -755,7 +860,7 @@ class ProposalModelView(BaseModelView):
             if payment.amount is None:
                 return '!ERR!'
             total += payment.amount
-        total = total / 100
+        total = int2asset(total)
         return Markup(total)
 
     def _format_totalclaimed_column_export(view, context, model, name):
@@ -771,7 +876,10 @@ class ProposalModelView(BaseModelView):
     column_export_list = ('id', 'date', 'proposer', 'categories', 'authorizer', 'reason', 'date_authorized', 'date_expiry', 'status', 'total', 'claimed')
     column_formatters_export = {'total': _format_total_column, 'claimed': _format_totalclaimed_column_export}
     form_columns = ['reason', 'categories', 'recipient', 'message', 'amount', 'csvfile']
-    form_extra_fields = {'recipient': TextField('Recipient'), 'message': TextField('Message'), 'amount': DecimalField('Amount', validators=[validators.Optional()]), 'csvfile': FileField('CSV File')}
+    form_args = dict(
+            reason=dict(label='Reason', validators=[DataRequired()])
+            )
+    form_extra_fields = {'recipient': TextField('Recipient', validators=[DataRequired()]), 'message': TextField('Message'), 'amount': DecimalField('Amount', validators=[validators.Optional(), DataRequired()]), 'csvfile': FileField('CSV File')}
 
     def _validate_form(self, form):
         csv_rows = None
@@ -914,6 +1022,10 @@ class UserModelView(BaseModelView):
     can_edit = False
     column_list = ['token', 'email', 'roles', 'active', 'confirmed_at']
     column_editable_list = ['roles', 'active']
+    if app.config["SERVER_MODE"] == "paydb":
+        column_filters = [ FilterByUserEmail(User.email, 'Search email'), FilterByUserToken(User.token, 'Search token') ]
+    else:
+        column_filters = [ FilterByUserEmail(User.email, 'Search email') ]
 
     def is_accessible(self):
         return (current_user.is_active and
@@ -1170,7 +1282,12 @@ class PayDbAdminTransactionsView(RestrictedModelView):
     column_formatters = {'amount': format_amount, 'date': format_date}
     column_filters = [ DateBetweenFilter(PayDbTransaction.date, 'Search Date'), \
             FilterBySenderTokenSearch(PayDbTransaction.sender_token, 'Search Sender'), \
-            FilterByRecipientTokenSearch(PayDbTransaction.recipient_token, 'Search Recipient') ]
+            FilterBySenderTokenSearchNotEqual(PayDbTransaction.sender_token, 'Search Sender'), \
+            FilterByRecipientTokenSearch(PayDbTransaction.recipient_token, 'Search Recipient'), FilterByAction(PayDbTransaction.action, 'Search Action'), \
+            FilterByRecipientTokenSearchNotEqual(PayDbTransaction.recipient_token, 'Search Recipient'), FilterByAction(PayDbTransaction.action, 'Search Action'), \
+            FilterByPayDbTransactionToken(PayDbTransaction.token, 'Search Token') ]
+    column_export_list = ('sender', 'recipient', 'token', 'date', 'action', 'amount', 'attachment')
+    column_formatters_export = {'amount': format_amount_text}
 
 class UserStash(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -1334,3 +1451,8 @@ class Referral(db.Model):
     @classmethod
     def from_user(cls, session, user):
         return session.query(cls).filter(cls.user_id == user.id).all()
+
+class CategoryModelView(RestrictedModelView):
+    can_create = True
+    can_delete = False
+    can_edit = False

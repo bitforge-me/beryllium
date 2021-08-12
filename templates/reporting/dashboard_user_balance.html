@@ -1,0 +1,151 @@
+{% extends "layout.html" %}
+
+{% block content %}
+
+<a class="btn btn-secondary" href="/"><i class="glyphicon glyphicon-chevron-left"></i> Back</a>&nbsp
+<a class="btn btn-secondary" href="dashboard_general"><i class="glyphicon glyphicon-chevron-left"></i>General</a>&nbsp
+<a class="btn btn-secondary" href="dashboard_report_proposals"><i class="glyphicon glyphicon-chevron-left"></i>Proposals</a>&nbsp
+<a class="btn btn-primary" href="dashboard_user_balance"><i class="glyphicon glyphicon-chevron-left"></i>User Balance</a>
+
+<div class='some-page-wrapper'>
+  <div class='row'>
+    <div class='column'>
+      <div class='title-borderless'>
+      </div>
+    </div>
+    <div class='column'>
+      <div class='title_1line-column'>
+        Today 
+      </div>
+    </div>
+    <div class='column'>
+      <div class='title_1line-column'>
+        Yesterday
+      </div>
+    </div>
+    <div class='column'>
+      <div class='title_2lines-column'>
+        Week<br>
+        (WTD,Mon-Sun)
+      </div>
+    </div>
+    <div class='column'>
+      <div class='title_2lines-column'>
+        Month<br>
+        (MTD)
+      </div>
+    </div>
+    <div class='column'>
+      <div class='title_2lines-column'>
+        Year<br>
+        (YTD)
+      </div>
+    </div>
+    <div class='column'>
+      <div class='title_1line-column'>
+        Lifetime
+      </div>
+    </div>
+  </div>
+  <div class='row'>
+    <div class='column'>
+      <div class='row-divider'>
+        User
+      </div>
+    </div>
+  </div>
+  <div class='row'>
+    <div class='column'>
+      <div class='row-1line-title-white'>
+        Register
+      </div>
+    </div>
+    <div class='column'>
+      <div class='white-nohover-row'>
+	{{ user_count_today }}
+      </div>
+    </div>
+    <div class='column'>
+      <div class='white-nohover-row'>
+	{{ user_count_yesterday }}
+      </div>
+    </div>
+    <div class='column'>
+      <div class='white-nohover-row'>
+	{{ user_count_weekly }}
+      </div>
+    </div>
+    <div class='column'>
+      <div class='white-nohover-row'>
+        {{ user_count_monthly }}
+      </div>
+    </div>
+    <div class='column'>
+      <div class='white-nohover-row'>
+        {{ user_count_yearly }}
+      </div>
+    </div>
+    <div class='column'>
+      <div class='white-nohover-row'>
+        {{ user_count_lifetime }}
+      </div>
+    </div>
+  </div>
+  {% if config["SERVER_MODE"] == "paydb" %}
+  <div class='row'>
+    <div class='column'>
+      <div class='row-divider'>
+        Users/Balance(Top 10)
+      </div>
+    </div>
+  </div>
+  <div class='row'>
+    <div class='column'>
+      <div class='title_1line-column-borderless'>
+      </div>
+    </div>
+    <div class='column'>
+      <div class='title_1line-column-borderless'>
+      </div>
+    </div>
+    <div class='column'>
+      <div class='title_1line-column-borderless'>
+      </div>
+    </div>
+    <div class='column'>
+      <a href="download_user_balance">
+      <div class='title_download-user_balance'>
+	      Download User Balance
+      </div>
+      </a>
+    </div>
+  </div>
+  <div class='row'>
+    <div class='column'>
+      <div class='title-column'>
+        Users
+      </div>
+    </div>
+    <div class='column'>
+      <div class='title-column' >
+        Balance(current)
+      </div>
+    </div>
+  </div>
+  {% for user in users_balances %}
+  <div class='row'>
+    <div class='column'>
+      <div class='title-column'>
+	      {{user.user}}    
+      </div>
+    </div>
+    <div class='column'>
+      <div class='title-column'>
+        {{ user.balance }}
+      </div>
+    </div>
+  </div>
+  {%endfor %}
+  {% endif %}
+</div>
+{% endblock %}

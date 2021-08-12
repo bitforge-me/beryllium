@@ -1,0 +1,136 @@
+{% extends "layout.html" %}
+{% block head_css %}
+  {{ super() }}
+{% endblock %}
+
+{% block content %}
+<a class="btn btn-secondary" href="/"><i class="glyphicon glyphicon-chevron-left"></i> Back</a>&nbsp
+<a class="btn btn-primary" href="dashboard_general"><i class="glyphicon glyphicon-chevron-left"></i>General</a>&nbsp
+<a class="btn btn-secondary" href="dashboard_report_proposals"><i class="glyphicon glyphicon-chevron-left"></i>Proposals</a>&nbsp
+<a class="btn btn-secondary" href="dashboard_user_balance"><i class="glyphicon glyphicon-chevron-left"></i>User Balance</a>
+
+<div class='some-page-wrapper'>	
+  <div class='row'>
+    <div class='column'>
+      <div class='title-borderless'>
+      </div>
+    </div>
+    <div class='column'>
+      <div class='title_1line-column'>
+        Today 
+      </div>
+    </div>
+    <div class='column'>
+      <div class='title_1line-column'>
+        Yesterday
+      </div>
+    </div>
+    <div class='column'>
+      <div class='title_2lines-column'>
+        Week<br>
+        (WTD,Mon-Sun)
+      </div>
+    </div>
+    <div class='column'>
+      <div class='title_2lines-column'>
+        Month<br>
+        (MTD)
+      </div>
+    </div>
+    <div class='column'>
+      <div class='title_2lines-column'>
+        Year<br>
+        (YTD)
+      </div>
+    </div>
+    <div class='column'>
+      <div class='title_1line-column'>
+        Lifetime
+      </div>
+    </div>
+  </div>
+  <div class='row'>
+    <div class='column'>
+      <div class='row-divider'>
+        Premio Transactions
+      </div>
+    </div>
+  </div>
+  <div class='row'>
+    <div class='column'>
+      <div class='row-2line-title-white-transactioncount'>
+	Transaction
+	Count
+      </div>
+      <div class='hide'>
+	Includes all transactions. ie. Rebates, Vouchers, P2P transactions
+      </div>
+    </div>
+    <div class='column'>
+      <a href="dashboard_premio_tx_today">
+      <div class='white-row'>
+	{{ premio_tx_count_today }}
+      </div>
+      </a>
+    </div>
+    <div class='column'>
+      <a href="dashboard_premio_tx_yesterday">
+      <div class='white-row'>
+        {{ premio_tx_count_yesterday }}
+      </div>
+      </a>
+    </div>
+    <div class='column'>
+      <a href="dashboard_premio_tx_week">
+      <div class='white-row'>
+        {{ premio_tx_count_week }}
+      </div>
+      </a>
+    </div>
+    <div class='column'>
+      <a href="dashboard_premio_tx_month">
+      <div class='white-row'>
+        {{ premio_tx_count_month }}
+      </div>
+      </a>
+    </div>
+    <div class='column'>
+      <a href="dashboard_premio_tx_year">
+      <div class='white-row'>
+        {{ premio_tx_count_year }}
+      </div>
+      </a>
+    </div>
+    <div class='column'>
+      <a href="dashboard_premio_tx_lifetime">
+      <div class='white-row'>
+        {{ premio_tx_count_lifetime }}
+      </div>
+      </a>
+    </div>
+  </div>
+  <div class='row'>
+    <div class='column'>
+      <div class='operations_account_column'>
+	      <b> Operations Account: {{ premio_stage_account }}</b>
+        <div class='blue-row'>
+          {{ premio_balance }} {{ config["ASSET_NAME"] }}
+        </div>
+      </div>
+    </div>
+    <div class='column'>
+      <div class='operations_account_column'>
+	<b>Total Balance: </b>
+        <div class='blue-row'>
+	  {{ total_balance }} {{ config["ASSET_NAME"] }}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if config["USE_REFERRALS"] %}
+    {% include 'referral_settings.html' %}
+{% endif %}
+
+{% endblock %}
