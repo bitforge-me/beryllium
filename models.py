@@ -616,7 +616,7 @@ def get_actions():
     # prevent database access when app is not yet ready
     if has_app_context():
         if not hasattr(g, 'actions'):
-            query = PayDbTransaction.query.group_by(PayDbTransaction.action).distinct(PayDbTransaction.action)
+            query = PayDbTransaction.query.distinct(PayDbTransaction.action)
             # pylint: disable=assigning-non-slot
             g.actions = [(PayDbTransaction.action, PayDbTransaction.action) for PayDbTransaction in query]
         for pay_db_transaction_action_a, pay_db_transaction_action_b in g.actions:
@@ -626,7 +626,7 @@ def get_user_tokens():
     # prevent database access when app is not yet ready
     if has_app_context():
         if not hasattr(g, 'tokens'):
-            query = User.query.group_by(User.token).distinct(User.token)
+            query = User.query.distinct(User.token)
             # pylint: disable=assigning-non-slot
             g.tokens = [(User.token, User.token) for User in query]
         for user_token_a, user_token_b in g.tokens:
@@ -636,7 +636,7 @@ def get_paydbtransaction_tokens():
     # prevent database access when app is not yet ready
     if has_app_context():
         if not hasattr(g, 'paydbtransaction_tokens'):
-            query = PayDbTransaction.query.group_by(PayDbTransaction.token).distinct(PayDbTransaction.token)
+            query = PayDbTransaction.query.distinct(PayDbTransaction.token)
             # pylint: disable=assigning-non-slot
             g.tokens = [(PayDbTransaction.token, PayDbTransaction.token) for PayDbTransaction in query]
         for pay_db_transaction_token_a, pay_db_transaction_token_b in g.tokens:
@@ -1283,8 +1283,9 @@ class PayDbAdminTransactionsView(RestrictedModelView):
     column_filters = [ DateBetweenFilter(PayDbTransaction.date, 'Search Date'), \
             FilterBySenderTokenSearch(PayDbTransaction.sender_token, 'Search Sender'), \
             FilterBySenderTokenSearchNotEqual(PayDbTransaction.sender_token, 'Search Sender'), \
-            FilterByRecipientTokenSearch(PayDbTransaction.recipient_token, 'Search Recipient'), FilterByAction(PayDbTransaction.action, 'Search Action'), \
-            FilterByRecipientTokenSearchNotEqual(PayDbTransaction.recipient_token, 'Search Recipient'), FilterByAction(PayDbTransaction.action, 'Search Action'), \
+            FilterByRecipientTokenSearch(PayDbTransaction.recipient_token, 'Search Recipient'), \
+            FilterByRecipientTokenSearchNotEqual(PayDbTransaction.recipient_token, 'Search Recipient'), \
+            FilterByAction(PayDbTransaction.action, 'Search Action'), \
             FilterByPayDbTransactionToken(PayDbTransaction.token, 'Search Token') ]
     column_export_list = ('sender', 'recipient', 'token', 'date', 'action', 'amount', 'attachment')
     column_formatters_export = {'amount': format_amount_text}
