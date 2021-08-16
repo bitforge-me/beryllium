@@ -68,7 +68,7 @@ def request_get_signature():
     return request.headers.get('X-Signature')
 
 def check_hmac_auth(api_key, nonce, sig, body):
-    if nonce <= api_key.nonce:
+    if int(nonce) <= int(api_key.nonce):
         return False, OLD_NONCE
     our_sig = create_hmac_sig(api_key.secret, body)
     if sig == our_sig:
