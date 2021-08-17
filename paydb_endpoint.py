@@ -17,6 +17,7 @@ import utils
 from app_core import db, socketio, limiter
 from models import user_datastore, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, PayDbTransaction
 import paydb_core
+import dasset
 
 logger = logging.getLogger(__name__)
 paydb = Blueprint('paydb', __name__, template_folder='templates')
@@ -393,3 +394,17 @@ def transaction_info():
     if tx.sender != api_key.user and tx.recipient != api_key.user:
         return bad_request(web_utils.UNAUTHORIZED)
     return jsonify(dict(tx=tx.to_json()))
+
+@paydb.route('/assets', methods=['POST'])
+def assets():
+    api_key, err_response = auth_request(db)
+    if err_response:
+        return err_response
+    return jsonify(dasset.assets())
+
+@paydb.route('/markets', methods=['POST'])
+def markets():
+    api_key, err_response = auth_request(db)
+    if err_response:
+        return err_response
+    return jsonify(dasset.markets())

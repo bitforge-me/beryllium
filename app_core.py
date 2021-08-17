@@ -157,6 +157,8 @@ set_vital_setting("PASSWORD_SALT", "SECURITY_PASSWORD_SALT")
 set_vital_setting("SENDGRID_API_KEY", "MAIL_SENDGRID_API_KEY")
 set_vital_setting("SERVER_NAME")
 set_vital_setting("FIREBASE_CREDENTIALS")
+set_vital_setting("DASSET_API_SECRET")
+set_vital_setting("DASSET_ACCOUNT_ID")
 
 db = SQLAlchemy(app)
 mail = MailSendGrid(app)
