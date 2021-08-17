@@ -399,6 +399,8 @@ def transaction_create():
     if err_response:
         return err_response
     api_key, nonce, action, recipient, amount, attachment = params
+    if recipient:
+        recipient = recipient.lower()
     res, reason, api_key = check_auth(db.session, api_key, nonce, sig, request.data)
     if not res:
         return bad_request(reason)
