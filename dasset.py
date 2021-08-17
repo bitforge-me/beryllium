@@ -8,6 +8,8 @@ logger = logging.getLogger(__name__)
 
 DASSET_API_SECRET = app.config['DASSET_API_SECRET']
 DASSET_ACCOUNT_ID = app.config['DASSET_ACCOUNT_ID']
+ASSET_LIST = [x.strip() for x in app.config['ASSET_LIST'].split(',')]
+MARKET_LIST = [x.strip() for x in app.config['MARKET_LIST'].split(',')]
 
 URL_BASE = 'https://api.dassetx.com/api'
 
@@ -26,7 +28,9 @@ def assets(asset=None):
         endpoint = f'/currencies/{asset}'
     r = req(endpoint)
     if r.status_code == 200:
-        return r.json()
+        assets = r.json()
+        assets = [a for a in assets if a['symbol'] in ASSET_LIST]
+        return assets
     logger.error('request failed: %d, %s', r.status_code, r.content)
     return None
 
@@ -34,6 +38,8 @@ def markets():
     endpoint = '/markets'
     r = req(endpoint)
     if r.status_code == 200:
-        return r.json()
+        markets = r.json()
+        markets = [m for m in markets if m['symbol'] in MARKET_LIST]
+        return markets
     logger.error('request failed: %d, %s', r.status_code, r.content)
     return None

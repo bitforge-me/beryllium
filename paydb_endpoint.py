@@ -400,11 +400,20 @@ def assets():
     api_key, err_response = auth_request(db)
     if err_response:
         return err_response
-    return jsonify(dasset.assets())
+    assets = []
+    for item in dasset.assets():
+        assets.append(dict(symbol=item['symbol'], name=item['name'], coin_type=item['coinType'], status=item['status'], min_confs=item['minConfirmations'], message=item['notice']))
+    return jsonify(assets=assets)
 
 @paydb.route('/markets', methods=['POST'])
 def markets():
     api_key, err_response = auth_request(db)
     if err_response:
         return err_response
-    return jsonify(dasset.markets())
+    markets = []
+    for item in dasset.markets():
+        message = ''
+        if 'notice' in item:
+            message = item['notice']
+        markets.append(dict(symbol=item['symbol'], base_symbol=item['baseCurrencySymbol'], quote_symbol=item['quoteCurrencySymbol'], precision=item['precision'], status=item['status'], min_trade=item['minTradeSize'], message=message))
+    return jsonify(markets=markets)
