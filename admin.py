@@ -23,8 +23,9 @@ if app.config["USE_STASH"]:
     admin.add_view(RestrictedModelView(UserStash, db.session, category='Admin'))
     admin.add_view(RestrictedModelView(UserStashRequest, db.session, category='Admin'))
 admin.add_view(PushNotificationLocationModelView(PushNotificationLocation, db.session, category='Admin'))
-admin.add_view(RestrictedModelView(Referral, db.session, category='Admin', name='Referrals'))
-admin.add_view(ProposalModelView(Proposal, db.session))
+if app.config["USE_REFERRALS"]:
+    admin.add_view(RestrictedModelView(Referral, db.session, category='Admin', name='Referrals'))
+admin.add_view(ProposalModelView(Proposal, db.session, name='Reward', endpoint='rewards'))
 if app.config['SERVER_MODE'] == SERVER_MODE_WAVES:
     admin.add_view(WavesTxModelView(WavesTx, db.session, name='Waves Transactions', category='Admin'))
 else: # paydb

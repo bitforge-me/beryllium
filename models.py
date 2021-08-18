@@ -54,6 +54,7 @@ roles_users = db.Table(
 
 class Role(db.Model, RoleMixin):
     ROLE_ADMIN = 'admin'
+    ROLE_FINANCE = 'finance'
     ROLE_PROPOSER = 'proposer'
     ROLE_AUTHORIZER = 'authorizer'
     ROLE_REFERRAL_CLAIMER = 'referral_claimer'
@@ -469,7 +470,8 @@ class RestrictedModelView(BaseModelView):
     def is_accessible(self):
         return (current_user.is_active and
                 current_user.is_authenticated and
-                current_user.has_role(Role.ROLE_ADMIN))
+                (current_user.has_role(Role.ROLE_ADMIN) or
+                current_user.has_role(Role.ROLE_FINANCE)))
 
 class BaseOnlyUserOwnedModelView(BaseModelView):
     can_create = False
@@ -793,6 +795,30 @@ class FilterByPayDbTransactionToken(BaseSQLAFilter):
         # return a generator that is reloaded each time it is used
         return ReloadingIterator(get_paydbtransaction_tokens)
 
+class FilterGreaterPayDbTransactionAmount(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        calc_value = (int(float(value))*100)
+        return query.filter(self.get_column(alias) > calc_value)
+
+    def operation(self):
+        return lazy_gettext('greater than')
+
+class FilterSmallerPayDbTransactionAmount(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        calc_value = (int(float(value))*100)
+        return query.filter(self.get_column(alias) < calc_value)
+
+    def operation(self):
+        return lazy_gettext('smaller than')
+
+class FilterEqualPayDbTransactionAmount(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        calc_value = (int(float(value))*100)
+        return query.filter(self.get_column(alias) == calc_value)
+
+    def operation(self):
+        return lazy_gettext('equals')
+
 class ProposalModelView(BaseModelView):
     can_create = False
     can_delete = False
@@ -933,8 +959,14 @@ class ProposalModelView(BaseModelView):
         if current_user.has_role(Role.ROLE_ADMIN):
             self.can_create = True
             return True
+        if current_user.has_role(Role.ROLE_FINANCE):
+            self.can_create = False
+            return True
         if current_user.has_role(Role.ROLE_PROPOSER):
             self.can_create = True
+            return True
+        if current_user.has_role(Role.ROLE_AUTHORIZER):
+            self.can_create = False
             return True
         return False
 
@@ -1030,7 +1062,8 @@ class UserModelView(BaseModelView):
     def is_accessible(self):
         return (current_user.is_active and
                 current_user.is_authenticated and
-                current_user.has_role(Role.ROLE_ADMIN))
+                (current_user.has_role(Role.ROLE_ADMIN) or
+                current_user.has_role(Role.ROLE_FINANCE)))
 
 class TopicModelView(RestrictedModelView):
     can_create = True
@@ -1286,7 +1319,10 @@ class PayDbAdminTransactionsView(RestrictedModelView):
             FilterByRecipientTokenSearch(PayDbTransaction.recipient_token, 'Search Recipient'), \
             FilterByRecipientTokenSearchNotEqual(PayDbTransaction.recipient_token, 'Search Recipient'), \
             FilterByAction(PayDbTransaction.action, 'Search Action'), \
-            FilterByPayDbTransactionToken(PayDbTransaction.token, 'Search Token') ]
+            FilterByPayDbTransactionToken(PayDbTransaction.token, 'Search Token'), \
+            FilterGreaterPayDbTransactionAmount(PayDbTransaction.amount, 'Search Amount'), \
+            FilterSmallerPayDbTransactionAmount(PayDbTransaction.amount, 'Search Amount'), \
+            FilterEqualPayDbTransactionAmount(PayDbTransaction.amount, 'Search Amount') ]
     column_export_list = ('sender', 'recipient', 'token', 'date', 'action', 'amount', 'attachment')
     column_formatters_export = {'amount': format_amount_text}
 
@@ -1454,6 +1490,12 @@ class Referral(db.Model):
         return session.query(cls).filter(cls.user_id == user.id).all()
 
 class CategoryModelView(RestrictedModelView):
-    can_create = True
-    can_delete = False
-    can_edit = False
+    def is_accessible(self):
+        if not (current_user.is_active and current_user.is_authenticated):
+            return False
+        if current_user.has_role(Role.ROLE_ADMIN):
+            self.can_create = True
+            return True
+        if current_user.has_role(Role.ROLE_FINANCE):
+            return True
+        return False

@@ -118,34 +118,38 @@ def report_user_balance():
     return render_template("reporting/dashboard_user_balance.html", user_count=user_count, users_balances=sorted_users_balances[:10], user_count_today=user_count_today, user_count_yesterday=user_count_yesterday, user_count_weekly=user_count_weekly, user_count_monthly=user_count_monthly, user_count_yearly=user_count_yearly, user_count_lifetime=user_count)
 
 def report_premio_txs(frequency):
+    paydbtransactions_url = str('/admin/paydbtransaction/')
+    paydbtransactions_filter = str('?flt1_0=')
     if frequency == 'lifetime':
-        return redirect('/admin/paydbtransaction/')
+        return redirect(str(paydbtransactions_url))
     if frequency == 'today':
-        return redirect('/admin/paydbtransaction/?flt1_0='+str(TODAY)+'+to+'+str(TOMORROW))
+        return redirect(str(paydbtransactions_url)+str(paydbtransactions_filter)+str(TODAY)+'+to+'+str(TOMORROW))
     if frequency == 'yesterday':
-        return redirect('/admin/paydbtransaction/?flt1_0='+str(YESTERDAY)+'+to+'+str(TODAY))
+        return redirect(str(paydbtransactions_url)+str(paydbtransactions_filter)+str(YESTERDAY)+'+to+'+str(TODAY))
     if frequency == 'week':
-        return redirect('/admin/paydbtransaction/?flt1_0='+str(MONDAY)+'+to+'+str(NEXT_MONDAY))
+        return redirect(str(paydbtransactions_url)+str(paydbtransactions_filter)+str(MONDAY)+'+to+'+str(NEXT_MONDAY))
     if frequency == 'month':
-        return redirect('/admin/paydbtransaction/?flt1_0='+str(FIRST_DAY_CURRENT_MONTH)+'+to+'+str(FIRST_DAY_NEXT_MONTH))
+        return redirect(str(paydbtransactions_url)+str(paydbtransactions_filter)+str(FIRST_DAY_CURRENT_MONTH)+'+to+'+str(FIRST_DAY_NEXT_MONTH))
     if frequency == 'year':
-        return redirect('/admin/paydbtransaction/?flt1_0='+str(FIRST_DAY_CURRENT_YEAR)+'+to+'+str(FIRST_DAY_NEXT_YEAR))
-    return redirect('/admin/paydbtransaction/')
+        return redirect(str(paydbtransactions_url)+str(paydbtransactions_filter)+str(FIRST_DAY_CURRENT_YEAR)+'+to+'+str(FIRST_DAY_NEXT_YEAR))
+    return redirect(str(paydbtransactions_url))
 
 def report_proposal_txs(frequency):
+    proposal_url = str('/admin/rewards')
+    proposal_filter = str('?flt0_0=')
     if frequency == 'lifetime':
-        return redirect('/admin/proposal')
+        return redirect(str(proposal_url))
     if frequency == 'today':
-        return redirect('/admin/proposal?flt0_0='+str(TODAY)+'+to+'+str(TOMORROW))
+        return redirect(str(proposal_url)+str(proposal_filter)+str(TODAY)+'+to+'+str(TOMORROW))
     if frequency == 'yesterday':
-        return redirect('/admin/proposal?flt0_0='+str(YESTERDAY)+'+to+'+str(TODAY))
+        return redirect(str(proposal_url)+str(proposal_filter)+str(YESTERDAY)+'+to+'+str(TODAY))
     if frequency == 'week':
-        return redirect('/admin/proposal?flt0_0='+str(MONDAY)+'+to+'+str(NEXT_MONDAY))
+        return redirect(str(proposal_url)+str(proposal_filter)+str(MONDAY)+'+to+'+str(NEXT_MONDAY))
     if frequency == 'month':
-        return redirect('/admin/proposal?flt0_0='+str(FIRST_DAY_CURRENT_MONTH)+'+to+'+str(FIRST_DAY_NEXT_MONTH))
+        return redirect(str(proposal_url)+str(proposal_filter)+str(FIRST_DAY_CURRENT_MONTH)+'+to+'+str(FIRST_DAY_NEXT_MONTH))
     if frequency == 'year':
-        return redirect('/admin/proposal?flt0_0='+str(FIRST_DAY_CURRENT_YEAR)+'+to+'+str(FIRST_DAY_NEXT_YEAR))
-    return redirect('/admin/proposal')
+        return redirect(str(proposal_url)+str(proposal_filter)+str(FIRST_DAY_CURRENT_YEAR)+'+to+'+str(FIRST_DAY_NEXT_YEAR))
+    return redirect(str(proposal_url))
 
 def claimed_proposal_payment(table1, table2, start_date, end_date):
     result = table1.query.join(table2, table1.id==table2.proposal_id)\
@@ -275,12 +279,12 @@ def dashboard_data_paydb():
             "total_balance": total_balance}
 
 @reporting.route("/dashboard")
-@roles_accepted(Role.ROLE_ADMIN)
+@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def dashboard():
     return redirect('dashboard_general')
 
 @reporting.route("/dashboard_general")
-@roles_accepted(Role.ROLE_ADMIN)
+@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def dashboard_general():
     if SERVER_MODE == SERVER_MODE_WAVES:
         data = dashboard_data_waves()
@@ -295,12 +299,12 @@ def dashboard_general():
     return report_dashboard_premio(data["premio_stage_balance"], data["premio_stage_account"], data["total_balance"])
 
 @reporting.route("/dashboard_report_proposals")
-@roles_accepted(Role.ROLE_ADMIN)
+@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def dashboard_report_proposals():
     return report_dashboard_proposals()
 
 @reporting.route("/dashboard_report_premio")
-@roles_accepted(Role.ROLE_ADMIN)
+@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def dashboard_report_premio():
     data = dashboard_data_paydb()
     data["premio_stage_balance"] = utils.int2asset(data["premio_stage_balance"])
@@ -309,80 +313,80 @@ def dashboard_report_premio():
 
     ### List username with their balances
 @reporting.route("/dashboard_user_balance")
-@roles_accepted(Role.ROLE_ADMIN)
+@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def dashboard_user_balance():
     return report_user_balance()
 
 ### Premio Txs Dashboard
 @reporting.route("/dashboard_premio_tx_today")
-@roles_accepted(Role.ROLE_ADMIN)
+@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def dashboard_premio_tx_today():
     today = str('today')
     return report_premio_txs(today)
 
 @reporting.route("/dashboard_premio_tx_yesterday")
-@roles_accepted(Role.ROLE_ADMIN)
+@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def dashboard_premio_tx_yesterday():
     yesterday = str('yesterday')
     return report_premio_txs(yesterday)
 
 @reporting.route("/dashboard_premio_tx_week")
-@roles_accepted(Role.ROLE_ADMIN)
+@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def dashboard_premio_tx_week():
     week = str('week')
     return report_premio_txs(week)
 
 @reporting.route("/dashboard_premio_tx_month")
-@roles_accepted(Role.ROLE_ADMIN)
+@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def dashboard_premio_tx_month():
     month = str('month')
     return report_premio_txs(month)
 
 @reporting.route("/dashboard_premio_tx_year")
-@roles_accepted(Role.ROLE_ADMIN)
+@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def dashboard_premio_tx_year():
     year = str('year')
     return report_premio_txs(year)
 
 @reporting.route("/dashboard_premio_tx_lifetime")
-@roles_accepted(Role.ROLE_ADMIN)
+@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def dashboard_premio_tx_lifetime():
     lifetime = str('lifetime')
     return report_premio_txs(lifetime)
 
 ### Proposal Dashboard:
 @reporting.route("/dashboard_proposal_tx_today")
-@roles_accepted(Role.ROLE_ADMIN)
+@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def dashboard_proposal_tx_today():
     today = str('today')
     return report_proposal_txs(today)
 
 @reporting.route("/dashboard_proposal_tx_yesterday")
-@roles_accepted(Role.ROLE_ADMIN)
+@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def dashboard_proposal_tx_yesterday():
     yesterday = str('yesterday')
     return report_proposal_txs(yesterday)
 
 @reporting.route("/dashboard_proposal_tx_week")
-@roles_accepted(Role.ROLE_ADMIN)
+@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def dashboard_proposal_tx_week():
     week = str('week')
     return report_proposal_txs(week)
 
 @reporting.route("/dashboard_proposal_tx_month")
-@roles_accepted(Role.ROLE_ADMIN)
+@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def dashboard_proposal_tx_month():
     month = str('month')
     return report_proposal_txs(month)
 
 @reporting.route("/dashboard_proposal_tx_year")
-@roles_accepted(Role.ROLE_ADMIN)
+@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def dashboard_proposal_tx_year():
     year = str('year')
     return report_proposal_txs(year)
 
 @reporting.route("/dashboard_proposal_tx_lifetime")
-@roles_accepted(Role.ROLE_ADMIN)
+@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def dashboard_proposal_tx_lifetime():
     lifetime = str('lifetime')
     return report_proposal_txs(lifetime)
