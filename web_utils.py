@@ -24,6 +24,7 @@ INCORRECT_PASSWORD = 'incorrect password'
 NOT_IMPLEMENTED  = 'net yet implemented'
 NOT_AVAILABLE = 'not available'
 INVALID_AMOUNT = 'invalid amount'
+INVALID_MARKET = 'invalid market'
 
 def bad_request(message, code=400):
     logger.warning(message)

@@ -43,3 +43,11 @@ def markets():
         return markets
     logger.error('request failed: %d, %s', r.status_code, r.content)
     return None
+
+def order_book(symbol):
+    endpoint = f'/markets/{symbol}/orderbook'
+    r = req(endpoint)
+    if r.status_code == 200:
+        return r.json()
+    logger.error('request failed: %d, %s', r.status_code, r.content)
+    return None

@@ -417,3 +417,13 @@ def markets():
             message = item['notice']
         markets.append(dict(symbol=item['symbol'], base_symbol=item['baseCurrencySymbol'], quote_symbol=item['quoteCurrencySymbol'], precision=item['precision'], status=item['status'], min_trade=item['minTradeSize'], message=message))
     return jsonify(markets=markets)
+
+@paydb.route('/order_book', methods=['POST'])
+def order_book():
+    symbol, api_key, err_response = auth_request_get_single_param(db, 'symbol')
+    if err_response:
+        return err_response
+    if symbol not in dasset.MARKET_LIST:
+        return bad_request(web_utils.INVALID_MARKET)
+    order_book = dasset.order_book(symbol)[0]
+    return jsonify(order_book=order_book)
