@@ -30,7 +30,7 @@ from markupsafe import Markup
 from sqlalchemy import or_, and_
 from sqlalchemy.exc import SQLAlchemyError, DBAPIError
 
-from app_core import app, db
+from app_core import app, db, SERVER_MODE_PAYDB
 from utils import generate_key, is_email, is_mobile, is_address, sha256, int2asset
 
 logger = logging.getLogger(__name__)
@@ -1029,7 +1029,7 @@ class ProposalModelView(BaseModelView):
     def payments_view(self, proposal_id):
         return_url = self.get_url('.index_view')
         # check permission
-        if not (current_user.has_role(Role.ROLE_ADMIN) or current_user.has_role(Role.ROLE_AUTHORIZER) or current_user.has_role(Role.ROLE_PROPOSER)):
+        if not (current_user.has_role(Role.ROLE_ADMIN) or current_user.has_role(Role.ROLE_AUTHORIZER) or current_user.has_role(Role.ROLE_PROPOSER) or current_user.has_role(Role.ROLE_FINANCE)):
             # permission denied
             flash('Not authorized.', 'error')
             return redirect(return_url)
@@ -1046,10 +1046,10 @@ class UserModelView(BaseModelView):
     can_delete = False
     can_edit = False
     column_list = ['token', 'email', 'roles', 'active', 'confirmed_at']
-    if app.config["SERVER_MODE"] == "paydb":
-        column_filters = [ FilterByUserEmail(User.email, 'Search email'), FilterByUserToken(User.token, 'Search token') ]
+    if app.config["SERVER_MODE"] == SERVER_MODE_PAYDB:
+        column_filters = [FilterByUserEmail(User.email, 'Search email'), FilterByUserToken(User.token, 'Search token')]
     else:
-        column_filters = [ FilterByUserEmail(User.email, 'Search email') ]
+        column_filters = [FilterByUserEmail(User.email, 'Search email')]
 
     def is_accessible(self):
         if not (current_user.is_active and current_user.is_authenticated):
