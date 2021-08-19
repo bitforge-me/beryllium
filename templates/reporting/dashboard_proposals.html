@@ -6,10 +6,17 @@
 {% block content %}
 <a class="btn btn-secondary" href="/"><i class="glyphicon glyphicon-chevron-left"></i> Back</a>&nbsp
 <a class="btn btn-secondary" href="dashboard_general"><i class="glyphicon glyphicon-chevron-left"></i>General</a>&nbsp
-<a class="btn btn-primary" href="dashboard_report_proposals"><i class="glyphicon glyphicon-chevron-left"></i>Proposals</a>&nbsp
-<a class="btn btn-secondary" href="dashboard_user_balance"><i class="glyphicon glyphicon-chevron-left"></i>User Balance</a>
+<a class="btn btn-primary" href="dashboard_report_proposals"><i class="glyphicon glyphicon-chevron-left"></i>Rewards</a>&nbsp
+<a class="btn btn-secondary" href="dashboard_user_balance"><i class="glyphicon glyphicon-chevron-left"></i>Users</a>
 
-<div class='some-page-wrapper'>	
+<div class='some-page-wrapper'>
+  <div class='row'>
+    <div class='column'>
+      <div class='row-divider'>
+        Rewards/Payments
+      </div>
+    </div>
+  </div>
   <div class='row'>
     <div class='column'>
       <div class='title-borderless'>
@@ -51,204 +58,176 @@
   </div>
   <div class='row'>
     <div class='column'>
-      <div class='row-divider'>
-        Proposals/Payments
-      </div>
-    </div>
-  </div>
-  <div class='row'>
-    <div class='column'>
-      <div class='row-2line-title-white-noofproposals'>
-	    &nbspProposal
-	      Count
+      <div class='row-2line-title white'>
+      Reward Count
       </div>
       <div class='hide'>
-	      The  no. of proposals entered in the "Proposals" tab.
+        The  number of rewards created
       </div>
     </div>
     <div class='column'>
       <a href="dashboard_proposal_tx_today">
-      <div class='white-row'>
+      <div class='report-row report-row-hover white'>
 	      {{ proposal_count_today }}
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_proposal_tx_yesterday">
-      <div class='white-row'>
+      <div class='report-row report-row-hover white'>
 	      {{ proposal_count_yesterday }}
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_proposal_tx_week">
-      <div class='white-row'>
+      <div class='report-row report-row-hover white'>
 	      {{ proposal_count_weekly }}
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_proposal_tx_month">
-      <div class='white-row'>
+      <div class='report-row report-row-hover white'>
 	      {{ proposal_count_monthly }}
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_proposal_tx_year">
-      <div class='white-row'>
+      <div class='report-row report-row-hover white'>
 	      {{ proposal_count_yearly }}
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_proposal_tx_lifetime">
-      <div class='white-row'>
-	      {{ proposal_count_lifetime }}
+      <div class='report-row report-row-hover white'>
+       {{ proposal_count_lifetime }}
       </div>
       </a>
     </div>
   </div>
   <div class='row'>
     <div class='column'>
-      <div class='row-1line-title-green'>
-        &nbsp&nbspClaimed&nbsp&nbsp
+      <div class='row-1line-title green'>
+        Claimed
       </div>
       <div class='hide'>
-	      The amount token successfully sent from the Proposals tab to the users.  
+       The amount of token rewards successfully claimed by a user
       </div>
     </div>
     <div class='column'>
-      <div class='green-row'>
-	{{ payment_query_today }}
+      <div class='report-row green'>
+      {{ payment_query_today }}
       </div>
     </div>
     <div class='column'>
-      <div class='green-row'>
-	{{ payment_query_yesterday }}
+      <div class='report-row green'>
+      {{ payment_query_yesterday }}
       </div>
     </div>
     <div class='column'>
-      <div class='green-row'>
-	{{ payment_query_weekly }}
+      <div class='report-row green'>
+      {{ payment_query_weekly }}
       </div>
     </div>
     <div class='column'>
-      <div class='green-row'>
+      <div class='report-row green'>
         {{ payment_query_monthly }}
       </div>
     </div>
     <div class='column'>
-      <div class='green-row'>
+      <div class='report-row green'>
         {{ payment_query_yearly }}
       </div>
     </div>
     <div class='column'>
-      <div class='green-row'>
+      <div class='report-row green'>
         {{ payment_query_lifetime }}
       </div>
     </div>
   </div>
   <div class='row'>
     <div class='column'>
-      <div class='row-1line-title-red'>
+      <div class='row-1line-title red'>
         Unclaimed
       </div>
       <div class='hide'>
-	      The amount of token not yet claimed by the users. ie. User not signed up.
+       The amount of token rewards not yet claimed by a user
       </div>
     </div>
     <div class='column'>
-      <div class='red-row'>
-	{{ unclaimed_payment_query_today }}
+      <div class='report-row red'>
+      {{ unclaimed_payment_query_today }}
       </div>
     </div>
     <div class='column'>
-      <div class='red-row'>
-	{{ unclaimed_payment_query_yesterday }}
+      <div class='report-row red'>
+      {{ unclaimed_payment_query_yesterday }}
       </div>
     </div>
     <div class='column'>
-      <div class='red-row'>
-	{{ unclaimed_payment_query_weekly }}
+      <div class='report-row red'>
+      {{ unclaimed_payment_query_weekly }}
       </div>
     </div>
     <div class='column'>
-      <div class='red-row'>
+      <div class='report-row red'>
         {{ unclaimed_payment_query_monthly }}
       </div>
     </div>
     <div class='column'>
-      <div class='red-row'>
+      <div class='report-row red'>
         {{ unclaimed_payment_query_yearly }}
       </div>
     </div>
     <div class='column'>
-      <div class='red-row'>
+      <div class='report-row red'>
         {{ unclaimed_payment_query_lifetime }}
       </div>
     </div>
   </div>
   <div class='row'>
     <div class='column'>
-      <div class='row-1line-title-orange'>
-        &nbsp&nbsp&nbsp&nbsp&nbspTotal&nbsp&nbsp&nbsp&nbsp&nbsp
+      <div class='row-1line-title orange'>
+        Total
       </div>
       <div class='hide'>
-	      The token amount for claimed and unclaimed. 
+        The total amount of token rewards
       </div>
     </div>
     <div class='column'>
-      <div class='orange-row'>
-	{{ total_payment_query_today }}
+      <div class='report-row orange'>
+      {{ total_payment_query_today }}
       </div>
     </div>
     <div class='column'>
-      <div class='orange-row'>
-	{{ total_payment_query_yesterday }}
+      <div class='report-row orange'>
+      {{ total_payment_query_yesterday }}
       </div>
     </div>
     <div class='column'>
-      <div class='orange-row'>
-	{{ total_payment_query_weekly }}
+      <div class='report-row orange'>
+      {{ total_payment_query_weekly }}
       </div>
     </div>
     <div class='column'>
-      <div class='orange-row'>
+      <div class='report-row orange'>
         {{ total_payment_query_monthly }}
       </div>
     </div>
     <div class='column'>
-      <div class='orange-row'>
+      <div class='report-row orange'>
         {{ total_payment_query_yearly }}
       </div>
     </div>
     <div class='column'>
-      <div class='orange-row'>
+      <div class='report-row orange'>
         {{ total_payment_query_lifetime }}
       </div>
     </div>
   </div>
-  <!--
-  <div class='row'>
-    <div class='column'>
-      <div class='operations_account_column'>
-	      <b> Operations Account: {{ premio_stage_account }}</b>
-        <div class='blue-row'>
-          {{ premio_balance }} {{ config["ASSET_NAME"] }}
-        </div>
-      </div>
-    </div>
-    <div class='column'>
-      <div class='operations_account_column'>
-	<b>Total Balance: </b>
-        <div class='blue-row'>
-	  {{ total_balance }} {{ config["ASSET_NAME"] }}
-        </div>
-      </div>
-    </div>
-  </div>
-  -->
 </div>
 
 {% if config["USE_REFERRALS"] %}

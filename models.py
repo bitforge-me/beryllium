@@ -30,7 +30,7 @@ from markupsafe import Markup
 from sqlalchemy import or_, and_
 from sqlalchemy.exc import SQLAlchemyError, DBAPIError
 
-from app_core import app, db
+from app_core import app, db, SERVER_MODE_PAYDB
 from utils import generate_key, is_email, is_mobile, is_address, sha256, int2asset
 
 logger = logging.getLogger(__name__)
@@ -54,6 +54,7 @@ roles_users = db.Table(
 
 class Role(db.Model, RoleMixin):
     ROLE_ADMIN = 'admin'
+    ROLE_FINANCE = 'finance'
     ROLE_PROPOSER = 'proposer'
     ROLE_AUTHORIZER = 'authorizer'
     ROLE_REFERRAL_CLAIMER = 'referral_claimer'
@@ -469,7 +470,8 @@ class RestrictedModelView(BaseModelView):
     def is_accessible(self):
         return (current_user.is_active and
                 current_user.is_authenticated and
-                current_user.has_role(Role.ROLE_ADMIN))
+                (current_user.has_role(Role.ROLE_ADMIN) or
+                current_user.has_role(Role.ROLE_FINANCE)))
 
 class BaseOnlyUserOwnedModelView(BaseModelView):
     can_create = False
@@ -793,6 +795,30 @@ class FilterByPayDbTransactionToken(BaseSQLAFilter):
         # return a generator that is reloaded each time it is used
         return ReloadingIterator(get_paydbtransaction_tokens)
 
+class FilterGreaterPayDbTransactionAmount(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        calc_value = (int(float(value))*100)
+        return query.filter(self.get_column(alias) > calc_value)
+
+    def operation(self):
+        return lazy_gettext('greater than')
+
+class FilterSmallerPayDbTransactionAmount(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        calc_value = (int(float(value))*100)
+        return query.filter(self.get_column(alias) < calc_value)
+
+    def operation(self):
+        return lazy_gettext('smaller than')
+
+class FilterEqualPayDbTransactionAmount(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        calc_value = (int(float(value))*100)
+        return query.filter(self.get_column(alias) == calc_value)
+
+    def operation(self):
+        return lazy_gettext('equals')
+
 class ProposalModelView(BaseModelView):
     can_create = False
     can_delete = False
@@ -930,11 +956,10 @@ class ProposalModelView(BaseModelView):
     def is_accessible(self):
         if not (current_user.is_active and current_user.is_authenticated):
             return False
-        if current_user.has_role(Role.ROLE_ADMIN):
+        if current_user.has_role(Role.ROLE_ADMIN) or current_user.has_role(Role.ROLE_PROPOSER):
             self.can_create = True
             return True
-        if current_user.has_role(Role.ROLE_PROPOSER):
-            self.can_create = True
+        if current_user.has_role(Role.ROLE_FINANCE) or current_user.has_role(Role.ROLE_AUTHORIZER):
             return True
         return False
 
@@ -1004,7 +1029,7 @@ class ProposalModelView(BaseModelView):
     def payments_view(self, proposal_id):
         return_url = self.get_url('.index_view')
         # check permission
-        if not (current_user.has_role(Role.ROLE_ADMIN) or current_user.has_role(Role.ROLE_AUTHORIZER) or current_user.has_role(Role.ROLE_PROPOSER)):
+        if not (current_user.has_role(Role.ROLE_ADMIN) or current_user.has_role(Role.ROLE_AUTHORIZER) or current_user.has_role(Role.ROLE_PROPOSER) or current_user.has_role(Role.ROLE_FINANCE)):
             # permission denied
             flash('Not authorized.', 'error')
             return redirect(return_url)
@@ -1021,21 +1046,20 @@ class UserModelView(BaseModelView):
     can_delete = False
     can_edit = False
     column_list = ['token', 'email', 'roles', 'active', 'confirmed_at']
-    column_editable_list = ['roles', 'active']
-    if app.config["SERVER_MODE"] == "paydb":
-        column_filters = [ FilterByUserEmail(User.email, 'Search email'), FilterByUserToken(User.token, 'Search token') ]
+    if app.config["SERVER_MODE"] == SERVER_MODE_PAYDB:
+        column_filters = [FilterByUserEmail(User.email, 'Search email'), FilterByUserToken(User.token, 'Search token')]
     else:
-        column_filters = [ FilterByUserEmail(User.email, 'Search email') ]
+        column_filters = [FilterByUserEmail(User.email, 'Search email')]
 
     def is_accessible(self):
-        return (current_user.is_active and
-                current_user.is_authenticated and
-                current_user.has_role(Role.ROLE_ADMIN))
-
-class TopicModelView(RestrictedModelView):
-    can_create = True
-    can_delete = True
-    can_edit = False
+        if not (current_user.is_active and current_user.is_authenticated):
+            return False
+        if current_user.has_role(Role.ROLE_ADMIN):
+            self.column_editable_list = ['roles', 'active']
+            return True
+        if current_user.has_role(Role.ROLE_FINANCE):
+            return True
+        return False
 
 class WavesTxModelView(RestrictedModelView):
     can_create = False
@@ -1286,7 +1310,10 @@ class PayDbAdminTransactionsView(RestrictedModelView):
             FilterByRecipientTokenSearch(PayDbTransaction.recipient_token, 'Search Recipient'), \
             FilterByRecipientTokenSearchNotEqual(PayDbTransaction.recipient_token, 'Search Recipient'), \
             FilterByAction(PayDbTransaction.action, 'Search Action'), \
-            FilterByPayDbTransactionToken(PayDbTransaction.token, 'Search Token') ]
+            FilterByPayDbTransactionToken(PayDbTransaction.token, 'Search Token'), \
+            FilterGreaterPayDbTransactionAmount(PayDbTransaction.amount, 'Search Amount'), \
+            FilterSmallerPayDbTransactionAmount(PayDbTransaction.amount, 'Search Amount'), \
+            FilterEqualPayDbTransactionAmount(PayDbTransaction.amount, 'Search Amount') ]
     column_export_list = ('sender', 'recipient', 'token', 'date', 'action', 'amount', 'attachment')
     column_formatters_export = {'amount': format_amount_text}
 
@@ -1452,8 +1479,3 @@ class Referral(db.Model):
     @classmethod
     def from_user(cls, session, user):
         return session.query(cls).filter(cls.user_id == user.id).all()
-
-class CategoryModelView(RestrictedModelView):
-    can_create = True
-    can_delete = False
-    can_edit = False

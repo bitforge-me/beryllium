@@ -6,10 +6,38 @@
 {% block content %}
 <a class="btn btn-secondary" href="/"><i class="glyphicon glyphicon-chevron-left"></i> Back</a>&nbsp
 <a class="btn btn-primary" href="dashboard_general"><i class="glyphicon glyphicon-chevron-left"></i>General</a>&nbsp
-<a class="btn btn-secondary" href="dashboard_report_proposals"><i class="glyphicon glyphicon-chevron-left"></i>Proposals</a>&nbsp
-<a class="btn btn-secondary" href="dashboard_user_balance"><i class="glyphicon glyphicon-chevron-left"></i>User Balance</a>
+<a class="btn btn-secondary" href="dashboard_report_proposals"><i class="glyphicon glyphicon-chevron-left"></i>Rewards</a>&nbsp
+<a class="btn btn-secondary" href="dashboard_user_balance"><i class="glyphicon glyphicon-chevron-left"></i>Users</a>
 
-<div class='some-page-wrapper'>	
+<div class='some-page-wrapper'>
+  <div class='row'>
+    <div class='column'>
+      <div class='operations_account_column'>
+	      <b> Operations Account: {{ premio_stage_account }}</b>
+        <div class='report-row report-row-sm blue'>
+          {{ premio_balance }} {{ config["ASSET_NAME"] }}
+        </div>
+      </div>
+    </div>
+    <div class='column'>
+      <div class='operations_account_column'>
+	<b>Total Balance: </b>
+        <div class='report-row report-row-sm blue'>
+	  {{ total_balance }} {{ config["ASSET_NAME"] }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr/>
+
+  <div class='row'>
+    <div class='column'>
+      <div class='row-divider'>
+        Premio Transactions
+      </div>
+    </div>
+  </div>
   <div class='row'>
     <div class='column'>
       <div class='title-borderless'>
@@ -51,80 +79,54 @@
   </div>
   <div class='row'>
     <div class='column'>
-      <div class='row-divider'>
-        Premio Transactions
-      </div>
-    </div>
-  </div>
-  <div class='row'>
-    <div class='column'>
-      <div class='row-2line-title-white-transactioncount'>
-	Transaction
-	Count
+      <div class='row-2line-title white'>
+        Transaction Count
       </div>
       <div class='hide'>
-	Includes all transactions. ie. Rebates, Vouchers, P2P transactions
+        All transactions created from all users
       </div>
     </div>
     <div class='column'>
       <a href="dashboard_premio_tx_today">
-      <div class='white-row'>
-	{{ premio_tx_count_today }}
+      <div class='report-row report-row-hover white'>
+        {{ premio_tx_count_today }}
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_premio_tx_yesterday">
-      <div class='white-row'>
+      <div class='report-row report-row-hover white'>
         {{ premio_tx_count_yesterday }}
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_premio_tx_week">
-      <div class='white-row'>
+      <div class='report-row report-row-hover white'>
         {{ premio_tx_count_week }}
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_premio_tx_month">
-      <div class='white-row'>
+      <div class='report-row report-row-hover white'>
         {{ premio_tx_count_month }}
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_premio_tx_year">
-      <div class='white-row'>
+      <div class='report-row report-row-hover white'>
         {{ premio_tx_count_year }}
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_premio_tx_lifetime">
-      <div class='white-row'>
+      <div class='report-row report-row-hover white'>
         {{ premio_tx_count_lifetime }}
       </div>
       </a>
-    </div>
-  </div>
-  <div class='row'>
-    <div class='column'>
-      <div class='operations_account_column'>
-	      <b> Operations Account: {{ premio_stage_account }}</b>
-        <div class='blue-row'>
-          {{ premio_balance }} {{ config["ASSET_NAME"] }}
-        </div>
-      </div>
-    </div>
-    <div class='column'>
-      <div class='operations_account_column'>
-	<b>Total Balance: </b>
-        <div class='blue-row'>
-	  {{ total_balance }} {{ config["ASSET_NAME"] }}
-        </div>
-      </div>
     </div>
   </div>
 </div>
