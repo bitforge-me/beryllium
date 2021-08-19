@@ -3,7 +3,7 @@ import flask_admin
 from flask_admin import helpers as admin_helpers
 
 from app_core import app, db, SERVER_MODE_WAVES
-from models import security, RestrictedModelView, BaseOnlyUserOwnedModelView, ProposalModelView, UserModelView, WavesTxModelView, PayDbApiKeyModelView, PayDbUserTransactionsView, PayDbAdminTransactionsView, PushNotificationLocationModelView, \
+from models import security, RestrictedModelView, BaseOnlyUserOwnedModelView, ProposalModelView, UserModelView, AdminUserModelView, WavesTxModelView, PayDbApiKeyModelView, PayDbUserTransactionsView, PayDbAdminTransactionsView, PushNotificationLocationModelView, \
     Role, User, ApiKey, PayDbTransaction, Category, Proposal, WavesTx, Topic, UserStash, UserStashRequest, PushNotificationLocation, Referral
 
 # Create admin
@@ -16,6 +16,7 @@ admin = flask_admin.Admin(
 
 # Add model views
 admin.add_view(UserModelView(User, db.session, category='Admin'))
+admin.add_view(AdminUserModelView(User, db.session, category='Admin', endpoint='AdminUser'))
 admin.add_view(RestrictedModelView(Role, db.session, category='Admin'))
 admin.add_view(RestrictedModelView(Category, db.session, category='Admin'))
 admin.add_view(RestrictedModelView(Topic, db.session, category='Admin'))

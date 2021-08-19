@@ -1054,10 +1054,17 @@ class UserModelView(BaseModelView):
     def is_accessible(self):
         if not (current_user.is_active and current_user.is_authenticated):
             return False
-        if current_user.has_role(Role.ROLE_ADMIN):
-            self.column_editable_list = ['roles', 'active']
+        if current_user.has_role(Role.ROLE_FINANCE) and not current_user.has_role(Role.ROLE_ADMIN):
             return True
-        if current_user.has_role(Role.ROLE_FINANCE):
+        return False
+
+class AdminUserModelView(UserModelView):
+    column_editable_list = ['roles', 'active']
+
+    def is_accessible(self):
+        if not (current_user.is_active and current_user.is_authenticated):
+            return False
+        if current_user.has_role(Role.ROLE_ADMIN):
             return True
         return False
 
