@@ -6,10 +6,17 @@
 {% block content %}
 <a class="btn btn-secondary" href="/"><i class="glyphicon glyphicon-chevron-left"></i> Back</a>&nbsp
 <a class="btn btn-secondary" href="dashboard_general"><i class="glyphicon glyphicon-chevron-left"></i>General</a>&nbsp
-<a class="btn btn-primary" href="dashboard_report_proposals"><i class="glyphicon glyphicon-chevron-left"></i>Reward</a>&nbsp
-<a class="btn btn-secondary" href="dashboard_user_balance"><i class="glyphicon glyphicon-chevron-left"></i>User Balance</a>
+<a class="btn btn-primary" href="dashboard_report_proposals"><i class="glyphicon glyphicon-chevron-left"></i>Rewards</a>&nbsp
+<a class="btn btn-secondary" href="dashboard_user_balance"><i class="glyphicon glyphicon-chevron-left"></i>Users</a>
 
-<div class='some-page-wrapper'>	
+<div class='some-page-wrapper'>
+  <div class='row'>
+    <div class='column'>
+      <div class='row-divider'>
+        Rewards/Payments
+      </div>
+    </div>
+  </div>
   <div class='row'>
     <div class='column'>
       <div class='title-borderless'>
@@ -51,19 +58,11 @@
   </div>
   <div class='row'>
     <div class='column'>
-      <div class='row-divider'>
-        Proposals/Payments
-      </div>
-    </div>
-  </div>
-  <div class='row'>
-    <div class='column'>
       <div class='row-2line-title-white-noofproposals'>
-	    &nbspProposal
-	      Count
+      Reward Count
       </div>
       <div class='hide'>
-	      The  no. of proposals entered in the "Proposals" tab.
+        The  number of rewards created
       </div>
     </div>
     <div class='column'>
@@ -104,7 +103,7 @@
     <div class='column'>
       <a href="dashboard_proposal_tx_lifetime">
       <div class='white-row'>
-	      {{ proposal_count_lifetime }}
+       {{ proposal_count_lifetime }}
       </div>
       </a>
     </div>
@@ -112,25 +111,25 @@
   <div class='row'>
     <div class='column'>
       <div class='row-1line-title-green'>
-        &nbsp&nbspClaimed&nbsp&nbsp
+        Claimed
       </div>
       <div class='hide'>
-	      The amount token successfully sent from the Proposals tab to the users.  
+       The amount of token rewards successfully claimed by a user
       </div>
     </div>
     <div class='column'>
       <div class='green-row'>
-	{{ payment_query_today }}
+      {{ payment_query_today }}
       </div>
     </div>
     <div class='column'>
       <div class='green-row'>
-	{{ payment_query_yesterday }}
+      {{ payment_query_yesterday }}
       </div>
     </div>
     <div class='column'>
       <div class='green-row'>
-	{{ payment_query_weekly }}
+      {{ payment_query_weekly }}
       </div>
     </div>
     <div class='column'>
@@ -155,22 +154,22 @@
         Unclaimed
       </div>
       <div class='hide'>
-	      The amount of token not yet claimed by the users. ie. User not signed up.
+       The amount of token rewards not yet claimed by a user
       </div>
     </div>
     <div class='column'>
       <div class='red-row'>
-	{{ unclaimed_payment_query_today }}
+      {{ unclaimed_payment_query_today }}
       </div>
     </div>
     <div class='column'>
       <div class='red-row'>
-	{{ unclaimed_payment_query_yesterday }}
+      {{ unclaimed_payment_query_yesterday }}
       </div>
     </div>
     <div class='column'>
       <div class='red-row'>
-	{{ unclaimed_payment_query_weekly }}
+      {{ unclaimed_payment_query_weekly }}
       </div>
     </div>
     <div class='column'>
@@ -192,25 +191,25 @@
   <div class='row'>
     <div class='column'>
       <div class='row-1line-title-orange'>
-        &nbsp&nbsp&nbsp&nbsp&nbspTotal&nbsp&nbsp&nbsp&nbsp&nbsp
+        Total
       </div>
       <div class='hide'>
-	      The token amount for claimed and unclaimed. 
+        The total amount of token rewards
       </div>
     </div>
     <div class='column'>
       <div class='orange-row'>
-	{{ total_payment_query_today }}
+      {{ total_payment_query_today }}
       </div>
     </div>
     <div class='column'>
       <div class='orange-row'>
-	{{ total_payment_query_yesterday }}
+      {{ total_payment_query_yesterday }}
       </div>
     </div>
     <div class='column'>
       <div class='orange-row'>
-	{{ total_payment_query_weekly }}
+      {{ total_payment_query_weekly }}
       </div>
     </div>
     <div class='column'>
