@@ -60,7 +60,9 @@
   height: 100px;
   margin: 5px;
   text-align: center;
-  padding: 35px;
+  padding: 25px;
+  padding-top: 35px;
+  padding-bottom: 35px;
   font-weight: bold;
   font-size: 100%;
 }
@@ -109,6 +111,12 @@
   text-align: center;
   padding: 30px;
   font-size: 150%;
+}
+
+.report-row-sm {
+  height: auto;
+  padding: 0;
+  font-size: 100%;
 }
 
 .report-row-hover:hover {
@@ -160,7 +168,6 @@
   border-style: solid;
   border-color: #add3e6;
   border-radius: 10px;
-  height: 100px;
   margin: 5px;
   text-align: center;
 }
