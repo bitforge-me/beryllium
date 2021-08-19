@@ -319,6 +319,34 @@
   padding: 10px;
   font-size: 150%;
 }
+.white-dashboard:hover {
+  background-color:#e6ebff;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #add3e6;
+  border-radius: 10px;
+  height: 200px;
+  width: 180px;
+  margin: 5px;
+  text-align: center;
+  padding: 30px;
+  font-size: 100%;
+  font-weight: bold;
+}
+.white-dashboard {
+  background-color: white;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #add3e6;
+  border-radius: 10px;
+  height: 200px;
+  width: 180px;
+  margin: 5px;
+  text-align: center;
+  padding: 30px;
+  font-size: 100%;
+  font-weight: bold;
+}
 /* USER BALANCE*/
 .title-column {
   background-color: white;

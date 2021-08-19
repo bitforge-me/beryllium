@@ -105,6 +105,7 @@ if __name__ == "__main__":
     # create tables
     db.create_all()
     create_role(Role.ROLE_ADMIN, "super user")
+    create_role(Role.ROLE_FINANCE, "Can view for reporting")
     create_role(Role.ROLE_PROPOSER, "Can propose payments")
     create_role(Role.ROLE_AUTHORIZER, "Can authorize payments")
     create_role(Role.ROLE_REFERRAL_CLAIMER, "Can claim referrals")
