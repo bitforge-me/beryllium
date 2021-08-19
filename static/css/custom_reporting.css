@@ -27,8 +27,32 @@
 }
 
 /* DASHBOARD */
-.row-1line-title-white {
+
+.white {
   background-color: white;
+}
+
+.green {
+  background-color: #d9fce9;
+}
+
+.orange {
+  background-color: #f8e9d0;
+}
+
+.red {
+  background-color: #fff9fa;
+}
+
+.blue {
+  background-color: #ebfbfb;
+}
+
+.row-1line-title:hover + .hide{
+  display: block;
+}
+
+.row-1line-title {
   border-width: 1px;
   border-style: solid;
   border-color: #add3e6;
@@ -40,38 +64,12 @@
   font-weight: bold;
   font-size: 100%;
 }
-.row-2line-title-white {
-  background-color: white;
-  border-width: 1px;
-  border-style: solid;
-  border-color: #add3e6;
-  border-radius: 10px;
-  height: 100px;
-  margin: 5px;
-  text-align: center;
-  padding: 25px;
-  font-weight: bold;
-  font-size: 100%;
-}
-.row-2line-title-white-transactioncount {
-  background-color: white;
-  border-width: 1px;
-  border-style: solid;
-  border-color: #add3e6;
-  border-radius: 10px;
-  height: 100px;
-  margin: 5px;
-  text-align: center;
-  padding: 25px;
-  font-weight: bold;
-  font-size: 100%;
-}
-.row-2line-title-white-transactioncount:hover + .hide{
+
+.row-2line-title:hover + .hide{
   display: block;
 }
-.row-2line-title-white-noofproposals {
-  position: relative;
-  background-color: white;
+
+.row-2line-title {
   border-width: 1px;
   border-style: solid;
   border-color: #add3e6;
@@ -79,14 +77,11 @@
   height: 100px;
   margin: 5px;
   text-align: center;
-  text-decoration: none;
   padding: 25px;
   font-weight: bold;
   font-size: 100%;
 }
-.row-2line-title-white-noofproposals:hover + .hide{
-  display: block;
-}
+
 .hide{
   display: none;
   position: absolute;
@@ -103,8 +98,8 @@
   font-size: 100%;
   left: 25%;
 }
-.white-row {
-  background-color: white;
+
+.report-row {
   border-width: 1px;
   border-style: solid;
   border-color: #add3e6;
@@ -115,129 +110,11 @@
   padding: 30px;
   font-size: 150%;
 }
-.white-nohover-row {
-  background-color: white;
-  border-width: 1px;
-  border-style: solid;
-  border-color: #add3e6;
-  border-radius: 10px;
-  height: 100px;
-  margin: 5px;
-  text-align: center;
-  padding: 30px;
-  font-size: 150%;
-}
-.white-row:hover {
+
+.report-row-hover:hover {
   background-color:#e6ebff;
-  border-width: 1px;
-  border-style: solid;
-  border-color: #add3e6;
-  border-radius: 10px;
-  height: 100px;
-  margin: 5px;
-  text-align: center;
-  padding: 30px;
-  font-size: 150%;
 }
-.green-row {
-  background-color: #d9fce9;
-  border-width: 1px;
-  border-style: solid;
-  border-color: #add3e6;
-  border-radius: 10px;
-  height: 100px;
-  margin: 5px;
-  text-align: center;
-  padding: 30px;
-  font-size: 150%;
-}
-.red-row {
-  background-color: #fff9fa;
-  border-width: 1px;
-  border-style: solid;
-  border-color: #add3e6;
-  border-radius: 10px;
-  height: 100px;
-  margin: 5px;
-  text-align: center;
-  padding: 30px;
-  font-size: 150%;
-}
-.orange-row {
-  background-color: #f8e9d0;
-  border-width: 1px;
-  border-style: solid;
-  border-color: #add3e6;
-  border-radius: 10px;
-  height: 100px;
-  margin: 5px;
-  text-align: center;
-  padding: 30px;
-  font-size: 150%;
-}
-.blue-row {
-  background-color: #ebfbfb;
-  border-width: 1px;
-  border-style: solid;
-  border-color: #add3e6;
-  border-radius: 10px;
-  height: 65px;
-  margin: 5px;
-  text-align: center;
-  padding: 10px;
-  font-size: 150%;
-}
-.row-1line-title-green:hover + .hide{
-  display: block;
-}
-.row-1line-title-green {
-  position: relative;
-  background-color: #d9fce9;
-  border-width: 1px;
-  border-style: solid;
-  border-color: #add3e6;
-  border-radius: 10px;
-  height: 100px;
-  margin: 5px;
-  text-align: center;
-  padding: 35px;
-  font-weight: bold;
-  font-size: 100%;
-}
-.row-1line-title-orange:hover + .hide{
-  display: block;
-}
-.row-1line-title-orange {
-  position: relative;
-  background-color: #f8e9d0;
-  border-width: 1px;
-  border-style: solid;
-  border-color: #add3e6;
-  border-radius: 10px;
-  height: 100px;
-  margin: 5px;
-  text-align: center;
-  padding: 35px;
-  font-weight: bold;
-  font-size: 100%;
-}
-.row-1line-title-red:hover + .hide{
-  display: block;
-}
-.row-1line-title-red {
-  position: relative;
-  background-color: #fff9fa;
-  border-width: 1px;
-  border-style: solid;
-  border-color: #add3e6;
-  border-radius: 10px;
-  height: 100px;
-  margin: 5px;
-  text-align: center;
-  padding: 35px;
-  font-weight: bold;
-  font-size: 100%;
-}
+
 .title_1line-column {
   background-color: white;
   border-width: 1px;
@@ -249,6 +126,7 @@
   margin: 5px;
   text-align: center;
 }
+
 .title_download-user_balance {
   background-color: white;
   border-width: 1px;
@@ -259,23 +137,11 @@
   margin: 5px;
   text-align: center;
 }
+
 .title_download-user_balance:hover {
   background-color: #e6ebff;
-  border-width: 1px;
-  border-style: solid;
-  border-color: #add3e6;
-  border-radius: 10px;
-  height: 30px;
-  margin: 5px;
-  text-align: center;
 }
-.title_1line-column-borderless {
-  background-color: white;
-  padding: 14px;
-  height: 30px;
-  margin: 5px;
-  text-align: center;
-}
+
 .title_2lines-column {
   background-color: white;
   border-width: 1px;
@@ -287,6 +153,7 @@
   margin: 5px;
   text-align: center;
 }
+
 .operations_account_column {
   background-color: white;
   border-width: 1px;
@@ -297,6 +164,7 @@
   margin: 5px;
   text-align: center;
 }
+
 .operations_account_column_waves {
   background-color: white;
   border-width: 1px;
@@ -307,6 +175,7 @@
   margin: 5px;
   text-align: center;
 }
+
 .blue-row-waves {
   background-color: #ebfbfb;
   border-width: 1px;
@@ -319,20 +188,7 @@
   padding: 10px;
   font-size: 150%;
 }
-.white-dashboard:hover {
-  background-color:#e6ebff;
-  border-width: 1px;
-  border-style: solid;
-  border-color: #add3e6;
-  border-radius: 10px;
-  height: 200px;
-  width: 180px;
-  margin: 5px;
-  text-align: center;
-  padding: 30px;
-  font-size: 100%;
-  font-weight: bold;
-}
+
 .white-dashboard {
   background-color: white;
   border-width: 1px;
@@ -347,6 +203,11 @@
   font-size: 100%;
   font-weight: bold;
 }
+
+.white-dashboard:hover {
+  background-color:#e6ebff;
+}
+
 /* USER BALANCE*/
 .title-column {
   background-color: white;

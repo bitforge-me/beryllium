@@ -4,17 +4,17 @@
 {% if current_user.is_authenticated %}
     <div class='some-page-wrapper'>
         <div class='row'>
-            {% if current_user.has_role("admin") -%}
+            {% if current_user.has_role("admin") %}
             <a href="/reporting/dashboard">
             <div class='white-dashboard'>
                 <img src="static/assets/img/index_img/dashboard.png" width="100" height="100">
-	        <p><center>Dashboard</center></p>
+            <p><center>Dashboard</center></p>
             </div>
             </a>
             <a href="/push_notifications">
             <div class='white-dashboard'>
                 <img src="static/assets/img/index_img/notification.png" width="100" height="100">
-	        <p><center>Push Notification</center></p>
+            <p><center>Push Notification</center></p>
             </div>
             </a>
             {% if config["SERVER_MODE"] == "paydb" %}
@@ -28,10 +28,10 @@
             <a href="{{ url_for('admin.index') }}">
             <div class='white-dashboard'>
                 <img src="static/assets/img/index_img/admin-with-cogwheels.png" width="100" height="100">
-	        <p><center>Admin</center></p>
+            <p><center>Admin</center></p>
             </div>
             </a>
-            {%- elif current_user.has_role("finance") -%}
+            {% elif current_user.has_role("finance") %}
             <a href="/reporting/dashboard">
             <div class='white-dashboard'>
                 <img src="static/assets/img/index_img/dashboard.png" width="100" height="100">
@@ -41,16 +41,16 @@
             <a href="{{ url_for('admin.index') }}">
             <div class='white-dashboard'>
                 <img src="static/assets/img/index_img/admin-with-cogwheels.png" width="100" height="100">
-	        <p><center>Admin</center></p>
+            <p><center>Admin</center></p>
             </div>
             </a>
-	    {%- elif current_user.has_role("proposer") or current_user.has_role("authorizer") -%}
+            {% elif current_user.has_role("proposer") or current_user.has_role("authorizer") %}
             <a href="{{ url_for('admin.index') }}">
             <div class='white-dashboard'>
                 <img src="static/assets/img/index_img/admin-with-cogwheels.png" width="100" height="100">
-	        <p><center>Admin</center></p>
+            <p><center>Admin</center></p>
             </div>
-            {%- endif %}
+            {% endif %}
         </div>
     </div>
 {% endif %}

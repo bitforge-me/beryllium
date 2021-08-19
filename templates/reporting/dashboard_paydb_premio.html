@@ -14,7 +14,7 @@
     <div class='column'>
       <div class='operations_account_column'>
 	      <b> Operations Account: {{ premio_stage_account }}</b>
-        <div class='blue-row'>
+        <div class='report-row blue'>
           {{ premio_balance }} {{ config["ASSET_NAME"] }}
         </div>
       </div>
@@ -22,7 +22,7 @@
     <div class='column'>
       <div class='operations_account_column'>
 	<b>Total Balance: </b>
-        <div class='blue-row'>
+        <div class='report-row blue'>
 	  {{ total_balance }} {{ config["ASSET_NAME"] }}
         </div>
       </div>
@@ -79,7 +79,7 @@
   </div>
   <div class='row'>
     <div class='column'>
-      <div class='row-2line-title-white-transactioncount'>
+      <div class='row-2line-title white'>
         Transaction Count
       </div>
       <div class='hide'>
@@ -88,42 +88,42 @@
     </div>
     <div class='column'>
       <a href="dashboard_premio_tx_today">
-      <div class='white-row'>
+      <div class='report-row report-row-hover white'>
         {{ premio_tx_count_today }}
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_premio_tx_yesterday">
-      <div class='white-row'>
+      <div class='report-row report-row-hover white'>
         {{ premio_tx_count_yesterday }}
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_premio_tx_week">
-      <div class='white-row'>
+      <div class='report-row report-row-hover white'>
         {{ premio_tx_count_week }}
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_premio_tx_month">
-      <div class='white-row'>
+      <div class='report-row report-row-hover white'>
         {{ premio_tx_count_month }}
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_premio_tx_year">
-      <div class='white-row'>
+      <div class='report-row report-row-hover white'>
         {{ premio_tx_count_year }}
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_premio_tx_lifetime">
-      <div class='white-row'>
+      <div class='report-row report-row-hover white'>
         {{ premio_tx_count_lifetime }}
       </div>
       </a>
