@@ -3,7 +3,7 @@ import flask_admin
 from flask_admin import helpers as admin_helpers
 
 from app_core import app, db, SERVER_MODE_WAVES
-from models import security, RestrictedModelView, BaseOnlyUserOwnedModelView, ProposalModelView, UserModelView, TopicModelView, WavesTxModelView, PayDbApiKeyModelView, PayDbUserTransactionsView, PayDbAdminTransactionsView, PushNotificationLocationModelView, CategoryModelView, \
+from models import security, RestrictedModelView, BaseOnlyUserOwnedModelView, ProposalModelView, UserModelView, WavesTxModelView, PayDbApiKeyModelView, PayDbUserTransactionsView, PayDbAdminTransactionsView, PushNotificationLocationModelView, \
     Role, User, ApiKey, PayDbTransaction, Category, Proposal, WavesTx, Topic, UserStash, UserStashRequest, PushNotificationLocation, Referral
 
 # Create admin
@@ -17,8 +17,8 @@ admin = flask_admin.Admin(
 # Add model views
 admin.add_view(UserModelView(User, db.session, category='Admin'))
 admin.add_view(RestrictedModelView(Role, db.session, category='Admin'))
-admin.add_view(CategoryModelView(Category, db.session, category='Admin'))
-admin.add_view(TopicModelView(Topic, db.session, category='Admin'))
+admin.add_view(RestrictedModelView(Category, db.session, category='Admin'))
+admin.add_view(RestrictedModelView(Topic, db.session, category='Admin'))
 if app.config["USE_STASH"]:
     admin.add_view(RestrictedModelView(UserStash, db.session, category='Admin'))
     admin.add_view(RestrictedModelView(UserStashRequest, db.session, category='Admin'))

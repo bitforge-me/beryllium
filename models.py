@@ -930,11 +930,10 @@ class ProposalModelView(BaseModelView):
     def is_accessible(self):
         if not (current_user.is_active and current_user.is_authenticated):
             return False
-        if current_user.has_role(Role.ROLE_ADMIN):
+        if current_user.has_role(Role.ROLE_ADMIN) or current_user.has_role(Role.ROLE_PROPOSER):
             self.can_create = True
             return True
-        if current_user.has_role(Role.ROLE_PROPOSER):
-            self.can_create = True
+        if current_user.has_role(Role.ROLE_FINANCE):
             return True
         return False
 
@@ -1021,21 +1020,20 @@ class UserModelView(BaseModelView):
     can_delete = False
     can_edit = False
     column_list = ['token', 'email', 'roles', 'active', 'confirmed_at']
-    column_editable_list = ['roles', 'active']
     if app.config["SERVER_MODE"] == "paydb":
         column_filters = [ FilterByUserEmail(User.email, 'Search email'), FilterByUserToken(User.token, 'Search token') ]
     else:
         column_filters = [ FilterByUserEmail(User.email, 'Search email') ]
 
     def is_accessible(self):
-        return (current_user.is_active and
-                current_user.is_authenticated and
-                current_user.has_role(Role.ROLE_ADMIN))
-
-class TopicModelView(RestrictedModelView):
-    can_create = True
-    can_delete = True
-    can_edit = False
+        if not (current_user.is_active and current_user.is_authenticated):
+            return False
+        if current_user.has_role(Role.ROLE_ADMIN):
+            self.column_editable_list = ['roles', 'active']
+            return True
+        if current_user.has_role(Role.ROLE_FINANCE):
+            return True
+        return False
 
 class WavesTxModelView(RestrictedModelView):
     can_create = False
@@ -1452,8 +1450,3 @@ class Referral(db.Model):
     @classmethod
     def from_user(cls, session, user):
         return session.query(cls).filter(cls.user_id == user.id).all()
-
-class CategoryModelView(RestrictedModelView):
-    can_create = True
-    can_delete = False
-    can_edit = False
