@@ -1488,3 +1488,83 @@ class Referral(db.Model):
     @classmethod
     def from_user(cls, session, user):
         return session.query(cls).filter(cls.user_id == user.id).all()
+
+class BrokerOrderSchema(Schema):
+    token = fields.String()
+    date = fields.Date()
+    market = fields.String()
+    base_amount = fields.Integer()
+    quote_amount = fields.Integer()
+    recipient = fields.String()
+    status = fields.String()
+
+class BrokerOrder(db.Model):
+    STATUS_CREATED = 'created'
+    STATUS_READY = 'ready'
+    STATUS_INCOMING = 'incoming'
+    STATUS_CONFIRMED = 'confirmed'
+    STATUS_EXPIRED = 'expired'
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    token = db.Column(db.String(255), unique=True, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref=db.backref('orders', lazy='dynamic'))
+    date = db.Column(db.DateTime(), nullable=False)
+    market = db.Column(db.String, nullable=False)
+    base_amount = db.Column(db.Integer, nullable=False)
+    quote_amount = db.Column(db.Integer, nullable=False)
+    recipient = db.Column(db.String, nullable=False)
+    exchange_order_id = db.Column(db.Integer, db.ForeignKey('exchange_order.id'))
+    exchange_order = db.relationship('ExchangeOrder')
+    exchange_withdrawal_id = db.Column(db.Integer, db.ForeignKey('exchange_withdrawal.id'))
+    exchange_withdrawal = db.relationship('ExchangeWithdrawal')
+    status = db.Column(db.String, nullable=False)
+
+    def __init__(self, user, market, base_amount, quote_amount, recipient):
+        self.token = secrets.token_urlsafe(8)
+        self.user = user
+        self.date = datetime.datetime.now()
+        self.market = market
+        self.base_amount = base_amount
+        self.quote_amount = quote_amount
+        self.recipient = recipient
+        self.status = self.STATUS_CREATED
+
+    def to_json(self):
+        ref_schema = BrokerOrderSchema()
+        return ref_schema.dump(self).data
+
+    @classmethod
+    def from_token(cls, session, token):
+        return session.query(cls).filter(cls.token == token).first()
+
+    @classmethod
+    def from_user(cls, session, user):
+        return session.query(cls).filter(cls.user_id == user.id).all()
+
+class ExchangeOrder(db.Model):
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    token = db.Column(db.String(255), unique=True, nullable=False)
+    date = db.Column(db.DateTime(), nullable=False)
+    exchange_reference = db.Column(db.String, nullable=False)
+
+    def __init__(self, token, exchange_reference):
+        self.token = secrets.token_urlsafe(8)
+        self.date = datetime.datetime.now()
+        self.exchange_reference = exchange_reference
+
+class ExchangeWidthdrawal(db.Model):
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    token = db.Column(db.String(255), unique=True, nullable=False)
+    date = db.Column(db.DateTime(), nullable=False)
+    exchange_reference = db.Column(db.String, nullable=False)
+
+    def __init__(self, token, exchange_reference):
+        self.token = secrets.token_urlsafe(8)
+        self.date = datetime.datetime.now()
+        self.exchange_reference = exchange_reference
