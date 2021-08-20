@@ -9,6 +9,7 @@ import json
 import datetime
 from urllib.parse import urlparse
 import math
+import time
 
 import gevent
 from flask import render_template, request, flash, jsonify
@@ -25,7 +26,7 @@ from fcm import FCM
 from web_utils import bad_request, get_json_params, get_json_params_optional
 import paydb_core
 from reward_endpoint import reward, reward_create
-from reporting_endpoint import reporting
+from reporting_endpoint import reporting, dashboard_data_paydb
 # pylint: disable=unused-import
 import admin
 
@@ -154,6 +155,19 @@ def process_proposals():
         #logger.info(f"payment statuses commited")
         return f"done (expired {expired}, emails {emails}, SMS messages {sms_messages})"
 
+def process_email_alerts():
+    with app.app_context():
+        data = dashboard_data_paydb()
+        ### OPERATIONS WALLET THRESHOLD
+        if data["premio_stage_balance"] < int(app.config["OPERATIONS_ACCOUNT_MIN_BALANCE_CENTS"]):
+            subject = 'Operations wallet balance too low.'
+            msg = 'Please issue more tokens to the to the Operations wallet.'
+            utils.email_notification_alert(logger, subject, msg, app.config["OPERATIONS_ACCOUNT"])
+        ### OPERATIONS WALLET THRESHOLD < CLAIMABLE REWARDS
+        if data["premio_stage_balance"] < data["claimable_rewards"]:
+            subject = 'Amount claimable is higher than the amount in Operations wallet.'
+            msg = 'Please issue new tokens so all claimable rewards can be claimed.'
+            utils.email_notification_alert(logger, subject, msg, app.config["OPERATIONS_ACCOUNT"])
 #
 # Jinja2 filters
 #
@@ -445,7 +459,7 @@ class WebGreenlet():
         self.addr = addr
         self.port = port
         self.runloop_greenlet = None
-        self.process_proposals_greenlet = None
+        self.process_periodic_events_greenlet = None
         self.exception_func = exception_func
 
     def check_wallet(self):
@@ -466,10 +480,19 @@ class WebGreenlet():
             logger.info("WebGreenlet webserver starting (addr: %s, port: %d)", self.addr, self.port)
             socketio.run(app, host=self.addr, port=self.port)
 
-        def process_proposals_loop():
+        def process_periodic_events_loop():
+            current = int(time.time())
+            proposals_timer_last = current
+            email_alerts_timer_last = current
             while True:
-                gevent.spawn(process_proposals)
-                gevent.sleep(30)
+                current = time.time()
+                if current - proposals_timer_last > 30:
+                    gevent.spawn(process_proposals)
+                    proposals_timer_last += 30
+                if current - email_alerts_timer_last > 1800:
+                    gevent.spawn(process_email_alerts)
+                    email_alerts_timer_last += 1800
+                gevent.sleep(5)
 
         def start_greenlets():
             if SERVER_MODE == SERVER_MODE_WAVES:
@@ -477,11 +500,11 @@ class WebGreenlet():
                 self.check_wallet()
             logger.info("starting WebGreenlet runloop...")
             self.runloop_greenlet.start()
-            self.process_proposals_greenlet.start()
+            self.process_periodic_events_greenlet.start()
 
         # create greenlet
         self.runloop_greenlet = gevent.Greenlet(runloop)
-        self.process_proposals_greenlet = gevent.Greenlet(process_proposals_loop)
+        self.process_periodic_events_greenlet = gevent.Greenlet(process_periodic_events_loop)
         if self.exception_func:
             self.runloop_greenlet.link_exception(self.exception_func)
         # check node/wallet and start greenlets
@@ -489,8 +512,8 @@ class WebGreenlet():
 
     def stop(self):
         self.runloop_greenlet.kill()
-        self.process_proposals_greenlet.kill()
-        gevent.joinall([self.runloop_greenlet, self.process_proposals_greenlet])
+        self.process_periodic_events_greenlet.kill()
+        gevent.joinall([self.runloop_greenlet, self.process_periodic_events_greenlet])
 
 def run():
     # setup logging

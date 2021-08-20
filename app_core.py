@@ -95,6 +95,11 @@ if os.getenv("REFERRAL_SPEND_ASSET"):
 else:
     app.config["REFERRAL_SPEND_ASSET"] = "NZD"
 
+if os.getenv("OPERATIONS_ACCOUNT_MIN_BALANCE_CENTS"):
+    app.config["OPERATIONS_ACCOUNT_MIN_BALANCE_CENTS"] = os.getenv("OPERATIONS_ACCOUNT_MIN_BALANCE_CENTS")
+else:
+    app.config["OPERATIONS_ACCOUNT_MIN_BALANCE_CENTS"] = 200000
+
 if os.getenv("USE_STASH"):
     app.config["USE_STASH"] = True
 else:

@@ -42,7 +42,7 @@ FIRST_DAY_CURRENT_YEAR = FIRST_DAY_CURRENT_MONTH + relativedelta(month=1)
 FIRST_DAY_NEXT_YEAR = FIRST_DAY_CURRENT_YEAR + relativedelta(years=+1)
 LAST_DAY_CURRENT_YEAR = FIRST_DAY_NEXT_YEAR - timedelta(days=1)
 
-def report_dashboard_premio(premio_balance, premio_stage_account, total_balance):
+def report_dashboard_premio(premio_balance, premio_stage_account, total_balance, claimable):
     ### Premio (PayDbTransaction)
     premio_tx_count_lifetime = PayDbTransaction.query.count()
     premio_tx_count_today = transaction_count(PayDbTransaction, TODAY, TOMORROW)
@@ -50,7 +50,7 @@ def report_dashboard_premio(premio_balance, premio_stage_account, total_balance)
     premio_tx_count_week = transaction_count(PayDbTransaction, MONDAY, NEXT_MONDAY)
     premio_tx_count_month = transaction_count(PayDbTransaction, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH)
     premio_tx_count_year = transaction_count(PayDbTransaction, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR)
-    return render_template('reporting/dashboard_paydb_premio.html', premio_balance=premio_balance, premio_stage_account=premio_stage_account, total_balance=total_balance, \
+    return render_template('reporting/dashboard_paydb_premio.html', premio_balance=premio_balance, premio_stage_account=premio_stage_account, total_balance=total_balance, claimable=claimable, \
         premio_tx_count_lifetime=premio_tx_count_lifetime, \
         premio_tx_count_today=premio_tx_count_today, premio_tx_count_yesterday=premio_tx_count_yesterday, \
         premio_tx_count_week=premio_tx_count_week, premio_tx_count_month=premio_tx_count_month, premio_tx_count_year=premio_tx_count_year)
@@ -169,6 +169,14 @@ def unclaimed_proposal_payment(table1, table2, start_date, end_date):
     result = utils.int2asset(result)
     return result
 
+def authorized_unclaimed_payment_proposal(table1, table2):
+    result = table1.query.join(table2, table1.id==table2.proposal_id)\
+            .filter(table2.status != 'sent_funds').filter(table1.status == 'authorized')\
+            .with_entities(func.sum(table2.amount)).scalar()
+    if not result:
+        result = 0
+    return result
+
 def total_proposal_payment(table1, table2, start_date, end_date):
     result = table1.query.join(table2, table1.id==table2.proposal_id)\
             .filter(and_(table1.date_authorized >= str(start_date),\
@@ -274,9 +282,10 @@ def dashboard_data_paydb():
     if user:
         premio_stage_balance = paydb_core.user_balance_from_user(db.session, user)
     total_balance = paydb_core.balance_total(db.session)
+    claimable_rewards = authorized_unclaimed_payment_proposal(Proposal, Payment)
     # return data
     return {"premio_stage_balance": premio_stage_balance, "premio_stage_account": premio_stage_account, \
-            "total_balance": total_balance}
+            "total_balance": total_balance, "claimable_rewards": claimable_rewards}
 
 @reporting.route("/dashboard")
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
@@ -296,7 +305,8 @@ def dashboard_general():
     data = dashboard_data_paydb()
     data["premio_stage_balance"] = utils.int2asset(data["premio_stage_balance"])
     data["total_balance"] = utils.int2asset(data["total_balance"])
-    return report_dashboard_premio(data["premio_stage_balance"], data["premio_stage_account"], data["total_balance"])
+    data["claimable_rewards"] = utils.int2asset(data["claimable_rewards"])
+    return report_dashboard_premio(data["premio_stage_balance"], data["premio_stage_account"], data["total_balance"], data["claimable_rewards"])
 
 @reporting.route("/dashboard_report_proposals")
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
@@ -309,7 +319,8 @@ def dashboard_report_premio():
     data = dashboard_data_paydb()
     data["premio_stage_balance"] = utils.int2asset(data["premio_stage_balance"])
     data["total_balance"] = utils.int2asset(data["total_balance"])
-    return report_dashboard_premio(data["premio_stage_balance"], data["premio_stage_account"], data["total_balance"])
+    data["claimable_rewards"] = utils.int2asset(data["claimable_rewards"])
+    return report_dashboard_premio(data["premio_stage_balance"], data["premio_stage_account"], data["total_balance"], data["claimable_rewards"])
 
     ### List username with their balances
 @reporting.route("/dashboard_user_balance")

@@ -21,6 +21,16 @@
     </div>
     <div class='column'>
       <div class='operations_account_column'>
+	      <b> Claimable Rewards(Current): </b>
+        <div class='report-row report-row-sm blue'>
+          {{ claimable }} {{ config["ASSET_NAME"] }}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class='row'>
+    <div class='column'>
+      <div class='operations_account_column'>
 	<b>Total Balance: </b>
         <div class='report-row report-row-sm blue'>
 	  {{ total_balance }} {{ config["ASSET_NAME"] }}

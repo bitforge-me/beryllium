@@ -608,7 +608,7 @@ def get_statuses():
     # prevent database access when app is not yet ready
     if has_app_context():
         if not hasattr(g, 'statuses'):
-            query = Proposal.query.distinct(Proposal.status)
+            query = Proposal.query.with_entities(Proposal.status).distinct()
             # pylint: disable=assigning-non-slot
             g.statuses = [(proposal.status, proposal.status) for proposal in query]
         for proposal_status_a, proposal_status_b in g.statuses:
@@ -649,7 +649,7 @@ class FilterByProposer(BaseSQLAFilter):
         return query.filter(Proposal.proposer_id == value)
 
     def operation(self):
-        return u'equals'
+        return 'equals'
 
     def get_options(self, view):
         # return a generator that is reloaded each time it is used
@@ -660,7 +660,7 @@ class FilterByAuthorizer(BaseSQLAFilter):
         return query.filter(Proposal.authorizer_id == value)
 
     def operation(self):
-        return u'equals'
+        return 'equals'
 
     def get_options(self, view):
         # return a generator that is reloaded each time it is used
@@ -671,7 +671,7 @@ class FilterByCategory(BaseSQLAFilter):
         return query.join(Proposal.categories).filter(Category.id == value)
 
     def operation(self):
-        return u'equals'
+        return 'equals'
 
     def get_options(self, view):
         # return a generator that is reloaded each time it is used
@@ -682,7 +682,7 @@ class FilterByStatusEqual(BaseSQLAFilter):
         return query.filter(Proposal.status == value)
 
     def operation(self):
-        return u'equals'
+        return 'equals'
 
     def get_options(self, view):
         # return a generator that is reloaded each time it is used
@@ -693,7 +693,7 @@ class FilterByStatusNotEqual(BaseSQLAFilter):
         return query.filter(Proposal.status != value)
 
     def operation(self):
-        return u'not equals'
+        return 'not equals'
 
     def get_options(self, view):
         # return a generator that is reloaded each time it is used
@@ -706,7 +706,7 @@ class FilterBySenderTokenSearch(BaseSQLAFilter):
         return query.filter(PayDbTransaction.sender_token == user_token)
 
     def operation(self):
-        return u'equals'
+        return 'equals'
 
     def get_options(self, view):
         # return a generator that is reloaded each time it is used
@@ -719,7 +719,7 @@ class FilterBySenderTokenSearchNotEqual(BaseSQLAFilter):
         return query.filter(PayDbTransaction.sender_token != user_token)
 
     def operation(self):
-        return u'not equals'
+        return 'not equals'
 
     def get_options(self, view):
         # return a generator that is reloaded each time it is used
@@ -732,7 +732,7 @@ class FilterByRecipientTokenSearch(BaseSQLAFilter):
         return query.filter(PayDbTransaction.recipient_token == user_token)
 
     def operation(self):
-        return u'equals'
+        return 'equals'
 
     def get_options(self, view):
         # return a generator that is reloaded each time it is used
@@ -745,7 +745,7 @@ class FilterByRecipientTokenSearchNotEqual(BaseSQLAFilter):
         return query.filter(PayDbTransaction.recipient_token != user_token)
 
     def operation(self):
-        return u'not equals'
+        return 'not equals'
 
     def get_options(self, view):
         # return a generator that is reloaded each time it is used
@@ -756,7 +756,7 @@ class FilterByAction(BaseSQLAFilter):
         return query.filter(PayDbTransaction.action == value)
 
     def operation(self):
-        return u'equals'
+        return 'equals'
 
     def get_options(self, view):
         # return a generator that is reloaded each time it is used
@@ -767,7 +767,7 @@ class FilterByUserEmail(BaseSQLAFilter):
         return query.filter(User.id == value)
 
     def operation(self):
-        return u'equals'
+        return 'equals'
 
     def get_options(self, view):
         # return a generator that is reloaded each time it is used
@@ -778,7 +778,7 @@ class FilterByUserToken(BaseSQLAFilter):
         return query.filter(User.token == value)
 
     def operation(self):
-        return u'equals'
+        return 'equals'
 
     def get_options(self, view):
         # return a generator that is reloaded each time it is used
@@ -789,7 +789,7 @@ class FilterByPayDbTransactionToken(BaseSQLAFilter):
         return query.filter(PayDbTransaction.token == value)
 
     def operation(self):
-        return u'equals'
+        return 'equals'
 
     def get_options(self, view):
         # return a generator that is reloaded each time it is used
@@ -905,7 +905,7 @@ class ProposalModelView(BaseModelView):
     form_args = dict(
             reason=dict(label='Reason', validators=[DataRequired()])
             )
-    form_extra_fields = {'recipient': TextField('Recipient', validators=[DataRequired()]), 'message': TextField('Message'), 'amount': DecimalField('Amount', validators=[validators.Optional(), DataRequired()]), 'csvfile': FileField('CSV File')}
+    form_extra_fields = {'recipient': TextField('Recipient'), 'message': TextField('Message'), 'amount': DecimalField('Amount', validators=[validators.Optional()]), 'csvfile': FileField('CSV File')}
 
     def _validate_form(self, form):
         csv_rows = None
@@ -960,6 +960,7 @@ class ProposalModelView(BaseModelView):
             self.can_create = True
             return True
         if current_user.has_role(Role.ROLE_FINANCE) or current_user.has_role(Role.ROLE_AUTHORIZER):
+            self.can_create = False
             return True
         return False
 
@@ -1042,12 +1043,14 @@ class ProposalModelView(BaseModelView):
         return self.render('admin/payments.html', payments=proposal.payments)
 
 class UserModelView(BaseModelView):
+    can_export = True
     can_create = False
     can_delete = False
     can_edit = False
     column_list = ['token', 'email', 'roles', 'active', 'confirmed_at']
     if app.config["SERVER_MODE"] == SERVER_MODE_PAYDB:
-        column_filters = [FilterByUserEmail(User.email, 'Search email'), FilterByUserToken(User.token, 'Search token')]
+        column_filters = [FilterByUserEmail(User.email, 'Search email'), FilterByUserToken(User.token, 'Search token'), \
+            DateBetweenFilter(User.confirmed_at, 'Search Date')]
     else:
         column_filters = [FilterByUserEmail(User.email, 'Search email')]
 
@@ -1311,6 +1314,7 @@ class PayDbAdminTransactionsView(RestrictedModelView):
 
     column_list = ('sender', 'recipient', 'token', 'date', 'action', 'amount', 'attachment')
     column_formatters = {'amount': format_amount, 'date': format_date}
+    column_labels = {'token': 'TransactionID/Token'}
     column_filters = [ DateBetweenFilter(PayDbTransaction.date, 'Search Date'), \
             FilterBySenderTokenSearch(PayDbTransaction.sender_token, 'Search Sender'), \
             FilterBySenderTokenSearchNotEqual(PayDbTransaction.sender_token, 'Search Sender'), \
