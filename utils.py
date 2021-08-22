@@ -133,6 +133,16 @@ def email_stash_load_request(logger, email, req, minutes_expiry):
 def email_notification_alert(logger, subject, msg, recipient):
     send_email(logger, subject, msg, recipient=recipient)
 
+def email_payout_group_notification(logger, group):
+    recipient = app.config['PAYOUT_GROUP_EMAIL']
+    server_name = app.config['SERVER_NAME']
+    subject = '%s payout' % server_name
+    html_content = '%d payout requests<br/><br/>' % len(group.requests)
+    if len(group.requests) > 0:
+        all_url = url_for('payments.payout_group', token=group.token, secret=group.secret, _external=True)
+        html_content += '<a href="%s">payout group: %s</a>' % (all_url, group.token)
+    send_email(logger, subject, html_content, recipient=recipient)
+
 def generate_key(num=20):
     return binascii.hexlify(os.urandom(num)).decode()
 

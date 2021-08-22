@@ -4,8 +4,9 @@ import logging
 import time
 import datetime
 import json
+import decimal
 
-from flask import Blueprint, request, jsonify, flash, redirect, render_template
+from flask import Blueprint, request, jsonify, flash, redirect, render_template, url_for
 import flask_security
 from flask_security.utils import encrypt_password, verify_password
 from flask_security.recoverable import send_reset_password_instructions
@@ -15,8 +16,9 @@ import web_utils
 from web_utils import bad_request, get_json_params, check_auth, auth_request, auth_request_get_single_param, auth_request_get_params
 import utils
 from app_core import db, socketio, limiter
-from models import user_datastore, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, PayDbTransaction
+from models import user_datastore, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, PayDbTransaction, BrokerOrder
 import paydb_core
+import payments_core
 import dasset
 
 logger = logging.getLogger(__name__)
@@ -396,22 +398,23 @@ def transaction_info():
     return jsonify(dict(tx=tx.to_json()))
 
 @paydb.route('/assets', methods=['POST'])
-def assets():
-    api_key, err_response = auth_request(db)
+def assets_req():
+    _, err_response = auth_request(db)
     if err_response:
         return err_response
     assets = []
-    for item in dasset.assets():
-        assets.append(dict(symbol=item['symbol'], name=item['name'], coin_type=item['coinType'], status=item['status'], min_confs=item['minConfirmations'], message=item['notice']))
+    for item in dasset.assets_req():
+        decimals = dasset.asset_decimals(item['symbol'])
+        assets.append(dict(symbol=item['symbol'], name=item['name'], coin_type=item['coinType'], status=item['status'], min_confs=item['minConfirmations'], message=item['notice'], decimals=decimals))
     return jsonify(assets=assets)
 
 @paydb.route('/markets', methods=['POST'])
-def markets():
-    api_key, err_response = auth_request(db)
+def markets_req():
+    _, err_response = auth_request(db)
     if err_response:
         return err_response
     markets = []
-    for item in dasset.markets():
+    for item in dasset.markets_req():
         message = ''
         if 'notice' in item:
             message = item['notice']
@@ -419,11 +422,86 @@ def markets():
     return jsonify(markets=markets)
 
 @paydb.route('/order_book', methods=['POST'])
-def order_book():
-    symbol, api_key, err_response = auth_request_get_single_param(db, 'symbol')
+def order_book_req():
+    symbol, _, err_response = auth_request_get_single_param(db, 'symbol')
     if err_response:
         return err_response
     if symbol not in dasset.MARKET_LIST:
         return bad_request(web_utils.INVALID_MARKET)
-    order_book = dasset.order_book(symbol)[0]
+    order_book = dasset.order_book_req(symbol)
     return jsonify(order_book=order_book)
+
+def _broker_order_status(broker_order):
+    payment_url = None
+    if broker_order.windcave_payment_request:
+        payment_url = url_for('payments.payment', token=broker_order.windcave_payment_request.token)
+    return jsonify(broker_order=broker_order.to_json(), payment_url=payment_url)
+
+@paydb.route('/broker_order_create', methods=['POST'])
+def broker_order_create():
+    params, api_key, err_response = auth_request_get_params(db, ["market", "side", "amount_dec", "recipient"])
+    if err_response:
+        return err_response
+    market, side, amount_dec, recipient = params
+    if market not in dasset.MARKET_LIST:
+        return bad_request(web_utils.INVALID_MARKET)
+    if side != 'bid':
+        return bad_request(web_utils.INVALID_SIDE)
+    amount_dec = decimal.Decimal(amount_dec)
+    quote_amount_dec = dasset.bid_quote_amount(market, amount_dec)
+    if quote_amount_dec < 0:
+        return bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
+    if not dasset.address_validate(market, side, recipient):
+        return bad_request(web_utils.INVALID_RECIPIENT)
+    base_asset, quote_asset = dasset.assets_from_market(market)
+    amount = dasset.asset_dec_to_int(base_asset, amount_dec)
+    quote_amount = dasset.asset_dec_to_int(quote_asset, quote_amount_dec)
+    broker_order = BrokerOrder(api_key.user, market, amount, quote_amount, recipient)
+    db.session.add(broker_order)
+    db.session.commit()
+    return _broker_order_status(broker_order)
+
+@paydb.route('/broker_order_status', methods=['POST'])
+def broker_order_status():
+    token, api_key, err_response = auth_request_get_single_param(db, 'token')
+    if err_response:
+        return err_response
+    broker_order = BrokerOrder.from_token(db.session, token)
+    if not broker_order or broker_order.user != api_key.user:
+        return bad_request(web_utils.NOT_FOUND)
+    return _broker_order_status(broker_order)
+
+@paydb.route('/broker_order_accept', methods=['POST'])
+def broker_order_accept():
+    token, api_key, err_response = auth_request_get_single_param(db, 'token')
+    if err_response:
+        return err_response
+    broker_order = BrokerOrder.from_token(db.session, token)
+    if not broker_order or broker_order.user != api_key.user:
+        return bad_request(web_utils.NOT_FOUND)
+    now = datetime.datetime.now()
+    if now > broker_order.expiry:
+        return bad_request(web_utils.EXPIRED)
+    if broker_order.status != broker_order.STATUS_CREATED:
+        return bad_request(web_utils.INVALID_STATUS)
+    req = payments_core.payment_create(broker_order.quote_amount, broker_order.expiry)
+    if not req:
+        return bad_request(web_utils.FAILED_PAYMENT_CREATE)
+    broker_order.windcave_payment_request = req
+    broker_order.status = broker_order.STATUS_READY
+    db.session.add(req)
+    db.session.add(broker_order)
+    db.session.commit()
+    return _broker_order_status(broker_order)
+
+@paydb.route('/broker_orders', methods=['POST'])
+def broker_orders():
+    params, api_key, err_response = auth_request_get_params(db, ["offset", "limit"])
+    if err_response:
+        return err_response
+    offset, limit = params
+    if limit > 1000:
+        return bad_request(web_utils.LIMIT_TOO_LARGE)
+    orders = BrokerOrder.from_user(db.session, api_key.user, offset, limit)
+    orders = [order.to_json() for order in orders]
+    return jsonify(dict(broker_orders=orders))

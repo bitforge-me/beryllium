@@ -27,6 +27,7 @@ from web_utils import bad_request, get_json_params, get_json_params_optional
 import paydb_core
 from reward_endpoint import reward, reward_create
 from reporting_endpoint import reporting, dashboard_data_paydb
+from payments_endpoint import payments
 # pylint: disable=unused-import
 import admin
 
@@ -61,6 +62,7 @@ if app.config["USE_STASH"]:
 # reward blueprint
 app.register_blueprint(reward, url_prefix='/reward')
 app.register_blueprint(reporting, url_prefix='/reporting')
+app.register_blueprint(payments, url_prefix='/payments')
 
 def _create_transaction_waves(recipient, amount, attachment):
     # get fee

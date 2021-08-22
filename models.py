@@ -32,6 +32,7 @@ from sqlalchemy.exc import SQLAlchemyError, DBAPIError
 
 from app_core import app, db, SERVER_MODE_PAYDB
 from utils import generate_key, is_email, is_mobile, is_address, sha256, int2asset
+import dasset
 
 logger = logging.getLogger(__name__)
 
@@ -1475,7 +1476,7 @@ class Referral(db.Model):
 
     def to_json(self):
         ref_schema = ReferralSchema()
-        return ref_schema.dump(self).data
+        return ref_schema.dump(self)
 
     @classmethod
     def from_token(cls, session, token):
@@ -1491,12 +1492,33 @@ class Referral(db.Model):
 
 class BrokerOrderSchema(Schema):
     token = fields.String()
-    date = fields.Date()
+    date = fields.DateTime()
+    expiry = fields.DateTime()
     market = fields.String()
+    base_asset = fields.Method('get_base_asset')
     base_amount = fields.Integer()
+    base_amount_dec = fields.Method('get_base_amount_dec')
+    quote_asset = fields.Method('get_quote_asset')
     quote_amount = fields.Integer()
+    quote_amount_dec = fields.Method('get_quote_amount_dec')
     recipient = fields.String()
     status = fields.String()
+
+    def get_base_asset(self, obj):
+        base_asset, _ = dasset.assets_from_market(obj.market)
+        return base_asset
+
+    def get_quote_asset(self, obj):
+        _, quote_asset = dasset.assets_from_market(obj.market)
+        return quote_asset
+
+    def get_base_amount_dec(self, obj):
+        base_asset, _ = dasset.assets_from_market(obj.market)
+        return str(dasset.asset_int_to_dec(base_asset, obj.base_amount))
+
+    def get_quote_amount_dec(self, obj):
+        _, quote_asset = dasset.assets_from_market(obj.market)
+        return str(dasset.asset_int_to_dec(quote_asset, obj.quote_amount))
 
 class BrokerOrder(db.Model):
     STATUS_CREATED = 'created'
@@ -1505,16 +1527,21 @@ class BrokerOrder(db.Model):
     STATUS_CONFIRMED = 'confirmed'
     STATUS_EXPIRED = 'expired'
 
+    MINUTES_EXPIRY = 15
+
     id = db.Column(db.Integer, primary_key=True)
 
     token = db.Column(db.String(255), unique=True, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     user = db.relationship('User', backref=db.backref('orders', lazy='dynamic'))
     date = db.Column(db.DateTime(), nullable=False)
+    expiry = db.Column(db.DateTime(), nullable=False)
     market = db.Column(db.String, nullable=False)
     base_amount = db.Column(db.Integer, nullable=False)
     quote_amount = db.Column(db.Integer, nullable=False)
     recipient = db.Column(db.String, nullable=False)
+    windcave_payment_request_id = db.Column(db.Integer, db.ForeignKey('windcave_payment_request.id'))
+    windcave_payment_request = db.relationship('WindcavePaymentRequest')
     exchange_order_id = db.Column(db.Integer, db.ForeignKey('exchange_order.id'))
     exchange_order = db.relationship('ExchangeOrder')
     exchange_withdrawal_id = db.Column(db.Integer, db.ForeignKey('exchange_withdrawal.id'))
@@ -1525,6 +1552,7 @@ class BrokerOrder(db.Model):
         self.token = secrets.token_urlsafe(8)
         self.user = user
         self.date = datetime.datetime.now()
+        self.expiry = datetime.datetime.now() + datetime.timedelta(minutes=self.MINUTES_EXPIRY)
         self.market = market
         self.base_amount = base_amount
         self.quote_amount = quote_amount
@@ -1533,20 +1561,19 @@ class BrokerOrder(db.Model):
 
     def to_json(self):
         ref_schema = BrokerOrderSchema()
-        return ref_schema.dump(self).data
+        return ref_schema.dump(self)
 
     @classmethod
     def from_token(cls, session, token):
         return session.query(cls).filter(cls.token == token).first()
 
     @classmethod
-    def from_user(cls, session, user):
-        return session.query(cls).filter(cls.user_id == user.id).all()
+    def from_user(cls, session, user, offset, limit):
+        # pylint: disable=no-member
+        return session.query(cls).filter(cls.user_id == user.id).order_by(cls.id.desc()).offset(offset).limit(limit)
 
 class ExchangeOrder(db.Model):
-
     id = db.Column(db.Integer, primary_key=True)
-
     token = db.Column(db.String(255), unique=True, nullable=False)
     date = db.Column(db.DateTime(), nullable=False)
     exchange_reference = db.Column(db.String, nullable=False)
@@ -1556,10 +1583,8 @@ class ExchangeOrder(db.Model):
         self.date = datetime.datetime.now()
         self.exchange_reference = exchange_reference
 
-class ExchangeWidthdrawal(db.Model):
-
+class ExchangeWithdrawal(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-
     token = db.Column(db.String(255), unique=True, nullable=False)
     date = db.Column(db.DateTime(), nullable=False)
     exchange_reference = db.Column(db.String, nullable=False)
@@ -1568,3 +1593,170 @@ class ExchangeWidthdrawal(db.Model):
         self.token = secrets.token_urlsafe(8)
         self.date = datetime.datetime.now()
         self.exchange_reference = exchange_reference
+
+class WindcavePaymentRequestSchema(Schema):
+    date = fields.Float()
+    token = fields.String()
+    asset = fields.String()
+    amount = fields.Integer()
+    windcave_session_id = fields.String()
+    windcave_status = fields.String()
+    windcave_authorised = fields.Boolean()
+    windcave_allow_retry = fields.Boolean()
+    status = fields.String()
+
+class WindcavePaymentRequest(db.Model):
+    STATUS_CREATED = 'created'
+    STATUS_COMPLETED = 'completed'
+    STATUS_CANCELLED = 'cancelled'
+
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Float, nullable=False, unique=False)
+    token = db.Column(db.String, nullable=False, unique=True)
+    asset = db.Column(db.String, nullable=False)
+    amount = db.Column(db.Integer, nullable=False)
+    windcave_session_id = db.Column(db.String)
+    windcave_status = db.Column(db.String)
+    windcave_authorised = db.Column(db.Boolean)
+    windcave_allow_retry = db.Column(db.Boolean)
+    status = db.Column(db.String)
+
+    def __init__(self, token, asset, amount, windcave_session_id, windcave_status):
+        self.date = time.time()
+        self.token = token
+        self.asset = asset
+        self.amount = amount
+        self.windcave_session_id = windcave_session_id
+        self.windcave_status = windcave_status
+        self.status = self.STATUS_CREATED
+
+    @classmethod
+    def count(cls, session):
+        return session.query(cls).count()
+
+    @classmethod
+    def from_token(cls, session, token):
+        return session.query(cls).filter(cls.token == token).first()
+
+    def __repr__(self):
+        return '<WindcavePaymentRequest %r>' % (self.token)
+
+    def to_json(self):
+        schema = WindcavePaymentRequestSchema()
+        return schema.dump(self)
+
+class PayoutRequestSchema(Schema):
+    date = fields.Float()
+    token = fields.String()
+    asset = fields.String()
+    amount = fields.Integer()
+    sender = fields.String()
+    sender_account = fields.String()
+    sender_reference = fields.String()
+    sender_code = fields.String()
+    receiver = fields.String()
+    receiver_account = fields.String()
+    receiver_reference = fields.String()
+    receiver_code = fields.String()
+    receiver_particulars = fields.String()
+    email = fields.String()
+    email_sent = fields.Boolean()
+    processed = fields.Boolean()
+    status = fields.String()
+
+class PayoutGroupRequest(db.Model):
+    payout_group_id = db.Column(db.Integer, db.ForeignKey('payout_group.id'), primary_key=True)
+    payout_request_id = db.Column(db.Integer, db.ForeignKey('payout_request.id'), primary_key=True)
+
+    def __init__(self, group, req):
+        self.payout_group_id = group.id
+        self.payout_request_id = req.id
+
+class PayoutRequest(db.Model):
+    STATUS_CREATED = 'created'
+    STATUS_COMPLETED = 'completed'
+    STATUS_SUSPENDED = 'suspended'
+
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.Float, nullable=False, unique=False)
+    token = db.Column(db.String, nullable=False, unique=True)
+    secret = db.Column(db.String, nullable=False)
+    asset = db.Column(db.String, nullable=False)
+    amount = db.Column(db.Integer, nullable=False)
+    sender = db.Column(db.String, nullable=False)
+    sender_account = db.Column(db.String, nullable=False)
+    sender_reference = db.Column(db.String, nullable=False)
+    sender_code = db.Column(db.String, nullable=False)
+    receiver = db.Column(db.String, nullable=False)
+    receiver_account = db.Column(db.String, nullable=False)
+    receiver_reference = db.Column(db.String, nullable=False)
+    receiver_code = db.Column(db.String, nullable=False)
+    receiver_particulars = db.Column(db.String, nullable=False)
+    email = db.Column(db.String, nullable=False)
+    email_sent = db.Column(db.Boolean)
+    processed = db.Column(db.Boolean)
+    status = db.Column(db.String)
+    groups = db.relationship('PayoutGroup', secondary='payout_group_request', back_populates='requests')
+
+    def __init__(self, asset, amount, sender, sender_account, sender_reference, sender_code, receiver, receiver_account, receiver_reference, receiver_code, receiver_particulars, email, email_sent):
+        self.date = time.time()
+        self.token = secrets.token_urlsafe(8)
+        self.secret = secrets.token_urlsafe(20)
+        self.asset = asset
+        self.amount = amount
+        self.sender = sender
+        self.sender_account = sender_account
+        self.sender_reference = sender_reference
+        self.sender_code = sender_code
+        self.receiver = receiver
+        self.receiver_account = receiver_account
+        self.receiver_reference = receiver_reference
+        self.receiver_code = receiver_code
+        self.receiver_particulars = receiver_particulars
+        self.email = email
+        self.email_sent = email_sent
+        self.processed = False
+        self.status = self.STATUS_CREATED
+
+    @classmethod
+    def count(cls, session):
+        return session.query(cls).count()
+
+    @classmethod
+    def from_token(cls, session, token):
+        return session.query(cls).filter(cls.token == token).first()
+
+    @classmethod
+    def not_processed(cls, session):
+        return session.query(cls).filter(cls.processed is False).all()
+
+    @classmethod
+    def where_status_processed(cls, session):
+        return session.query(cls).filter(cls.status == 'processed')
+
+    def __repr__(self):
+        return '<PayoutRequest %r>' % (self.token)
+
+    def to_json(self):
+        schema = PayoutRequestSchema()
+        return schema.dump(self)
+
+class PayoutGroup(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String, nullable=False, unique=True)
+    secret = db.Column(db.String, nullable=False, unique=True)
+    expired = db.Column(db.Boolean, nullable=False)
+    requests = db.relationship('PayoutRequest', secondary='payout_group_request', back_populates='groups')
+
+    def __init__(self):
+        self.token = secrets.token_urlsafe(8)
+        self.secret = secrets.token_urlsafe(20)
+        self.expired = False
+
+    @classmethod
+    def from_token(cls, session, token):
+        return session.query(cls).filter(cls.token == token).first()
+
+    @classmethod
+    def expire_all_but(cls, session, group):
+        session.query(cls).filter(cls.id != group.id).update({"expired": True})

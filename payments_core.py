@@ -1,0 +1,226 @@
+# pylint: disable=unbalanced-tuple-unpacking
+import os
+import sys
+import logging
+import base64
+import json
+import secrets
+import decimal
+
+from stdnum.nz import bankaccount
+import requests
+
+import utils
+from app_core import app, db
+from models import WindcavePaymentRequest, PayoutRequest, PayoutGroup, PayoutGroupRequest
+
+logger = logging.getLogger(__name__)
+
+SERVER_NAME = app.config['SERVER_NAME']
+WINDCAVE_API_URL = 'https://sec.windcave.com/api/v1'
+WINDCAVE_API_USER = os.environ.get('WINDCAVE_API_USER', '')
+WINDCAVE_API_KEY = os.environ.get('WINDCAVE_API_KEY', '')
+PAYOUT_SENDER_NAME = os.environ.get('PAYOUT_SENDER_NAME', '')
+PAYOUT_SENDER_ACCOUNT = os.environ.get('PAYOUT_SENDER_ACCOUNT', '')
+if not WINDCAVE_API_USER:
+    print('ERROR: no WINDCAVE_API_USER')
+    sys.exit(1)
+if not WINDCAVE_API_KEY:
+    print('ERROR: no WINDCAVE_API_KEY')
+    sys.exit(1)
+if not PAYOUT_SENDER_NAME:
+    print('ERROR: no PAYOUT_SENDER_NAME')
+    sys.exit(1)
+if not PAYOUT_SENDER_ACCOUNT:
+    print('ERROR: no PAYOUT_SENDER_ACCOUNT')
+    sys.exit(1)
+
+def moneyfmt(value, places=2, curr='', sep=',', dpi='.',
+             pos='', neg='-', trailneg=''):
+    """Convert Decimal to a money formatted string.
+
+    places:  required number of places after the decimal point
+    curr:    optional currency symbol before the sign (may be blank)
+    sep:     optional grouping separator (comma, period, space, or blank)
+    dpi:     decimal point indicator (comma or period)
+             only specify as blank when places is zero
+    pos:     optional sign for positive numbers: '+', space or blank
+    neg:     optional sign for negative numbers: '-', '(', space or blank
+    trailneg:optional trailing minus indicator:  '-', ')', space or blank
+
+    >>> d = Decimal('-1234567.8901')
+    >>> moneyfmt(d, curr='$')
+    '-$1,234,567.89'
+    >>> moneyfmt(d, places=0, sep='.', dpi='', neg='', trailneg='-')
+    '1.234.568-'
+    >>> moneyfmt(d, curr='$', neg='(', trailneg=')')
+    '($1,234,567.89)'
+    >>> moneyfmt(Decimal(123456789), sep=' ')
+    '123 456 789.00'
+    >>> moneyfmt(Decimal('-0.02'), neg='<', trailneg='>')
+    '<0.02>'
+
+    """
+    q = decimal.Decimal(10) ** -places      # 2 places --> '0.01'
+    sign, digits, _ = value.quantize(q).as_tuple()
+    result = []
+    digits = list(map(str, digits))
+    build, next_ = result.append, digits.pop
+    if sign:
+        build(trailneg)
+    for i in range(places):
+        build(next_() if digits else '0')
+    if places:
+        build(dpi)
+    if not digits:
+        build('0')
+    i = 0
+    while digits:
+        build(next_())
+        i += 1
+        if i == 3 and digits:
+            i = 0
+            build(sep)
+    build(curr)
+    build(neg if sign else pos)
+    return ''.join(reversed(result))
+
+def auth_header():
+    raw = bytearray(WINDCAVE_API_USER + ':' + WINDCAVE_API_KEY, 'utf-8')
+    data = base64.b64encode(raw).decode('utf-8')
+    return 'Basic ' + data
+
+def windcave_create_session(amount_cents, token, expiry):
+    body = {'type': 'purchase', 'amount': moneyfmt(decimal.Decimal(amount_cents) / decimal.Decimal(100), sep=''), 'currency': 'NZD', 'merchantReference': token}
+    body['methods'] = ['account2account']
+    expiry = expiry.replace(microsecond=0) # strip microsecond to placate windcave (RFC 3339)
+    body['expires'] = expiry.isoformat()
+    callback_url = SERVER_NAME + '/payments/payment/' + token
+    body['callbackUrls'] = {'approved': callback_url, 'declined': callback_url, 'cancelled': callback_url}
+    body['notificationUrl'] = callback_url
+    print(json.dumps(body))
+    headers = {'Content-Type': 'application/json', 'Authorization': auth_header()}
+    r = requests.post(WINDCAVE_API_URL + '/sessions', headers=headers, json=body)
+    print(r.text)
+    r.raise_for_status()
+    if r.status_code == 202:
+        jsn = r.json()
+        return jsn['id'], jsn['state']
+    return None, None
+
+def windcave_get_session_status(windcave_session_id):
+    headers = {'Authorization': auth_header()}
+    r = requests.get(WINDCAVE_API_URL + '/sessions/' + windcave_session_id, headers=headers)
+    print(r.text)
+    r.raise_for_status()
+    jsn = r.json()
+    state = jsn['state']
+    link = ""
+    for ln_data in jsn['links']:
+        if ln_data['method'] == 'REDIRECT':
+            link = ln_data['href']
+            break
+    tx_state = None
+    if 'transactions' in jsn:
+        txs = jsn['transactions']
+        if len(txs) > 0:
+            tx_state = txs[0]['authorised'], txs[0]['allowRetry']
+    return state, link, tx_state
+
+def payment_create(amount_cents, expiry):
+    token = secrets.token_urlsafe(8)
+    req = WindcavePaymentRequest.from_token(db.session, token)
+    if req:
+        raise Exception('payment already exists')
+    print("creating session with windcave")
+    windcave_session_id, windcave_status = windcave_create_session(amount_cents, token, expiry)
+    if not windcave_session_id:
+        raise Exception('failed to create windcave session')
+    print("creating payment request object for %s" % token)
+    req = WindcavePaymentRequest(token, 'NZD', amount_cents, windcave_session_id, windcave_status)
+    return req
+
+def payment_status(token):
+    return WindcavePaymentRequest.from_token(db.session, token)
+
+def get_payment_request_status(token):
+    req = WindcavePaymentRequest.from_token(db.session, token)
+    if not req:
+        return None, False, False, ''
+    completed = req.status == req.STATUS_COMPLETED
+    cancelled = req.status == req.STATUS_CANCELLED
+    windcave_url = ''
+    # get status from windcave
+    if not completed and not cancelled:
+        state, windcave_url, tx_state = windcave_get_session_status(req.windcave_session_id)
+        req.windcave_status = state
+        if tx_state:
+            if tx_state[0]:
+                req.status = req.STATUS_COMPLETED
+            elif not tx_state[1]:
+                req.status = req.STATUS_CANCELLED
+            req.windcave_authorised = tx_state[0]
+            req.windcave_allow_retry = tx_state[1]
+        db.session.add(req)
+        db.session.commit()
+    completed = req.status == req.STATUS_COMPLETED
+    cancelled = req.status == req.STATUS_CANCELLED
+    return req, completed, cancelled, windcave_url
+
+def payout_create(amount, sender_reference, sender_code, account_name, account_number, reference, code, particulars):
+    # create payout request
+    req = PayoutRequest('NZD', amount, PAYOUT_SENDER_NAME, PAYOUT_SENDER_ACCOUNT, sender_reference, sender_code, account_name, account_number, reference, code, particulars, app.config['PAYOUT_GROUP_EMAIL'], False)
+    db.session.add(req)
+    db.session.commit()
+    return req
+
+def payout_group_create():
+    # create payout group
+    group = PayoutGroup()
+    db.session.add(group)
+    db.session.flush()
+    reqs = PayoutRequest.not_processed(db.session)
+    for r in reqs:
+        group_req = PayoutGroupRequest(group, r)
+        db.session.add(group_req)
+    db.session.commit()
+    # send email
+    utils.email_payout_group_notification(logger, group)
+    # expire old groups
+    PayoutGroup.expire_all_but(db.session, group)
+    db.session.commit()
+
+def payout_status(token):
+    print("looking for %s" % token)
+    return PayoutRequest.from_token(db.session, token)
+
+def bankaccount_is_valid(account):
+    return bankaccount.is_valid(account)
+
+def set_payout_requests_complete(reqs):
+    for req in reqs:
+        # ignore suspended
+        if req.status == req.STATUS_SUSPENDED:
+            continue
+        req.processed = True
+        req.status = req.STATUS_COMPLETED
+        db.session.add(req)
+    db.session.commit()
+
+def set_payout_request_suspended(req):
+    # ignore not in created state
+    if req.status != req.STATUS_CREATED:
+        return False
+    req.status = req.STATUS_SUSPENDED
+    db.session.add(req)
+    db.session.commit()
+    return True
+
+def set_payout_request_created(req):
+    # ignore not in suspended state
+    if req.status != req.STATUS_SUSPENDED:
+        return False
+    req.status = req.STATUS_CREATED
+    db.session.add(req)
+    db.session.commit()
+    return True

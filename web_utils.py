@@ -25,6 +25,12 @@ NOT_IMPLEMENTED  = 'net yet implemented'
 NOT_AVAILABLE = 'not available'
 INVALID_AMOUNT = 'invalid amount'
 INVALID_MARKET = 'invalid market'
+INVALID_SIDE = 'invalid side'
+INSUFFICIENT_LIQUIDITY = 'insufficient liquidity'
+INVALID_RECIPIENT = 'invalid recipient'
+EXPIRED = 'expired'
+INVALID_STATUS = 'invalid status'
+FAILED_PAYMENT_CREATE = 'failed payment create'
 
 def bad_request(message, code=400):
     logger.warning(message)

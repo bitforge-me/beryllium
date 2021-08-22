@@ -1,0 +1,99 @@
+{% extends "layout.html" %}
+
+{% block content %}
+
+        <!-- Page Content -->
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-12">
+                    {% if interstitial %}
+                    <h3>Account2Account</h3>
+                    <ul>
+                        <li>
+                            The Account2Account page is securely hosted by Windcave (a Level 1 service provider) and is compliant to PCI DSS.
+                        </li>
+                        <li>
+                            Abiding by the comprehensive set of requirements of PCI DSS means that Windcave uses the latest security technologies to ensure the safe handling of all sensitive data.
+                        </li>
+                        <li>
+                            During the course of the Account2Account payment process, Windcave does not store any of the customer's bank account information. The same security features setup on the customer's bank account, such as additional authentication methods, are prompted during the course of the Account2Account payment process.
+                        </li>
+                        <li>
+                            Supported Banks in New Zealand
+                            <ul>
+                                <li>
+                                    ANZ
+                                </li>
+                                <li>
+                                    ASB
+                                </li>
+                                <li>
+                                    BNZ
+                                </li>
+                                <li>
+                                    Kiwibank
+                                </li>
+                                <li>
+                                    The Co-operative Bank
+                                </li>
+                                <li>
+                                    TSB
+                                </li>
+                                <li>
+                                    Westpac
+                                </li>
+                        </li>
+                    </ul>
+                    <form action="/payment/x/{{token}}">
+                        <button type="submit">Continue</button>
+                    </form>
+                    {% else %}
+                        {% if not completed and not cancelled%}
+                        <h3 style="margin-top: 40px;">Payment status: {{req.windcave_status}}</h3>
+                            {% if req.windcave_authorised != None %}
+                            <p>
+                                Authorised: {{req.windcave_authorised}}
+                            </p>
+                            {% endif %}
+                            {% if req.windcave_allow_retry != None %}
+                            <p>
+                                Allow retry: {{req.windcave_allow_retry}}
+                            </p>
+                            {% endif %}
+                            {% if windcave_url %}
+                            <p>
+                                To continue your payment go to <a href="{{windcave_url}}">{{windcave_url}}</a>.
+                            </p>
+                            {% endif %}
+                        {% elif completed%}
+                        <h3 style="margin-top: 40px;">Payment completed</h3>
+                        <p>
+                            Your payment is complete.
+                        </p>
+                        {% elif cancelled%}
+                        <h3 style="margin-top: 40px;">Payment cancelled</h3>
+                        <p>
+                            Your payment is cancelled.
+                        </p>
+                        {% endif %}
+                        <p>Thank-you.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+{% endblock %}
+
+{% block scripts %}
+        <script type="text/javascript">
+            $(document).ready(function() {
+                {% if interstitial %}
+                {% else %}
+                    {% if not completed and not cancelled %}
+                        {% if windcave_url %}
+                        window.location.replace("{{windcave_url}}");
+                        {% endif %}
+                    {% endif %}
+                {% endif %}
+            });
+        </script>
+{% endblock %}
