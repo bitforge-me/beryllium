@@ -3,10 +3,10 @@
 import logging
 import time
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify
 
 import web_utils
-from web_utils import bad_request, get_json_params, request_get_signature, check_auth, auth_request, auth_request_get_single_param
+from web_utils import bad_request, auth_request, auth_request_get_single_param, auth_request_get_params
 import utils
 from app_core import app, db, limiter
 from models import User, Role, Category, Proposal, Payment, Referral
@@ -34,17 +34,9 @@ def _reward_create(user, reason, category, recipient, amount, message):
 
 @reward.route("/reward_categories", methods=["POST"])
 def reward_categories():
-    sig = request_get_signature()
-    content = request.get_json(force=True)
-    if content is None:
-        return bad_request(web_utils.INVALID_JSON)
-    params, err_response = get_json_params(content, ["api_key", "nonce"])
+    api_key, err_response = auth_request(db)
     if err_response:
         return err_response
-    api_key, nonce = params
-    res, auth_fail_reason, api_key = check_auth(db.session, api_key, nonce, sig, request.data)
-    if not res:
-        return bad_request(auth_fail_reason)
     if not api_key.user.has_role(Role.ROLE_ADMIN) and not api_key.user.has_role(Role.ROLE_AUTHORIZER):
         return bad_request(web_utils.UNAUTHORIZED)
     # pylint: disable=no-member
@@ -54,17 +46,10 @@ def reward_categories():
 
 @reward.route("/reward_create", methods=["POST"])
 def reward_create():
-    sig = request_get_signature()
-    content = request.get_json(force=True)
-    if content is None:
-        return bad_request(web_utils.INVALID_JSON)
-    params, err_response = get_json_params(content, ["api_key", "nonce", "reason", "category", "recipient", "amount", "message"])
+    params, api_key, err_response = auth_request_get_params(db, ["reason", "category", "recipient", "amount", "message"])
     if err_response:
         return err_response
-    api_key, nonce, reason, category, recipient, amount, message = params
-    res, auth_fail_reason, api_key = check_auth(db.session, api_key, nonce, sig, request.data)
-    if not res:
-        return bad_request(auth_fail_reason)
+    reason, category, recipient, amount, message = params
     if not api_key.user.has_role(Role.ROLE_ADMIN) and not api_key.user.has_role(Role.ROLE_AUTHORIZER):
         return bad_request(web_utils.UNAUTHORIZED)
     cat = Category.from_name(db.session, category)

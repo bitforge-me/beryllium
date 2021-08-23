@@ -12,7 +12,7 @@ from flask_security.recoverable import send_reset_password_instructions
 from flask_socketio import Namespace, emit, join_room, leave_room
 
 import web_utils
-from web_utils import bad_request, get_json_params, request_get_signature, check_auth, auth_request, auth_request_get_single_param
+from web_utils import bad_request, get_json_params, check_auth, auth_request, auth_request_get_single_param, auth_request_get_params
 import utils
 from app_core import db, socketio, limiter
 from models import user_datastore, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, PayDbTransaction
@@ -326,17 +326,10 @@ def user_update_email_confirm(token=None):
 @paydb.route('/user_update_password', methods=['POST'])
 @limiter.limit('10/hour')
 def user_update_password():
-    sig = request_get_signature()
-    content = request.get_json(force=True)
-    if content is None:
-        return bad_request(web_utils.INVALID_JSON)
-    params, err_response = get_json_params(content, ["api_key", "nonce", "current_password", "new_password"])
+    params, api_key, err_response = auth_request_get_params(db, ["current_password", "new_password"])
     if err_response:
         return err_response
-    api_key, nonce, current_password, new_password = params
-    res, reason, api_key = check_auth(db.session, api_key, nonce, sig, request.data)
-    if not res:
-        return bad_request(reason)
+    current_password, new_password = params
     user = api_key.user
     verified_password = verify_password(current_password, user.password)
     if not verified_password:
@@ -350,17 +343,10 @@ def user_update_password():
 @paydb.route('/user_update_photo', methods=['POST'])
 @limiter.limit('10/hour')
 def user_update_photo():
-    sig = request_get_signature()
-    content = request.get_json(force=True)
-    if content is None:
-        return bad_request(web_utils.INVALID_JSON)
-    params, err_response = get_json_params(content, ["api_key", "nonce", "photo", "photo_type"])
+    params, api_key, err_response = auth_request_get_params(db, ["photo", "photo_type"])
     if err_response:
         return err_response
-    api_key, nonce, photo, photo_type = params
-    res, reason, api_key = check_auth(db.session, api_key, nonce, sig, request.data)
-    if not res:
-        return bad_request(reason)
+    photo, photo_type = params
     user = api_key.user
     user.photo = photo
     user.photo_type = photo_type
@@ -370,19 +356,12 @@ def user_update_photo():
 
 @paydb.route('/user_transactions', methods=['POST'])
 def user_transactions():
-    sig = request_get_signature()
-    content = request.get_json(force=True)
-    if content is None:
-        return bad_request(web_utils.INVALID_JSON)
-    params, err_response = get_json_params(content, ["api_key", "nonce", "offset", "limit"])
+    params, api_key, err_response = auth_request_get_params(db, ["offset", "limit"])
     if err_response:
         return err_response
-    api_key, nonce, offset, limit = params
+    offset, limit = params
     if limit > 1000:
         return bad_request(web_utils.LIMIT_TOO_LARGE)
-    res, reason, api_key = check_auth(db.session, api_key, nonce, sig, request.data)
-    if not res:
-        return bad_request(reason)
     if not api_key.has_permission(Permission.PERMISSION_HISTORY):
         return bad_request(web_utils.UNAUTHORIZED)
     txs = PayDbTransaction.related_to_user(db.session, api_key.user, offset, limit)
@@ -391,19 +370,12 @@ def user_transactions():
 
 @paydb.route('/transaction_create', methods=['POST'])
 def transaction_create():
-    sig = request_get_signature()
-    content = request.get_json(force=True)
-    if content is None:
-        return bad_request(web_utils.INVALID_JSON)
-    params, err_response = get_json_params(content, ["api_key", "nonce", "action", "recipient", "amount", "attachment"])
+    params, api_key, err_response = auth_request_get_params(db, ["action", "recipient", "amount", "attachment"])
     if err_response:
         return err_response
-    api_key, nonce, action, recipient, amount, attachment = params
+    action, recipient, amount, attachment = params
     if recipient:
         recipient = recipient.lower()
-    res, reason, api_key = check_auth(db.session, api_key, nonce, sig, request.data)
-    if not res:
-        return bad_request(reason)
     tx, error = paydb_core.tx_create_and_play(db.session, api_key, action, recipient, amount, attachment)
     if not tx:
         return bad_request(error)
