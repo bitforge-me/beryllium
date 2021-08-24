@@ -17,18 +17,18 @@
                     </tr>
                 </thead>
                 <tbody>
-                {% for payment in payments %}
+                {% for reward_payment in reward_payments %}
                     <tr>
-                        <td>{{payment.email}}</td>
-                        <td>{{payment.mobile}}</td>
-                        <td>{{payment.recipient}}</td>
-                        <td>{{payment.message}}</td>
-                        <td>{{payment.amount|int2asset}} {{ config["ASSET_NAME"] }}</td>
-                        <td>{{payment.status}}</td>
+                        <td>{{reward_payment.email}}</td>
+                        <td>{{reward_payment.mobile}}</td>
+                        <td>{{reward_payment.recipient}}</td>
+                        <td>{{reward_payment.message}}</td>
+                        <td>{{reward_payment.amount|int2asset}} {{ config["ASSET_NAME"] }}</td>
+                        <td>{{reward_payment.status}}</td>
 			{% if config["SERVER_MODE"] == "paydb" %}
-			<td><a href="/admin/paydbtransaction/?flt1_6={{payment.txid}}">{{payment.txid}}</a></td>
+			<td><a href="/admin/paydbtransaction/?flt1_6={{reward_payment.txid}}">{{reward_payment.txid}}</a></td>
 			{% else %}
-                        <td>{{payment.txid}}</td>
+                        <td>{{reward_payment.txid}}</td>
 			{% endif %}
                     </tr>
                 {% endfor %}

@@ -9,6 +9,7 @@ import json
 import datetime
 from urllib.parse import urlparse
 import math
+import time
 
 import gevent
 from flask import render_template, request, flash, jsonify
@@ -19,13 +20,13 @@ import requests
 import pywaves
 
 from app_core import app, db, socketio, SERVER_MODE_WAVES, SERVER_MODE_PAYDB
-from models import Role, WavesTx, Proposal, Payment, Topic, PushNotificationLocation
+from models import Role, WavesTx, RewardProposal, RewardPayment, Topic, PushNotificationLocation
 import utils
 from fcm import FCM
 from web_utils import bad_request, get_json_params, get_json_params_optional
 import paydb_core
 from reward_endpoint import reward, reward_create
-from reporting_endpoint import reporting
+from reporting_endpoint import reporting, dashboard_data_paydb
 # pylint: disable=unused-import
 import admin
 
@@ -120,40 +121,53 @@ def process_proposals():
         # set expired
         expired = 0
         now = datetime.datetime.now()
-        proposals = Proposal.in_status(db.session, Proposal.STATE_AUTHORIZED)
-        for proposal in proposals:
-            if proposal.date_expiry < now:
-                proposal.status = Proposal.STATE_EXPIRED
+        reward_proposals = RewardProposal.in_status(db.session, RewardProposal.STATE_AUTHORIZED)
+        for reward_proposal in reward_proposals:
+            if reward_proposal.date_expiry < now:
+                reward_proposal.status = RewardProposal.STATE_EXPIRED
                 expired += 1
-                db.session.add(proposal)
+                db.session.add(reward_proposal)
         db.session.commit()
         # process authorized
         emails = 0
         sms_messages = 0
-        proposals = Proposal.in_status(db.session, Proposal.STATE_AUTHORIZED)
+        reward_proposals = RewardProposal.in_status(db.session, RewardProposal.STATE_AUTHORIZED)
         # pylint: disable=too-many-nested-blocks
-        for proposal in proposals:
-            for payment in proposal.payments:
-                if payment.status == payment.STATE_CREATED:
-                    if payment.email:
-                        utils.email_payment_claim(logger, app.config["ASSET_NAME"], payment, proposal.HOURS_EXPIRY)
-                        payment.status = payment.STATE_SENT_CLAIM_LINK
-                        db.session.add(payment)
-                        logger.info("Sent payment claim url to %s", payment.email)
+        for reward_proposal in reward_proposals:
+            for reward_payment in reward_proposal.reward_payments:
+                if reward_payment.status == reward_payment.STATE_CREATED:
+                    if reward_payment.email:
+                        utils.email_payment_claim(logger, app.config["ASSET_NAME"], reward_payment, reward_proposal.HOURS_EXPIRY)
+                        reward_payment.status = reward_payment.STATE_SENT_CLAIM_LINK
+                        db.session.add(reward_payment)
+                        logger.info("Sent payment claim url to %s", reward_payment.email)
                         emails += 1
-                    elif payment.mobile:
-                        utils.sms_payment_claim(logger, app.config["ASSET_NAME"], payment, proposal.HOURS_EXPIRY)
-                        payment.status = payment.STATE_SENT_CLAIM_LINK
-                        db.session.add(payment)
-                        logger.info("Sent payment claim url to %s", payment.mobile)
+                    elif reward_payment.mobile:
+                        utils.sms_payment_claim(logger, app.config["ASSET_NAME"], reward_payment, reward_proposal.HOURS_EXPIRY)
+                        reward_payment.status = reward_payment.STATE_SENT_CLAIM_LINK
+                        db.session.add(reward_payment)
+                        logger.info("Sent payment claim url to %s", reward_payment.mobile)
                         sms_messages += 1
-                    elif payment.recipient:
+                    elif reward_payment.recipient:
                         ##TODO: set status and commit before sending so we cannot send twice
                         raise Exception("not yet implemented")
         db.session.commit()
         #logger.info(f"payment statuses commited")
         return f"done (expired {expired}, emails {emails}, SMS messages {sms_messages})"
 
+def process_email_alerts():
+    with app.app_context():
+        data = dashboard_data_paydb()
+        ### OPERATIONS WALLET THRESHOLD
+        if data["premio_stage_balance"] < int(app.config["OPERATIONS_ACCOUNT_MIN_BALANCE_CENTS"]):
+            subject = 'Operations wallet balance too low.'
+            msg = 'Please issue more tokens to the Operations wallet.'
+            utils.email_notification_alert(logger, subject, msg, app.config["OPERATIONS_ACCOUNT"])
+        ### OPERATIONS WALLET THRESHOLD < CLAIMABLE REWARDS
+        if data["premio_stage_balance"] < data["claimable_rewards"]:
+            subject = 'Amount claimable is higher than the amount in Operations wallet.'
+            msg = 'Please issue new tokens so all claimable rewards can be claimed.'
+            utils.email_notification_alert(logger, subject, msg, app.config["OPERATIONS_ACCOUNT"])
 #
 # Jinja2 filters
 #
@@ -170,20 +184,20 @@ def int2asset(num):
 def index():
     return render_template("index.html")
 
-def process_claim_waves(payment, dbtx, recipient, asset_id):
-    if payment.proposal.status != payment.proposal.STATE_AUTHORIZED:
+def process_claim_waves(reward_payment, dbtx, recipient, asset_id):
+    if reward_payment.reward_proposal.status != reward_payment.reward_proposal.STATE_AUTHORIZED:
         return dbtx, "payment not authorized"
-    if payment.status != payment.STATE_SENT_CLAIM_LINK:
+    if reward_payment.status != reward_payment.STATE_SENT_CLAIM_LINK:
         return dbtx, "payment not authorized"
     # create/get transaction
     if not dbtx:
         if asset_id and asset_id != ASSET_ID:
             return dbtx, "'asset_id' does not match server"
         try:
-            dbtx = _create_transaction_waves(recipient, payment.amount, "")
-            payment.txid = dbtx.txid
+            dbtx = _create_transaction_waves(recipient, reward_payment.amount, "")
+            reward_payment.txid = dbtx.txid
             db.session.add(dbtx)
-            db.session.add(payment)
+            db.session.add(reward_payment)
             db.session.commit()
         except OtherError as ex:
             return dbtx, ex.message
@@ -192,48 +206,48 @@ def process_claim_waves(payment, dbtx, recipient, asset_id):
     # broadcast transaction
     try:
         dbtx = tx_utils.broadcast_transaction(db.session, dbtx.txid)
-        payment.status = payment.STATE_SENT_FUNDS
+        reward_payment.status = reward_payment.STATE_SENT_FUNDS
         db.session.add(dbtx)
         db.session.commit()
     except OtherError as ex:
         return dbtx, ex.message
     return dbtx, None
 
-def _process_claim_paydb(payment, recipient):
+def _process_claim_paydb(reward_payment, recipient):
     # create transaction, assumes payment hase been validated
-    tx, _ = paydb_core.tx_transfer_authorized(db.session, OPERATIONS_ACCOUNT, recipient, payment.amount, "")
+    tx, _ = paydb_core.tx_transfer_authorized(db.session, OPERATIONS_ACCOUNT, recipient, reward_payment.amount, "")
     if tx:
-        payment.txid = tx.token
-        payment.status = payment.STATE_SENT_FUNDS
-        db.session.add(payment)
+        reward_payment.txid = tx.token
+        reward_payment.status = reward_payment.STATE_SENT_FUNDS
+        db.session.add(reward_payment)
         return tx
     return None
 
 
-def process_claim_paydb(payment, recipient):
-    if payment.proposal.status != payment.proposal.STATE_AUTHORIZED:
+def process_claim_paydb(reward_payment, recipient):
+    if reward_payment.reward_proposal.status != reward_payment.reward_proposal.STATE_AUTHORIZED:
         return "payment not authorized"
-    if payment.status != payment.STATE_SENT_CLAIM_LINK:
+    if reward_payment.status != reward_payment.STATE_SENT_CLAIM_LINK:
         return "payment not authorized"
-    if _process_claim_paydb(payment, recipient):
+    if _process_claim_paydb(reward_payment, recipient):
         db.session.commit()
         return None
     return 'claim failed'
 
 @app.route("/claim_payment/<token>", methods=["GET", "POST"])
 def claim_payment(token):
-    payment = Payment.from_token(db.session, token)
-    if not payment:
+    reward_payment = RewardPayment.from_token(db.session, token)
+    if not reward_payment:
         return bad_request('payment not found', 404)
     now = datetime.datetime.now()
-    if now > payment.proposal.date_expiry and payment.status != payment.STATE_SENT_FUNDS:
+    if now > reward_payment.reward_proposal.date_expiry and reward_payment.status != reward_payment.STATE_SENT_FUNDS:
         return bad_request('expired', 404)
 
     def render(recipient):
         url_parts = urlparse(request.url)
         url = url_parts._replace(scheme=DEEP_LINK_SCHEME, query='scheme={}'.format(url_parts.scheme)).geturl()
         qrcode_svg = utils.qrcode_svg_create(url)
-        return render_template("claim_payment.html", payment=payment, recipient=recipient, qrcode_svg=qrcode_svg, url=url)
+        return render_template("claim_payment.html", reward_payment=reward_payment, recipient=recipient, qrcode_svg=qrcode_svg, url=url)
     def render_waves(dbtx):
         recipient = None
         if dbtx:
@@ -241,7 +255,7 @@ def claim_payment(token):
         return render(recipient)
 
     if SERVER_MODE == SERVER_MODE_WAVES:
-        dbtx = WavesTx.from_txid(db.session, payment.txid)
+        dbtx = WavesTx.from_txid(db.session, reward_payment.txid)
 
     if request.method == "POST":
         content_type = request.content_type
@@ -274,9 +288,9 @@ def claim_payment(token):
             except: # pylint: disable=bare-except
                 pass
         if SERVER_MODE == SERVER_MODE_WAVES:
-            dbtx, err_msg = process_claim_waves(payment, dbtx, recipient, asset_id)
+            dbtx, err_msg = process_claim_waves(reward_payment, dbtx, recipient, asset_id)
         else: # paydb
-            err_msg = process_claim_paydb(payment, recipient)
+            err_msg = process_claim_paydb(reward_payment, recipient)
         if err_msg:
             logger.error("claim_payment: %s", err_msg)
             if using_app:
@@ -445,7 +459,7 @@ class WebGreenlet():
         self.addr = addr
         self.port = port
         self.runloop_greenlet = None
-        self.process_proposals_greenlet = None
+        self.process_periodic_events_greenlet = None
         self.exception_func = exception_func
 
     def check_wallet(self):
@@ -466,10 +480,19 @@ class WebGreenlet():
             logger.info("WebGreenlet webserver starting (addr: %s, port: %d)", self.addr, self.port)
             socketio.run(app, host=self.addr, port=self.port)
 
-        def process_proposals_loop():
+        def process_periodic_events_loop():
+            current = int(time.time())
+            proposals_timer_last = current
+            email_alerts_timer_last = current
             while True:
-                gevent.spawn(process_proposals)
-                gevent.sleep(30)
+                current = time.time()
+                if current - proposals_timer_last > 30:
+                    gevent.spawn(process_proposals)
+                    proposals_timer_last += 30
+                if current - email_alerts_timer_last > 1800:
+                    gevent.spawn(process_email_alerts)
+                    email_alerts_timer_last += 1800
+                gevent.sleep(5)
 
         def start_greenlets():
             if SERVER_MODE == SERVER_MODE_WAVES:
@@ -477,11 +500,11 @@ class WebGreenlet():
                 self.check_wallet()
             logger.info("starting WebGreenlet runloop...")
             self.runloop_greenlet.start()
-            self.process_proposals_greenlet.start()
+            self.process_periodic_events_greenlet.start()
 
         # create greenlet
         self.runloop_greenlet = gevent.Greenlet(runloop)
-        self.process_proposals_greenlet = gevent.Greenlet(process_proposals_loop)
+        self.process_periodic_events_greenlet = gevent.Greenlet(process_periodic_events_loop)
         if self.exception_func:
             self.runloop_greenlet.link_exception(self.exception_func)
         # check node/wallet and start greenlets
@@ -489,8 +512,8 @@ class WebGreenlet():
 
     def stop(self):
         self.runloop_greenlet.kill()
-        self.process_proposals_greenlet.kill()
-        gevent.joinall([self.runloop_greenlet, self.process_proposals_greenlet])
+        self.process_periodic_events_greenlet.kill()
+        gevent.joinall([self.runloop_greenlet, self.process_periodic_events_greenlet])
 
 def run():
     # setup logging

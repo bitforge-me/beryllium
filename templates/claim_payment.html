@@ -14,14 +14,14 @@
             <div class="card-body">
                 <h5 class="card-title">Claim Payment</h5>
                 <p class="card-text">
-                    Amount: {{payment.amount|int2asset}} {{ config["ASSET_NAME"] }}
+                    Amount: {{reward_payment.amount|int2asset}} {{ config["ASSET_NAME"] }}
                     <br/>
-                    Expiry Date: {{payment.proposal.date_expiry.strftime('%Y-%m-%d %H:%M')}}
+                    Expiry Date: {{reward_payment.reward_proposal.date_expiry.strftime('%Y-%m-%d %H:%M')}}
                     <br/>
-                    Message: {{payment.message}}
+                    Message: {{reward_payment.message}}
                     <br/>
                 <center>
-                    {%if payment.status == payment.STATE_SENT_FUNDS%}
+                    {%if reward_payment.status == reward_payment.STATE_SENT_FUNDS%}
                         Sent!
                     {%else%}
                         {% set recipient_desc = 'Wallet address' if config['SERVER_TYPE'] == 'waves' else 'Account' %}
@@ -60,7 +60,7 @@
                         {%else%}
                             <form method="post">
                                 <p>{{ recipient_desc }}: {{recipient}}</p>
-                                {%if payment.status == payment.STATE_SENT_CLAIM_LINK%}
+                                {%if reward_payment.status == reward_payment.STATE_SENT_CLAIM_LINK%}
                                 <button type="submit" class="btn btn-primary">Send</button>
                                 {%endif%}
                             </form>

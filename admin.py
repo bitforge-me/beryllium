@@ -3,8 +3,8 @@ import flask_admin
 from flask_admin import helpers as admin_helpers
 
 from app_core import app, db, SERVER_MODE_WAVES
-from models import security, RestrictedModelView, BaseOnlyUserOwnedModelView, ProposalModelView, UserModelView, AdminUserModelView, WavesTxModelView, PayDbApiKeyModelView, PayDbUserTransactionsView, PayDbAdminTransactionsView, PushNotificationLocationModelView, \
-    Role, User, ApiKey, PayDbTransaction, Category, Proposal, WavesTx, Topic, UserStash, UserStashRequest, PushNotificationLocation, Referral
+from models import security, RestrictedModelView, BaseOnlyUserOwnedModelView, RewardProposalModelView, UserModelView, AdminUserModelView, WavesTxModelView, PayDbApiKeyModelView, PayDbUserTransactionsView, PayDbAdminTransactionsView, PushNotificationLocationModelView, \
+    Role, User, ApiKey, PayDbTransaction, Category, RewardProposal, WavesTx, Topic, UserStash, UserStashRequest, PushNotificationLocation, Referral
 
 # Create admin
 admin = flask_admin.Admin(
@@ -26,7 +26,7 @@ if app.config["USE_STASH"]:
 admin.add_view(PushNotificationLocationModelView(PushNotificationLocation, db.session, category='Admin'))
 if app.config["USE_REFERRALS"]:
     admin.add_view(RestrictedModelView(Referral, db.session, category='Admin', name='Referrals'))
-admin.add_view(ProposalModelView(Proposal, db.session, name='Reward', endpoint='rewards'))
+admin.add_view(RewardProposalModelView(RewardProposal, db.session, name='Reward', endpoint='rewards'))
 if app.config['SERVER_MODE'] == SERVER_MODE_WAVES:
     admin.add_view(WavesTxModelView(WavesTx, db.session, name='Waves Transactions', category='Admin'))
 else: # paydb

@@ -39,7 +39,7 @@ def send_email(logger, subject, msg, recipient=None, attachment=None):
         recipient = app.config["ADMIN_EMAIL"]
     from_email = From(app.config["FROM_EMAIL"], app.config["FROM_NAME"])
     template_path = "templates/email_template.html"
-    with open(os.path.join(os.path.dirname(__file__), template_path), 'r') as input_file:
+    with open(os.path.join(os.path.dirname(__file__), template_path), 'r', encoding='utf-8') as input_file:
         html = input_file.read()
     logo_src = app.config["LOGO_EMAIL_SRC"]
     html = html.replace("<LOGOSRC/>", logo_src).replace("<EMAILCONTENT/>", msg)
@@ -52,13 +52,24 @@ def send_email(logger, subject, msg, recipient=None, attachment=None):
     except Exception as ex: # pylint: disable=broad-except
         logger.error(f"email '{subject}': {ex}")
 
+def send_sms(logger, subject, msg, recipient=None, attachment=None):
+    if not recipient:
+        recipient = app.config["ADMIN_EMAIL"]
+    from_email = From(app.config["FROM_EMAIL"], app.config["FROM_NAME"])
+    message = Mail(from_email=from_email, to_emails=recipient, subject=subject, html_content=msg)
+    try:
+        sg = SendGridAPIClient(app.config["MAIL_SENDGRID_API_KEY"])
+        sg.send(message)
+    except Exception as ex: # pylint: disable=broad-except
+        logger.error(f"email '{subject}': {ex}")
+
 def email_exception(logger, msg):
     send_email(logger, "premio stage exception", msg)
 
-def email_payment_claim(logger, asset_name, payment, hours_expiry):
-    url = url_for("claim_payment", token=payment.token, _external=True)
-    msg = f"You have a {int2asset(payment.amount)} {asset_name} payment waiting!<br/><br/>Claim your payment <a href='{url}'>here</a><br/><br/>Claim within {hours_expiry} hours"
-    send_email(logger, f"Claim your {asset_name} payment", msg, payment.email)
+def email_payment_claim(logger, asset_name, reward_payment, hours_expiry):
+    url = url_for("claim_payment", token=reward_payment.token, _external=True)
+    msg = f"You have a {int2asset(reward_payment.amount)} {asset_name} payment waiting!<br/><br/>Claim your payment <a href='{url}'>here</a><br/><br/>Claim within {hours_expiry} hours"
+    send_email(logger, f"Claim your {asset_name} payment", msg, reward_payment.email)
 
 def email_user_create_request(logger, req, minutes_expiry):
     url = url_for("paydb.user_registration_confirm", token=req.token, _external=True)
@@ -75,14 +86,14 @@ def email_api_key_request(logger, req, minutes_expiry):
     msg = f"You have a pending email login request waiting!<br/><br/>Confirm your email login <a href='{url}'>here</a><br/><br/>Confirm within {minutes_expiry} minutes"
     send_email(logger, "Confirm your email login request", msg, req.user.email)
 
-def sms_payment_claim(logger, asset_name, payment, hours_expiry):
+def sms_payment_claim(logger, asset_name, reward_payment, hours_expiry):
     # SMS messages are sent by burst SMS
     #  - the authorization is by the sender email
     #  - the country code is configured by the account
-    url = url_for("claim_payment", token=payment.token, _external=True)
+    url = url_for("claim_payment", token=reward_payment.token, _external=True)
     msg = f"You have a {asset_name} payment waiting! Claim your payment (within {hours_expiry} hours) {url}"
-    email = str(payment.mobile) + "@transmitsms.com"
-    send_email(logger, "{asset_name} Payment", msg, email)
+    email = str(reward_payment.mobile) + "@transmitsms.com"
+    send_sms(logger, "{asset_name} Payment", msg, email)
 
 def email_referral(logger, referral):
     shop_name = app.config["REFERRAL_STORE_NAME"]
@@ -118,6 +129,9 @@ def email_stash_load_request(logger, email, req, minutes_expiry):
     url = url_for("stash_bp.stash_load_confirm", token=req.token, secret=req.secret, _external=True)
     msg = f"You have a pending stash load request waiting!<br/><br/>Confirm the request came from you <a href='{url}'>here</a><br/><br/>Confirm within {minutes_expiry} minutes"
     send_email(logger, "Confirm your stash request", msg, email)
+
+def email_notification_alert(logger, subject, msg, recipient):
+    send_email(logger, subject, msg, recipient=recipient)
 
 def generate_key(num=20):
     return binascii.hexlify(os.urandom(num)).decode()
