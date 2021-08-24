@@ -56,7 +56,6 @@ class Role(db.Model, RoleMixin):
     ROLE_ADMIN = 'admin'
     ROLE_FINANCE = 'finance'
     ROLE_PROPOSER = 'proposer'
-    ROLE_AUTHORIZER = 'authorizer'
     ROLE_REFERRAL_CLAIMER = 'referral_claimer'
 
     id = db.Column(db.Integer(), primary_key=True)
@@ -845,7 +844,7 @@ class ProposalModelView(BaseModelView):
     def _format_status_column(view, context, model, name):
         if model.status in (model.STATE_AUTHORIZED, model.STATE_DECLINED, model.STATE_EXPIRED):
             return model.status
-        if current_user.has_role(Role.ROLE_ADMIN) or current_user.has_role(Role.ROLE_AUTHORIZER):
+        if current_user.has_role(Role.ROLE_ADMIN) or current_user.has_role(Role.ROLE_FINANCE):
             authorize_url = url_for('.authorize_view')
             decline_url = url_for('.decline_view')
             html = '''
@@ -958,11 +957,8 @@ class ProposalModelView(BaseModelView):
     def is_accessible(self):
         if not (current_user.is_active and current_user.is_authenticated):
             return False
-        if current_user.has_role(Role.ROLE_ADMIN) or current_user.has_role(Role.ROLE_PROPOSER):
+        if current_user.has_role(Role.ROLE_ADMIN) or current_user.has_role(Role.ROLE_PROPOSER) or current_user.has_role(Role.ROLE_FINANCE):
             self.can_create = True
-            return True
-        if current_user.has_role(Role.ROLE_FINANCE) or current_user.has_role(Role.ROLE_AUTHORIZER):
-            self.can_create = False
             return True
         return False
 
@@ -970,7 +966,7 @@ class ProposalModelView(BaseModelView):
     def authorize_view(self):
         return_url = self.get_url('.index_view')
         # check permission
-        if not (current_user.has_role(Role.ROLE_ADMIN) or current_user.has_role(Role.ROLE_AUTHORIZER)):
+        if not (current_user.has_role(Role.ROLE_ADMIN) or current_user.has_role(Role.ROLE_FINANCE)):
             # permission denied
             flash('Not authorized.', 'error')
             return redirect(return_url)
@@ -1000,7 +996,7 @@ class ProposalModelView(BaseModelView):
     def decline_view(self):
         return_url = self.get_url('.index_view')
         # check permission
-        if not (current_user.has_role(Role.ROLE_ADMIN) or current_user.has_role(Role.ROLE_AUTHORIZER)):
+        if not (current_user.has_role(Role.ROLE_ADMIN) or current_user.has_role(Role.ROLE_FINANCE)):
             # permission denied
             flash('Not authorized.', 'error')
             return redirect(return_url)
@@ -1032,7 +1028,7 @@ class ProposalModelView(BaseModelView):
     def payments_view(self, proposal_id):
         return_url = self.get_url('.index_view')
         # check permission
-        if not (current_user.has_role(Role.ROLE_ADMIN) or current_user.has_role(Role.ROLE_AUTHORIZER) or current_user.has_role(Role.ROLE_PROPOSER) or current_user.has_role(Role.ROLE_FINANCE)):
+        if not (current_user.has_role(Role.ROLE_ADMIN) or current_user.has_role(Role.ROLE_PROPOSER) or current_user.has_role(Role.ROLE_FINANCE)):
             # permission denied
             flash('Not authorized.', 'error')
             return redirect(return_url)

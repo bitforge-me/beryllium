@@ -37,7 +37,7 @@ def reward_categories():
     api_key, err_response = auth_request(db)
     if err_response:
         return err_response
-    if not api_key.user.has_role(Role.ROLE_ADMIN) and not api_key.user.has_role(Role.ROLE_AUTHORIZER):
+    if not api_key.user.has_role(Role.ROLE_ADMIN) and not api_key.user.has_role(Role.ROLE_FINANCE):
         return bad_request(web_utils.UNAUTHORIZED)
     # pylint: disable=no-member
     cats = db.session.query(Category).all()
@@ -50,7 +50,7 @@ def reward_create():
     if err_response:
         return err_response
     reason, category, recipient, amount, message = params
-    if not api_key.user.has_role(Role.ROLE_ADMIN) and not api_key.user.has_role(Role.ROLE_AUTHORIZER):
+    if not api_key.user.has_role(Role.ROLE_ADMIN) and not api_key.user.has_role(Role.ROLE_FINANCE):
         return bad_request(web_utils.UNAUTHORIZED)
     cat = Category.from_name(db.session, category)
     if not cat:
