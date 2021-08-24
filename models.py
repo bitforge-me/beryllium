@@ -1582,6 +1582,10 @@ class BrokerOrder(db.Model):
         # pylint: disable=no-member
         return session.query(cls).filter(cls.user_id == user.id).order_by(cls.id.desc()).offset(offset).limit(limit)
 
+    @classmethod
+    def all_active(cls, session):
+        return session.query(cls).filter(and_(cls.status != cls.STATUS_COMPLETED, and_(cls.status != cls.STATUS_EXPIRED, cls.status != cls.STATUS_CANCELLED))).all()
+
 class ExchangeOrder(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     token = db.Column(db.String(255), unique=True, nullable=False)

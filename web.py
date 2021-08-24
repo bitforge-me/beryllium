@@ -20,11 +20,12 @@ import requests
 import pywaves
 
 from app_core import app, db, socketio, SERVER_MODE_WAVES, SERVER_MODE_PAYDB
-from models import Role, WavesTx, RewardProposal, RewardPayment, Topic, PushNotificationLocation
+from models import Role, WavesTx, RewardProposal, RewardPayment, Topic, PushNotificationLocation, BrokerOrder
 import utils
 from fcm import FCM
 from web_utils import bad_request, get_json_params, get_json_params_optional
 import paydb_core
+import payments_core
 from reward_endpoint import reward, reward_create
 from reporting_endpoint import reporting, dashboard_data_paydb
 from payments_endpoint import payments
@@ -149,6 +150,20 @@ def process_email_alerts():
             subject = 'Amount claimable is higher than the amount in Operations wallet.'
             msg = 'Please issue new tokens so all claimable rewards can be claimed.'
             utils.email_notification_alert(logger, subject, msg, app.config["OPERATIONS_ACCOUNT"])
+
+def process_broker_orders():
+    logger.info('process_broker_orders()')
+    with app.app_context():
+        orders = BrokerOrder.all_active(db.session)
+        logger.info('num orders: %d', len(orders))
+        for order in orders:
+            if order.windcave_payment_request:
+                payments_core.payment_request_status_update(order.windcave_payment_request)
+                db.session.add(order.windcave_payment_request)
+            paydb_core.broker_order_update(order)
+            db.session.add(order)
+        db.session.commit()
+
 #
 # Jinja2 filters
 #
@@ -465,6 +480,7 @@ class WebGreenlet():
             current = int(time.time())
             proposals_timer_last = current
             email_alerts_timer_last = current
+            broker_orders_timer_last = current
             while True:
                 current = time.time()
                 if current - proposals_timer_last > 30:
@@ -473,6 +489,9 @@ class WebGreenlet():
                 if current - email_alerts_timer_last > 1800:
                     gevent.spawn(process_email_alerts)
                     email_alerts_timer_last += 1800
+                if current - broker_orders_timer_last > 300:
+                    gevent.spawn(process_broker_orders)
+                    broker_orders_timer_last += 300
                 gevent.sleep(5)
 
         def start_greenlets():
