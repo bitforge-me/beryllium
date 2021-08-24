@@ -134,7 +134,7 @@ def process_proposals():
         reward_proposals = RewardProposal.in_status(db.session, RewardProposal.STATE_AUTHORIZED)
         # pylint: disable=too-many-nested-blocks
         for reward_proposal in reward_proposals:
-            for reward_payment in reward_proposal.payments:
+            for reward_payment in reward_proposal.reward_payments:
                 if reward_payment.status == reward_payment.STATE_CREATED:
                     if reward_payment.email:
                         utils.email_payment_claim(logger, app.config["ASSET_NAME"], reward_payment, reward_proposal.HOURS_EXPIRY)

@@ -152,7 +152,7 @@ def report_proposal_txs(frequency):
     return redirect(str(proposal_url))
 
 def claimed_proposal_payment(table1, table2, start_date, end_date):
-    result = table1.query.join(table2, table1.id==table2.proposal_id)\
+    result = table1.query.join(table2, table1.id==table2.reward_proposal_id)\
             .filter(and_(table1.date_authorized >= str(start_date),\
             table1.date_authorized < str(end_date))).filter(table2.status == 'sent_funds').with_entities(func.sum(table2.amount)).scalar()
     if not result:
@@ -161,7 +161,7 @@ def claimed_proposal_payment(table1, table2, start_date, end_date):
     return result
 
 def unclaimed_proposal_payment(table1, table2, start_date, end_date):
-    result = table1.query.join(table2, table1.id==table2.proposal_id)\
+    result = table1.query.join(table2, table1.id==table2.reward_proposal_id)\
             .filter(and_(table1.date_authorized >= str(start_date),\
             table1.date_authorized < str(end_date))).filter(table2.status != 'sent_funds').with_entities(func.sum(table2.amount)).scalar()
     if not result:
@@ -170,7 +170,7 @@ def unclaimed_proposal_payment(table1, table2, start_date, end_date):
     return result
 
 def authorized_unclaimed_payment_proposal(table1, table2):
-    result = table1.query.join(table2, table1.id==table2.proposal_id)\
+    result = table1.query.join(table2, table1.id==table2.reward_proposal_id)\
             .filter(table2.status != 'sent_funds').filter(table1.status == 'authorized')\
             .with_entities(func.sum(table2.amount)).scalar()
     if not result:
@@ -178,7 +178,7 @@ def authorized_unclaimed_payment_proposal(table1, table2):
     return result
 
 def total_proposal_payment(table1, table2, start_date, end_date):
-    result = table1.query.join(table2, table1.id==table2.proposal_id)\
+    result = table1.query.join(table2, table1.id==table2.reward_proposal_id)\
             .filter(and_(table1.date_authorized >= str(start_date),\
             table1.date_authorized < str(end_date))).with_entities(func.sum(table2.amount)).scalar()
     if not result:
@@ -187,7 +187,7 @@ def total_proposal_payment(table1, table2, start_date, end_date):
     return result
 
 def claimed_lifetime(table1, table2):
-    result = table1.query.join(table2, table1.id==table2.proposal_id)\
+    result = table1.query.join(table2, table1.id==table2.reward_proposal_id)\
             .filter(table2.status == 'sent_funds').with_entities(func.sum(table2.amount)).scalar()
     if not result:
         result = 0
@@ -195,7 +195,7 @@ def claimed_lifetime(table1, table2):
     return result
 
 def unclaimed_lifetime(table1, table2):
-    result = table1.query.join(table2, table1.id==table2.proposal_id)\
+    result = table1.query.join(table2, table1.id==table2.reward_proposal_id)\
             .filter(table2.status != 'sent_funds').with_entities(func.sum(table2.amount)).scalar()
     if not result:
         result = 0
@@ -203,7 +203,7 @@ def unclaimed_lifetime(table1, table2):
     return result
 
 def total_lifetime(table1, table2):
-    result = table1.query.join(table2, table1.id==table2.proposal_id)\
+    result = table1.query.join(table2, table1.id==table2.reward_proposal_id)\
             .with_entities(func.sum(table2.amount)).scalar()
     if not result:
         result = 0

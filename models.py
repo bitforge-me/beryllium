@@ -359,8 +359,8 @@ class RewardPayment(db.Model):
     def __repr__(self):
         return "<RewardPayment %r>" % (self.token)
 
-categories_proposals = db.Table(
-    'categories_proposals',
+categories_reward_proposals = db.Table(
+    'categories_reward_proposals',
     db.Column('reward_proposal_id', db.Integer(), db.ForeignKey('reward_proposal.id')),
     db.Column('category_id', db.Integer(), db.ForeignKey('category.id'))
 )
@@ -400,7 +400,7 @@ class RewardProposal(db.Model):
     date_authorized = db.Column(db.DateTime())
     date_expiry = db.Column(db.DateTime())
     status = db.Column(db.String(255))
-    categories = db.relationship('Category', secondary=categories_proposals,
+    categories = db.relationship('Category', secondary=categories_reward_proposals,
                             backref=db.backref('reward_proposals', lazy='dynamic'))
 
     def __init__(self, proposer, reason):

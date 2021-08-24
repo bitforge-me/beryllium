@@ -135,4 +135,4 @@ def auth_request_get_params(db, param_names):
     res, reason, api_key = check_auth(db.session, api_key, nonce, sig, request.data)
     if not res:
         return None, None, bad_request(reason)
-    return params, api_key, None
+    return params[2:], api_key, None
