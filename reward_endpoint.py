@@ -9,7 +9,7 @@ import web_utils
 from web_utils import bad_request, auth_request, auth_request_get_single_param, auth_request_get_params
 import utils
 from app_core import app, db, limiter
-from models import User, Role, Category, Proposal, Payment, Referral
+from models import User, Role, Category, RewardProposal, Payment, Referral
 
 logger = logging.getLogger(__name__)
 reward = Blueprint('reward', __name__, template_folder='templates')
@@ -17,16 +17,16 @@ limiter.limit("100/minute")(reward)
 use_referrals = app.config["USE_REFERRALS"]
 
 def _reward_create(user, reason, category, recipient, amount, message):
-    proposal = Proposal(user, reason)
-    proposal.categories.append(category)
-    proposal.authorize(user)
-    db.session.add(proposal)
+    reward_proposal = RewardProposal(user, reason)
+    reward_proposal.categories.append(category)
+    reward_proposal.authorize(user)
+    db.session.add(reward_proposal)
     email = recipient if utils.is_email(recipient) else None
     mobile = recipient if utils.is_mobile(recipient) else None
     address = recipient if utils.is_address(recipient) else None
-    payment = Payment(proposal, mobile, email, address, message, amount)
+    payment = Payment(reward_proposal, mobile, email, address, message, amount)
     db.session.add(payment)
-    return proposal, payment
+    return reward_proposal, payment
 
 #
 # Private (reward) API
@@ -57,9 +57,9 @@ def reward_create():
         return bad_request(web_utils.INVALID_CATEGORY)
     if amount <= 0:
         return bad_request(web_utils.INVALID_AMOUNT)
-    proposal, payment = _reward_create(api_key.user, reason, cat, recipient, amount, message)
+    reward_proposal, payment = _reward_create(api_key.user, reason, cat, recipient, amount, message)
     db.session.commit()
-    return jsonify(dict(proposal=dict(reason=reason, category=category, status=proposal.status, payment=dict(amount=amount, email=payment.email, mobile=payment.mobile, address=payment.recipient, message=message, status=payment.status))))
+    return jsonify(dict(proposal=dict(reason=reason, category=category, status=reward_proposal.status, payment=dict(amount=amount, email=payment.email, mobile=payment.mobile, address=payment.recipient, message=message, status=payment.status))))
 
 @reward.route('/referral_config', methods=['POST'])
 def referral_config():

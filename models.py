@@ -324,8 +324,8 @@ class Payment(db.Model):
     STATE_SENT_FUNDS = "sent_funds"
 
     id = db.Column(db.Integer, primary_key=True)
-    proposal_id = db.Column(db.Integer, db.ForeignKey('proposal.id'), nullable=False)
-    proposal = db.relationship('Proposal', backref=db.backref('payments', lazy='dynamic'))
+    reward_proposal_id = db.Column(db.Integer, db.ForeignKey('reward_proposal.id'), nullable=False)
+    reward_proposal = db.relationship('RewardProposal', backref=db.backref('payments', lazy='dynamic'))
     token = db.Column(db.String(255), unique=True, nullable=False)
     mobile = db.Column(db.String(255))
     email = db.Column(db.String(255))
@@ -335,10 +335,10 @@ class Payment(db.Model):
     status = db.Column(db.String(255))
     txid = db.Column(db.String(255))
 
-    def __init__(self, proposal, mobile, email, recipient, message, amount):
+    def __init__(self, reward_proposal, mobile, email, recipient, message, amount):
         assert amount is not None
         assert amount > 0
-        self.proposal = proposal
+        self.reward_proposal = reward_proposal
         self.token = generate_key(8)
         self.mobile = mobile
         self.email = email
@@ -361,7 +361,7 @@ class Payment(db.Model):
 
 categories_proposals = db.Table(
     'categories_proposals',
-    db.Column('proposal_id', db.Integer(), db.ForeignKey('proposal.id')),
+    db.Column('reward_proposal_id', db.Integer(), db.ForeignKey('reward_proposal.id')),
     db.Column('category_id', db.Integer(), db.ForeignKey('category.id'))
 )
 
@@ -382,7 +382,7 @@ class Category(db.Model):
     def __str__(self):
         return f'{self.name}'
 
-class Proposal(db.Model):
+class RewardProposal(db.Model):
     STATE_CREATED = "created"
     STATE_AUTHORIZED = "authorized"
     STATE_DECLINED = "declined"
@@ -393,7 +393,7 @@ class Proposal(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.DateTime(), nullable=False)
     proposer_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    proposer = db.relationship('User', foreign_keys=[proposer_id], backref=db.backref('proposals', lazy='dynamic'))
+    proposer = db.relationship('User', foreign_keys=[proposer_id], backref=db.backref('reward_proposals', lazy='dynamic'))
     reason = db.Column(db.String())
     authorizer_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     authorizer = db.relationship('User', foreign_keys=[authorizer_id], backref=db.backref('proposals_authorized', lazy='dynamic'))
@@ -401,7 +401,7 @@ class Proposal(db.Model):
     date_expiry = db.Column(db.DateTime())
     status = db.Column(db.String(255))
     categories = db.relationship('Category', secondary=categories_proposals,
-                            backref=db.backref('proposals', lazy='dynamic'))
+                            backref=db.backref('reward_proposals', lazy='dynamic'))
 
     def __init__(self, proposer, reason):
         self.generate_defaults()
@@ -416,11 +416,11 @@ class Proposal(db.Model):
         self.status = self.STATE_CREATED
 
     def authorize(self, user):
-        if self.status == Proposal.STATE_CREATED:
-            self.status = Proposal.STATE_AUTHORIZED
+        if self.status == RewardProposal.STATE_CREATED:
+            self.status = RewardProposal.STATE_AUTHORIZED
             now = datetime.datetime.now()
             self.date_authorized = now
-            self.date_expiry = now + datetime.timedelta(hours = Proposal.HOURS_EXPIRY)
+            self.date_expiry = now + datetime.timedelta(hours = RewardProposal.HOURS_EXPIRY)
             self.authorizer = user
 
     @classmethod
@@ -432,7 +432,7 @@ class Proposal(db.Model):
         return session.query(cls).filter(cls.status == status).all()
 
     def __repr__(self):
-        return "<Proposal %r>" % (self.id)
+        return "<RewardProposal %r>" % (self.id)
 
 # Setup Flask-Security
 user_datastore = SQLAlchemyUserDatastore(db, User, Role)
@@ -609,9 +609,9 @@ def get_statuses():
     # prevent database access when app is not yet ready
     if has_app_context():
         if not hasattr(g, 'statuses'):
-            query = Proposal.query.with_entities(Proposal.status).distinct()
+            query = RewardProposal.query.with_entities(RewardProposal.status).distinct()
             # pylint: disable=assigning-non-slot
-            g.statuses = [(proposal.status, proposal.status) for proposal in query]
+            g.statuses = [(reward_proposal.status, reward_proposal.status) for reward_proposal in query]
         for proposal_status_a, proposal_status_b in g.statuses:
             yield proposal_status_a, proposal_status_b
 
@@ -647,7 +647,7 @@ def get_paydbtransaction_tokens():
 
 class FilterByProposer(BaseSQLAFilter):
     def apply(self, query, value, alias=None):
-        return query.filter(Proposal.proposer_id == value)
+        return query.filter(RewardProposal.proposer_id == value)
 
     def operation(self):
         return 'equals'
@@ -658,7 +658,7 @@ class FilterByProposer(BaseSQLAFilter):
 
 class FilterByAuthorizer(BaseSQLAFilter):
     def apply(self, query, value, alias=None):
-        return query.filter(Proposal.authorizer_id == value)
+        return query.filter(RewardProposal.authorizer_id == value)
 
     def operation(self):
         return 'equals'
@@ -669,7 +669,7 @@ class FilterByAuthorizer(BaseSQLAFilter):
 
 class FilterByCategory(BaseSQLAFilter):
     def apply(self, query, value, alias=None):
-        return query.join(Proposal.categories).filter(Category.id == value)
+        return query.join(RewardProposal.categories).filter(Category.id == value)
 
     def operation(self):
         return 'equals'
@@ -680,7 +680,7 @@ class FilterByCategory(BaseSQLAFilter):
 
 class FilterByStatusEqual(BaseSQLAFilter):
     def apply(self, query, value, alias=None):
-        return query.filter(Proposal.status == value)
+        return query.filter(RewardProposal.status == value)
 
     def operation(self):
         return 'equals'
@@ -691,7 +691,7 @@ class FilterByStatusEqual(BaseSQLAFilter):
 
 class FilterByStatusNotEqual(BaseSQLAFilter):
     def apply(self, query, value, alias=None):
-        return query.filter(Proposal.status != value)
+        return query.filter(RewardProposal.status != value)
 
     def operation(self):
         return 'not equals'
@@ -820,7 +820,7 @@ class FilterEqualPayDbTransactionAmount(BaseSQLAFilter):
     def operation(self):
         return lazy_gettext('equals')
 
-class ProposalModelView(BaseModelView):
+class RewardProposalModelView(BaseModelView):
     can_create = False
     can_delete = False
     can_edit = False
@@ -849,14 +849,14 @@ class ProposalModelView(BaseModelView):
             decline_url = url_for('.decline_view')
             html = '''
                 <form action="{authorize_url}" method="POST">
-                    <input id="proposal_id" name="proposal_id"  type="hidden" value="{proposal_id}">
+                    <input id="reward_proposal_id" name="reward_proposal_id"  type="hidden" value="{reward_proposal_id}">
                     <button type='submit'>Authorise</button>
                 </form>
                 <form action="{decline_url}" method="POST">
-                    <input id="proposal_id" name="proposal_id"  type="hidden" value="{proposal_id}">
+                    <input id="reward_proposal_id" name="reward_proposal_id"  type="hidden" value="{reward_proposal_id}">
                     <button type='submit'>Decline</button>
                 </form>
-            '''.format(authorize_url=authorize_url, decline_url=decline_url, proposal_id=model.id)
+            '''.format(authorize_url=authorize_url, decline_url=decline_url, reward_proposal_id=model.id)
             return Markup(html)
         return model.status
 
@@ -872,7 +872,7 @@ class ProposalModelView(BaseModelView):
 
     def _format_claimed_column(view, context, model, name):
         total_claimed = view._format_claimed(model)
-        payments_url = url_for('.payments_view', proposal_id=model.id)
+        payments_url = url_for('.payments_view', reward_proposal_id=model.id)
 
         html = '''
             <a href="{payments_url}">{total_claimed}</a>
@@ -899,7 +899,7 @@ class ProposalModelView(BaseModelView):
     column_labels = {'proposer': 'Proposed by', 'authorizer': 'Authorized by'}
     column_type_formatters = MY_DEFAULT_FORMATTERS
     column_formatters = {'proposer': _format_proposer_column, 'authorizer': _format_proposer_column, 'status': _format_status_column, 'Proposed Total': _format_total_column, 'Claimed': _format_claimed_column}
-    column_filters = [ DateBetweenFilter(Proposal.date, 'Search Date'), DateTimeGreaterFilter(Proposal.date, 'Search Date'), DateSmallerFilter(Proposal.date, 'Search Date'), FilterByStatusEqual(None, 'Search Status'), FilterByStatusNotEqual(None, 'Search Status'), FilterByProposer(None, 'Search Proposer'), FilterByAuthorizer(None, 'Search Authorizer'), FilterByCategory(None, 'Search Category') ]
+    column_filters = [ DateBetweenFilter(RewardProposal.date, 'Search Date'), DateTimeGreaterFilter(RewardProposal.date, 'Search Date'), DateSmallerFilter(RewardProposal.date, 'Search Date'), FilterByStatusEqual(None, 'Search Status'), FilterByStatusNotEqual(None, 'Search Status'), FilterByProposer(None, 'Search Proposer'), FilterByAuthorizer(None, 'Search Authorizer'), FilterByCategory(None, 'Search Category') ]
     column_export_list = ('id', 'date', 'proposer', 'categories', 'authorizer', 'reason', 'date_authorized', 'date_expiry', 'status', 'total', 'claimed')
     column_formatters_export = {'total': _format_total_column, 'claimed': _format_totalclaimed_column_export}
     form_columns = ['reason', 'categories', 'recipient', 'message', 'amount', 'csvfile']
@@ -975,21 +975,21 @@ class ProposalModelView(BaseModelView):
         if not form:
             flash('Could not get form data.', 'error')
             return redirect(return_url)
-        proposal_id = form['proposal_id']
-        proposal = self.get_one(proposal_id)
-        if proposal is None:
-            flash('Proposal not not found.', 'error')
+        reward_proposal_id = form['reward_proposal_id']
+        reward_proposal = self.get_one(reward_proposal_id)
+        if reward_proposal is None:
+            flash('Reward proposal not not found.', 'error')
             return redirect(return_url)
-        # process the proposal
-        proposal.authorize(current_user)
+        # process the reward proposal
+        reward_proposal.authorize(current_user)
         # commit to db
         try:
             self.session.commit()
-            flash('Proposal {proposal_id} set as authorized'.format(proposal_id=proposal_id))
+            flash('Reward proposal {reward_proposal_id} set as authorized'.format(reward_proposal_id=reward_proposal_id))
         except (SQLAlchemyError, DBAPIError) as ex:
             if not self.handle_view_exception(ex):
                 raise
-            flash('Failed to set proposal {proposal_id} as authorized'.format(proposal_id=proposal_id), 'error')
+            flash('Failed to set reward proposal {reward_proposal_id} as authorized'.format(reward_proposal_id=reward_proposal_id), 'error')
         return redirect(return_url)
 
     @expose('decline', methods=['POST'])
@@ -1005,27 +1005,27 @@ class ProposalModelView(BaseModelView):
         if not form:
             flash('Could not get form data.', 'error')
             return redirect(return_url)
-        proposal_id = form['proposal_id']
-        proposal = self.get_one(proposal_id)
-        if proposal is None:
-            flash('Proposal not not found.', 'error')
+        reward_proposal_id = form['reward_proposal_id']
+        reward_proposal = self.get_one(reward_proposal_id)
+        if reward_proposal is None:
+            flash('Reward proposal not not found.', 'error')
             return redirect(return_url)
         # process the proposal
-        if proposal.status == proposal.STATE_CREATED:
-            proposal.status = proposal.STATE_DECLINED
-            proposal.authorizer = current_user
+        if reward_proposal.status == reward_proposal.STATE_CREATED:
+            reward_proposal.status = reward_proposal.STATE_DECLINED
+            reward_proposal.authorizer = current_user
         # commit to db
         try:
             self.session.commit()
-            flash('Proposal {proposal_id} set as declined'.format(proposal_id=proposal_id))
+            flash('Reward proposal {reward_proposal_id} set as declined'.format(reward_proposal_id=reward_proposal_id))
         except (SQLAlchemyError, DBAPIError) as ex:
             if not self.handle_view_exception(ex):
                 raise
-            flash('Failed to set proposal {proposal_id} as declined'.format(proposal_id=proposal_id), 'error')
+            flash('Failed to set reward proposal {reward_proposal_id} as declined'.format(reward_proposal_id=reward_proposal_id), 'error')
         return redirect(return_url)
 
-    @expose('payments/<proposal_id>', methods=['GET'])
-    def payments_view(self, proposal_id):
+    @expose('payments/<reward_proposal_id>', methods=['GET'])
+    def payments_view(self, reward_proposal_id):
         return_url = self.get_url('.index_view')
         # check permission
         if not (current_user.has_role(Role.ROLE_ADMIN) or current_user.has_role(Role.ROLE_PROPOSER) or current_user.has_role(Role.ROLE_FINANCE)):
@@ -1033,12 +1033,12 @@ class ProposalModelView(BaseModelView):
             flash('Not authorized.', 'error')
             return redirect(return_url)
         # get the model from the database
-        proposal = self.get_one(proposal_id)
-        if proposal is None:
-            flash('Proposal not not found.', 'error')
+        reward_proposal = self.get_one(reward_proposal_id)
+        if reward_proposal is None:
+            flash('Reward proposal not not found.', 'error')
             return redirect(return_url)
-        # show the proposal payments
-        return self.render('admin/payments.html', payments=proposal.payments)
+        # show the reward proposal payments
+        return self.render('admin/payments.html', payments=reward_proposal.payments)
 
 class UserModelView(BaseModelView):
     can_export = True

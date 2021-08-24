@@ -12,7 +12,7 @@ from flask_security import roles_accepted
 import requests
 
 from app_core import db, app, SERVER_MODE_WAVES
-from models import Role, User, Proposal, Payment, PayDbTransaction
+from models import Role, User, RewardProposal, Payment, PayDbTransaction
 import utils
 import paydb_core
 
@@ -56,32 +56,32 @@ def report_dashboard_premio(premio_balance, premio_stage_account, total_balance,
         premio_tx_count_week=premio_tx_count_week, premio_tx_count_month=premio_tx_count_month, premio_tx_count_year=premio_tx_count_year)
 
 def report_dashboard_proposals():
-    ### Proposal queries
-    proposal_count = Proposal.query.count()
-    proposal_count_today = transaction_count(Proposal, TODAY, TOMORROW)
-    proposal_count_yesterday = transaction_count(Proposal, YESTERDAY, TODAY)
-    proposal_count_weekly = transaction_count(Proposal, MONDAY, NEXT_MONDAY)
-    proposal_count_monthly = transaction_count(Proposal, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH)
-    proposal_count_yearly = transaction_count(Proposal, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR)
+    ### RewardProposal queries
+    proposal_count = RewardProposal.query.count()
+    proposal_count_today = transaction_count(RewardProposal, TODAY, TOMORROW)
+    proposal_count_yesterday = transaction_count(RewardProposal, YESTERDAY, TODAY)
+    proposal_count_weekly = transaction_count(RewardProposal, MONDAY, NEXT_MONDAY)
+    proposal_count_monthly = transaction_count(RewardProposal, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH)
+    proposal_count_yearly = transaction_count(RewardProposal, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR)
     ### Payment queries
-    payment_query_today = claimed_proposal_payment(Proposal, Payment, TODAY, TOMORROW)
-    unclaimed_payment_query_today = unclaimed_proposal_payment(Proposal, Payment, TODAY, TOMORROW)
-    total_payment_query_today = total_proposal_payment(Proposal, Payment, TODAY, TOMORROW)
-    payment_query_yesterday = claimed_proposal_payment(Proposal, Payment, YESTERDAY, TODAY)
-    unclaimed_payment_yesterday = unclaimed_proposal_payment(Proposal, Payment, YESTERDAY, TODAY)
-    total_payment_query_yesterday = total_proposal_payment(Proposal, Payment, YESTERDAY, TODAY)
-    payment_query_weekly = claimed_proposal_payment(Proposal, Payment, MONDAY, NEXT_MONDAY)
-    unclaimed_payment_query_weekly = unclaimed_proposal_payment(Proposal, Payment, MONDAY, NEXT_MONDAY)
-    total_payment_query_weekly = total_proposal_payment(Proposal, Payment, MONDAY, NEXT_MONDAY)
-    payment_query_monthly = claimed_proposal_payment(Proposal, Payment, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH)
-    unclaimed_payment_query_monthly = unclaimed_proposal_payment(Proposal, Payment, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH)
-    total_payment_query_monthly = total_proposal_payment(Proposal, Payment, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH)
-    payment_query_yearly = claimed_proposal_payment(Proposal, Payment, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR)
-    unclaimed_payment_query_yearly = unclaimed_proposal_payment(Proposal, Payment, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR)
-    total_payment_query_yearly = total_proposal_payment(Proposal, Payment, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR)
-    payment_query_lifetime = claimed_lifetime(Proposal, Payment)
-    unclaimed_payment_lifetime = unclaimed_lifetime(Proposal, Payment)
-    total_payment_query_lifetime = total_lifetime(Proposal, Payment)
+    payment_query_today = claimed_proposal_payment(RewardProposal, Payment, TODAY, TOMORROW)
+    unclaimed_payment_query_today = unclaimed_proposal_payment(RewardProposal, Payment, TODAY, TOMORROW)
+    total_payment_query_today = total_proposal_payment(RewardProposal, Payment, TODAY, TOMORROW)
+    payment_query_yesterday = claimed_proposal_payment(RewardProposal, Payment, YESTERDAY, TODAY)
+    unclaimed_payment_yesterday = unclaimed_proposal_payment(RewardProposal, Payment, YESTERDAY, TODAY)
+    total_payment_query_yesterday = total_proposal_payment(RewardProposal, Payment, YESTERDAY, TODAY)
+    payment_query_weekly = claimed_proposal_payment(RewardProposal, Payment, MONDAY, NEXT_MONDAY)
+    unclaimed_payment_query_weekly = unclaimed_proposal_payment(RewardProposal, Payment, MONDAY, NEXT_MONDAY)
+    total_payment_query_weekly = total_proposal_payment(RewardProposal, Payment, MONDAY, NEXT_MONDAY)
+    payment_query_monthly = claimed_proposal_payment(RewardProposal, Payment, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH)
+    unclaimed_payment_query_monthly = unclaimed_proposal_payment(RewardProposal, Payment, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH)
+    total_payment_query_monthly = total_proposal_payment(RewardProposal, Payment, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH)
+    payment_query_yearly = claimed_proposal_payment(RewardProposal, Payment, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR)
+    unclaimed_payment_query_yearly = unclaimed_proposal_payment(RewardProposal, Payment, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR)
+    total_payment_query_yearly = total_proposal_payment(RewardProposal, Payment, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR)
+    payment_query_lifetime = claimed_lifetime(RewardProposal, Payment)
+    unclaimed_payment_lifetime = unclaimed_lifetime(RewardProposal, Payment)
+    total_payment_query_lifetime = total_lifetime(RewardProposal, Payment)
     ### render template with the value
     return render_template('reporting/dashboard_proposals.html', \
         proposal_count_lifetime=proposal_count, proposal_count_today=proposal_count_today, proposal_count_yesterday=proposal_count_yesterday, \
@@ -282,7 +282,7 @@ def dashboard_data_paydb():
     if user:
         premio_stage_balance = paydb_core.user_balance_from_user(db.session, user)
     total_balance = paydb_core.balance_total(db.session)
-    claimable_rewards = authorized_unclaimed_payment_proposal(Proposal, Payment)
+    claimable_rewards = authorized_unclaimed_payment_proposal(RewardProposal, Payment)
     # return data
     return {"premio_stage_balance": premio_stage_balance, "premio_stage_account": premio_stage_account, \
             "total_balance": total_balance, "claimable_rewards": claimable_rewards}
@@ -365,7 +365,7 @@ def dashboard_premio_tx_lifetime():
     lifetime = str('lifetime')
     return report_premio_txs(lifetime)
 
-### Proposal Dashboard:
+### RewardProposal Dashboard:
 @reporting.route("/dashboard_proposal_tx_today")
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def dashboard_proposal_tx_today():

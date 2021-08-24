@@ -44,7 +44,7 @@
             <p><center>Admin</center></p>
             </div>
             </a>
-            {% elif current_user.has_role("proposer") or current_user.has_role("authorizer") %}
+            {% elif current_user.has_role("proposer") %}
             <a href="{{ url_for('admin.index') }}">
             <div class='white-dashboard'>
                 <img src="static/assets/img/index_img/admin-with-cogwheels.png" width="100" height="100">

@@ -20,7 +20,7 @@ import requests
 import pywaves
 
 from app_core import app, db, socketio, SERVER_MODE_WAVES, SERVER_MODE_PAYDB
-from models import Role, WavesTx, Proposal, Payment, Topic, PushNotificationLocation
+from models import Role, WavesTx, RewardProposal, Payment, Topic, PushNotificationLocation
 import utils
 from fcm import FCM
 from web_utils import bad_request, get_json_params, get_json_params_optional
@@ -121,29 +121,29 @@ def process_proposals():
         # set expired
         expired = 0
         now = datetime.datetime.now()
-        proposals = Proposal.in_status(db.session, Proposal.STATE_AUTHORIZED)
-        for proposal in proposals:
-            if proposal.date_expiry < now:
-                proposal.status = Proposal.STATE_EXPIRED
+        reward_proposals = RewardProposal.in_status(db.session, RewardProposal.STATE_AUTHORIZED)
+        for reward_proposal in reward_proposals:
+            if reward_proposal.date_expiry < now:
+                reward_proposal.status = RewardProposal.STATE_EXPIRED
                 expired += 1
-                db.session.add(proposal)
+                db.session.add(reward_proposal)
         db.session.commit()
         # process authorized
         emails = 0
         sms_messages = 0
-        proposals = Proposal.in_status(db.session, Proposal.STATE_AUTHORIZED)
+        reward_proposals = RewardProposal.in_status(db.session, RewardProposal.STATE_AUTHORIZED)
         # pylint: disable=too-many-nested-blocks
-        for proposal in proposals:
-            for payment in proposal.payments:
+        for reward_proposal in reward_proposals:
+            for payment in reward_proposal.payments:
                 if payment.status == payment.STATE_CREATED:
                     if payment.email:
-                        utils.email_payment_claim(logger, app.config["ASSET_NAME"], payment, proposal.HOURS_EXPIRY)
+                        utils.email_payment_claim(logger, app.config["ASSET_NAME"], payment, reward_proposal.HOURS_EXPIRY)
                         payment.status = payment.STATE_SENT_CLAIM_LINK
                         db.session.add(payment)
                         logger.info("Sent payment claim url to %s", payment.email)
                         emails += 1
                     elif payment.mobile:
-                        utils.sms_payment_claim(logger, app.config["ASSET_NAME"], payment, proposal.HOURS_EXPIRY)
+                        utils.sms_payment_claim(logger, app.config["ASSET_NAME"], payment, reward_proposal.HOURS_EXPIRY)
                         payment.status = payment.STATE_SENT_CLAIM_LINK
                         db.session.add(payment)
                         logger.info("Sent payment claim url to %s", payment.mobile)
@@ -185,7 +185,7 @@ def index():
     return render_template("index.html")
 
 def process_claim_waves(payment, dbtx, recipient, asset_id):
-    if payment.proposal.status != payment.proposal.STATE_AUTHORIZED:
+    if payment.reward_proposal.status != payment.reward_proposal.STATE_AUTHORIZED:
         return dbtx, "payment not authorized"
     if payment.status != payment.STATE_SENT_CLAIM_LINK:
         return dbtx, "payment not authorized"
@@ -225,7 +225,7 @@ def _process_claim_paydb(payment, recipient):
 
 
 def process_claim_paydb(payment, recipient):
-    if payment.proposal.status != payment.proposal.STATE_AUTHORIZED:
+    if payment.reward_proposal.status != payment.reward_proposal.STATE_AUTHORIZED:
         return "payment not authorized"
     if payment.status != payment.STATE_SENT_CLAIM_LINK:
         return "payment not authorized"
@@ -240,7 +240,7 @@ def claim_payment(token):
     if not payment:
         return bad_request('payment not found', 404)
     now = datetime.datetime.now()
-    if now > payment.proposal.date_expiry and payment.status != payment.STATE_SENT_FUNDS:
+    if now > payment.reward_proposal.date_expiry and payment.status != payment.STATE_SENT_FUNDS:
         return bad_request('expired', 404)
 
     def render(recipient):

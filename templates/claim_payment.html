@@ -16,7 +16,7 @@
                 <p class="card-text">
                     Amount: {{payment.amount|int2asset}} {{ config["ASSET_NAME"] }}
                     <br/>
-                    Expiry Date: {{payment.proposal.date_expiry.strftime('%Y-%m-%d %H:%M')}}
+                    Expiry Date: {{payment.reward_proposal.date_expiry.strftime('%Y-%m-%d %H:%M')}}
                     <br/>
                     Message: {{payment.message}}
                     <br/>
