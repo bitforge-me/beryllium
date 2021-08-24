@@ -317,7 +317,7 @@ class PayDbTransaction(db.Model):
         tx_schema = PayDbTransactionSchema()
         return tx_schema.dump(self)
 
-class Payment(db.Model):
+class RewardPayment(db.Model):
     STATE_CREATED = "created"
     STATE_SENT_CLAIM_LINK = "sent_claim_link"
     STATE_EXPIRED = "expired"
@@ -325,7 +325,7 @@ class Payment(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     reward_proposal_id = db.Column(db.Integer, db.ForeignKey('reward_proposal.id'), nullable=False)
-    reward_proposal = db.relationship('RewardProposal', backref=db.backref('payments', lazy='dynamic'))
+    reward_proposal = db.relationship('RewardProposal', backref=db.backref('reward_payments', lazy='dynamic'))
     token = db.Column(db.String(255), unique=True, nullable=False)
     mobile = db.Column(db.String(255))
     email = db.Column(db.String(255))
@@ -357,7 +357,7 @@ class Payment(db.Model):
         return session.query(cls).filter(cls.token == token).first()
 
     def __repr__(self):
-        return "<Payment %r>" % (self.token)
+        return "<RewardPayment %r>" % (self.token)
 
 categories_proposals = db.Table(
     'categories_proposals',
@@ -864,9 +864,9 @@ class RewardProposalModelView(BaseModelView):
         if model.status == model.STATE_DECLINED:
             return '-'
         total_claimed = 0
-        for payment in model.payments:
-            if payment.status == payment.STATE_SENT_FUNDS:
-                total_claimed += payment.amount
+        for reward_payment in model.reward_payments:
+            if reward_payment.status == reward_payment.STATE_SENT_FUNDS:
+                total_claimed += reward_payment.amount
         total_claimed = decimal.Decimal(total_claimed)
         return int2asset(total_claimed)
 
@@ -883,10 +883,10 @@ class RewardProposalModelView(BaseModelView):
         if model.status == model.STATE_DECLINED:
             return Markup('-')
         total = 0
-        for payment in model.payments:
-            if payment.amount is None:
+        for reward_payment in model.reward_payments:
+            if reward_payment.amount is None:
                 return '!ERR!'
-            total += payment.amount
+            total += reward_payment.amount
         total = int2asset(total)
         return Markup(total)
 
@@ -930,8 +930,8 @@ class RewardProposalModelView(BaseModelView):
         mobile = recipient if is_mobile(recipient) else None
         address = recipient if is_address(recipient) else None
         amount = int(amount * 100)
-        payment = Payment(model, mobile, email, address, message, amount)
-        self.session.add(payment)
+        reward_payment = RewardPayment(model, mobile, email, address, message, amount)
+        self.session.add(reward_payment)
 
     def on_model_change(self, form, model, is_created):
         if is_created:
@@ -1024,7 +1024,7 @@ class RewardProposalModelView(BaseModelView):
             flash('Failed to set reward proposal {reward_proposal_id} as declined'.format(reward_proposal_id=reward_proposal_id), 'error')
         return redirect(return_url)
 
-    @expose('payments/<reward_proposal_id>', methods=['GET'])
+    @expose('reward_payments/<reward_proposal_id>', methods=['GET'])
     def payments_view(self, reward_proposal_id):
         return_url = self.get_url('.index_view')
         # check permission
@@ -1038,7 +1038,7 @@ class RewardProposalModelView(BaseModelView):
             flash('Reward proposal not not found.', 'error')
             return redirect(return_url)
         # show the reward proposal payments
-        return self.render('admin/payments.html', payments=reward_proposal.payments)
+        return self.render('admin/reward_payments.html', reward_payments=reward_proposal.reward_payments)
 
 class UserModelView(BaseModelView):
     can_export = True

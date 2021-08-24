@@ -20,7 +20,7 @@ import requests
 import pywaves
 
 from app_core import app, db, socketio, SERVER_MODE_WAVES, SERVER_MODE_PAYDB
-from models import Role, WavesTx, RewardProposal, Payment, Topic, PushNotificationLocation
+from models import Role, WavesTx, RewardProposal, RewardPayment, Topic, PushNotificationLocation
 import utils
 from fcm import FCM
 from web_utils import bad_request, get_json_params, get_json_params_optional
@@ -134,21 +134,21 @@ def process_proposals():
         reward_proposals = RewardProposal.in_status(db.session, RewardProposal.STATE_AUTHORIZED)
         # pylint: disable=too-many-nested-blocks
         for reward_proposal in reward_proposals:
-            for payment in reward_proposal.payments:
-                if payment.status == payment.STATE_CREATED:
-                    if payment.email:
-                        utils.email_payment_claim(logger, app.config["ASSET_NAME"], payment, reward_proposal.HOURS_EXPIRY)
-                        payment.status = payment.STATE_SENT_CLAIM_LINK
-                        db.session.add(payment)
-                        logger.info("Sent payment claim url to %s", payment.email)
+            for reward_payment in reward_proposal.payments:
+                if reward_payment.status == reward_payment.STATE_CREATED:
+                    if reward_payment.email:
+                        utils.email_payment_claim(logger, app.config["ASSET_NAME"], reward_payment, reward_proposal.HOURS_EXPIRY)
+                        reward_payment.status = reward_payment.STATE_SENT_CLAIM_LINK
+                        db.session.add(reward_payment)
+                        logger.info("Sent payment claim url to %s", reward_payment.email)
                         emails += 1
-                    elif payment.mobile:
-                        utils.sms_payment_claim(logger, app.config["ASSET_NAME"], payment, reward_proposal.HOURS_EXPIRY)
-                        payment.status = payment.STATE_SENT_CLAIM_LINK
-                        db.session.add(payment)
-                        logger.info("Sent payment claim url to %s", payment.mobile)
+                    elif reward_payment.mobile:
+                        utils.sms_payment_claim(logger, app.config["ASSET_NAME"], reward_payment, reward_proposal.HOURS_EXPIRY)
+                        reward_payment.status = reward_payment.STATE_SENT_CLAIM_LINK
+                        db.session.add(reward_payment)
+                        logger.info("Sent payment claim url to %s", reward_payment.mobile)
                         sms_messages += 1
-                    elif payment.recipient:
+                    elif reward_payment.recipient:
                         ##TODO: set status and commit before sending so we cannot send twice
                         raise Exception("not yet implemented")
         db.session.commit()
@@ -184,20 +184,20 @@ def int2asset(num):
 def index():
     return render_template("index.html")
 
-def process_claim_waves(payment, dbtx, recipient, asset_id):
-    if payment.reward_proposal.status != payment.reward_proposal.STATE_AUTHORIZED:
+def process_claim_waves(reward_payment, dbtx, recipient, asset_id):
+    if reward_payment.reward_proposal.status != reward_payment.reward_proposal.STATE_AUTHORIZED:
         return dbtx, "payment not authorized"
-    if payment.status != payment.STATE_SENT_CLAIM_LINK:
+    if reward_payment.status != reward_payment.STATE_SENT_CLAIM_LINK:
         return dbtx, "payment not authorized"
     # create/get transaction
     if not dbtx:
         if asset_id and asset_id != ASSET_ID:
             return dbtx, "'asset_id' does not match server"
         try:
-            dbtx = _create_transaction_waves(recipient, payment.amount, "")
-            payment.txid = dbtx.txid
+            dbtx = _create_transaction_waves(recipient, reward_payment.amount, "")
+            reward_payment.txid = dbtx.txid
             db.session.add(dbtx)
-            db.session.add(payment)
+            db.session.add(reward_payment)
             db.session.commit()
         except OtherError as ex:
             return dbtx, ex.message
@@ -206,48 +206,48 @@ def process_claim_waves(payment, dbtx, recipient, asset_id):
     # broadcast transaction
     try:
         dbtx = tx_utils.broadcast_transaction(db.session, dbtx.txid)
-        payment.status = payment.STATE_SENT_FUNDS
+        reward_payment.status = reward_payment.STATE_SENT_FUNDS
         db.session.add(dbtx)
         db.session.commit()
     except OtherError as ex:
         return dbtx, ex.message
     return dbtx, None
 
-def _process_claim_paydb(payment, recipient):
+def _process_claim_paydb(reward_payment, recipient):
     # create transaction, assumes payment hase been validated
-    tx, _ = paydb_core.tx_transfer_authorized(db.session, OPERATIONS_ACCOUNT, recipient, payment.amount, "")
+    tx, _ = paydb_core.tx_transfer_authorized(db.session, OPERATIONS_ACCOUNT, recipient, reward_payment.amount, "")
     if tx:
-        payment.txid = tx.token
-        payment.status = payment.STATE_SENT_FUNDS
-        db.session.add(payment)
+        reward_payment.txid = tx.token
+        reward_payment.status = reward_payment.STATE_SENT_FUNDS
+        db.session.add(reward_payment)
         return tx
     return None
 
 
-def process_claim_paydb(payment, recipient):
-    if payment.reward_proposal.status != payment.reward_proposal.STATE_AUTHORIZED:
+def process_claim_paydb(reward_payment, recipient):
+    if reward_payment.reward_proposal.status != reward_payment.reward_proposal.STATE_AUTHORIZED:
         return "payment not authorized"
-    if payment.status != payment.STATE_SENT_CLAIM_LINK:
+    if reward_payment.status != reward_payment.STATE_SENT_CLAIM_LINK:
         return "payment not authorized"
-    if _process_claim_paydb(payment, recipient):
+    if _process_claim_paydb(reward_payment, recipient):
         db.session.commit()
         return None
     return 'claim failed'
 
 @app.route("/claim_payment/<token>", methods=["GET", "POST"])
 def claim_payment(token):
-    payment = Payment.from_token(db.session, token)
-    if not payment:
+    reward_payment = RewardPayment.from_token(db.session, token)
+    if not reward_payment:
         return bad_request('payment not found', 404)
     now = datetime.datetime.now()
-    if now > payment.reward_proposal.date_expiry and payment.status != payment.STATE_SENT_FUNDS:
+    if now > reward_payment.reward_proposal.date_expiry and reward_payment.status != reward_payment.STATE_SENT_FUNDS:
         return bad_request('expired', 404)
 
     def render(recipient):
         url_parts = urlparse(request.url)
         url = url_parts._replace(scheme=DEEP_LINK_SCHEME, query='scheme={}'.format(url_parts.scheme)).geturl()
         qrcode_svg = utils.qrcode_svg_create(url)
-        return render_template("claim_payment.html", payment=payment, recipient=recipient, qrcode_svg=qrcode_svg, url=url)
+        return render_template("claim_payment.html", reward_payment=reward_payment, recipient=recipient, qrcode_svg=qrcode_svg, url=url)
     def render_waves(dbtx):
         recipient = None
         if dbtx:
@@ -255,7 +255,7 @@ def claim_payment(token):
         return render(recipient)
 
     if SERVER_MODE == SERVER_MODE_WAVES:
-        dbtx = WavesTx.from_txid(db.session, payment.txid)
+        dbtx = WavesTx.from_txid(db.session, reward_payment.txid)
 
     if request.method == "POST":
         content_type = request.content_type
@@ -288,9 +288,9 @@ def claim_payment(token):
             except: # pylint: disable=bare-except
                 pass
         if SERVER_MODE == SERVER_MODE_WAVES:
-            dbtx, err_msg = process_claim_waves(payment, dbtx, recipient, asset_id)
+            dbtx, err_msg = process_claim_waves(reward_payment, dbtx, recipient, asset_id)
         else: # paydb
-            err_msg = process_claim_paydb(payment, recipient)
+            err_msg = process_claim_paydb(reward_payment, recipient)
         if err_msg:
             logger.error("claim_payment: %s", err_msg)
             if using_app:

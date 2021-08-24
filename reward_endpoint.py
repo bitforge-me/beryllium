@@ -9,7 +9,7 @@ import web_utils
 from web_utils import bad_request, auth_request, auth_request_get_single_param, auth_request_get_params
 import utils
 from app_core import app, db, limiter
-from models import User, Role, Category, RewardProposal, Payment, Referral
+from models import User, Role, Category, RewardProposal, RewardPayment, Referral
 
 logger = logging.getLogger(__name__)
 reward = Blueprint('reward', __name__, template_folder='templates')
@@ -24,9 +24,9 @@ def _reward_create(user, reason, category, recipient, amount, message):
     email = recipient if utils.is_email(recipient) else None
     mobile = recipient if utils.is_mobile(recipient) else None
     address = recipient if utils.is_address(recipient) else None
-    payment = Payment(reward_proposal, mobile, email, address, message, amount)
-    db.session.add(payment)
-    return reward_proposal, payment
+    reward_payment = RewardPayment(reward_proposal, mobile, email, address, message, amount)
+    db.session.add(reward_payment)
+    return reward_proposal, reward_payment
 
 #
 # Private (reward) API
@@ -57,9 +57,9 @@ def reward_create():
         return bad_request(web_utils.INVALID_CATEGORY)
     if amount <= 0:
         return bad_request(web_utils.INVALID_AMOUNT)
-    reward_proposal, payment = _reward_create(api_key.user, reason, cat, recipient, amount, message)
+    reward_proposal, reward_payment = _reward_create(api_key.user, reason, cat, recipient, amount, message)
     db.session.commit()
-    return jsonify(dict(proposal=dict(reason=reason, category=category, status=reward_proposal.status, payment=dict(amount=amount, email=payment.email, mobile=payment.mobile, address=payment.recipient, message=message, status=payment.status))))
+    return jsonify(dict(proposal=dict(reason=reason, category=category, status=reward_proposal.status, payment=dict(amount=amount, email=reward_payment.email, mobile=reward_payment.mobile, address=reward_payment.recipient, message=message, status=reward_payment.status))))
 
 @reward.route('/referral_config', methods=['POST'])
 def referral_config():
