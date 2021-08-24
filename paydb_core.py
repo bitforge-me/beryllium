@@ -1,5 +1,6 @@
 import logging
 import threading
+import datetime
 from types import SimpleNamespace
 
 from models import Role, User, Permission, PayDbTransaction
@@ -154,3 +155,19 @@ def tx_create_and_play(session, api_key, action, recipient_email, amount, attach
         session.add(tx)
         session.commit()
         return tx, ''
+
+def broker_order_update(broker_order):
+    # check payment completed
+    if broker_order.status == broker_order.STATUS_READY:
+        if broker_order.windcave_payment_request:
+            payment_req = broker_order.windcave_payment_request
+            if payment_req.status == payment_req.STATUS_CANCELLED:
+                broker_order.status = broker_order.STATUS_CANCELLED
+                return
+            if payment_req.status == payment_req.STATUS_COMPLETED:
+                broker_order.status = broker_order.STATUS_CONFIRMED
+                return
+    # check expiry
+    if broker_order.status in [broker_order.STATUS_CREATED, broker_order.STATUS_READY]:
+        if datetime.datetime.now() > broker_order.expiry:
+            broker_order.status = broker_order.STATUS_EXPIRED

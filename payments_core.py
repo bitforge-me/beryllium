@@ -7,6 +7,7 @@ import json
 import secrets
 import decimal
 
+from flask import url_for
 from stdnum.nz import bankaccount
 import requests
 
@@ -16,7 +17,6 @@ from models import WindcavePaymentRequest, PayoutRequest, PayoutGroup, PayoutGro
 
 logger = logging.getLogger(__name__)
 
-SERVER_NAME = app.config['SERVER_NAME']
 WINDCAVE_API_URL = 'https://sec.windcave.com/api/v1'
 WINDCAVE_API_USER = os.environ.get('WINDCAVE_API_USER', '')
 WINDCAVE_API_KEY = os.environ.get('WINDCAVE_API_KEY', '')
@@ -95,7 +95,7 @@ def windcave_create_session(amount_cents, token, expiry):
     body['methods'] = ['account2account']
     expiry = expiry.replace(microsecond=0) # strip microsecond to placate windcave (RFC 3339)
     body['expires'] = expiry.isoformat()
-    callback_url = SERVER_NAME + '/payments/payment/' + token
+    callback_url = url_for('payments.payment', token=token, _external=True)
     body['callbackUrls'] = {'approved': callback_url, 'declined': callback_url, 'cancelled': callback_url}
     body['notificationUrl'] = callback_url
     print(json.dumps(body))
@@ -140,32 +140,25 @@ def payment_create(amount_cents, expiry):
     req = WindcavePaymentRequest(token, 'NZD', amount_cents, windcave_session_id, windcave_status)
     return req
 
-def payment_status(token):
-    return WindcavePaymentRequest.from_token(db.session, token)
+def payment_request_status(req):
+    completed = req.status == req.STATUS_COMPLETED
+    cancelled = req.status == req.STATUS_CANCELLED
+    return completed, cancelled
 
-def get_payment_request_status(token):
-    req = WindcavePaymentRequest.from_token(db.session, token)
-    if not req:
-        return None, False, False, ''
-    completed = req.status == req.STATUS_COMPLETED
-    cancelled = req.status == req.STATUS_CANCELLED
-    windcave_url = ''
+def payment_request_status_update(req):
     # get status from windcave
-    if not completed and not cancelled:
-        state, windcave_url, tx_state = windcave_get_session_status(req.windcave_session_id)
-        req.windcave_status = state
-        if tx_state:
-            if tx_state[0]:
-                req.status = req.STATUS_COMPLETED
-            elif not tx_state[1]:
-                req.status = req.STATUS_CANCELLED
-            req.windcave_authorised = tx_state[0]
-            req.windcave_allow_retry = tx_state[1]
-        db.session.add(req)
-        db.session.commit()
+    state, windcave_url, tx_state = windcave_get_session_status(req.windcave_session_id)
+    req.windcave_status = state
+    if tx_state:
+        if tx_state[0]:
+            req.status = req.STATUS_COMPLETED
+        elif not tx_state[1]:
+            req.status = req.STATUS_CANCELLED
+        req.windcave_authorised = tx_state[0]
+        req.windcave_allow_retry = tx_state[1]
     completed = req.status == req.STATUS_COMPLETED
     cancelled = req.status == req.STATUS_CANCELLED
-    return req, completed, cancelled, windcave_url
+    return completed, cancelled, windcave_url
 
 def payout_create(amount, sender_reference, sender_code, account_name, account_number, reference, code, particulars):
     # create payout request

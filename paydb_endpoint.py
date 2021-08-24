@@ -6,7 +6,7 @@ import datetime
 import json
 import decimal
 
-from flask import Blueprint, request, jsonify, flash, redirect, render_template, url_for
+from flask import Blueprint, request, jsonify, flash, redirect, render_template
 import flask_security
 from flask_security.utils import encrypt_password, verify_password
 from flask_security.recoverable import send_reset_password_instructions
@@ -431,12 +431,6 @@ def order_book_req():
     order_book = dasset.order_book_req(symbol)
     return jsonify(order_book=order_book)
 
-def _broker_order_status(broker_order):
-    payment_url = None
-    if broker_order.windcave_payment_request:
-        payment_url = url_for('payments.payment', token=broker_order.windcave_payment_request.token)
-    return jsonify(broker_order=broker_order.to_json(), payment_url=payment_url)
-
 @paydb.route('/broker_order_create', methods=['POST'])
 def broker_order_create():
     params, api_key, err_response = auth_request_get_params(db, ["market", "side", "amount_dec", "recipient"])
@@ -459,7 +453,7 @@ def broker_order_create():
     broker_order = BrokerOrder(api_key.user, market, amount, quote_amount, recipient)
     db.session.add(broker_order)
     db.session.commit()
-    return _broker_order_status(broker_order)
+    return jsonify(broker_order=broker_order.to_json())
 
 @paydb.route('/broker_order_status', methods=['POST'])
 def broker_order_status():
@@ -469,7 +463,7 @@ def broker_order_status():
     broker_order = BrokerOrder.from_token(db.session, token)
     if not broker_order or broker_order.user != api_key.user:
         return bad_request(web_utils.NOT_FOUND)
-    return _broker_order_status(broker_order)
+    return jsonify(broker_order=broker_order.to_json())
 
 @paydb.route('/broker_order_accept', methods=['POST'])
 def broker_order_accept():
@@ -492,7 +486,7 @@ def broker_order_accept():
     db.session.add(req)
     db.session.add(broker_order)
     db.session.commit()
-    return _broker_order_status(broker_order)
+    return jsonify(broker_order=broker_order.to_json())
 
 @paydb.route('/broker_orders', methods=['POST'])
 def broker_orders():

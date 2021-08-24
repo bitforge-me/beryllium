@@ -1503,6 +1503,7 @@ class BrokerOrderSchema(Schema):
     quote_amount_dec = fields.Method('get_quote_amount_dec')
     recipient = fields.String()
     status = fields.String()
+    payment_url = fields.Method('get_payment_url')
 
     def get_base_asset(self, obj):
         base_asset, _ = dasset.assets_from_market(obj.market)
@@ -1520,12 +1521,21 @@ class BrokerOrderSchema(Schema):
         _, quote_asset = dasset.assets_from_market(obj.market)
         return str(dasset.asset_int_to_dec(quote_asset, obj.quote_amount))
 
+    def get_payment_url(self, obj):
+        payment_url = None
+        if obj.windcave_payment_request:
+            payment_url = url_for('payments.payment', token=obj.windcave_payment_request.token)
+        return payment_url
+
 class BrokerOrder(db.Model):
     STATUS_CREATED = 'created'
     STATUS_READY = 'ready'
     STATUS_INCOMING = 'incoming'
     STATUS_CONFIRMED = 'confirmed'
+    STATUS_PAYOUT_PENDING = 'payout_pending'
+    STATUS_COMPLETED = 'completed'
     STATUS_EXPIRED = 'expired'
+    STATUS_CANCELLED = 'cancelled'
 
     MINUTES_EXPIRY = 15
 
@@ -1541,11 +1551,11 @@ class BrokerOrder(db.Model):
     quote_amount = db.Column(db.Integer, nullable=False)
     recipient = db.Column(db.String, nullable=False)
     windcave_payment_request_id = db.Column(db.Integer, db.ForeignKey('windcave_payment_request.id'))
-    windcave_payment_request = db.relationship('WindcavePaymentRequest')
+    windcave_payment_request = db.relationship('WindcavePaymentRequest', backref=db.backref('broker_order', uselist=False))
     exchange_order_id = db.Column(db.Integer, db.ForeignKey('exchange_order.id'))
     exchange_order = db.relationship('ExchangeOrder')
     exchange_withdrawal_id = db.Column(db.Integer, db.ForeignKey('exchange_withdrawal.id'))
-    exchange_withdrawal = db.relationship('ExchangeWithdrawal')
+    exchange_withdrawal = db.relationship('ExchangeWithdrawal', backref=db.backref('broker_order', uselist=False))
     status = db.Column(db.String, nullable=False)
 
     def __init__(self, user, market, base_amount, quote_amount, recipient):
