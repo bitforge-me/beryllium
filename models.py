@@ -132,7 +132,7 @@ class UserCreateRequest(db.Model):
         self.photo = photo
         self.photo_type = photo_type
         self.password = password
-        self.expiry = datetime.datetime.now() + datetime.timedelta(self.MINUTES_EXPIRY)
+        self.expiry = datetime.datetime.now() + datetime.timedelta(minutes=self.MINUTES_EXPIRY)
 
     @classmethod
     def from_email(cls, session, email):
@@ -160,7 +160,7 @@ class UserUpdateEmailRequest(db.Model):
         self.token = secrets.token_urlsafe(8)
         self.user = user
         self.email = email
-        self.expiry = datetime.datetime.now() + datetime.timedelta(self.MINUTES_EXPIRY)
+        self.expiry = datetime.datetime.now() + datetime.timedelta(minutes=self.MINUTES_EXPIRY)
 
     @classmethod
     def from_email(cls, session, email):
@@ -199,6 +199,8 @@ class Permission(db.Model):
         return f'{self.name}'
 
 class ApiKey(db.Model):
+    MINUTES_EXPIRY = 30
+
     id = db.Column(db.Integer, primary_key=True)
     token = db.Column(db.String(255), unique=True, nullable=False)
     secret = db.Column(db.String(255), nullable=False)
@@ -216,7 +218,7 @@ class ApiKey(db.Model):
         self.secret = secrets.token_urlsafe(16)
         self.nonce = 0
         self.device_name = device_name
-        self.expiry = datetime.datetime.now() + datetime.timedelta(30)
+        self.expiry = datetime.datetime.now() + datetime.timedelta(minutes=self.MINUTES_EXPIRY)
 
     def has_permission(self, permission_name):
         perm = Permission.from_name(db.session, permission_name)
@@ -246,7 +248,7 @@ class ApiKeyRequest(db.Model):
         self.secret = secrets.token_urlsafe(16)
         self.user = user
         self.device_name = device_name
-        self.expiry = datetime.datetime.now() + datetime.timedelta(self.MINUTES_EXPIRY)
+        self.expiry = datetime.datetime.now() + datetime.timedelta(minutes=self.MINUTES_EXPIRY)
 
     @classmethod
     def from_token(cls, session, token):
@@ -1378,7 +1380,7 @@ class UserStashRequest(db.Model):
         self.action = action
         self.token = secrets.token_urlsafe(8)
         self.secret = secrets.token_urlsafe(16)
-        self.expiry = datetime.datetime.now() + datetime.timedelta(self.MINUTES_EXPIRY)
+        self.expiry = datetime.datetime.now() + datetime.timedelta(minutes=self.MINUTES_EXPIRY)
 
     @classmethod
     def from_token(cls, session, token):
