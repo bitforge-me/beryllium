@@ -161,7 +161,7 @@ def process_email_alerts():
         ### OPERATIONS WALLET THRESHOLD
         if data["premio_stage_balance"] < int(app.config["OPERATIONS_ACCOUNT_MIN_BALANCE_CENTS"]):
             subject = 'Operations wallet balance too low.'
-            msg = 'Please issue more tokens to the to the Operations wallet.'
+            msg = 'Please issue more tokens to the Operations wallet.'
             utils.email_notification_alert(logger, subject, msg, app.config["OPERATIONS_ACCOUNT"])
         ### OPERATIONS WALLET THRESHOLD < CLAIMABLE REWARDS
         if data["premio_stage_balance"] < data["claimable_rewards"]:
