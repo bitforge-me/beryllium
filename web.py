@@ -62,27 +62,6 @@ if app.config["USE_STASH"]:
 app.register_blueprint(reward, url_prefix='/reward')
 app.register_blueprint(reporting, url_prefix='/reporting')
 
-def logger_setup(level, handler):
-    logger.setLevel(level)
-    logger.addHandler(handler)
-    if SERVER_MODE == SERVER_MODE_WAVES:
-        import mw_endpoint
-        mw_endpoint.logger.setLevel(level)
-        mw_endpoint.logger.addHandler(handler)
-    if SERVER_MODE == SERVER_MODE_PAYDB:
-        import paydb_endpoint
-        paydb_endpoint.logger.setLevel(level)
-        paydb_endpoint.logger.addHandler(handler)
-
-def logger_clear():
-    logger.handlers.clear()
-    if SERVER_MODE == SERVER_MODE_WAVES:
-        import mw_endpoint
-        mw_endpoint.logger.handlers.clear()
-    if SERVER_MODE == SERVER_MODE_PAYDB:
-        import paydb_endpoint
-        paydb_endpoint.logger.handlers.clear()
-
 def _create_transaction_waves(recipient, amount, attachment):
     # get fee
     path = f"/assets/details/{ASSET_ID}"

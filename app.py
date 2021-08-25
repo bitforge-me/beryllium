@@ -15,12 +15,11 @@ import log_utils
 from app_core import MISSING_VITAL_SETTING, app, db
 from models import user_datastore, User, Role, Category, Permission, Topic
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger() # root log handler
 
 def teardown_logging():
     # fix this bug: https://bugs.python.org/issue21149
     logger.handlers.clear()
-    web.logger_clear()
 
 def add_user(email, password):
     email = email.lower()
@@ -99,7 +98,6 @@ def g_exception(greenlet):
 KEEP_RUNNING = True
 if __name__ == "__main__":
     ch = log_utils.setup_logging(logger, logging.DEBUG)
-    web.logger_setup(logging.DEBUG, ch)
     log_utils.log_socketio_version(logger)
 
     # create tables
