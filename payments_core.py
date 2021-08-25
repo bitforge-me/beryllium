@@ -10,6 +10,7 @@ import decimal
 from flask import url_for
 from stdnum.nz import bankaccount
 import requests
+from dateutil import tz
 
 import utils
 from app_core import app, db
@@ -23,16 +24,16 @@ WINDCAVE_API_KEY = os.environ.get('WINDCAVE_API_KEY', '')
 PAYOUT_SENDER_NAME = os.environ.get('PAYOUT_SENDER_NAME', '')
 PAYOUT_SENDER_ACCOUNT = os.environ.get('PAYOUT_SENDER_ACCOUNT', '')
 if not WINDCAVE_API_USER:
-    print('ERROR: no WINDCAVE_API_USER')
+    logger.error('ERROR: no WINDCAVE_API_USER')
     sys.exit(1)
 if not WINDCAVE_API_KEY:
-    print('ERROR: no WINDCAVE_API_KEY')
+    logger.error('ERROR: no WINDCAVE_API_KEY')
     sys.exit(1)
 if not PAYOUT_SENDER_NAME:
-    print('ERROR: no PAYOUT_SENDER_NAME')
+    logger.error('ERROR: no PAYOUT_SENDER_NAME')
     sys.exit(1)
 if not PAYOUT_SENDER_ACCOUNT:
-    print('ERROR: no PAYOUT_SENDER_ACCOUNT')
+    logger.error('ERROR: no PAYOUT_SENDER_ACCOUNT')
     sys.exit(1)
 
 def moneyfmt(value, places=2, curr='', sep=',', dpi='.',
@@ -93,15 +94,17 @@ def auth_header():
 def windcave_create_session(amount_cents, token, expiry):
     body = {'type': 'purchase', 'amount': moneyfmt(decimal.Decimal(amount_cents) / decimal.Decimal(100), sep=''), 'currency': 'NZD', 'merchantReference': token}
     body['methods'] = ['account2account']
+    expiry = expiry.replace(tzinfo=tz.tzlocal()) # set time zone to local (datetime objects are 'naive' by default)
+    expiry = expiry.astimezone(tz.tzutc()) # convert to UTC
     expiry = expiry.replace(microsecond=0) # strip microsecond to placate windcave (RFC 3339)
     body['expires'] = expiry.isoformat()
     callback_url = url_for('payments.payment', token=token, _external=True)
     body['callbackUrls'] = {'approved': callback_url, 'declined': callback_url, 'cancelled': callback_url}
     body['notificationUrl'] = callback_url
-    print(json.dumps(body))
+    logger.info(json.dumps(body))
     headers = {'Content-Type': 'application/json', 'Authorization': auth_header()}
     r = requests.post(WINDCAVE_API_URL + '/sessions', headers=headers, json=body)
-    print(r.text)
+    logger.info(r.text)
     r.raise_for_status()
     if r.status_code == 202:
         jsn = r.json()
@@ -111,7 +114,7 @@ def windcave_create_session(amount_cents, token, expiry):
 def windcave_get_session_status(windcave_session_id):
     headers = {'Authorization': auth_header()}
     r = requests.get(WINDCAVE_API_URL + '/sessions/' + windcave_session_id, headers=headers)
-    print(r.text)
+    logger.info(r.text)
     r.raise_for_status()
     jsn = r.json()
     state = jsn['state']
@@ -132,11 +135,11 @@ def payment_create(amount_cents, expiry):
     req = WindcavePaymentRequest.from_token(db.session, token)
     if req:
         raise Exception('payment already exists')
-    print("creating session with windcave")
+    logger.info("creating session with windcave")
     windcave_session_id, windcave_status = windcave_create_session(amount_cents, token, expiry)
     if not windcave_session_id:
         raise Exception('failed to create windcave session')
-    print("creating payment request object for %s" % token)
+    logger.info("creating payment request object for %s", token)
     req = WindcavePaymentRequest(token, 'NZD', amount_cents, windcave_session_id, windcave_status)
     return req
 
@@ -184,7 +187,7 @@ def payout_group_create():
     db.session.commit()
 
 def payout_status(token):
-    print("looking for %s" % token)
+    logger.info("looking for %s", token)
     return PayoutRequest.from_token(db.session, token)
 
 def bankaccount_is_valid(account):

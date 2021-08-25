@@ -1524,7 +1524,7 @@ class BrokerOrderSchema(Schema):
     def get_payment_url(self, obj):
         payment_url = None
         if obj.windcave_payment_request:
-            payment_url = url_for('payments.payment', token=obj.windcave_payment_request.token)
+            payment_url = url_for('payments.payment_interstitial', token=obj.windcave_payment_request.token, _external=True)
         return payment_url
 
 class BrokerOrder(db.Model):
