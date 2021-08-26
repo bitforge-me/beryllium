@@ -2,11 +2,15 @@ import logging
 import decimal
 
 import requests
+import bitcoin
+import bitcoin.wallet
+import web3
 
 from app_core import app
 
 logger = logging.getLogger(__name__)
 
+TESTNET = app.config['TESTNET']
 DASSET_API_SECRET = app.config['DASSET_API_SECRET']
 DASSET_ACCOUNT_ID = app.config['DASSET_ACCOUNT_ID']
 #ASSET_LIST = [x.strip() for x in app.config['ASSET_LIST'].split(',')]
@@ -94,5 +98,15 @@ def bid_quote_amount(market, amount_dec):
     return decimal.Decimal(-1)
 
 def address_validate(market, side, address):
-    #TODO
-    return True
+    assert side == 'bid'
+    base_asset, _ = assets_from_market(market)
+    if base_asset == 'BTC':
+        bitcoin.SelectParams('testnet' if TESTNET else 'mainnet')
+        try:
+            bitcoin.wallet.CBitcoinAddress(address)
+            return True
+        except: # pylint: disable=bare-except
+            pass
+    elif base_asset == 'ETH':
+        return web3.Web3.isAddress(address)
+    return False
