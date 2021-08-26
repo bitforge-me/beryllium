@@ -5,6 +5,7 @@ import requests
 import bitcoin
 import bitcoin.wallet
 import web3
+from munch import Munch
 
 from app_core import app
 
@@ -13,13 +14,16 @@ logger = logging.getLogger(__name__)
 TESTNET = app.config['TESTNET']
 DASSET_API_SECRET = app.config['DASSET_API_SECRET']
 DASSET_ACCOUNT_ID = app.config['DASSET_ACCOUNT_ID']
-#ASSET_LIST = [x.strip() for x in app.config['ASSET_LIST'].split(',')]
-#MARKET_LIST = [x.strip() for x in app.config['MARKET_LIST'].split(',')]
-NZD = dict(decimals=2)
-BTC = dict(decimals=8)
-ETH = dict(decimals=18)
-ASSET_LIST = dict(NZD=NZD, BTC=BTC, ETH=ETH)
-MARKET_LIST = ['BTC-NZD', 'ETH-NZD']
+BROKER_ORDER_FEE = decimal.Decimal(app.config['BROKER_ORDER_FEE'])
+NZD = Munch(symbol='NZD', decimals=2)
+BTC = Munch(symbol='BTC', decimals=8)
+ETH = Munch(symbol='ETH', decimals=18)
+ASSETS = Munch(NZD=NZD, BTC=BTC, ETH=ETH)
+MARKETS = {'BTC-NZD': Munch(base_asset=BTC, quote_asset=NZD, min_order=decimal.Decimal('0.01')), \
+    'ETH-NZD': Munch(base_asset=ETH, quote_asset=NZD, min_order=decimal.Decimal('0.1'))}
+ERR_OK = 0
+ERR_AMOUNT_TOO_LOW = 1
+ERR_INSUFFICIENT_LIQUIDITY = 2
 
 URL_BASE = 'https://api.dassetx.com/api'
 
@@ -27,7 +31,7 @@ def assets_from_market(market):
     return market.split('-')
 
 def asset_decimals(asset):
-    return ASSET_LIST[asset]['decimals']
+    return ASSETS[asset].decimals
 
 def asset_int_to_dec(asset, value):
     decimals = asset_decimals(asset)
@@ -53,7 +57,7 @@ def assets_req(asset=None):
     r = req(endpoint)
     if r.status_code == 200:
         assets = r.json()
-        assets = [a for a in assets if a['symbol'] in ASSET_LIST]
+        assets = [a for a in assets if a['symbol'] in ASSETS]
         return assets
     logger.error('request failed: %d, %s', r.status_code, r.content)
     return None
@@ -63,7 +67,7 @@ def markets_req():
     r = req(endpoint)
     if r.status_code == 200:
         markets = r.json()
-        markets = [m for m in markets if m['symbol'] in MARKET_LIST]
+        markets = [m for m in markets if m['symbol'] in MARKETS]
         return markets
     logger.error('request failed: %d, %s', r.status_code, r.content)
     return None
@@ -77,6 +81,9 @@ def order_book_req(symbol):
     return None
 
 def bid_quote_amount(market, amount_dec):
+    if amount_dec < MARKETS[market].min_order:
+        return decimal.Decimal(-1), ERR_AMOUNT_TOO_LOW
+
     order_book = order_book_req(market)
 
     filled = decimal.Decimal(0)
@@ -84,7 +91,7 @@ def bid_quote_amount(market, amount_dec):
     n = 0
     while amount_dec > filled:
         if n >= len(order_book['ask']):
-            return decimal.Decimal(-1)
+            break
         rate = decimal.Decimal(order_book['ask'][n]['rate'])
         quantity = decimal.Decimal(order_book['ask'][n]['quantity'])
         quantity_to_use = quantity
@@ -93,9 +100,10 @@ def bid_quote_amount(market, amount_dec):
         filled += quantity_to_use
         total_price += quantity_to_use * rate
         if filled == amount_dec:
-            return total_price
+            return total_price * (decimal.Decimal(1) + BROKER_ORDER_FEE / decimal.Decimal(100)), ERR_OK
         n += 1
-    return decimal.Decimal(-1)
+
+    return decimal.Decimal(-1), ERR_INSUFFICIENT_LIQUIDITY
 
 def address_validate(market, side, address):
     assert side == 'bid'

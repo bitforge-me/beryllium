@@ -426,10 +426,10 @@ def order_book_req():
     symbol, _, err_response = auth_request_get_single_param(db, 'symbol')
     if err_response:
         return err_response
-    if symbol not in dasset.MARKET_LIST:
+    if symbol not in dasset.MARKETS:
         return bad_request(web_utils.INVALID_MARKET)
     order_book = dasset.order_book_req(symbol)
-    return jsonify(order_book=order_book)
+    return jsonify(order_book=order_book, min_order=str(dasset.MARKETS[symbol].min_order), broker_fee=str(dasset.BROKER_ORDER_FEE))
 
 @paydb.route('/broker_order_create', methods=['POST'])
 def broker_order_create():
@@ -437,14 +437,16 @@ def broker_order_create():
     if err_response:
         return err_response
     market, side, amount_dec, recipient = params
-    if market not in dasset.MARKET_LIST:
+    if market not in dasset.MARKETS:
         return bad_request(web_utils.INVALID_MARKET)
     if side != 'bid':
         return bad_request(web_utils.INVALID_SIDE)
     amount_dec = decimal.Decimal(amount_dec)
-    quote_amount_dec = dasset.bid_quote_amount(market, amount_dec)
-    if quote_amount_dec < 0:
+    quote_amount_dec, err = dasset.bid_quote_amount(market, amount_dec)
+    if err == dasset.ERR_INSUFFICIENT_LIQUIDITY:
         return bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
+    if err == dasset.ERR_AMOUNT_TOO_LOW:
+        return bad_request(web_utils.AMOUNT_TOO_LOW)
     if not dasset.address_validate(market, side, recipient):
         return bad_request(web_utils.INVALID_RECIPIENT)
     base_asset, quote_asset = dasset.assets_from_market(market)

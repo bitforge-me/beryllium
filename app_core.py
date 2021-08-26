@@ -100,6 +100,11 @@ if os.getenv("OPERATIONS_ACCOUNT_MIN_BALANCE_CENTS"):
 else:
     app.config["OPERATIONS_ACCOUNT_MIN_BALANCE_CENTS"] = 200000
 
+if os.getenv("BROKER_ORDER_FEE"):
+    app.config["BROKER_ORDER_FEE"] = os.getenv("BROKER_ORDER_FEE")
+else:
+    app.config["BROKER_ORDER_FEE"] = "2.5"
+
 if os.getenv("USE_STASH"):
     app.config["USE_STASH"] = True
 else:
@@ -159,8 +164,6 @@ set_vital_setting("SERVER_NAME")
 set_vital_setting("FIREBASE_CREDENTIALS")
 set_vital_setting("DASSET_API_SECRET")
 set_vital_setting("DASSET_ACCOUNT_ID")
-#set_vital_setting("ASSET_LIST")
-#set_vital_setting("MARKET_LIST")
 
 set_vital_setting("PAYOUT_GROUP_EMAIL")
 

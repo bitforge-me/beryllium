@@ -25,3 +25,4 @@ python-stdnum==1.16
 python-dateutil==2.8.2
 python-bitcoinlib==0.11.0
 web3==5.23.0
+munch==2.5.0
