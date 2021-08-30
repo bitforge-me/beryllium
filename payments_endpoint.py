@@ -8,7 +8,7 @@ from app_core import db, limiter
 from models import PayoutRequest, PayoutGroup, WindcavePaymentRequest
 import bnz_ib4b
 import payments_core
-import paydb_core
+import broker
 
 logger = logging.getLogger(__name__)
 payments = Blueprint('payments', __name__, template_folder='templates')
@@ -24,15 +24,13 @@ def payment_interstitial(token=None):
     if not req:
         flash('Sorry payment request not found', category='danger')
         return redirect('/')
-    completed, cancelled = payments_core.payment_request_status(req)
-    if completed or cancelled:
+    if req.status != req.STATUS_CREATED:
         return redirect(url_for('payments.payment', token=token))
-    completed, cancelled, _ = payments_core.payment_request_status_update(req)
-    if completed or cancelled:
+    broker.broker_order_update_and_commit(db.session, req.broker_order)
+    if req.status != req.STATUS_CREATED:
         return redirect(url_for('payments.payment', token=token))
-    db.session.add(req)
-    db.session.commit()
     return render_template('payments/payment_request.html', token=token, interstitial=True)
+
 
 @payments.route('/payment/x/<token>', methods=['GET'])
 def payment(token=None):
@@ -40,16 +38,9 @@ def payment(token=None):
     if not req:
         flash('Sorry payment request not found', category='danger')
         return redirect('/')
-    windcave_url = ''
-    completed, cancelled = payments_core.payment_request_status(req)
-    if not completed and not cancelled:
-        completed, cancelled, windcave_url = payments_core.payment_request_status_update(req)
-    if req.broker_order:
-        paydb_core.broker_order_update(req.broker_order)
-        db.session.add(req.broker_order)
-    db.session.add(req)
-    db.session.commit()
-    return render_template('payments/payment_request.html', token=token, completed=completed, cancelled=cancelled, req=req, windcave_url=windcave_url)
+    completed = req.status == req.STATUS_COMPLETED
+    cancelled = req.status == req.STATUS_CANCELLED
+    return render_template('payments/payment_request.html', token=token, completed=completed, cancelled=cancelled, req=req)
 
 @payments.route('/payout_group/<token>/<secret>', methods=['GET'])
 def payout_group(token=None, secret=None):

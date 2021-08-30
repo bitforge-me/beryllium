@@ -439,13 +439,14 @@ def broker_order_create():
     market, side, amount_dec, recipient = params
     if market not in dasset.MARKETS:
         return bad_request(web_utils.INVALID_MARKET)
-    if side != 'bid':
+    if side != dasset.MarketSide.BID.value:
         return bad_request(web_utils.INVALID_SIDE)
+    side = dasset.MarketSide.BID
     amount_dec = decimal.Decimal(amount_dec)
     quote_amount_dec, err = dasset.bid_quote_amount(market, amount_dec)
-    if err == dasset.ERR_INSUFFICIENT_LIQUIDITY:
+    if err == dasset.QuoteResult.INSUFFICIENT_LIQUIDITY:
         return bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
-    if err == dasset.ERR_AMOUNT_TOO_LOW:
+    if err == dasset.QuoteResult.AMOUNT_TOO_LOW:
         return bad_request(web_utils.AMOUNT_TOO_LOW)
     if not dasset.address_validate(market, side, recipient):
         return bad_request(web_utils.INVALID_RECIPIENT)

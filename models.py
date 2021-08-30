@@ -1532,7 +1532,8 @@ class BrokerOrder(db.Model):
     STATUS_READY = 'ready'
     STATUS_INCOMING = 'incoming'
     STATUS_CONFIRMED = 'confirmed'
-    STATUS_PAYOUT_PENDING = 'payout_pending'
+    STATUS_EXCHANGE = 'exchange'
+    STATUS_WITHDRAW = 'withdraw'
     STATUS_COMPLETED = 'completed'
     STATUS_EXPIRED = 'expired'
     STATUS_CANCELLED = 'cancelled'
@@ -1592,7 +1593,7 @@ class ExchangeOrder(db.Model):
     date = db.Column(db.DateTime(), nullable=False)
     exchange_reference = db.Column(db.String, nullable=False)
 
-    def __init__(self, token, exchange_reference):
+    def __init__(self, exchange_reference):
         self.token = secrets.token_urlsafe(8)
         self.date = datetime.datetime.now()
         self.exchange_reference = exchange_reference
@@ -1603,7 +1604,7 @@ class ExchangeWithdrawal(db.Model):
     date = db.Column(db.DateTime(), nullable=False)
     exchange_reference = db.Column(db.String, nullable=False)
 
-    def __init__(self, token, exchange_reference):
+    def __init__(self, exchange_reference):
         self.token = secrets.token_urlsafe(8)
         self.date = datetime.datetime.now()
         self.exchange_reference = exchange_reference

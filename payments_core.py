@@ -143,11 +143,6 @@ def payment_create(amount_cents, expiry):
     req = WindcavePaymentRequest(token, 'NZD', amount_cents, windcave_session_id, windcave_status)
     return req
 
-def payment_request_status(req):
-    completed = req.status == req.STATUS_COMPLETED
-    cancelled = req.status == req.STATUS_CANCELLED
-    return completed, cancelled
-
 def payment_request_status_update(req):
     # get status from windcave
     state, windcave_url, tx_state = windcave_get_session_status(req.windcave_session_id)
@@ -159,9 +154,7 @@ def payment_request_status_update(req):
             req.status = req.STATUS_CANCELLED
         req.windcave_authorised = tx_state[0]
         req.windcave_allow_retry = tx_state[1]
-    completed = req.status == req.STATUS_COMPLETED
-    cancelled = req.status == req.STATUS_CANCELLED
-    return completed, cancelled, windcave_url
+        req.windcave_url = windcave_url
 
 def payout_create(amount, sender_reference, sender_code, account_name, account_number, reference, code, particulars):
     # create payout request

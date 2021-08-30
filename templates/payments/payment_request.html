@@ -60,9 +60,9 @@
                                 Allow retry: {{req.windcave_allow_retry}}
                             </p>
                             {% endif %}
-                            {% if windcave_url %}
+                            {% if req.windcave_url %}
                             <p>
-                                To continue your payment go to <a href="{{windcave_url}}">{{windcave_url}}</a>.
+                                To continue your payment go to <a href="{{req.windcave_url}}">{{req.windcave_url}}</a>.
                             </p>
                             {% endif %}
                         {% elif completed%}
@@ -89,8 +89,8 @@
                 {% if interstitial %}
                 {% else %}
                     {% if not completed and not cancelled %}
-                        {% if windcave_url %}
-                        window.location.replace("{{windcave_url}}");
+                        {% if req.windcave_url %}
+                        window.location.replace("{{req.windcave_url}}");
                         {% endif %}
                     {% endif %}
                 {% endif %}
