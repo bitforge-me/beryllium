@@ -6,7 +6,11 @@
         <div class="container">
             <div class="row">
                 <div class="col-lg-12">
-                    {% if interstitial %}
+                    {% if mock %}
+                    <form action="/payments/payment/mock/{{token}}">
+                        <button type="submit">Complete payment (mock)</button>
+                    </form>
+                    {% elif interstitial %}
                     <h3>Account2Account</h3>
                     <ul>
                         <li>

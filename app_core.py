@@ -110,6 +110,16 @@ if os.getenv("USE_STASH"):
 else:
     app.config["USE_STASH"] = False
 
+if os.getenv('EXCHANGE_ORDERS_MOCK'):
+    app.config['EXCHANGE_ORDERS_MOCK'] = True
+else:
+    app.config['EXCHANGE_ORDERS_MOCK'] = False
+
+if os.getenv('EXCHANGE_WITHDRAWALS_MOCK'):
+    app.config['EXCHANGE_WITHDRAWALS_MOCK'] = True
+else:
+    app.config['EXCHANGE_WITHDRAWALS_MOCK'] = False
+
 def set_vital_setting(env_name, setting_name=None, acceptable_values=None):
     # pylint: disable=global-statement
     global MISSING_VITAL_SETTING

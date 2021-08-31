@@ -402,24 +402,14 @@ def assets_req():
     _, err_response = auth_request(db)
     if err_response:
         return err_response
-    assets = []
-    for item in dasset.assets_req():
-        decimals = dasset.asset_decimals(item['symbol'])
-        assets.append(dict(symbol=item['symbol'], name=item['name'], coin_type=item['coinType'], status=item['status'], min_confs=item['minConfirmations'], message=item['notice'], decimals=decimals))
-    return jsonify(assets=assets)
+    return jsonify(assets=dasset.assets_req())
 
 @paydb.route('/markets', methods=['POST'])
 def markets_req():
     _, err_response = auth_request(db)
     if err_response:
         return err_response
-    markets = []
-    for item in dasset.markets_req():
-        message = ''
-        if 'notice' in item:
-            message = item['notice']
-        markets.append(dict(symbol=item['symbol'], base_symbol=item['baseCurrencySymbol'], quote_symbol=item['quoteCurrencySymbol'], precision=item['precision'], status=item['status'], min_trade=item['minTradeSize'], message=message))
-    return jsonify(markets=markets)
+    return jsonify(markets=dasset.markets_req())
 
 @paydb.route('/order_book', methods=['POST'])
 def order_book_req():
@@ -428,8 +418,8 @@ def order_book_req():
         return err_response
     if symbol not in dasset.MARKETS:
         return bad_request(web_utils.INVALID_MARKET)
-    order_book = dasset.order_book_req(symbol)
-    return jsonify(order_book=order_book, min_order=str(dasset.MARKETS[symbol].min_order), broker_fee=str(dasset.BROKER_ORDER_FEE))
+    order_book, min_order, broker_fee = dasset.order_book_req(symbol)
+    return jsonify(order_book=order_book, min_order=min_order, broker_fee=broker_fee)
 
 @paydb.route('/broker_order_create', methods=['POST'])
 def broker_order_create():

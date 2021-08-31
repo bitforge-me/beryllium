@@ -6,6 +6,7 @@ from flask import Blueprint, request, render_template, flash, redirect, make_res
 
 from app_core import db, limiter
 from models import PayoutRequest, PayoutGroup, WindcavePaymentRequest
+import web_utils
 import bnz_ib4b
 import payments_core
 import broker
@@ -29,8 +30,19 @@ def payment_interstitial(token=None):
     broker.broker_order_update_and_commit(db.session, req.broker_order)
     if req.status != req.STATUS_CREATED:
         return redirect(url_for('payments.payment', token=token))
-    return render_template('payments/payment_request.html', token=token, interstitial=True)
+    return render_template('payments/payment_request.html', token=token, interstitial=True, mock=payments_core.mock())
 
+@payments.route('/payment/mock/<token>', methods=['GET'])
+def payment_mock_confirm(token=None):
+    if not payments_core.mock():
+        return web_utils.bad_request('not found', code=404)
+    req = WindcavePaymentRequest.from_token(db.session, token)
+    if not req:
+        flash('Sorry payment request not found', category='danger')
+        return redirect('/')
+    payments_core.payment_request_mock_confirm(req)
+    broker.broker_order_update_and_commit(db.session, req.broker_order)
+    return redirect(url_for('payments.payment', token=token))
 
 @payments.route('/payment/x/<token>', methods=['GET'])
 def payment(token=None):
