@@ -10,6 +10,7 @@ import bitcoin.wallet
 import web3
 from munch import Munch
 
+import utils
 from app_core import app
 
 logger = logging.getLogger(__name__)
@@ -78,7 +79,7 @@ def bid_quote_amount(market, amount_dec):
     if amount_dec < MARKETS[market].min_order:
         return decimal.Decimal(-1), QuoteResult.AMOUNT_TOO_LOW
 
-    order_book, min_order, broker_fee = order_book_req(market)
+    order_book, _, _ = order_book_req(market)
 
     filled = decimal.Decimal(0)
     total_price = decimal.Decimal(0)
@@ -180,7 +181,7 @@ def order_book_req(symbol):
 def order_create_req(market, side, amount, price):
     assert side is MarketSide.BID
     if orders_mock():
-        return secrets.token_urlsafe(8)
+        return utils.generate_key()
     endpoint = '/orders'
     r = req_post(endpoint, params=dict(amount=float(amount), tradingPair=market, side='BUY', orderType='LIMIT', timeInForce='FILL_OR_KILL', limit=float(price)))
     if r.status_code == 200:
@@ -222,7 +223,7 @@ def order_status_check(order_id, market):
 
 def crypto_withdrawal_create_req(asset, amount, address):
     if withdrawals_mock():
-        return secrets.token_urlsafe(8)
+        return utils.generate_key()
     endpoint = '/crypto/withdrawals'
     r = req_post(endpoint, params=dict(currencySymbol=asset, quantity=float(amount), cryptoAddress=address))
     if r.status_code == 200:

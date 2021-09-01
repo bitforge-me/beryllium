@@ -5,6 +5,8 @@ import io
 import hashlib
 import decimal
 import base64
+import secrets
+import string
 
 import pywaves
 from sendgrid import SendGridAPIClient
@@ -143,8 +145,11 @@ def email_payout_group_notification(logger, group):
         html_content += '<a href="%s">payout group: %s</a>' % (all_url, group.token)
     send_email(logger, subject, html_content, recipient=recipient)
 
-def generate_key(num=20):
-    return binascii.hexlify(os.urandom(num)).decode()
+def generate_key(chars=10, upper=True):
+    alphabet = string.ascii_letters + string.digits
+    if upper:
+        alphabet = string.ascii_uppercase + string.digits
+    return ''.join(secrets.choice(alphabet) for i in range(chars))
 
 def is_email(val):
     return re.match("[^@]+@[^@]+\.[^@]+", val) # pylint: disable=anomalous-backslash-in-string

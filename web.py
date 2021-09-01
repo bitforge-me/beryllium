@@ -29,6 +29,7 @@ import broker
 from reward_endpoint import reward, reward_create
 from reporting_endpoint import reporting, dashboard_data_paydb
 from payments_endpoint import payments
+from kyc_endpoint import kyc
 # pylint: disable=unused-import
 import admin
 
@@ -64,6 +65,7 @@ if app.config["USE_STASH"]:
 app.register_blueprint(reward, url_prefix='/reward')
 app.register_blueprint(reporting, url_prefix='/reporting')
 app.register_blueprint(payments, url_prefix='/payments')
+app.register_blueprint(kyc, url_prefix='/kyc')
 
 def _create_transaction_waves(recipient, amount, attachment):
     # get fee

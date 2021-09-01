@@ -4,7 +4,6 @@ import sys
 import logging
 import base64
 import json
-import secrets
 import decimal
 
 from flask import url_for
@@ -135,7 +134,7 @@ def windcave_get_session_status(windcave_session_id):
     return state, link, tx_state
 
 def payment_create(amount_cents, expiry):
-    token = secrets.token_urlsafe(8)
+    token = utils.generate_key()
     req = WindcavePaymentRequest.from_token(db.session, token)
     if req:
         raise Exception('payment already exists')

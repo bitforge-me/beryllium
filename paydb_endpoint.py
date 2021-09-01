@@ -16,7 +16,7 @@ import web_utils
 from web_utils import bad_request, get_json_params, check_auth, auth_request, auth_request_get_single_param, auth_request_get_params
 import utils
 from app_core import db, socketio, limiter
-from models import user_datastore, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, PayDbTransaction, BrokerOrder
+from models import user_datastore, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, PayDbTransaction, BrokerOrder, KycRequest
 import paydb_core
 import payments_core
 import dasset
@@ -271,8 +271,10 @@ def user_info():
         balance = paydb_core.user_balance(db.session, api_key)
         roles = [role.name for role in api_key.user.roles]
         perms = [perm.name for perm in api_key.permissions]
-        return jsonify(dict(email=user.email, balance=balance, photo=user.photo, photo_type=user.photo_type, roles=roles, permissions=perms))
-    return jsonify(dict(email=user.email, balance=-1, photo=user.photo, photo_type=user.photo_type, roles=[], permissions=[]))
+        kyc_validated = api_key.user.kyc_validated()
+        kyc_url = api_key.user.kyc_url()
+        return jsonify(dict(email=user.email, balance=balance, photo=user.photo, photo_type=user.photo_type, roles=roles, permissions=perms, kyc_validated=kyc_validated, kyc_url=kyc_url))
+    return jsonify(dict(email=user.email, balance=-1, photo=user.photo, photo_type=user.photo_type, roles=[], permissions=[], kyc_validated=None, kyc_url=None))
 
 @paydb.route('/user_reset_password', methods=['POST'])
 @limiter.limit('10/hour')
@@ -342,6 +344,20 @@ def user_update_password():
     db.session.add(user)
     db.session.commit()
     return 'password changed.'
+
+@paydb.route('/user_kyc_request_create', methods=['POST'])
+@limiter.limit('10/hour')
+def user_kyc_request_create():
+    api_key, err_response = auth_request(db)
+    if err_response:
+        return err_response
+    if len(list(api_key.user.kyc_requests)):
+        return bad_request(web_utils.KYC_REQUEST_EXISTS)
+    user = api_key.user
+    req = KycRequest(user)
+    db.session.add(req)
+    db.session.commit()
+    return jsonify(dict(kyc_url=req.url()))
 
 @paydb.route('/user_update_photo', methods=['POST'])
 @limiter.limit('10/hour')
@@ -427,6 +443,8 @@ def broker_order_create():
     if err_response:
         return err_response
     market, side, amount_dec, recipient = params
+    if not api_key.user.kyc_validted():
+        return bad_request(web_utils.KYC_NOT_VALIDATED)
     if market not in dasset.MARKETS:
         return bad_request(web_utils.INVALID_MARKET)
     if side != dasset.MarketSide.BID.value:

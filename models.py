@@ -11,7 +11,6 @@ import decimal
 import csv
 import logging
 import json
-import secrets
 
 from flask import redirect, url_for, request, flash, has_app_context, g, abort
 from flask_security import Security, SQLAlchemyUserDatastore, \
@@ -97,7 +96,20 @@ class User(db.Model, UserMixin):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.token = secrets.token_urlsafe(8)
+        self.token = generate_key()
+
+    def kyc_validated(self):
+        if self.kyc_requests:
+            for req in self.kyc_requests:
+                if req.validated():
+                    return True
+        return False
+
+    def kyc_url(self):
+        if self.kyc_requests:
+            for req in self.kyc_requests:
+                return req.url()
+        return None
 
     @classmethod
     def from_email(cls, session, email):
@@ -123,7 +135,7 @@ class UserCreateRequest(db.Model):
     expiry = db.Column(db.DateTime())
 
     def __init__(self, first_name, last_name, email, mobile_number, address, photo, photo_type, password):
-        self.token = secrets.token_urlsafe(8)
+        self.token = generate_key()
         self.first_name = first_name
         self.last_name = last_name
         self.email = email
@@ -157,7 +169,7 @@ class UserUpdateEmailRequest(db.Model):
     expiry = db.Column(db.DateTime())
 
     def __init__(self, user, email):
-        self.token = secrets.token_urlsafe(8)
+        self.token = generate_key()
         self.user = user
         self.email = email
         self.expiry = datetime.datetime.now() + datetime.timedelta(minutes=self.MINUTES_EXPIRY)
@@ -214,8 +226,8 @@ class ApiKey(db.Model):
 
     def __init__(self, user, device_name):
         self.user_id = user.id
-        self.token = secrets.token_urlsafe(8)
-        self.secret = secrets.token_urlsafe(16)
+        self.token = generate_key()
+        self.secret = generate_key(20)
         self.nonce = 0
         self.device_name = device_name
         self.expiry = datetime.datetime.now() + datetime.timedelta(minutes=self.MINUTES_EXPIRY)
@@ -244,8 +256,8 @@ class ApiKeyRequest(db.Model):
     created_api_key = db.relationship('ApiKey')
 
     def __init__(self, user, device_name):
-        self.token = secrets.token_urlsafe(8)
-        self.secret = secrets.token_urlsafe(16)
+        self.token = generate_key()
+        self.secret = generate_key(20)
         self.user = user
         self.device_name = device_name
         self.expiry = datetime.datetime.now() + datetime.timedelta(minutes=self.MINUTES_EXPIRY)
@@ -284,7 +296,7 @@ class PayDbTransaction(db.Model):
     attachment = db.Column(db.String(255))
 
     def __init__(self, action, sender, recipient, amount, attachment):
-        self.token = secrets.token_urlsafe(8)
+        self.token = generate_key()
         self.date = datetime.datetime.now()
         self.action = action
         self.sender = sender
@@ -340,7 +352,7 @@ class RewardPayment(db.Model):
         assert amount is not None
         assert amount > 0
         self.reward_proposal = reward_proposal
-        self.token = generate_key(8)
+        self.token = generate_key()
         self.mobile = mobile
         self.email = email
         self.recipient = recipient
@@ -1375,8 +1387,8 @@ class UserStashRequest(db.Model):
         self.cyphertext = cyphertext
         self.question = question
         self.action = action
-        self.token = secrets.token_urlsafe(8)
-        self.secret = secrets.token_urlsafe(16)
+        self.token = generate_key()
+        self.secret = generate_key(20)
         self.expiry = datetime.datetime.now() + datetime.timedelta(minutes=self.MINUTES_EXPIRY)
 
     @classmethod
@@ -1463,7 +1475,7 @@ class Referral(db.Model):
     def __init__(self, user, recipient, reward_sender_type, reward_sender, reward_recipient_type, reward_recipient, recipient_min_spend):
         assert reward_sender_type == self.REWARD_TYPE_FIXED
         assert reward_recipient_type in self.REWARD_TYPES_ALL
-        self.token = secrets.token_urlsafe(8)
+        self.token = generate_key()
         self.user = user
         self.date = datetime.datetime.now()
         self.recipient = recipient
@@ -1560,7 +1572,7 @@ class BrokerOrder(db.Model):
     status = db.Column(db.String, nullable=False)
 
     def __init__(self, user, market, base_amount, quote_amount, recipient):
-        self.token = secrets.token_urlsafe(8)
+        self.token = generate_key()
         self.user = user
         self.date = datetime.datetime.now()
         self.expiry = datetime.datetime.now() + datetime.timedelta(minutes=self.MINUTES_EXPIRY)
@@ -1594,7 +1606,7 @@ class ExchangeOrder(db.Model):
     exchange_reference = db.Column(db.String, nullable=False)
 
     def __init__(self, exchange_reference):
-        self.token = secrets.token_urlsafe(8)
+        self.token = generate_key()
         self.date = datetime.datetime.now()
         self.exchange_reference = exchange_reference
 
@@ -1605,12 +1617,12 @@ class ExchangeWithdrawal(db.Model):
     exchange_reference = db.Column(db.String, nullable=False)
 
     def __init__(self, exchange_reference):
-        self.token = secrets.token_urlsafe(8)
+        self.token = generate_key()
         self.date = datetime.datetime.now()
         self.exchange_reference = exchange_reference
 
 class WindcavePaymentRequestSchema(Schema):
-    date = fields.Float()
+    date = fields.DateTime()
     token = fields.String()
     asset = fields.String()
     amount = fields.Integer()
@@ -1626,7 +1638,7 @@ class WindcavePaymentRequest(db.Model):
     STATUS_CANCELLED = 'cancelled'
 
     id = db.Column(db.Integer, primary_key=True)
-    date = db.Column(db.Float, nullable=False, unique=False)
+    date = db.Column(db.DateTime(), nullable=False, unique=False)
     token = db.Column(db.String, nullable=False, unique=True)
     asset = db.Column(db.String, nullable=False)
     amount = db.Column(db.Integer, nullable=False)
@@ -1637,7 +1649,7 @@ class WindcavePaymentRequest(db.Model):
     status = db.Column(db.String)
 
     def __init__(self, token, asset, amount, windcave_session_id, windcave_status):
-        self.date = time.time()
+        self.date = datetime.datetime.now()
         self.token = token
         self.asset = asset
         self.amount = amount
@@ -1661,7 +1673,7 @@ class WindcavePaymentRequest(db.Model):
         return schema.dump(self)
 
 class PayoutRequestSchema(Schema):
-    date = fields.Float()
+    date = fields.DateTime()
     token = fields.String()
     asset = fields.String()
     amount = fields.Integer()
@@ -1693,7 +1705,7 @@ class PayoutRequest(db.Model):
     STATUS_SUSPENDED = 'suspended'
 
     id = db.Column(db.Integer, primary_key=True)
-    date = db.Column(db.Float, nullable=False, unique=False)
+    date = db.Column(db.DateTime(), nullable=False, unique=False)
     token = db.Column(db.String, nullable=False, unique=True)
     secret = db.Column(db.String, nullable=False)
     asset = db.Column(db.String, nullable=False)
@@ -1714,9 +1726,9 @@ class PayoutRequest(db.Model):
     groups = db.relationship('PayoutGroup', secondary='payout_group_request', back_populates='requests')
 
     def __init__(self, asset, amount, sender, sender_account, sender_reference, sender_code, receiver, receiver_account, receiver_reference, receiver_code, receiver_particulars, email, email_sent):
-        self.date = time.time()
-        self.token = secrets.token_urlsafe(8)
-        self.secret = secrets.token_urlsafe(20)
+        self.date = datetime.datetime.now()
+        self.token = generate_key()
+        self.secret = generate_key(20)
         self.asset = asset
         self.amount = amount
         self.sender = sender
@@ -1764,8 +1776,8 @@ class PayoutGroup(db.Model):
     requests = db.relationship('PayoutRequest', secondary='payout_group_request', back_populates='groups')
 
     def __init__(self):
-        self.token = secrets.token_urlsafe(8)
-        self.secret = secrets.token_urlsafe(20)
+        self.token = generate_key()
+        self.secret = generate_key(20)
         self.expired = False
 
     @classmethod
@@ -1775,3 +1787,57 @@ class PayoutGroup(db.Model):
     @classmethod
     def expire_all_but(cls, session, group):
         session.query(cls).filter(cls.id != group.id).update({"expired": True})
+
+class AplyId(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    transaction_id = db.Column(db.String, nullable=False, unique=True)
+    kyc_request_id = db.Column(db.Integer, db.ForeignKey('kyc_request.id'))
+    kyc_request = db.relationship("KycRequest", back_populates="aplyid")
+
+    def __init__(self, kyc_request, transaction_id):
+        self.kyc_request = kyc_request
+        self.transaction_id = transaction_id
+
+class KycRequestSchema(Schema):
+    date = fields.DateTime()
+    token = fields.String()
+    status = fields.String()
+
+class KycRequest(db.Model):
+    STATUS_CREATED = 'created'
+    STATUS_COMPLETED = 'completed'
+
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.DateTime(), nullable=False, unique=False)
+    token = db.Column(db.String, nullable=False, unique=True)
+    status = db.Column(db.String)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref=db.backref('kyc_requests', lazy='dynamic'))
+    aplyid = db.relationship("AplyId", uselist=False, back_populates="kyc_request")
+
+    def __init__(self, user):
+        self.user = user
+        self.date = datetime.datetime.now()
+        self.token = generate_key()
+        self.status = self.STATUS_CREATED
+
+    def validated(self):
+        return self.status == self.STATUS_COMPLETED
+
+    def url(self):
+        return url_for('kyc.request_start', token=self.token, _external=True)
+
+    @classmethod
+    def count(cls, session):
+        return session.query(cls).count()
+
+    @classmethod
+    def from_token(cls, session, token):
+        return session.query(cls).filter(cls.token == token).first()
+
+    def __repr__(self):
+        return '<KycRequest %r>' % (self.token)
+
+    def to_json(self):
+        schema = KycRequestSchema()
+        return schema.dump(self).data

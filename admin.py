@@ -4,7 +4,7 @@ from flask_admin import helpers as admin_helpers
 
 from app_core import app, db, SERVER_MODE_WAVES
 from models import security, RestrictedModelView, BaseOnlyUserOwnedModelView, RewardProposalModelView, UserModelView, AdminUserModelView, WavesTxModelView, PayDbApiKeyModelView, PayDbUserTransactionsView, PayDbAdminTransactionsView, PushNotificationLocationModelView, \
-    Role, User, ApiKey, PayDbTransaction, Category, RewardProposal, WavesTx, Topic, UserStash, UserStashRequest, PushNotificationLocation, Referral, BrokerOrder, ExchangeOrder, ExchangeWithdrawal
+    Role, User, ApiKey, PayDbTransaction, Category, RewardProposal, WavesTx, Topic, UserStash, UserStashRequest, PushNotificationLocation, Referral, BrokerOrder, ExchangeOrder, ExchangeWithdrawal, KycRequest, AplyId
 
 # Create admin
 admin = flask_admin.Admin(
@@ -37,6 +37,8 @@ admin.add_view(BaseOnlyUserOwnedModelView(Referral, db.session, category='User',
 admin.add_view(RestrictedModelView(BrokerOrder, db.session, category='Admin'))
 admin.add_view(RestrictedModelView(ExchangeOrder, db.session, category='Admin'))
 admin.add_view(RestrictedModelView(ExchangeWithdrawal, db.session, category='Admin'))
+admin.add_view(RestrictedModelView(KycRequest, db.session, category='Admin'))
+admin.add_view(RestrictedModelView(AplyId, db.session, category='Admin'))
 
 # define a context processor for merging flask-admin's template context into the
 # flask-security views.
