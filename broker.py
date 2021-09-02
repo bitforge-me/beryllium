@@ -4,6 +4,7 @@ import logging
 import payments_core
 import dasset
 from models import ExchangeOrder, ExchangeWithdrawal
+import websocket
 
 logger = logging.getLogger(__name__)
 
@@ -76,3 +77,4 @@ def broker_order_update_and_commit(db_session, broker_order):
         for rec in updated_records:
             db_session.add(rec)
         db_session.commit()
+        websocket.broker_order_event(broker_order)

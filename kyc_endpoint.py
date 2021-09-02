@@ -8,6 +8,7 @@ from flask import Blueprint, request, render_template, flash, redirect, make_res
 from app_core import app, db, limiter
 from models import KycRequest, AplyId
 import b2blaze
+import websocket
 
 logger = logging.getLogger(__name__)
 kyc = Blueprint('kyc', __name__, template_folder='templates')
@@ -154,6 +155,7 @@ def aplyid_webhook():
         req.status = req.STATUS_COMPLETED
         db.session.add(req)
         db.session.commit()
+        websocket.user_info_event(req.user)
         logger.info('aplyid webhook completed - updated db')
         # save pdf
         pdf = aplyid_download_pdf(transaction_id)
