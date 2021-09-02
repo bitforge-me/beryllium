@@ -443,7 +443,7 @@ def broker_order_create():
     if err_response:
         return err_response
     market, side, amount_dec, recipient = params
-    if not api_key.user.kyc_validted():
+    if not api_key.user.kyc_validated():
         return bad_request(web_utils.KYC_NOT_VALIDATED)
     if market not in dasset.MARKETS:
         return bad_request(web_utils.INVALID_MARKET)
