@@ -392,8 +392,11 @@ def order_book_req():
         return err_response
     if symbol not in dasset.MARKETS:
         return bad_request(web_utils.INVALID_MARKET)
+    base_asset, quote_asset = dasset.assets_from_market(symbol)
+    base_asset_withdraw_fee = dasset.asset_withdraw_fee(base_asset)
+    quote_asset_withdraw_fee = dasset.asset_withdraw_fee(quote_asset)
     order_book, min_order, broker_fee = dasset.order_book_req(symbol)
-    return jsonify(order_book=order_book, min_order=min_order, broker_fee=broker_fee)
+    return jsonify(order_book=order_book, min_order=str(min_order), base_asset_withdraw_fee=str(base_asset_withdraw_fee), quote_asset_withdraw_fee=str(quote_asset_withdraw_fee), broker_fee=str(broker_fee))
 
 @paydb.route('/broker_order_create', methods=['POST'])
 def broker_order_create():

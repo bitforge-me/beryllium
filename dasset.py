@@ -18,9 +18,9 @@ TESTNET = app.config['TESTNET']
 DASSET_API_SECRET = app.config['DASSET_API_SECRET']
 DASSET_ACCOUNT_ID = app.config['DASSET_ACCOUNT_ID']
 BROKER_ORDER_FEE = decimal.Decimal(app.config['BROKER_ORDER_FEE'])
-NZD = Munch(symbol='NZD', decimals=2)
-BTC = Munch(symbol='BTC', decimals=8)
-ETH = Munch(symbol='ETH', decimals=18)
+NZD = Munch(symbol='NZD', decimals=2, withdraw_fee=decimal.Decimal(7))
+BTC = Munch(symbol='BTC', decimals=8, withdraw_fee=decimal.Decimal('0.0003'))
+ETH = Munch(symbol='ETH', decimals=18, withdraw_fee=decimal.Decimal('0.0099'))
 ASSETS = Munch(NZD=NZD, BTC=BTC, ETH=ETH)
 MARKETS = {'BTC-NZD': Munch(base_asset=BTC, quote_asset=NZD, min_order=decimal.Decimal('0.01')), \
     'ETH-NZD': Munch(base_asset=ETH, quote_asset=NZD, min_order=decimal.Decimal('0.1'))}
@@ -52,6 +52,9 @@ def assets_from_market(market):
 def asset_decimals(asset):
     return ASSETS[asset].decimals
 
+def asset_withdraw_fee(asset):
+    return ASSETS[asset].withdraw_fee
+
 def asset_int_to_dec(asset, value):
     decimals = asset_decimals(asset)
     return decimal.Decimal(value) / decimal.Decimal(10**decimals)
@@ -74,27 +77,31 @@ def address_validate(market, side, address):
         return web3.Web3.isAddress(address)
     return False
 
-def bid_quote_amount(market, amount_dec):
-    if amount_dec < MARKETS[market].min_order:
+def bid_quote_amount(market, amount):
+    assert isinstance(amount, decimal.Decimal)
+    if amount < MARKETS[market].min_order:
         return decimal.Decimal(-1), QuoteResult.AMOUNT_TOO_LOW
 
-    order_book, _, _ = order_book_req(market)
+    base_asset, _ = assets_from_market(market)
+    withdraw_fee = asset_withdraw_fee(base_asset)
+    order_book, _, broker_fee = order_book_req(market)
 
+    amount_total = amount + withdraw_fee
     filled = decimal.Decimal(0)
     total_price = decimal.Decimal(0)
     n = 0
-    while amount_dec > filled:
+    while amount_total > filled:
         if n >= len(order_book.asks):
             break
         rate = decimal.Decimal(order_book.asks[n]['rate'])
         quantity = decimal.Decimal(order_book.asks[n]['quantity'])
         quantity_to_use = quantity
-        if quantity_to_use > amount_dec - filled:
-            quantity_to_use = amount_dec - filled
+        if quantity_to_use > amount_total - filled:
+            quantity_to_use = amount_total - filled
         filled += quantity_to_use
         total_price += quantity_to_use * rate
-        if filled == amount_dec:
-            return total_price * (decimal.Decimal(1) + BROKER_ORDER_FEE / decimal.Decimal(100)), QuoteResult.OK
+        if filled == amount_total:
+            return total_price * (decimal.Decimal(1) + broker_fee / decimal.Decimal(100)), QuoteResult.OK
         n += 1
 
     return decimal.Decimal(-1), QuoteResult.INSUFFICIENT_LIQUIDITY
@@ -173,11 +180,14 @@ def order_book_req(symbol):
     endpoint = f'/markets/{symbol}/orderbook'
     r = req_get(endpoint)
     if r.status_code == 200:
-        return parse_order_book(r.json()[0]), str(MARKETS[symbol].min_order), str(BROKER_ORDER_FEE)
+        min_order = MARKETS[symbol].min_order
+        return parse_order_book(r.json()[0]), min_order, BROKER_ORDER_FEE
     logger.error('request failed: %d, %s', r.status_code, r.content)
     return None
 
 def order_create_req(market, side, amount, price):
+    assert isinstance(amount, decimal.Decimal)
+    assert isinstance(price, decimal.Decimal)
     assert side is MarketSide.BID
     if orders_mock():
         return utils.generate_key()
@@ -221,6 +231,7 @@ def order_status_check(order_id, market):
     return order.status == 'Completed'
 
 def crypto_withdrawal_create_req(asset, amount, address):
+    assert isinstance(amount, decimal.Decimal)
     if withdrawals_mock():
         return utils.generate_key()
     endpoint = '/crypto/withdrawals'

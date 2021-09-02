@@ -27,8 +27,12 @@ def _broker_order_update(broker_order):
                 return updated_records
     # create exchange order
     if broker_order.status == broker_order.STATUS_CONFIRMED:
-        price = broker_order.quote_amount / broker_order.base_amount
-        exchange_order_id = dasset.order_create_req(broker_order.market, dasset.MarketSide.BID, broker_order.base_amount, price)
+        base_asset, quote_asset = dasset.assets_from_market(broker_order.market)
+        base_amount_dec = dasset.asset_int_to_dec(base_asset, broker_order.base_amount)
+        quote_amount_dec = dasset.asset_int_to_dec(quote_asset, broker_order.quote_amount)
+        amount_total = base_amount_dec + dasset.asset_withdraw_fee(base_asset)
+        price = quote_amount_dec / amount_total
+        exchange_order_id = dasset.order_create_req(broker_order.market, dasset.MarketSide.BID, amount_total, price)
         exchange_order = ExchangeOrder(exchange_order_id)
         broker_order.exchange_order = exchange_order
         broker_order.status = broker_order.STATUS_EXCHANGE
@@ -41,7 +45,8 @@ def _broker_order_update(broker_order):
         if dasset.order_status_check(broker_order.exchange_order.exchange_reference, broker_order.market):
             # create exchange withdrawal
             base_asset, _ = dasset.assets_from_market(broker_order.market)
-            exchange_withdrawal_id = dasset.crypto_withdrawal_create_req(base_asset, broker_order.base_amount, broker_order.recipient)
+            base_amount_dec = dasset.asset_int_to_dec(base_asset, broker_order.base_amount)
+            exchange_withdrawal_id = dasset.crypto_withdrawal_create_req(base_asset, base_amount_dec, broker_order.recipient)
             exchange_withdrawal = ExchangeWithdrawal(exchange_withdrawal_id)
             broker_order.exchange_withdrawal = exchange_withdrawal
             broker_order.status = broker_order.STATUS_WITHDRAW
