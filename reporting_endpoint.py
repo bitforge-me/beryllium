@@ -9,23 +9,13 @@ from sqlalchemy import func, and_
 
 from flask import Blueprint, render_template, redirect, Response
 from flask_security import roles_accepted
-import requests
 
-from app_core import db, app, SERVER_MODE_WAVES
-from models import Role, User, RewardProposal, RewardPayment, PayDbTransaction
+from app_core import db, app
+from models import Role, User
 import utils
-import paydb_core
 
 logger = logging.getLogger(__name__)
 reporting = Blueprint('reporting', __name__, template_folder='templates/reporting')
-
-SERVER_MODE = app.config["SERVER_MODE"]
-if SERVER_MODE == SERVER_MODE_WAVES:
-    # wave specific config settings
-    NODE_BASE_URL = app.config["NODE_BASE_URL"]
-    ADDRESS = app.config["WALLET_ADDRESS"]
-    ASSET_ID = app.config["ASSET_ID"]
-    TESTNET = app.config["TESTNET"]
 
 ### FREQUECNY DATES USED
 TODAY = date.today()
@@ -44,12 +34,12 @@ LAST_DAY_CURRENT_YEAR = FIRST_DAY_NEXT_YEAR - timedelta(days=1)
 
 def report_dashboard_premio(premio_balance, premio_stage_account, total_balance, claimable):
     ### Premio (PayDbTransaction)
-    premio_tx_count_lifetime = PayDbTransaction.query.count()
-    premio_tx_count_today = transaction_count(PayDbTransaction, TODAY, TOMORROW)
-    premio_tx_count_yesterday = transaction_count(PayDbTransaction, YESTERDAY, TODAY)
-    premio_tx_count_week = transaction_count(PayDbTransaction, MONDAY, NEXT_MONDAY)
-    premio_tx_count_month = transaction_count(PayDbTransaction, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH)
-    premio_tx_count_year = transaction_count(PayDbTransaction, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR)
+    premio_tx_count_lifetime = -1 #PayDbTransaction.query.count()
+    premio_tx_count_today = -1 #transaction_count(PayDbTransaction, TODAY, TOMORROW)
+    premio_tx_count_yesterday = -1 #transaction_count(PayDbTransaction, YESTERDAY, TODAY)
+    premio_tx_count_week = -1 #transaction_count(PayDbTransaction, MONDAY, NEXT_MONDAY)
+    premio_tx_count_month = -1 #transaction_count(PayDbTransaction, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH)
+    premio_tx_count_year = -1 #transaction_count(PayDbTransaction, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR)
     return render_template('reporting/dashboard_paydb_premio.html', premio_balance=premio_balance, premio_stage_account=premio_stage_account, total_balance=total_balance, claimable=claimable, \
         premio_tx_count_lifetime=premio_tx_count_lifetime, \
         premio_tx_count_today=premio_tx_count_today, premio_tx_count_yesterday=premio_tx_count_yesterday, \
@@ -57,31 +47,31 @@ def report_dashboard_premio(premio_balance, premio_stage_account, total_balance,
 
 def report_dashboard_proposals():
     ### RewardProposal queries
-    proposal_count = RewardProposal.query.count()
-    proposal_count_today = transaction_count(RewardProposal, TODAY, TOMORROW)
-    proposal_count_yesterday = transaction_count(RewardProposal, YESTERDAY, TODAY)
-    proposal_count_weekly = transaction_count(RewardProposal, MONDAY, NEXT_MONDAY)
-    proposal_count_monthly = transaction_count(RewardProposal, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH)
-    proposal_count_yearly = transaction_count(RewardProposal, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR)
+    proposal_count = -1 #RewardProposal.query.count()
+    proposal_count_today = -1 #transaction_count(RewardProposal, TODAY, TOMORROW)
+    proposal_count_yesterday = -1 #transaction_count(RewardProposal, YESTERDAY, TODAY)
+    proposal_count_weekly = -1 #transaction_count(RewardProposal, MONDAY, NEXT_MONDAY)
+    proposal_count_monthly = -1 #transaction_count(RewardProposal, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH)
+    proposal_count_yearly = -1 #transaction_count(RewardProposal, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR)
     ### RewardPayment queries
-    payment_query_today = claimed_proposal_payment(RewardProposal, RewardPayment, TODAY, TOMORROW)
-    unclaimed_payment_query_today = unclaimed_proposal_payment(RewardProposal, RewardPayment, TODAY, TOMORROW)
-    total_payment_query_today = total_proposal_payment(RewardProposal, RewardPayment, TODAY, TOMORROW)
-    payment_query_yesterday = claimed_proposal_payment(RewardProposal, RewardPayment, YESTERDAY, TODAY)
-    unclaimed_payment_yesterday = unclaimed_proposal_payment(RewardProposal, RewardPayment, YESTERDAY, TODAY)
-    total_payment_query_yesterday = total_proposal_payment(RewardProposal, RewardPayment, YESTERDAY, TODAY)
-    payment_query_weekly = claimed_proposal_payment(RewardProposal, RewardPayment, MONDAY, NEXT_MONDAY)
-    unclaimed_payment_query_weekly = unclaimed_proposal_payment(RewardProposal, RewardPayment, MONDAY, NEXT_MONDAY)
-    total_payment_query_weekly = total_proposal_payment(RewardProposal, RewardPayment, MONDAY, NEXT_MONDAY)
-    payment_query_monthly = claimed_proposal_payment(RewardProposal, RewardPayment, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH)
-    unclaimed_payment_query_monthly = unclaimed_proposal_payment(RewardProposal, RewardPayment, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH)
-    total_payment_query_monthly = total_proposal_payment(RewardProposal, RewardPayment, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH)
-    payment_query_yearly = claimed_proposal_payment(RewardProposal, RewardPayment, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR)
-    unclaimed_payment_query_yearly = unclaimed_proposal_payment(RewardProposal, RewardPayment, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR)
-    total_payment_query_yearly = total_proposal_payment(RewardProposal, RewardPayment, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR)
-    payment_query_lifetime = claimed_lifetime(RewardProposal, RewardPayment)
-    unclaimed_payment_lifetime = unclaimed_lifetime(RewardProposal, RewardPayment)
-    total_payment_query_lifetime = total_lifetime(RewardProposal, RewardPayment)
+    payment_query_today = -1 #claimed_proposal_payment(RewardProposal, RewardPayment, TODAY, TOMORROW)
+    unclaimed_payment_query_today = -1 #unclaimed_proposal_payment(RewardProposal, RewardPayment, TODAY, TOMORROW)
+    total_payment_query_today = -1 #total_proposal_payment(RewardProposal, RewardPayment, TODAY, TOMORROW)
+    payment_query_yesterday = -1 #claimed_proposal_payment(RewardProposal, RewardPayment, YESTERDAY, TODAY)
+    unclaimed_payment_yesterday = -1 #unclaimed_proposal_payment(RewardProposal, RewardPayment, YESTERDAY, TODAY)
+    total_payment_query_yesterday = -1 #total_proposal_payment(RewardProposal, RewardPayment, YESTERDAY, TODAY)
+    payment_query_weekly = -1 #claimed_proposal_payment(RewardProposal, RewardPayment, MONDAY, NEXT_MONDAY)
+    unclaimed_payment_query_weekly = -1 #unclaimed_proposal_payment(RewardProposal, RewardPayment, MONDAY, NEXT_MONDAY)
+    total_payment_query_weekly = -1 #total_proposal_payment(RewardProposal, RewardPayment, MONDAY, NEXT_MONDAY)
+    payment_query_monthly = -1 #claimed_proposal_payment(RewardProposal, RewardPayment, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH)
+    unclaimed_payment_query_monthly = -1 #unclaimed_proposal_payment(RewardProposal, RewardPayment, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH)
+    total_payment_query_monthly = -1 #total_proposal_payment(RewardProposal, RewardPayment, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH)
+    payment_query_yearly = -1 #claimed_proposal_payment(RewardProposal, RewardPayment, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR)
+    unclaimed_payment_query_yearly = -1 #unclaimed_proposal_payment(RewardProposal, RewardPayment, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR)
+    total_payment_query_yearly = -1 #total_proposal_payment(RewardProposal, RewardPayment, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR)
+    payment_query_lifetime = -1 #claimed_lifetime(RewardProposal, RewardPayment)
+    unclaimed_payment_lifetime = -1 #unclaimed_lifetime(RewardProposal, RewardPayment)
+    total_payment_query_lifetime = -1 #total_lifetime(RewardProposal, RewardPayment)
     ### render template with the value
     return render_template('reporting/dashboard_proposals.html', \
         proposal_count_lifetime=proposal_count, proposal_count_today=proposal_count_today, proposal_count_yesterday=proposal_count_yesterday, \
@@ -110,7 +100,7 @@ def report_user_balance():
     for account_user in users:
         user = User.from_email(db.session, account_user.email)
         if user:
-            balance = paydb_core.user_balance_from_user(db.session, user)
+            balance = 0
             balance = utils.int2asset(balance)
             email_balance = {'user': user.email, 'balance': balance}
             users_balances.append(email_balance)
@@ -228,61 +218,14 @@ def from_int_to_user_friendly(val, divisor, decimal_places=4):
     val = val / divisor
     return round(val, decimal_places)
 
-
-def dashboard_data_waves():
-    # get balance of local wallet
-    url = NODE_BASE_URL + f"/assets/balance/{ADDRESS}/{ASSET_ID}"
-    logger.info("requesting %s..", url)
-    response = requests.get(url)
-    try:
-        asset_balance = response.json()["balance"]
-    except: # pylint: disable=bare-except
-        logger.error("failed to parse response")
-        asset_balance = "n/a"
-    url = NODE_BASE_URL + f"/addresses/balance/{ADDRESS}"
-    logger.info("requesting %s..", url)
-    response = requests.get(url)
-    try:
-        waves_balance = response.json()["balance"]
-    except: # pylint: disable=bare-except
-        logger.error("failed to parse response")
-        waves_balance = "n/a"
-    # get the balance of the main wallet
-    url = NODE_BASE_URL + f"/transactions/info/{ASSET_ID}"
-    logger.info("requesting %s..", url)
-    response = requests.get(url)
-    try:
-        issuer = response.json()["sender"]
-        url = NODE_BASE_URL + f"/assets/balance/{issuer}/{ASSET_ID}"
-        logger.info("requesting %s..", url)
-        response = requests.get(url)
-        master_asset_balance = response.json()["balance"]
-        url = NODE_BASE_URL + f"/addresses/balance/{issuer}"
-        logger.info("requesting %s..", url)
-        response = requests.get(url)
-        master_waves_balance = response.json()["balance"]
-    except: # pylint: disable=bare-except
-        logger.error("failed to parse response")
-        issuer = "n/a"
-        master_waves_balance = "n/a"
-        master_asset_balance = "n/a"
-    # return data
-    return {"asset_balance": asset_balance, "asset_address": ADDRESS, "waves_balance": waves_balance, \
-            "master_asset_balance": master_asset_balance, "master_waves_balance": master_waves_balance, "master_waves_address": issuer, \
-            "asset_id": ASSET_ID, \
-            "testnet": TESTNET, \
-            "premio_qrcode": utils.qrcode_svg_create(ADDRESS), \
-            "issuer_qrcode": utils.qrcode_svg_create(issuer), \
-            "wavesexplorer": app.config["WAVESEXPLORER"]}
-
 def dashboard_data_paydb():
     premio_stage_balance = -1
     premio_stage_account = app.config['OPERATIONS_ACCOUNT']
     user = User.from_email(db.session, premio_stage_account)
     if user:
-        premio_stage_balance = paydb_core.user_balance_from_user(db.session, user)
-    total_balance = paydb_core.balance_total(db.session)
-    claimable_rewards = authorized_unclaimed_payment_proposal(RewardProposal, RewardPayment)
+        premio_stage_balance = -1
+    total_balance = -1
+    claimable_rewards = -1 #authorized_unclaimed_payment_proposal(RewardProposal, RewardPayment)
     # return data
     return {"premio_stage_balance": premio_stage_balance, "premio_stage_account": premio_stage_account, \
             "total_balance": total_balance, "claimable_rewards": claimable_rewards}
@@ -295,13 +238,6 @@ def dashboard():
 @reporting.route("/dashboard_general")
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def dashboard_general():
-    if SERVER_MODE == SERVER_MODE_WAVES:
-        data = dashboard_data_waves()
-        data["asset_balance"] = utils.int2asset(data["asset_balance"])
-        data["waves_balance"] = from_int_to_user_friendly(data["waves_balance"], 10**8)
-        data["master_asset_balance"] = utils.int2asset(data["master_asset_balance"])
-        data["master_waves_balance"] = from_int_to_user_friendly(data["master_waves_balance"], 10**8)
-        return render_template("reporting/dashboard_waves.html", data=data)
     data = dashboard_data_paydb()
     data["premio_stage_balance"] = utils.int2asset(data["premio_stage_balance"])
     data["total_balance"] = utils.int2asset(data["total_balance"])
@@ -409,7 +345,7 @@ def download_user_balance():
     for account_user in users:
         user = User.from_email(db.session, account_user.email)
         if user:
-            balance = paydb_core.user_balance_from_user(db.session, user)
+            balance = 0
             balance = utils.int2asset(balance)
             email_balance = {'user': user.email, 'balance': balance}
             users_balances.append(email_balance)

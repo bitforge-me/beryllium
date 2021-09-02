@@ -172,30 +172,6 @@
   text-align: center;
 }
 
-.operations_account_column_waves {
-  background-color: white;
-  border-width: 1px;
-  border-style: solid;
-  border-color: #add3e6;
-  border-radius: 10px;
-  height: 400px;
-  margin: 5px;
-  text-align: center;
-}
-
-.blue-row-waves {
-  background-color: #ebfbfb;
-  border-width: 1px;
-  border-style: solid;
-  border-color: #add3e6;
-  border-radius: 10px;
-  height: 90px;
-  margin: 5px;
-  text-align: center;
-  padding: 10px;
-  font-size: 150%;
-}
-
 .white-dashboard {
   background-color: white;
   border-width: 1px;

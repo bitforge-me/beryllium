@@ -6,60 +6,19 @@ import time
 from flask import Blueprint, jsonify
 
 import web_utils
-from web_utils import bad_request, auth_request, auth_request_get_single_param, auth_request_get_params
+from web_utils import bad_request, auth_request, auth_request_get_single_param
 import utils
 from app_core import app, db, limiter
-from models import User, Role, Category, RewardProposal, RewardPayment, Referral
+from models import User, Role, Referral
 
 logger = logging.getLogger(__name__)
 reward = Blueprint('reward', __name__, template_folder='templates')
 limiter.limit("100/minute")(reward)
 use_referrals = app.config["USE_REFERRALS"]
 
-def _reward_create(user, reason, category, recipient, amount, message):
-    reward_proposal = RewardProposal(user, reason)
-    reward_proposal.categories.append(category)
-    reward_proposal.authorize(user)
-    db.session.add(reward_proposal)
-    email = recipient if utils.is_email(recipient) else None
-    mobile = recipient if utils.is_mobile(recipient) else None
-    address = recipient if utils.is_address(recipient) else None
-    reward_payment = RewardPayment(reward_proposal, mobile, email, address, message, amount)
-    db.session.add(reward_payment)
-    return reward_proposal, reward_payment
-
 #
 # Private (reward) API
 #
-
-@reward.route("/reward_categories", methods=["POST"])
-def reward_categories():
-    api_key, err_response = auth_request(db)
-    if err_response:
-        return err_response
-    if not api_key.user.has_role(Role.ROLE_ADMIN) and not api_key.user.has_role(Role.ROLE_FINANCE):
-        return bad_request(web_utils.UNAUTHORIZED)
-    # pylint: disable=no-member
-    cats = db.session.query(Category).all()
-    cats = [cat.name for cat in cats]
-    return jsonify(dict(categories=cats))
-
-@reward.route("/reward_create", methods=["POST"])
-def reward_create():
-    params, api_key, err_response = auth_request_get_params(db, ["reason", "category", "recipient", "amount", "message"])
-    if err_response:
-        return err_response
-    reason, category, recipient, amount, message = params
-    if not api_key.user.has_role(Role.ROLE_ADMIN) and not api_key.user.has_role(Role.ROLE_FINANCE):
-        return bad_request(web_utils.UNAUTHORIZED)
-    cat = Category.from_name(db.session, category)
-    if not cat:
-        return bad_request(web_utils.INVALID_CATEGORY)
-    if amount <= 0:
-        return bad_request(web_utils.INVALID_AMOUNT)
-    reward_proposal, reward_payment = _reward_create(api_key.user, reason, cat, recipient, amount, message)
-    db.session.commit()
-    return jsonify(dict(proposal=dict(reason=reason, category=category, status=reward_proposal.status, payment=dict(amount=amount, email=reward_payment.email, mobile=reward_payment.mobile, address=reward_payment.recipient, message=message, status=reward_payment.status))))
 
 @reward.route('/referral_config', methods=['POST'])
 def referral_config():
@@ -158,17 +117,8 @@ def referral_claim():
     if ref.status != ref.STATUS_CREATED:
         return bad_request(web_utils.NOT_FOUND)
     # send referral rewards
-    category = Category.from_name(db.session, Category.CATEGORY_REFERRAL)
-    if not category:
-        return bad_request(web_utils.INVALID_CATEGORY)
-    if ref.reward_sender <= 0:
-        return bad_request(web_utils.INVALID_AMOUNT)
-    if ref.reward_recipient_type == ref.REWARD_TYPE_FIXED and ref.reward_recipient <= 0:
-        return bad_request(web_utils.INVALID_AMOUNT)
-    reason = f'{ref.token}: reward for referral'
-    _reward_create(api_key.user, reason, category, ref.recipient, ref.reward_sender, 'Thank you for referring a friend')
-    if ref.reward_recipient_type == ref.REWARD_TYPE_FIXED:
-        _reward_create(api_key.user, reason, category, ref.recipient, ref.reward_recipient, 'Thank you for using our service')
+    #TODO: create/send reward
+
     ref.status = ref.STATUS_CLAIMED
     db.session.add(ref)
     db.session.commit()

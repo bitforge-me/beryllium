@@ -1,7 +1,5 @@
 import os
-import json
 
-import pywaves
 from flask import Flask
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_sqlalchemy import SQLAlchemy
@@ -11,8 +9,6 @@ from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
-SERVER_MODE_WAVES = 'waves'
-SERVER_MODE_PAYDB = 'paydb'
 MISSING_VITAL_SETTING = False
 
 # Create Flask application
@@ -51,12 +47,12 @@ else:
 if os.getenv("APPLE_APP_STORE_URL"):
     app.config["APPLE_APP_STORE_URL"] = os.getenv("APPLE_APP_STORE_URL")
 else:
-    app.config["APPLE_APP_STORE_URL"] = "https://apps.apple.com/nz/app/zap/id1445794886"
+    app.config["APPLE_APP_STORE_URL"] = "https://apps.apple.com/nz/app/zap/XXX"
 
 if os.getenv("GOOGLE_PLAY_STORE_URL"):
     app.config["GOOGLE_PLAY_STORE_URL"] = os.getenv("GOOGLE_PLAY_STORE_URL")
 else:
-    app.config["GOOGLE_PLAY_STORE_URL"] = "https://play.google.com/store/apps/details?id=me.zap.zapapp"
+    app.config["GOOGLE_PLAY_STORE_URL"] = "https://play.google.com/store/apps/details?id=XXX"
 
 if os.getenv("USE_REFERRALS"):
     app.config["USE_REFERRALS"] = True
@@ -95,20 +91,10 @@ if os.getenv("REFERRAL_SPEND_ASSET"):
 else:
     app.config["REFERRAL_SPEND_ASSET"] = "NZD"
 
-if os.getenv("OPERATIONS_ACCOUNT_MIN_BALANCE_CENTS"):
-    app.config["OPERATIONS_ACCOUNT_MIN_BALANCE_CENTS"] = os.getenv("OPERATIONS_ACCOUNT_MIN_BALANCE_CENTS")
-else:
-    app.config["OPERATIONS_ACCOUNT_MIN_BALANCE_CENTS"] = 200000
-
 if os.getenv("BROKER_ORDER_FEE"):
     app.config["BROKER_ORDER_FEE"] = os.getenv("BROKER_ORDER_FEE")
 else:
     app.config["BROKER_ORDER_FEE"] = "2.5"
-
-if os.getenv("USE_STASH"):
-    app.config["USE_STASH"] = True
-else:
-    app.config["USE_STASH"] = False
 
 if os.getenv('EXCHANGE_ORDERS_MOCK'):
     app.config['EXCHANGE_ORDERS_MOCK'] = True
@@ -134,34 +120,6 @@ def set_vital_setting(env_name, setting_name=None, acceptable_values=None):
     else:
         print("no " + env_name)
         MISSING_VITAL_SETTING = True
-
-set_vital_setting("SERVER_MODE", acceptable_values=[SERVER_MODE_WAVES, SERVER_MODE_PAYDB])
-set_vital_setting("DEEP_LINK_SCHEME")
-if app.config["SERVER_MODE"] == SERVER_MODE_WAVES:
-    set_vital_setting("ASSET_NAME")
-    if app.config["TESTNET"]:
-        app.config["WAVESEXPLORER"] = 'https://testnet.wavesexplorer.com'
-    else:
-        app.config["WAVESEXPLORER"] = 'https://wavesexplorer.com'
-    set_vital_setting("NODE_BASE_URL")
-    set_vital_setting("WALLET_SEED")
-    set_vital_setting("WALLET_ADDRESS")
-    set_vital_setting("ASSET_ID")
-    set_vital_setting("ASSET_MASTER_PUBKEY")
-    set_vital_setting("TX_SIGNERS")
-    try:
-        app.config["TX_SIGNERS"] = json.loads(app.config["TX_SIGNERS"])
-    except:
-        raise Exception('TX_SIGNERS is not valid json') from None
-
-    # set pywaves to offline mode and testnet
-    pywaves.setOffline()
-    if app.config["TESTNET"]:
-        pywaves.setChain("testnet")
-
-else: # paydb
-    set_vital_setting("ASSET_NAME")
-    set_vital_setting("OPERATIONS_ACCOUNT")
 
 set_vital_setting("ADMIN_EMAIL")
 set_vital_setting("FROM_EMAIL", "SECURITY_EMAIL_SENDER")

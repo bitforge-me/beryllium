@@ -13,7 +13,7 @@ import web
 import utils
 import log_utils
 from app_core import MISSING_VITAL_SETTING, app, db
-from models import user_datastore, User, Role, Category, Permission, Topic
+from models import user_datastore, User, Role, Permission, Topic
 
 logger = logging.getLogger() # root log handler
 
@@ -50,15 +50,6 @@ def create_permission(name, desc):
         permission.description = desc
     db.session.add(permission)
     return permission
-
-def create_category(name, desc):
-    category = Category.from_name(db.session, name)
-    if not category:
-        category = Category(name=name, description=desc)
-    else:
-        category.description = desc
-    db.session.add(category)
-    return category
 
 def create_topic(name):
     topic = Topic.from_name(db.session, name)
@@ -111,10 +102,6 @@ if __name__ == "__main__":
     create_permission(Permission.PERMISSION_HISTORY, "view account history")
     create_permission(Permission.PERMISSION_TRANSFER, "transfer funds")
     create_permission(Permission.PERMISSION_ISSUE, "issue funds")
-    create_category(Category.CATEGORY_MARKETING, "")
-    create_category(Category.CATEGORY_MISC, "")
-    create_category(Category.CATEGORY_TESTING, "")
-    create_category(Category.CATEGORY_REFERRAL, "")
     create_topic("test")
     create_topic("general")
     db.session.commit()

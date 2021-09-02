@@ -16,8 +16,7 @@ import web_utils
 from web_utils import bad_request, get_json_params, check_auth, auth_request, auth_request_get_single_param, auth_request_get_params
 import utils
 from app_core import db, socketio, limiter
-from models import user_datastore, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, PayDbTransaction, BrokerOrder, KycRequest
-import paydb_core
+from models import user_datastore, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest
 import payments_core
 import dasset
 
@@ -268,13 +267,12 @@ def user_info():
         time.sleep(5)
         return bad_request(web_utils.AUTH_FAILED)
     if user == api_key.user:
-        balance = paydb_core.user_balance(db.session, api_key)
         roles = [role.name for role in api_key.user.roles]
         perms = [perm.name for perm in api_key.permissions]
         kyc_validated = api_key.user.kyc_validated()
         kyc_url = api_key.user.kyc_url()
-        return jsonify(dict(email=user.email, balance=balance, photo=user.photo, photo_type=user.photo_type, roles=roles, permissions=perms, kyc_validated=kyc_validated, kyc_url=kyc_url))
-    return jsonify(dict(email=user.email, balance=-1, photo=user.photo, photo_type=user.photo_type, roles=[], permissions=[], kyc_validated=None, kyc_url=None))
+        return jsonify(dict(email=user.email, photo=user.photo, photo_type=user.photo_type, roles=roles, permissions=perms, kyc_validated=kyc_validated, kyc_url=kyc_url))
+    return jsonify(dict(email=user.email, photo=user.photo, photo_type=user.photo_type, roles=[], permissions=[], kyc_validated=None, kyc_url=None))
 
 @paydb.route('/user_reset_password', methods=['POST'])
 @limiter.limit('10/hour')
@@ -351,7 +349,7 @@ def user_kyc_request_create():
     api_key, err_response = auth_request(db)
     if err_response:
         return err_response
-    if len(list(api_key.user.kyc_requests)):
+    if list(api_key.user.kyc_requests):
         return bad_request(web_utils.KYC_REQUEST_EXISTS)
     user = api_key.user
     req = KycRequest(user)
@@ -372,46 +370,6 @@ def user_update_photo():
     db.session.add(user)
     db.session.commit()
     return jsonify(dict(photo=user.photo, photo_type=user.photo_type))
-
-@paydb.route('/user_transactions', methods=['POST'])
-def user_transactions():
-    params, api_key, err_response = auth_request_get_params(db, ["offset", "limit"])
-    if err_response:
-        return err_response
-    offset, limit = params
-    if limit > 1000:
-        return bad_request(web_utils.LIMIT_TOO_LARGE)
-    if not api_key.has_permission(Permission.PERMISSION_HISTORY):
-        return bad_request(web_utils.UNAUTHORIZED)
-    txs = PayDbTransaction.related_to_user(db.session, api_key.user, offset, limit)
-    txs = [tx.to_json() for tx in txs]
-    return jsonify(dict(txs=txs))
-
-@paydb.route('/transaction_create', methods=['POST'])
-def transaction_create():
-    params, api_key, err_response = auth_request_get_params(db, ["action", "recipient", "amount", "attachment"])
-    if err_response:
-        return err_response
-    action, recipient, amount, attachment = params
-    if recipient:
-        recipient = recipient.lower()
-    tx, error = paydb_core.tx_create_and_play(db.session, api_key, action, recipient, amount, attachment)
-    if not tx:
-        return bad_request(error)
-    tx_event(tx)
-    return jsonify(dict(tx=tx.to_json()))
-
-@paydb.route('/transaction_info', methods=['POST'])
-def transaction_info():
-    token, api_key, err_response = auth_request_get_single_param(db, "token")
-    if err_response:
-        return err_response
-    tx = PayDbTransaction.from_token(db.session, token)
-    if not tx:
-        return bad_request(web_utils.INVALID_TX)
-    if tx.sender != api_key.user and tx.recipient != api_key.user:
-        return bad_request(web_utils.UNAUTHORIZED)
-    return jsonify(dict(tx=tx.to_json()))
 
 @paydb.route('/assets', methods=['POST'])
 def assets_req():

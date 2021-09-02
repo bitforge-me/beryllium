@@ -59,21 +59,17 @@
 {% block footer %}
     <div class="row justify-content-center">
     <div class="col-sm-6">
-        {% if config["SERVER_MODE"] == "waves" %}
         <div class="card">
             <div class="card-body">
-                <p class="card-title">Master Wallet Configuration QR Code</p>
                 <p class="card-text">
                 <center>
-                    <a href="{{ mw_config_url }}">{{ mw_config_qrcode_svg | safe }}</a><br/>
                     <small class="text-muted">
-                        {{config["ASSET_NAME"]}} - {{config["ASSET_ID"]}} - testnet: {{config["TESTNET"]}}
+                        FOOTER
                     </small>
                 </center>
                 </p>
             </div>
         </div>
-        {% endif %}
     </div>
     </div>
 {% endblock %}
