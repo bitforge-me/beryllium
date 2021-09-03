@@ -40,9 +40,13 @@ def user_info_event(user):
     data = json.dumps(user_info_dict_ws(user))
     socketio.emit("user_info_update", data, json=True, room=user.email, namespace=NS)
 
-def broker_order_event(broker_order):
+def broker_order_update_event(broker_order):
     data = json.dumps(broker_order.to_json())
     socketio.emit("broker_order_update", data, json=True, room=broker_order.user.email, namespace=NS)
+
+def broker_order_new_event(broker_order):
+    data = json.dumps(broker_order.to_json())
+    socketio.emit("broker_order_new", data, json=True, room=broker_order.user.email, namespace=NS)
 
 class EventsNamespace(Namespace):
 

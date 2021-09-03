@@ -77,4 +77,4 @@ def broker_order_update_and_commit(db_session, broker_order):
         for rec in updated_records:
             db_session.add(rec)
         db_session.commit()
-        websocket.broker_order_event(broker_order)
+        websocket.broker_order_update_event(broker_order)

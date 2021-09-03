@@ -360,6 +360,7 @@ def broker_order_create():
     broker_order = BrokerOrder(api_key.user, market, amount, quote_amount, recipient)
     db.session.add(broker_order)
     db.session.commit()
+    websocket.broker_order_new_event(broker_order)
     return jsonify(broker_order=broker_order.to_json())
 
 @paydb.route('/broker_order_status', methods=['POST'])
@@ -393,7 +394,7 @@ def broker_order_accept():
     db.session.add(req)
     db.session.add(broker_order)
     db.session.commit()
-    websocket.broker_order_event(broker_order)
+    websocket.broker_order_update_event(broker_order)
     return jsonify(broker_order=broker_order.to_json())
 
 @paydb.route('/broker_orders', methods=['POST'])
