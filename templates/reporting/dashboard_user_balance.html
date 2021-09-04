@@ -91,51 +91,5 @@
       </div>
     </div>
   </div>
-
-  {% if config["SERVER_MODE"] == "paydb" %}
-  <hr/>
-  <div class='row'>
-    <div class='column'>
-      <div class='row-divider'>
-        Top 10 user balances
-      </div>
-    </div>
-  </div>
-  <div class='row'>
-    <div class='column'>
-      <div class='title-column'>
-        Users
-      </div>
-    </div>
-    <div class='column'>
-      <div class='title-column' >
-        Balance(current)
-      </div>
-    </div>
-  </div>
-  {% for user in users_balances %}
-  <div class='row'>
-    <div class='column'>
-      <div class='title-column'>
-	      {{user.user}}    
-      </div>
-    </div>
-    <div class='column'>
-      <div class='title-column'>
-        {{ user.balance }}
-      </div>
-    </div>
-  </div>
-  {%endfor %}
-  <div class='row'>
-    <div class='column'>
-      <a href="download_user_balance">
-      <div class='title_download-user_balance'>
-	      Download user balances
-      </div>
-      </a>
-    </div>
-  </div>
-  {% endif %}
 </div>
 {% endblock %}

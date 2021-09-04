@@ -55,17 +55,17 @@ def email_exception(logger, msg):
     send_email(logger, "premio stage exception", msg)
 
 def email_user_create_request(logger, req, minutes_expiry):
-    url = url_for("paydb.user_registration_confirm", token=req.token, _external=True)
+    url = url_for("api.user_registration_confirm", token=req.token, _external=True)
     msg = f"You have a pending user registration waiting!<br/><br/>Confirm your registration <a href='{url}'>here</a><br/><br/>Confirm within {minutes_expiry} minutes"
     send_email(logger, "Confirm your registration", msg, req.email)
 
 def email_user_update_email_request(logger, req, minutes_expiry):
-    url = url_for("paydb.user_update_email_confirm", token=req.token, _external=True)
+    url = url_for("api.user_update_email_confirm", token=req.token, _external=True)
     msg = f"You have a pending update email request waiting!<br/><br/>Confirm your new email <a href='{url}'>here</a><br/><br/>Confirm within {minutes_expiry} minutes"
     send_email(logger, "Confirm your update email request", msg, req.email)
 
 def email_api_key_request(logger, req, minutes_expiry):
-    url = url_for("paydb.api_key_confirm", token=req.token, secret=req.secret, _external=True)
+    url = url_for("api.api_key_confirm", token=req.token, secret=req.secret, _external=True)
     msg = f"You have a pending email login request waiting!<br/><br/>Confirm your email login <a href='{url}'>here</a><br/><br/>Confirm within {minutes_expiry} minutes"
     send_email(logger, "Confirm your email login request", msg, req.user.email)
 

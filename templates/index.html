@@ -4,7 +4,7 @@
 {% if current_user.is_authenticated %}
     <div class='some-page-wrapper'>
         <div class='row'>
-            {% if current_user.has_role("admin") %}
+            {% if current_user.has_role("admin") or current_user.has_role("finance") %}
             <a href="/reporting/dashboard">
             <div class='white-dashboard'>
                 <img src="static/assets/img/index_img/dashboard.png" width="100" height="100">
@@ -17,39 +17,12 @@
             <p><center>Push Notification</center></p>
             </div>
             </a>
-            {% if config["SERVER_MODE"] == "paydb" %}
-            <a href="/issue">
-            <div class='white-dashboard'>
-                <img src="static/assets/img/index_img/tokens.png" width="100" height="100">
-                <p><center>Issue Token</center></p>
-            </div>
-            </a>
-            {% endif %}
             <a href="{{ url_for('admin.index') }}">
             <div class='white-dashboard'>
                 <img src="static/assets/img/index_img/admin-with-cogwheels.png" width="100" height="100">
             <p><center>Admin</center></p>
             </div>
             </a>
-            {% elif current_user.has_role("finance") %}
-            <a href="/reporting/dashboard">
-            <div class='white-dashboard'>
-                <img src="static/assets/img/index_img/dashboard.png" width="100" height="100">
-                <p><center>Dashboard</center></p>
-            </div>
-            </a>
-            <a href="{{ url_for('admin.index') }}">
-            <div class='white-dashboard'>
-                <img src="static/assets/img/index_img/admin-with-cogwheels.png" width="100" height="100">
-            <p><center>Admin</center></p>
-            </div>
-            </a>
-            {% elif current_user.has_role("proposer") %}
-            <a href="{{ url_for('admin.index') }}">
-            <div class='white-dashboard'>
-                <img src="static/assets/img/index_img/admin-with-cogwheels.png" width="100" height="100">
-            <p><center>Admin</center></p>
-            </div>
             {% endif %}
         </div>
     </div>

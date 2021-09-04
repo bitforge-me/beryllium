@@ -20,14 +20,14 @@ import dasset
 import websocket
 
 logger = logging.getLogger(__name__)
-paydb = Blueprint('paydb', __name__, template_folder='templates')
-limiter.limit('100/minute')(paydb)
+api = Blueprint('api', __name__, template_folder='templates')
+limiter.limit('100/minute')(api)
 
 #
-# Private (paydb) API
+# Private API
 #
 
-@paydb.route('/user_register', methods=['POST'])
+@api.route('/user_register', methods=['POST'])
 @limiter.limit('10/hour')
 def user_register():
     content = request.get_json(force=True)
@@ -54,7 +54,7 @@ def user_register():
     db.session.commit()
     return 'ok'
 
-@paydb.route('/user_registration_confirm/<token>', methods=['GET'])
+@api.route('/user_registration_confirm/<token>', methods=['GET'])
 @limiter.limit('20/minute')
 def user_registration_confirm(token=None):
     req = UserCreateRequest.from_token(db.session, token)
@@ -80,7 +80,7 @@ def user_registration_confirm(token=None):
     flash('User registered.', 'success')
     return redirect('/')
 
-@paydb.route('/api_key_create', methods=['POST'])
+@api.route('/api_key_create', methods=['POST'])
 @limiter.limit('10/hour')
 def api_key_create():
     content = request.get_json(force=True)
@@ -108,7 +108,7 @@ def api_key_create():
     db.session.commit()
     return jsonify(dict(token=api_key.token, secret=api_key.secret, device_name=api_key.device_name, expiry=api_key.expiry))
 
-@paydb.route('/api_key_request', methods=['POST'])
+@api.route('/api_key_request', methods=['POST'])
 @limiter.limit('10/hour')
 def api_key_request():
     content = request.get_json(force=True)
@@ -131,7 +131,7 @@ def api_key_request():
     db.session.commit()
     return jsonify(dict(token=req.token))
 
-@paydb.route('/api_key_claim', methods=['POST'])
+@api.route('/api_key_claim', methods=['POST'])
 @limiter.limit('20/minute')
 def api_key_claim():
     content = request.get_json(force=True)
@@ -154,7 +154,7 @@ def api_key_claim():
     db.session.commit()
     return jsonify(dict(token=api_key.token, secret=api_key.secret, device_name=api_key.device_name, expiry=api_key.expiry))
 
-@paydb.route('/api_key_confirm/<token>/<secret>', methods=['GET', 'POST'])
+@api.route('/api_key_confirm/<token>/<secret>', methods=['GET', 'POST'])
 @limiter.limit('20/minute')
 def api_key_confirm(token=None, secret=None):
     req = ApiKeyRequest.from_token(db.session, token)
@@ -188,9 +188,9 @@ def api_key_confirm(token=None, secret=None):
         db.session.commit()
         flash('Email login confirmed.', 'success')
         return redirect('/')
-    return render_template('paydb/api_key_confirm.html', req=req, perms=Permission.PERMS_ALL)
+    return render_template('api/api_key_confirm.html', req=req, perms=Permission.PERMS_ALL)
 
-@paydb.route('/user_info', methods=['POST'])
+@api.route('/user_info', methods=['POST'])
 def user_info():
     email, api_key, err_response = auth_request_get_single_param(db, "email")
     if err_response:
@@ -205,7 +205,7 @@ def user_info():
         return bad_request(web_utils.AUTH_FAILED)
     return jsonify(websocket.user_info_dict(api_key, user is api_key.user))
 
-@paydb.route('/user_reset_password', methods=['POST'])
+@api.route('/user_reset_password', methods=['POST'])
 @limiter.limit('10/hour')
 def user_reset_password():
     api_key, err_response = auth_request(db)
@@ -215,7 +215,7 @@ def user_reset_password():
     send_reset_password_instructions(user)
     return 'ok'
 
-@paydb.route('/user_update_email', methods=['POST'])
+@api.route('/user_update_email', methods=['POST'])
 @limiter.limit('10/hour')
 def user_update_email():
     email, api_key, err_response = auth_request_get_single_param(db, "email")
@@ -235,7 +235,7 @@ def user_update_email():
     websocket.user_info_event(user)
     return 'ok'
 
-@paydb.route('/user_update_email_confirm/<token>', methods=['GET'])
+@api.route('/user_update_email_confirm/<token>', methods=['GET'])
 @limiter.limit('10/hour')
 def user_update_email_confirm(token=None):
     req = UserUpdateEmailRequest.from_token(db.session, token)
@@ -259,7 +259,7 @@ def user_update_email_confirm(token=None):
     flash('User email updated.', 'success')
     return redirect('/')
 
-@paydb.route('/user_update_password', methods=['POST'])
+@api.route('/user_update_password', methods=['POST'])
 @limiter.limit('10/hour')
 def user_update_password():
     params, api_key, err_response = auth_request_get_params(db, ["current_password", "new_password"])
@@ -276,7 +276,7 @@ def user_update_password():
     db.session.commit()
     return 'password changed.'
 
-@paydb.route('/user_kyc_request_create', methods=['POST'])
+@api.route('/user_kyc_request_create', methods=['POST'])
 @limiter.limit('10/hour')
 def user_kyc_request_create():
     api_key, err_response = auth_request(db)
@@ -291,7 +291,7 @@ def user_kyc_request_create():
     websocket.user_info_event(user)
     return jsonify(dict(kyc_url=req.url()))
 
-@paydb.route('/user_update_photo', methods=['POST'])
+@api.route('/user_update_photo', methods=['POST'])
 @limiter.limit('10/hour')
 def user_update_photo():
     params, api_key, err_response = auth_request_get_params(db, ["photo", "photo_type"])
@@ -306,21 +306,21 @@ def user_update_photo():
     websocket.user_info_event(user)
     return jsonify(dict(photo=user.photo, photo_type=user.photo_type))
 
-@paydb.route('/assets', methods=['POST'])
+@api.route('/assets', methods=['POST'])
 def assets_req():
     _, err_response = auth_request(db)
     if err_response:
         return err_response
     return jsonify(assets=dasset.assets_req())
 
-@paydb.route('/markets', methods=['POST'])
+@api.route('/markets', methods=['POST'])
 def markets_req():
     _, err_response = auth_request(db)
     if err_response:
         return err_response
     return jsonify(markets=dasset.markets_req())
 
-@paydb.route('/order_book', methods=['POST'])
+@api.route('/order_book', methods=['POST'])
 def order_book_req():
     symbol, _, err_response = auth_request_get_single_param(db, 'symbol')
     if err_response:
@@ -333,7 +333,7 @@ def order_book_req():
     order_book, min_order, broker_fee = dasset.order_book_req(symbol)
     return jsonify(order_book=order_book, min_order=str(min_order), base_asset_withdraw_fee=str(base_asset_withdraw_fee), quote_asset_withdraw_fee=str(quote_asset_withdraw_fee), broker_fee=str(broker_fee))
 
-@paydb.route('/broker_order_create', methods=['POST'])
+@api.route('/broker_order_create', methods=['POST'])
 def broker_order_create():
     params, api_key, err_response = auth_request_get_params(db, ["market", "side", "amount_dec", "recipient"])
     if err_response:
@@ -363,7 +363,7 @@ def broker_order_create():
     websocket.broker_order_new_event(broker_order)
     return jsonify(broker_order=broker_order.to_json())
 
-@paydb.route('/broker_order_status', methods=['POST'])
+@api.route('/broker_order_status', methods=['POST'])
 def broker_order_status():
     token, api_key, err_response = auth_request_get_single_param(db, 'token')
     if err_response:
@@ -373,7 +373,7 @@ def broker_order_status():
         return bad_request(web_utils.NOT_FOUND)
     return jsonify(broker_order=broker_order.to_json())
 
-@paydb.route('/broker_order_accept', methods=['POST'])
+@api.route('/broker_order_accept', methods=['POST'])
 def broker_order_accept():
     token, api_key, err_response = auth_request_get_single_param(db, 'token')
     if err_response:
@@ -397,7 +397,7 @@ def broker_order_accept():
     websocket.broker_order_update_event(broker_order)
     return jsonify(broker_order=broker_order.to_json())
 
-@paydb.route('/broker_orders', methods=['POST'])
+@api.route('/broker_orders', methods=['POST'])
 def broker_orders():
     params, api_key, err_response = auth_request_get_params(db, ["offset", "limit"])
     if err_response:
