@@ -18,19 +18,22 @@ NS = '/events'
 
 def user_info_dict(api_key, all_info):
     user = api_key.user
+    roles = []
+    perms = []
+    kyc_validated = None
+    kyc_url = None
     if all_info:
         roles = [role.name for role in user.roles]
         perms = [perm.name for perm in api_key.permissions]
         kyc_validated = user.kyc_validated()
         kyc_url = user.kyc_url()
-        return dict(email=user.email, photo=user.photo, photo_type=user.photo_type, roles=roles, permissions=perms, kyc_validated=kyc_validated, kyc_url=kyc_url)
-    return dict(email=user.email, photo=user.photo, photo_type=user.photo_type, roles=[], permissions=[], kyc_validated=None, kyc_url=None)
+    return dict(first_name=user.first_name, last_name=user.last_name, mobile_number=user.mobile_number, address=user.address, email=user.email, photo=user.photo, photo_type=user.photo_type, roles=roles, permissions=perms, kyc_validated=kyc_validated, kyc_url=kyc_url)
 
 def user_info_dict_ws(user):
     roles = [role.name for role in user.roles]
     kyc_validated = user.kyc_validated()
     kyc_url = user.kyc_url()
-    return dict(email=user.email, photo=user.photo, photo_type=user.photo_type, roles=roles, kyc_validated=kyc_validated, kyc_url=kyc_url)
+    return dict(first_name=user.first_name, last_name=user.last_name, mobile_number=user.mobile_number, address=user.address, email=user.email, photo=user.photo, photo_type=user.photo_type, roles=roles, kyc_validated=kyc_validated, kyc_url=kyc_url)
 
 #
 # Websocket events
