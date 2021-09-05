@@ -632,6 +632,7 @@ class BrokerOrderSchema(Schema):
     date = fields.DateTime()
     expiry = fields.DateTime()
     market = fields.String()
+    side = fields.String()
     base_asset = fields.Method('get_base_asset')
     base_amount = fields.Integer()
     base_amount_dec = fields.Method('get_base_amount_dec')
@@ -685,6 +686,7 @@ class BrokerOrder(db.Model):
     date = db.Column(db.DateTime(), nullable=False)
     expiry = db.Column(db.DateTime(), nullable=False)
     market = db.Column(db.String, nullable=False)
+    side = db.Column(db.String, nullable=False)
     base_amount = db.Column(db.Integer, nullable=False)
     quote_amount = db.Column(db.Integer, nullable=False)
     recipient = db.Column(db.String, nullable=False)
@@ -696,12 +698,13 @@ class BrokerOrder(db.Model):
     exchange_withdrawal = db.relationship('ExchangeWithdrawal', backref=db.backref('broker_order', uselist=False))
     status = db.Column(db.String, nullable=False)
 
-    def __init__(self, user, market, base_amount, quote_amount, recipient):
+    def __init__(self, user, market, side, base_amount, quote_amount, recipient):
         self.token = generate_key()
         self.user = user
         self.date = datetime.datetime.now()
         self.expiry = datetime.datetime.now() + datetime.timedelta(minutes=self.MINUTES_EXPIRY)
         self.market = market
+        self.side = side
         self.base_amount = base_amount
         self.quote_amount = quote_amount
         self.recipient = recipient
