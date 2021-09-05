@@ -117,14 +117,14 @@ def parse_market(item):
     message = ''
     if 'notice' in item:
         message = item['notice']
-    return Munch(symbol=item['symbol'], base_symbol=item['baseCurrencySymbol'], quote_symbol=item['quoteCurrencySymbol'], precision=item['precision'], status=item['status'], min_trade=item['minTradeSize'], message=message)
+    return Munch(symbol=item['symbol'], base_asset=item['baseCurrencySymbol'], quote_asset=item['quoteCurrencySymbol'], precision=item['precision'], status=item['status'], min_trade=item['minTradeSize'], message=message)
 
 def parse_order_book(item):
     return Munch(bids=item['bid'], asks=item['ask'])
 
 def parse_order(item):
     side = MarketSide.BID if item['type'] == 'BUY' else MarketSide.ASK
-    return Munch(id=item['id'], base_symbol=['baseSymbol'], quote_symbol=['quoteSymbol'], date=item['date'], side=side, status=item['status'], \
+    return Munch(id=item['id'], base_asset=['baseSymbol'], quote_asset=['quoteSymbol'], date=item['date'], side=side, status=item['status'], \
         base_amount=item['base_amount'], quote_amount=item['quote_amount'], filled=item['details']['filled'])
 
 def parse_withdrawal(item):
