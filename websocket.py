@@ -39,17 +39,23 @@ def user_info_dict_ws(user):
 # Websocket events
 #
 
-def user_info_event(user):
+def user_info_event(user, old_email=None):
+    email = user.email
+    if old_email:
+        email = old_email
     data = json.dumps(user_info_dict_ws(user))
-    socketio.emit("user_info_update", data, json=True, room=user.email, namespace=NS)
+    socketio.emit('user_info_update', data, json=True, room=email, namespace=NS)
+    logger.info('user_info_update: %s (%s)', user.email, old_email)
 
 def broker_order_update_event(broker_order):
     data = json.dumps(broker_order.to_json())
-    socketio.emit("broker_order_update", data, json=True, room=broker_order.user.email, namespace=NS)
+    socketio.emit('broker_order_update', data, json=True, room=broker_order.user.email, namespace=NS)
+    logger.info('broker_order_update: %s', broker_order.token)
 
 def broker_order_new_event(broker_order):
     data = json.dumps(broker_order.to_json())
-    socketio.emit("broker_order_new", data, json=True, room=broker_order.user.email, namespace=NS)
+    socketio.emit('broker_order_new', data, json=True, room=broker_order.user.email, namespace=NS)
+    logger.info('broker_order_new: %s', broker_order.token)
 
 class EventsNamespace(Namespace):
 

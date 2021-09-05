@@ -232,7 +232,6 @@ def user_update_email():
     utils.email_user_update_email_request(logger, req, req.MINUTES_EXPIRY)
     db.session.add(req)
     db.session.commit()
-    websocket.user_info_event(user)
     return 'ok'
 
 @api.route('/user_update_email_confirm/<token>', methods=['GET'])
@@ -251,11 +250,12 @@ def user_update_email_confirm(token=None):
         time.sleep(5)
         return bad_request(web_utils.USER_EXISTS)
     user = req.user
+    old_email = user.email
     user.email = req.email
     db.session.add(user)
     db.session.delete(req)
     db.session.commit()
-    websocket.user_info_event(user)
+    websocket.user_info_event(user, old_email)
     flash('User email updated.', 'success')
     return redirect('/')
 
