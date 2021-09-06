@@ -13,9 +13,10 @@ from flask_security.recoverable import send_reset_password_instructions
 import web_utils
 from web_utils import bad_request, get_json_params, auth_request, auth_request_get_single_param, auth_request_get_params
 import utils
-from app_core import db, limiter
 from models import user_datastore, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest
+from app_core import db, limiter
 import payments_core
+import kyc_core
 import dasset
 import websocket
 
@@ -289,7 +290,21 @@ def user_kyc_request_create():
     db.session.add(req)
     db.session.commit()
     websocket.user_info_event(user)
-    return jsonify(dict(kyc_url=req.url()))
+    return jsonify(dict(kyc_url=req.url(), aplyid_req_exists=req.aplyid is not None))
+
+@api.route('/user_kyc_request_send_mobile_number', methods=['POST'])
+@limiter.limit('10/hour')
+def user_kyc_request_send_mobile_number():
+    mobile_number, api_key, err_response = auth_request_get_single_param(db, "mobile_number")
+    if err_response:
+        return err_response
+    if not list(api_key.user.kyc_requests):
+        return bad_request(web_utils.KYC_REQUEST_NOT_EXISTS)
+    req = api_key.user.kyc_requests[0]
+    if not kyc_core.aplyid_request_init(req, mobile_number):
+        return bad_request(web_utils.KYC_SEND_MOBILE_FAILED)
+    db.session.commit()
+    return jsonify(dict(kyc_url=req.url(), aplyid_req_exists=req.aplyid is not None))
 
 @api.route('/user_update_photo', methods=['POST'])
 @limiter.limit('10/hour')

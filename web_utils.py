@@ -32,8 +32,10 @@ INVALID_RECIPIENT = 'invalid recipient'
 EXPIRED = 'expired'
 INVALID_STATUS = 'invalid status'
 FAILED_PAYMENT_CREATE = 'failed payment create'
-KYC_REQUEST_EXISTS = 'kyc request exists'
-KYC_NOT_VALIDATED = 'kyc not validated'
+KYC_REQUEST_EXISTS = 'user verification request exists'
+KYC_REQUEST_NOT_EXISTS = 'user verification request does not exist'
+KYC_SEND_MOBILE_FAILED = 'user verification SMS failed'
+KYC_NOT_VALIDATED = 'user not verified'
 INVALID_PARAMETER = 'invalid parameter'
 
 def bad_request(message, code=400):
