@@ -106,6 +106,10 @@ def bid_quote_amount(market, amount):
 
     return decimal.Decimal(-1), QuoteResult.INSUFFICIENT_LIQUIDITY
 
+def parse_balance(item):
+    symbol = item['currencySymbol']
+    return Munch(symbol=symbol, name=item['currencyName'], total=item['total'], available=item['available'], decimals=asset_decimals(symbol))
+
 def parse_asset(item):
     symbol = item['symbol']
     message = ''
@@ -153,6 +157,18 @@ def req_post(endpoint, params):
     logger.info('   POST - %s', url)
     r = requests.post(url, headers=headers, data=json.dumps(params))
     return r
+
+def balances_req(asset=None):
+    endpoint = '/balances'
+    if asset:
+        endpoint = f'/balances/{asset}'
+    r = req_get(endpoint)
+    if r.status_code == 200:
+        balances = r.json()
+        balances = [parse_balance(b) for b in balances if b['currencySymbol'] in ASSETS]
+        return balances
+    logger.error('request failed: %d, %s', r.status_code, r.content)
+    return None
 
 def assets_req(asset=None):
     endpoint = '/currencies'

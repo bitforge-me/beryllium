@@ -10,9 +10,10 @@ from sqlalchemy import func, and_
 from flask import Blueprint, render_template, redirect, Response
 from flask_security import roles_accepted
 
-from app_core import db, app
+from app_core import db
 from models import Role, User
 import utils
+import dasset
 
 logger = logging.getLogger(__name__)
 reporting = Blueprint('reporting', __name__, template_folder='templates/reporting')
@@ -32,7 +33,7 @@ FIRST_DAY_CURRENT_YEAR = FIRST_DAY_CURRENT_MONTH + relativedelta(month=1)
 FIRST_DAY_NEXT_YEAR = FIRST_DAY_CURRENT_YEAR + relativedelta(years=+1)
 LAST_DAY_CURRENT_YEAR = FIRST_DAY_NEXT_YEAR - timedelta(days=1)
 
-def report_dashboard_premio(premio_balance, premio_stage_account, total_balance, claimable):
+def report_dashboard_premio(premio_balance, premio_stage_account, total_balance, claimable, dasset_balances):
     ### Premio (PayDbTransaction)
     premio_tx_count_lifetime = -1 #PayDbTransaction.query.count()
     premio_tx_count_today = -1 #transaction_count(PayDbTransaction, TODAY, TOMORROW)
@@ -43,7 +44,8 @@ def report_dashboard_premio(premio_balance, premio_stage_account, total_balance,
     return render_template('reporting/dashboard_paydb_premio.html', premio_balance=premio_balance, premio_stage_account=premio_stage_account, total_balance=total_balance, claimable=claimable, \
         premio_tx_count_lifetime=premio_tx_count_lifetime, \
         premio_tx_count_today=premio_tx_count_today, premio_tx_count_yesterday=premio_tx_count_yesterday, \
-        premio_tx_count_week=premio_tx_count_week, premio_tx_count_month=premio_tx_count_month, premio_tx_count_year=premio_tx_count_year)
+        premio_tx_count_week=premio_tx_count_week, premio_tx_count_month=premio_tx_count_month, premio_tx_count_year=premio_tx_count_year, \
+        dasset_balances=dasset_balances)
 
 def report_dashboard_proposals():
     ### RewardProposal queries
@@ -219,8 +221,9 @@ def from_int_to_user_friendly(val, divisor, decimal_places=4):
     return round(val, decimal_places)
 
 def dashboard_data_paydb():
+    dasset_balances = dasset.balances_req()
     premio_stage_balance = -1
-    premio_stage_account = app.config['OPERATIONS_ACCOUNT']
+    premio_stage_account = 'blah'
     user = User.from_email(db.session, premio_stage_account)
     if user:
         premio_stage_balance = -1
@@ -228,7 +231,7 @@ def dashboard_data_paydb():
     claimable_rewards = -1 #authorized_unclaimed_payment_proposal(RewardProposal, RewardPayment)
     # return data
     return {"premio_stage_balance": premio_stage_balance, "premio_stage_account": premio_stage_account, \
-            "total_balance": total_balance, "claimable_rewards": claimable_rewards}
+            "total_balance": total_balance, "claimable_rewards": claimable_rewards, "dasset_balances": dasset_balances}
 
 @reporting.route("/dashboard")
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
@@ -242,7 +245,7 @@ def dashboard_general():
     data["premio_stage_balance"] = utils.int2asset(data["premio_stage_balance"])
     data["total_balance"] = utils.int2asset(data["total_balance"])
     data["claimable_rewards"] = utils.int2asset(data["claimable_rewards"])
-    return report_dashboard_premio(data["premio_stage_balance"], data["premio_stage_account"], data["total_balance"], data["claimable_rewards"])
+    return report_dashboard_premio(data["premio_stage_balance"], data["premio_stage_account"], data["total_balance"], data["claimable_rewards"], data["dasset_balances"])
 
 @reporting.route("/dashboard_report_proposals")
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
@@ -256,7 +259,7 @@ def dashboard_report_premio():
     data["premio_stage_balance"] = utils.int2asset(data["premio_stage_balance"])
     data["total_balance"] = utils.int2asset(data["total_balance"])
     data["claimable_rewards"] = utils.int2asset(data["claimable_rewards"])
-    return report_dashboard_premio(data["premio_stage_balance"], data["premio_stage_account"], data["total_balance"], data["claimable_rewards"])
+    return report_dashboard_premio(data["premio_stage_balance"], data["premio_stage_account"], data["total_balance"], data["claimable_rewards"], data["dasset_balances"])
 
     ### List username with their balances
 @reporting.route("/dashboard_user_balance")
