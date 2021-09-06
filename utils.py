@@ -52,7 +52,7 @@ def send_email(logger, subject, msg, recipient=None, attachment=None):
         logger.error(f"email '{subject}': {ex}")
 
 def email_exception(logger, msg):
-    send_email(logger, "premio stage exception", msg)
+    send_email(logger, "beryllium exception", msg)
 
 def email_user_create_request(logger, req, minutes_expiry):
     url = url_for("api.user_registration_confirm", token=req.token, _external=True)
@@ -74,7 +74,7 @@ def email_referral(logger, referral):
     qrcode_b64 = qrcode_pngb64_create(referral.token, box_size=4)
     ecom_link = app.config["REFERRAL_ECOMMERCE_URL"]
     if ecom_link:
-        ecom_link += f"?premio_referral={referral.token}"
+        ecom_link += f"?beryllium_referral={referral.token}"
     sender_name = referral.user.first_name
     if not sender_name:
         sender_name = referral.user.email

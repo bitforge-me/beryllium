@@ -126,16 +126,16 @@ def construct_parser():
     parser_broker_orders.add_argument('offset', metavar='OFFSET', type=int, help='the limit')
     parser_broker_orders.add_argument('limit', metavar='LIMIT', type=int, help='the offset')
 
-    parser_referral_config = subparsers.add_parser('referral_config', help='Get the premio referral config')
+    parser_referral_config = subparsers.add_parser('referral_config', help='Get the beryllium referral config')
     parser_referral_config.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
     parser_referral_config.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
 
-    parser_referral_create = subparsers.add_parser('referral_create', help='Create a premio referral')
+    parser_referral_create = subparsers.add_parser('referral_create', help='Create a beryllium referral')
     parser_referral_create.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
     parser_referral_create.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
     parser_referral_create.add_argument('recipient', metavar='RECIPIENT', type=str, help='the referral recipient (email)')
 
-    parser_referral_remind = subparsers.add_parser('referral_remind', help='Remind the recipient of a premio referral')
+    parser_referral_remind = subparsers.add_parser('referral_remind', help='Remind the recipient of a beryllium referral')
     parser_referral_remind.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
     parser_referral_remind.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
     parser_referral_remind.add_argument('token', metavar='TOKEN', type=str, help='the referral unique token')
@@ -144,12 +144,12 @@ def construct_parser():
     parser_referral_list.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
     parser_referral_list.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
 
-    parser_referral_validate = subparsers.add_parser('referral_validate', help='Validate a premio referral')
+    parser_referral_validate = subparsers.add_parser('referral_validate', help='Validate a beryllium referral')
     parser_referral_validate.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
     parser_referral_validate.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
     parser_referral_validate.add_argument('token', metavar='TOKEN', type=str, help='the referral unique token')
 
-    parser_referral_claim = subparsers.add_parser('referral_claim', help='Claim a premio referral')
+    parser_referral_claim = subparsers.add_parser('referral_claim', help='Claim a beryllium referral')
     parser_referral_claim.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
     parser_referral_claim.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
     parser_referral_claim.add_argument('token', metavar='TOKEN', type=str, help='the referral unique token')

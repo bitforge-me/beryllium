@@ -30,14 +30,14 @@ if os.getenv("DATABASE_URL"):
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
 else:
     if app.config["TESTNET"]:
-        DATABASE_FILE = 'premio_stage_testnet.db'
+        DATABASE_FILE = 'beryllium_testnet.db'
     else:
-        DATABASE_FILE = 'premio_stage.db'
+        DATABASE_FILE = 'beryllium.db'
     app.config["SQLALCHEMY_DATABASE_URI"] = 'sqlite:///' + DATABASE_FILE
 if os.getenv("LOGO_URL_SRC"):
     app.config["LOGO_URL_SRC"] = os.getenv("LOGO_URL_SRC")
 else:
-    app.config["LOGO_URL_SRC"] = "http://" + os.getenv("SERVER_NAME") + "/static/assets/img/logo.svg"
+    app.config["LOGO_URL_SRC"] = "http://" + os.getenv("SERVER_NAME") + "/static/assets/img/logo.png"
 
 if os.getenv("LOGO_EMAIL_SRC"):
     app.config["LOGO_EMAIL_SRC"] = os.getenv("LOGO_EMAIL_SRC")
