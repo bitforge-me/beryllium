@@ -322,15 +322,15 @@ def markets_req():
 
 @api.route('/order_book', methods=['POST'])
 def order_book_req():
-    symbol, _, err_response = auth_request_get_single_param(db, 'symbol')
+    market, _, err_response = auth_request_get_single_param(db, 'market')
     if err_response:
         return err_response
-    if symbol not in dasset.MARKETS:
+    if market not in dasset.MARKETS:
         return bad_request(web_utils.INVALID_MARKET)
-    base_asset, quote_asset = dasset.assets_from_market(symbol)
+    base_asset, quote_asset = dasset.assets_from_market(market)
     base_asset_withdraw_fee = dasset.asset_withdraw_fee(base_asset)
     quote_asset_withdraw_fee = dasset.asset_withdraw_fee(quote_asset)
-    order_book, min_order, broker_fee = dasset.order_book_req(symbol)
+    order_book, min_order, broker_fee = dasset.order_book_req(market)
     return jsonify(order_book=order_book, min_order=str(min_order), base_asset_withdraw_fee=str(base_asset_withdraw_fee), quote_asset_withdraw_fee=str(quote_asset_withdraw_fee), broker_fee=str(broker_fee))
 
 @api.route('/broker_order_create', methods=['POST'])
@@ -403,6 +403,10 @@ def broker_orders():
     if err_response:
         return err_response
     offset, limit = params
+    if not isinstance(offset, int):
+        return bad_request(web_utils.INVALID_PARAMETER)
+    if not isinstance(limit, int):
+        return bad_request(web_utils.INVALID_PARAMETER)
     if limit > 1000:
         return bad_request(web_utils.LIMIT_TOO_LARGE)
     orders = BrokerOrder.from_user(db.session, api_key.user, offset, limit)

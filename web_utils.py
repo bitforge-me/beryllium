@@ -34,6 +34,7 @@ INVALID_STATUS = 'invalid status'
 FAILED_PAYMENT_CREATE = 'failed payment create'
 KYC_REQUEST_EXISTS = 'kyc request exists'
 KYC_NOT_VALIDATED = 'kyc not validated'
+INVALID_PARAMETER = 'invalid parameter'
 
 def bad_request(message, code=400):
     logger.warning(message)
