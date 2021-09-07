@@ -633,31 +633,21 @@ class BrokerOrderSchema(Schema):
     expiry = fields.DateTime()
     market = fields.String()
     side = fields.String()
-    base_asset = fields.Method('get_base_asset')
+    base_asset = fields.String()
     base_amount = fields.Integer()
     base_amount_dec = fields.Method('get_base_amount_dec')
-    quote_asset = fields.Method('get_quote_asset')
+    quote_asset = fields.String()
     quote_amount = fields.Integer()
     quote_amount_dec = fields.Method('get_quote_amount_dec')
     recipient = fields.String()
     status = fields.String()
     payment_url = fields.Method('get_payment_url')
 
-    def get_base_asset(self, obj):
-        base_asset, _ = dasset.assets_from_market(obj.market)
-        return base_asset
-
-    def get_quote_asset(self, obj):
-        _, quote_asset = dasset.assets_from_market(obj.market)
-        return quote_asset
-
     def get_base_amount_dec(self, obj):
-        base_asset, _ = dasset.assets_from_market(obj.market)
-        return str(dasset.asset_int_to_dec(base_asset, obj.base_amount))
+        return str(dasset.asset_int_to_dec(obj.base_asset, obj.base_amount))
 
     def get_quote_amount_dec(self, obj):
-        _, quote_asset = dasset.assets_from_market(obj.market)
-        return str(dasset.asset_int_to_dec(quote_asset, obj.quote_amount))
+        return str(dasset.asset_int_to_dec(obj.quote_asset, obj.quote_amount))
 
     def get_payment_url(self, obj):
         payment_url = None
@@ -687,8 +677,10 @@ class BrokerOrder(db.Model):
     expiry = db.Column(db.DateTime(), nullable=False)
     market = db.Column(db.String, nullable=False)
     side = db.Column(db.String, nullable=False)
-    base_amount = db.Column(db.Integer, nullable=False)
-    quote_amount = db.Column(db.Integer, nullable=False)
+    base_asset = db.Column(db.String, nullable=False)
+    quote_asset = db.Column(db.String, nullable=False)
+    base_amount = db.Column(db.BigInteger, nullable=False)
+    quote_amount = db.Column(db.BigInteger, nullable=False)
     recipient = db.Column(db.String, nullable=False)
     windcave_payment_request_id = db.Column(db.Integer, db.ForeignKey('windcave_payment_request.id'))
     windcave_payment_request = db.relationship('WindcavePaymentRequest', backref=db.backref('broker_order', uselist=False))
@@ -698,13 +690,15 @@ class BrokerOrder(db.Model):
     exchange_withdrawal = db.relationship('ExchangeWithdrawal', backref=db.backref('broker_order', uselist=False))
     status = db.Column(db.String, nullable=False)
 
-    def __init__(self, user, market, side, base_amount, quote_amount, recipient):
+    def __init__(self, user, market, side, base_asset, quote_asset, base_amount, quote_amount, recipient):
         self.token = generate_key()
         self.user = user
         self.date = datetime.datetime.now()
         self.expiry = datetime.datetime.now() + datetime.timedelta(minutes=self.MINUTES_EXPIRY)
         self.market = market
         self.side = side
+        self.base_asset = base_asset
+        self.quote_asset = quote_asset
         self.base_amount = base_amount
         self.quote_amount = quote_amount
         self.recipient = recipient

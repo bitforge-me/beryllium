@@ -372,7 +372,7 @@ def broker_order_create():
     base_asset, quote_asset = dasset.assets_from_market(market)
     amount = dasset.asset_dec_to_int(base_asset, amount_dec)
     quote_amount = dasset.asset_dec_to_int(quote_asset, quote_amount_dec)
-    broker_order = BrokerOrder(api_key.user, market, side.value, amount, quote_amount, recipient)
+    broker_order = BrokerOrder(api_key.user, market, side.value, base_asset, quote_asset, amount, quote_amount, recipient)
     db.session.add(broker_order)
     db.session.commit()
     websocket.broker_order_new_event(broker_order)
