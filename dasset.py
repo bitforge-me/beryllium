@@ -6,6 +6,7 @@ from enum import Enum
 import requests
 import bitcoin
 import bitcoin.wallet
+import base58
 import web3
 from munch import Munch
 
@@ -21,9 +22,13 @@ BROKER_ORDER_FEE = decimal.Decimal(app.config['BROKER_ORDER_FEE'])
 NZD = Munch(symbol='NZD', decimals=2, withdraw_fee=decimal.Decimal(7))
 BTC = Munch(symbol='BTC', decimals=8, withdraw_fee=decimal.Decimal('0.0003'))
 ETH = Munch(symbol='ETH', decimals=18, withdraw_fee=decimal.Decimal('0.0099'))
-ASSETS = Munch(NZD=NZD, BTC=BTC, ETH=ETH)
+DOGE = Munch(symbol='DOGE', decimals=8, withdraw_fee=decimal.Decimal(5))
+LTC = Munch(symbol='LTC', decimals=8, withdraw_fee=decimal.Decimal('0.1'))
+ASSETS = Munch(NZD=NZD, BTC=BTC, ETH=ETH, DOGE=DOGE, LTC=LTC)
 MARKETS = {'BTC-NZD': Munch(base_asset=BTC, quote_asset=NZD, min_order=decimal.Decimal('0.01')), \
-    'ETH-NZD': Munch(base_asset=ETH, quote_asset=NZD, min_order=decimal.Decimal('0.1'))}
+    'ETH-NZD': Munch(base_asset=ETH, quote_asset=NZD, min_order=decimal.Decimal('0.1')), \
+    'DOGE-NZD': Munch(base_asset=DOGE, quote_asset=NZD, min_order=decimal.Decimal(50)), \
+    'LTC-NZD': Munch(base_asset=LTC, quote_asset=NZD, min_order=decimal.Decimal(1))}
 
 URL_BASE = 'https://api.dassetx.com/api'
 
@@ -63,6 +68,14 @@ def asset_dec_to_int(asset, value):
     decimals = asset_decimals(asset)
     return int(value * decimal.Decimal(10**decimals))
 
+def base58_validate(address, mainnet_prefixes, testnet_prefixes):
+    try:
+        raw = base58.b58decode_check(address)
+        prefix = raw[0]
+        return not TESTNET and prefix in mainnet_prefixes or TESTNET and prefix in testnet_prefixes
+    except ValueError:
+        return False
+
 def address_validate(market, side, address):
     assert side is MarketSide.BID
     base_asset, _ = assets_from_market(market)
@@ -75,6 +88,10 @@ def address_validate(market, side, address):
             pass
     elif base_asset == 'ETH':
         return web3.Web3.isAddress(address)
+    elif base_asset == 'DOGE':
+        return base58_validate(address, [0x1E], [0x71])
+    elif base_asset == 'LTC':
+        return base58_validate(address, [0x30], [0x6F])
     return False
 
 def bid_quote_amount(market, amount):
