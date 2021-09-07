@@ -254,12 +254,11 @@ def transaction_count(table, start_date, end_date):
         result = 0
     return result
 
-def bitcoin_format(data):
-    format_data = data / 100000000
-    return format_data
-
-def ethereum_format(data):
-    format_data = data / 1000000000000000000
+def asset_amount_format(data, market):
+    if market == 'BTC-NZD':
+        format_data = data / 100000000
+    elif market == 'ETH-NZD':
+        format_data = data / 1000000000000000000
     return format_data
 
 def broker_order_amount(table, start_date, end_date, market):
@@ -270,9 +269,9 @@ def broker_order_amount(table, start_date, end_date, market):
         result = 0
     else:
         if market == 'BTC-NZD':
-            result = '{0:.4f}'.format(bitcoin_format(result))
+            result = '{0:.4f}'.format(asset_amount_format(result, market))
         elif market == 'ETH-NZD':
-            result = '{0:.4f}'.format(ethereum_format(result))
+            result = '{0:.4f}'.format(asset_amount_format(result, market))
     return result
 
 def broker_order_amount_lifetime(table, market):
@@ -282,9 +281,9 @@ def broker_order_amount_lifetime(table, market):
         result = 0
     else:
         if market == 'BTC-NZD':
-            result = '{0:.4f}'.format(bitcoin_format(result))
+            result = '{0:.4f}'.format(asset_amount_format(result, market))
         elif market == 'ETH-NZD':
-            result = '{0:.4f}'.format(ethereum_format(result))
+            result = '{0:.4f}'.format(asset_amount_format(result, market))
     return result
 
 def broker_order_count(table, start_date, end_date, market):
