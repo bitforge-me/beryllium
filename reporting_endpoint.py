@@ -11,7 +11,7 @@ from flask import Blueprint, render_template, redirect, Response
 from flask_security import roles_accepted
 
 from app_core import db
-from models import Role, User
+from models import Role, User, BrokerOrder
 import utils
 import dasset
 
@@ -33,9 +33,46 @@ FIRST_DAY_CURRENT_YEAR = FIRST_DAY_CURRENT_MONTH + relativedelta(month=1)
 FIRST_DAY_NEXT_YEAR = FIRST_DAY_CURRENT_YEAR + relativedelta(years=+1)
 LAST_DAY_CURRENT_YEAR = FIRST_DAY_NEXT_YEAR - timedelta(days=1)
 
-def report_dashboard_order():
-    value = '1'
-    return ''
+def report_dashboard_broker_order():
+    BTC_ORDER_COUNT_TODAY = broker_order_count(BrokerOrder, TODAY, TOMORROW, 'BTC-NZD')
+    BTC_ORDER_COUNT_YESTERDAY = broker_order_count(BrokerOrder, YESTERDAY, TODAY, 'BTC-NZD')
+    BTC_ORDER_COUNT_WEEK = broker_order_count(BrokerOrder, MONDAY, NEXT_MONDAY, 'BTC-NZD')
+    BTC_ORDER_COUNT_MONTH = broker_order_count(BrokerOrder, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH, 'BTC-NZD')
+    BTC_ORDER_COUNT_YEAR = broker_order_count(BrokerOrder, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR, 'BTC-NZD')
+    BTC_ORDER_COUNT_LIFETIME = BrokerOrder.query.filter(BrokerOrder.market == 'BTC-NZD')\
+            .count()
+    BTC_ORDER_TODAY = broker_order_amount(BrokerOrder, TODAY, TOMORROW, 'BTC-NZD')
+    BTC_ORDER_YESTERDAY = broker_order_amount(BrokerOrder, YESTERDAY, TODAY, 'BTC-NZD')
+    BTC_ORDER_WEEK = broker_order_amount(BrokerOrder, MONDAY, NEXT_MONDAY, 'BTC-NZD')
+    BTC_ORDER_MONTH = broker_order_amount(BrokerOrder, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH, 'BTC-NZD')
+    BTC_ORDER_YEAR = broker_order_amount(BrokerOrder, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR, 'BTC-NZD')
+    BTC_ORDER_LIFETIME = broker_order_amount_lifetime(BrokerOrder, 'BTC-NZD')
+    
+    ETH_ORDER_COUNT_TODAY = broker_order_count(BrokerOrder, TODAY, TOMORROW, 'ETH-NZD')
+    ETH_ORDER_COUNT_YESTERDAY = broker_order_count(BrokerOrder, YESTERDAY, TODAY, 'ETH-NZD')
+    ETH_ORDER_COUNT_WEEK = broker_order_count(BrokerOrder, MONDAY, NEXT_MONDAY, 'ETH-NZD')
+    ETH_ORDER_COUNT_MONTH = broker_order_count(BrokerOrder, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH, 'ETH-NZD')
+    ETH_ORDER_COUNT_YEAR = broker_order_count(BrokerOrder, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR, 'ETH-NZD')
+    ETH_ORDER_COUNT_LIFETIME = BrokerOrder.query.filter(BrokerOrder.market == 'ETH-NZD').count()
+    ETH_ORDER_TODAY = broker_order_amount(BrokerOrder, TODAY, TOMORROW, 'ETH-NZD')
+    ETH_ORDER_YESTERDAY = broker_order_amount(BrokerOrder, YESTERDAY, TODAY, 'ETH-NZD')
+    ETH_ORDER_WEEK = broker_order_amount(BrokerOrder, MONDAY, NEXT_MONDAY, 'ETH-NZD')
+    ETH_ORDER_MONTH = broker_order_amount(BrokerOrder, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH, 'ETH-NZD')
+    ETH_ORDER_YEAR = broker_order_amount(BrokerOrder, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR, 'ETH-NZD')
+    ETH_ORDER_LIFETIME = broker_order_amount_lifetime(BrokerOrder, 'ETH-NZD')
+    return render_template('reporting/dashboard_broker_orders.html',\
+            BTC_ORDER_COUNT_TODAY=BTC_ORDER_COUNT_TODAY, BTC_ORDER_TODAY=BTC_ORDER_TODAY,\
+            BTC_ORDER_COUNT_YESTERDAY=BTC_ORDER_COUNT_YESTERDAY, BTC_ORDER_YESTERDAY=BTC_ORDER_YESTERDAY,\
+            BTC_ORDER_COUNT_WEEK=BTC_ORDER_COUNT_WEEK, BTC_ORDER_WEEK=BTC_ORDER_WEEK,\
+            BTC_ORDER_COUNT_MONTH=BTC_ORDER_COUNT_MONTH, BTC_ORDER_MONTH=BTC_ORDER_MONTH,\
+            BTC_ORDER_COUNT_YEAR=BTC_ORDER_COUNT_YEAR, BTC_ORDER_YEAR=BTC_ORDER_YEAR,\
+            BTC_ORDER_COUNT_LIFETIME=BTC_ORDER_COUNT_LIFETIME, BTC_ORDER_LIFETIME=BTC_ORDER_LIFETIME, 
+            ETH_ORDER_COUNT_TODAY=ETH_ORDER_COUNT_TODAY, ETH_ORDER_TODAY=ETH_ORDER_TODAY,\
+            ETH_ORDER_COUNT_YESTERDAY=ETH_ORDER_COUNT_YESTERDAY, ETH_ORDER_YESTERDAY=ETH_ORDER_YESTERDAY,\
+            ETH_ORDER_COUNT_WEEK=ETH_ORDER_COUNT_WEEK, ETH_ORDER_WEEK=ETH_ORDER_WEEK,\
+            ETH_ORDER_COUNT_MONTH=ETH_ORDER_COUNT_MONTH, ETH_ORDER_MONTH=ETH_ORDER_MONTH,\
+            ETH_ORDER_COUNT_YEAR=ETH_ORDER_COUNT_YEAR, ETH_ORDER_YEAR=ETH_ORDER_YEAR,\
+            ETH_ORDER_COUNT_LIFETIME=ETH_ORDER_COUNT_LIFETIME, ETH_ORDER_LIFETIME=ETH_ORDER_LIFETIME)
 
 def report_dashboard_premio(premio_balance, premio_stage_account, total_balance, claimable, dasset_balances):
     ### Premio (PayDbTransaction)
@@ -218,6 +255,47 @@ def transaction_count(table, start_date, end_date):
         result = 0
     return result
 
+def bitcoin_format(data):
+    format_data = data / 100000000
+    return format_data
+
+def ethereum_format(data):
+    format_data = data / 1000000000000000000
+    return format_data
+
+def broker_order_amount(table, start_date, end_date, market):
+    result = table.query.filter(table.market == market)\
+            .filter(and_(table.date >= str(start_date), table.date < str(end_date)))\
+            .with_entities(func.sum(table.base_amount)).scalar()
+    if not result:
+        result = 0
+    else:
+        if market == 'BTC-NZD':
+            result = '{0:.4f}'.format(bitcoin_format(result))
+        elif market == 'ETH-NZD':
+            result = '{0:.4f}'.format(ethereum_format(result))
+    return result
+
+def broker_order_amount_lifetime(table, market):
+    result = table.query.filter(table.market == market)\
+            .with_entities(func.sum(table.base_amount)).scalar()
+    if not result:
+        result = 0
+    else:
+        if market == 'BTC-NZD':
+            result = '{0:.4f}'.format(bitcoin_format(result))
+        elif market == 'ETH-NZD':
+            result = '{0:.4f}'.format(ethereum_format(result))
+    return result
+
+def broker_order_count(table, start_date, end_date, market):
+    result = table.query.filter(table.market == market)\
+            .filter(and_(table.date >= str(start_date), table.date < str(end_date)))\
+            .count()
+    if not result:
+        result = 0
+    return result
+
 def from_int_to_user_friendly(val, divisor, decimal_places=4):
     if not isinstance(val, int):
         return val
@@ -250,6 +328,11 @@ def dashboard_general():
     data["total_balance"] = utils.int2asset(data["total_balance"])
     data["claimable_rewards"] = utils.int2asset(data["claimable_rewards"])
     return report_dashboard_premio(data["premio_stage_balance"], data["premio_stage_account"], data["total_balance"], data["claimable_rewards"], data["dasset_balances"])
+
+@reporting.route("/dashboard_report_broker_order")
+@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
+def dashboard_report_broker_order():
+    return report_dashboard_broker_order()
 
 @reporting.route("/dashboard_report_proposals")
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)

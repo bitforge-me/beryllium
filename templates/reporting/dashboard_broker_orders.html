@@ -6,8 +6,9 @@
 {% block content %}
 <a class="btn btn-secondary" href="/"><i class="glyphicon glyphicon-chevron-left"></i> Back</a>&nbsp
 <a class="btn btn-secondary" href="dashboard_general"><i class="glyphicon glyphicon-chevron-left"></i>General</a>&nbsp
-<a class="btn btn-primary" href="dashboard_report_orders"><i class="glyphicon glyphicon-chevron-left"></i>Orderss</a>&nbsp
+<a class="btn btn-secondary" href="dashboard_report_proposals"><i class="glyphicon glyphicon-chevron-left"></i>Rewards</a>&nbsp
 <a class="btn btn-secondary" href="dashboard_user_balance"><i class="glyphicon glyphicon-chevron-left"></i>Users</a>
+<a class="btn btn-primary" href="dashboard_report_broker_order"><i class="glyphicon glyphicon-chevron-left"></i>Broker Orders</a>&nbsp
 
 {%- if config["FLASK_ADMIN_SWATCH"] == "slate"%}
 <div class='some-page-wrapper-dark'>
@@ -17,7 +18,7 @@
   <div class='row'>
     <div class='column'>
       <div class='row-divider'>
-        Orders
+        Broker Orders
       </div>
     </div>
   </div>
@@ -63,51 +64,103 @@
   <div class='row'>
     <div class='column'>
       <div class='row-2line-title white'>
-      Order Count
+      BTC-NZD
       </div>
       <div class='hide'>
-        The  number of rewards created
+        The number of orders and the total amount of asset ordered in BTC
       </div>
     </div>
     <div class='column'>
       <a href="dashboard_proposal_tx_today">
       <div class='report-row report-row-hover white'>
-	      <!--{{ proposal_count_today }}-->
+        {{ BTC_ORDER_COUNT_TODAY }}({{ BTC_ORDER_TODAY }} BTC)
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_proposal_tx_yesterday">
       <div class='report-row report-row-hover white'>
-	      <!--{{ proposal_count_yesterday }}-->
+        {{ BTC_ORDER_COUNT_YESTERDAY }}({{ BTC_ORDER_YESTERDAY }} BTC)
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_proposal_tx_week">
       <div class='report-row report-row-hover white'>
-	      <!--{{ proposal_count_weekly }}-->
+        {{ BTC_ORDER_COUNT_WEEK }}({{ BTC_ORDER_WEEK }} BTC)
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_proposal_tx_month">
       <div class='report-row report-row-hover white'>
-	      <!--{{ proposal_count_monthly }}-->
+	      {{ BTC_ORDER_COUNT_MONTH }}({{ BTC_ORDER_MONTH }} BTC)
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_proposal_tx_year">
       <div class='report-row report-row-hover white'>
-	      <!--{{ proposal_count_yearly }}-->
+	      {{ BTC_ORDER_COUNT_YEAR }}({{ BTC_ORDER_YEAR }} BTC)
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_proposal_tx_lifetime">
       <div class='report-row report-row-hover white'>
-              <!--{{ proposal_count_lifetime }}-->
+	      {{ BTC_ORDER_COUNT_LIFETIME }}({{ BTC_ORDER_LIFETIME }} BTC)
+      </div>
+      </a>
+    </div>
+  </div>
+  <div class='row'>
+    <div class='column'>
+      <div class='row-2line-title white'>
+      ETH-NZD
+      </div>
+      <div class='hide'>
+        The number of orders and the total amount of asset ordered in ETH
+      </div>
+    </div>
+    <div class='column'>
+      <a href="dashboard_proposal_tx_today">
+      <div class='report-row report-row-hover white'>
+        {{ ETH_ORDER_COUNT_TODAY }}({{ ETH_ORDER_TODAY }} ETH)
+      </div>
+      </a>
+    </div>
+    <div class='column'>
+      <a href="dashboard_proposal_tx_yesterday">
+      <div class='report-row report-row-hover white'>
+        {{ ETH_ORDER_COUNT_YESTERDAY }}({{ ETH_ORDER_YESTERDAY }} ETH)
+      </div>
+      </a>
+    </div>
+    <div class='column'>
+      <a href="dashboard_proposal_tx_week">
+      <div class='report-row report-row-hover white'>
+        {{ ETH_ORDER_COUNT_WEEK }}({{ ETH_ORDER_WEEK }} ETH)
+      </div>
+      </a>
+    </div>
+    <div class='column'>
+      <a href="dashboard_proposal_tx_month">
+      <div class='report-row report-row-hover white'>
+	      {{ ETH_ORDER_COUNT_MONTH }}({{ ETH_ORDER_MONTH }} ETH)
+      </div>
+      </a>
+    </div>
+    <div class='column'>
+      <a href="dashboard_proposal_tx_year">
+      <div class='report-row report-row-hover white'>
+	      {{ ETH_ORDER_COUNT_YEAR }}({{ ETH_ORDER_YEAR }} ETH)
+      </div>
+      </a>
+    </div>
+    <div class='column'>
+      <a href="dashboard_proposal_tx_lifetime">
+      <div class='report-row report-row-hover white'>
+	      {{ ETH_ORDER_COUNT_LIFETIME }}({{ ETH_ORDER_LIFETIME }} ETH)
       </div>
       </a>
     </div>
