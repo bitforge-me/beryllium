@@ -718,6 +718,11 @@ class BrokerOrder(db.Model):
         return session.query(cls).filter(cls.user_id == user.id).order_by(cls.id.desc()).offset(offset).limit(limit)
 
     @classmethod
+    def total_for_user(cls, session, user):
+        # pylint: disable=no-member
+        return session.query(cls).filter(cls.user_id == user.id).count()
+
+    @classmethod
     def all_active(cls, session):
         return session.query(cls).filter(and_(cls.status != cls.STATUS_COMPLETED, and_(cls.status != cls.STATUS_EXPIRED, cls.status != cls.STATUS_CANCELLED))).all()
 

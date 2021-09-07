@@ -426,4 +426,5 @@ def broker_orders():
         return bad_request(web_utils.LIMIT_TOO_LARGE)
     orders = BrokerOrder.from_user(db.session, api_key.user, offset, limit)
     orders = [order.to_json() for order in orders]
-    return jsonify(dict(broker_orders=orders))
+    total = BrokerOrder.total_for_user(db.session, api_key.user)
+    return jsonify(dict(broker_orders=orders, offset=offset, limit=limit, total=total))
