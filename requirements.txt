@@ -1,7 +1,7 @@
 gevent==20.9.0
 gevent-websocket==0.10.1
 Flask-Admin==1.5.7
-Flask-Security-Too==4.0.0
+Flask-Security-Too==4.1.0
 Flask-SQLAlchemy==2.4.1
 Flask-Mail-SendGrid==0.3
 Flask-SocketIO==5.0.1
