@@ -13,7 +13,7 @@ from flask_security.recoverable import send_reset_password_instructions
 import web_utils
 from web_utils import bad_request, get_json_params, auth_request, auth_request_get_single_param, auth_request_get_params
 import utils
-from models import user_datastore, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest
+from models import user_datastore, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook
 from app_core import db, limiter
 import payments_core
 import kyc_core
@@ -348,12 +348,23 @@ def order_book_req():
     order_book, min_order, broker_fee = dasset.order_book_req(market)
     return jsonify(order_book=order_book, min_order=str(min_order), base_asset_withdraw_fee=str(base_asset_withdraw_fee), quote_asset_withdraw_fee=str(quote_asset_withdraw_fee), broker_fee=str(broker_fee))
 
-@api.route('/broker_order_create', methods=['POST'])
-def broker_order_create():
-    params, api_key, err_response = auth_request_get_params(db, ["market", "side", "amount_dec", "recipient"])
+@api.route('/address_book', methods=['POST'])
+def address_book_req():
+    asset, api_key, err_response = auth_request_get_single_param(db, 'asset')
     if err_response:
         return err_response
-    market, side, amount_dec, recipient = params
+    if asset not in dasset.ASSETS:
+        return bad_request(web_utils.INVALID_ASSET)
+    entries = AddressBook.of_asset(db.session, api_key.user, asset)
+    entries = [entry.to_json() for entry in entries]
+    return jsonify(entries=entries, asset=asset)
+
+@api.route('/broker_order_create', methods=['POST'])
+def broker_order_create():
+    params, api_key, err_response = auth_request_get_params(db, ["market", "side", "amount_dec", "recipient", "save_recipient", "recipient_description"])
+    if err_response:
+        return err_response
+    market, side, amount_dec, recipient, save_recipient, recipient_description = params
     if not api_key.user.kyc_validated():
         return bad_request(web_utils.KYC_NOT_VALIDATED)
     if market not in dasset.MARKETS:
@@ -376,6 +387,13 @@ def broker_order_create():
     quote_amount = dasset.asset_dec_to_int(quote_asset, quote_amount_dec)
     broker_order = BrokerOrder(api_key.user, market, side.value, base_asset, quote_asset, amount, quote_amount, recipient)
     db.session.add(broker_order)
+    if save_recipient:
+        entry = AddressBook.from_recipient(db.session, api_key.user, base_asset, recipient)
+        if entry:
+            entry.description = recipient_description
+        else:
+            entry = AddressBook(api_key.user, base_asset, recipient, recipient_description)
+        db.session.add(entry)
     db.session.commit()
     websocket.broker_order_new_event(broker_order)
     return jsonify(broker_order=broker_order.to_json())

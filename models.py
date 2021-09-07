@@ -1,6 +1,7 @@
 # pylint: disable=too-many-instance-attributes
 # pylint: disable=too-many-arguments
 # pylint: disable=too-few-public-methods
+# pylint: disable=too-many-lines
 
 import datetime
 import logging
@@ -964,4 +965,49 @@ class KycRequest(db.Model):
 
     def to_json(self):
         schema = KycRequestSchema()
-        return schema.dump(self).data
+        return schema.dump(self)
+
+class AddressBookSchema(Schema):
+    date = fields.DateTime()
+    token = fields.String()
+    asset = fields.String()
+    recipient = fields.String()
+    description = fields.String()
+
+class AddressBook(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.DateTime(), nullable=False, unique=False)
+    token = db.Column(db.String, nullable=False, unique=True)
+    asset = db.Column(db.String, nullable=False)
+    recipient = db.Column(db.String, nullable=False)
+    description = db.Column(db.String)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref=db.backref('address_book_entries', lazy='dynamic'))
+
+    def __init__(self, user, asset, recipient, description):
+        self.user = user
+        self.date = datetime.datetime.now()
+        self.token = generate_key()
+        self.asset = asset
+        self.recipient = recipient
+        self.description = description
+
+    @classmethod
+    def count(cls, session):
+        return session.query(cls).count()
+
+    @classmethod
+    def from_token(cls, session, token):
+        return session.query(cls).filter(cls.token == token).first()
+
+    @classmethod
+    def from_recipient(cls, session, user, asset, recipient):
+        return session.query(cls).filter(and_(cls.user_id == user.id, and_(cls.asset == asset, cls.recipient == recipient))).first()
+
+    @classmethod
+    def of_asset(cls, session, user, asset):
+        return session.query(cls).filter(and_(cls.user_id == user.id, cls.asset == asset)).all()
+
+    def to_json(self):
+        schema = AddressBookSchema()
+        return schema.dump(self)
