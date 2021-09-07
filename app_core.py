@@ -106,6 +106,20 @@ if os.getenv('EXCHANGE_WITHDRAWALS_MOCK'):
 else:
     app.config['EXCHANGE_WITHDRAWALS_MOCK'] = False
 
+if os.getenv("FLASK_ADMIN_SWATCH"):
+    app.config["FLASK_ADMIN_SWATCH"] = os.getenv("FLASK_ADMIN_SWATCH")
+#else:
+#    app.config["FLASK_ADMIN_SWATCH"] = "slate"
+#    app.config["DASHBOARD_BUTTON_THEME"] = "dark-dashboard"
+#    app.config["DASHBOARD_PAGE_WRAPPER"] = "some-page-wrapper-dark"
+
+if os.getenv("FLASK_ADMIN_SWATCH") == "slate":
+    app.config["DASHBOARD_BUTTON_THEME"] = "dark-dashboard"
+    app.config["DASHBOARD_PAGE_WRAPPER"] = "some-page-wrapper-dark"
+else:
+    app.config["DASHBOARD_BUTTON_THEME"] = "white-dashboard"
+    app.config["DASHBOARD_PAGE_WRAPPER"] = "some-page-wrapper"
+
 def set_vital_setting(env_name, setting_name=None, acceptable_values=None):
     # pylint: disable=global-statement
     global MISSING_VITAL_SETTING

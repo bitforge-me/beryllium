@@ -33,6 +33,10 @@ FIRST_DAY_CURRENT_YEAR = FIRST_DAY_CURRENT_MONTH + relativedelta(month=1)
 FIRST_DAY_NEXT_YEAR = FIRST_DAY_CURRENT_YEAR + relativedelta(years=+1)
 LAST_DAY_CURRENT_YEAR = FIRST_DAY_NEXT_YEAR - timedelta(days=1)
 
+def report_dashboard_order():
+    value = '1'
+    return ''
+
 def report_dashboard_premio(premio_balance, premio_stage_account, total_balance, claimable, dasset_balances):
     ### Premio (PayDbTransaction)
     premio_tx_count_lifetime = -1 #PayDbTransaction.query.count()

@@ -9,7 +9,11 @@
 <a class="btn btn-secondary" href="dashboard_report_proposals"><i class="glyphicon glyphicon-chevron-left"></i>Rewards</a>&nbsp
 <a class="btn btn-secondary" href="dashboard_user_balance"><i class="glyphicon glyphicon-chevron-left"></i>Users</a>
 
+{%- if config["FLASK_ADMIN_SWATCH"] == "slate"%}
+<div class='some-page-wrapper-dark'>
+{%- else -%}
 <div class='some-page-wrapper'>
+{%- endif %}
   <div class='row'>
     {% for balance in dasset_balances %}
     <div class='column'>
@@ -28,7 +32,7 @@
 
   <hr/>
 
-<div class='some-page-wrapper'>
+  <!--<div class='some-page-wrapper'>-->
   <div class='row'>
     <div class='column'>
       <div class='operations_account_column'>
@@ -158,7 +162,7 @@
       </a>
     </div>
   </div>
-</div>
+  <!--</div>-->
 
 {% if config["USE_REFERRALS"] %}
     {% include 'referral_settings.html' %}
