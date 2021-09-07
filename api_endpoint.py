@@ -370,6 +370,8 @@ def broker_order_create():
     if not dasset.address_validate(market, side, recipient):
         return bad_request(web_utils.INVALID_RECIPIENT)
     base_asset, quote_asset = dasset.assets_from_market(market)
+    if not dasset.funds_available(quote_asset, quote_amount_dec):
+        return bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
     amount = dasset.asset_dec_to_int(base_asset, amount_dec)
     quote_amount = dasset.asset_dec_to_int(quote_asset, quote_amount_dec)
     broker_order = BrokerOrder(api_key.user, market, side.value, base_asset, quote_asset, amount, quote_amount, recipient)
