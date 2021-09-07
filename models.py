@@ -1,9 +1,6 @@
 # pylint: disable=too-many-instance-attributes
 # pylint: disable=too-many-arguments
-# pylint: disable=no-self-argument
 # pylint: disable=too-few-public-methods
-# pylint: disable=too-many-locals
-# pylint: disable=too-many-lines
 
 import datetime
 import logging
@@ -545,20 +542,20 @@ class PushNotificationLocation(db.Model):
         since = datetime.datetime.now() - datetime.timedelta(minutes=max_age_minutes)
         return session.query(cls).filter(and_(cls.date >= since, and_(and_(cls.latitude <= latitude + max_lat_delta, cls.latitude >= latitude - max_lat_delta), and_(cls.longitude <= longitude + max_long_delta, cls.longitude >= longitude - max_long_delta)))).all()
 
+def _format_location(view, context, model, name):
+    lat = model.latitude
+    lon = model.longitude
+
+    # pylint: disable=duplicate-string-formatting-argument
+    html = '''
+    <a href="http://www.google.com/maps/place/{},{}">{}, {}</a>
+    '''.format(lat, lon, lat, lon)
+    return Markup(html)
+
 class PushNotificationLocationModelView(RestrictedModelView):
     can_create = False
     can_delete = False
     can_edit = False
-
-    def _format_location(view, context, model, name):
-        lat = model.latitude
-        lon = model.longitude
-
-        # pylint: disable=duplicate-string-formatting-argument
-        html = '''
-        <a href="http://www.google.com/maps/place/{},{}">{}, {}</a>
-        '''.format(lat, lon, lat, lon)
-        return Markup(html)
 
     column_list = ['date', 'location', 'fcm_registration_token']
     column_formatters = {'location': _format_location}
