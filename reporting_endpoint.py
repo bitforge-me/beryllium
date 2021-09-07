@@ -34,45 +34,44 @@ FIRST_DAY_NEXT_YEAR = FIRST_DAY_CURRENT_YEAR + relativedelta(years=+1)
 LAST_DAY_CURRENT_YEAR = FIRST_DAY_NEXT_YEAR - timedelta(days=1)
 
 def report_dashboard_broker_order():
-    BTC_ORDER_COUNT_TODAY = broker_order_count(BrokerOrder, TODAY, TOMORROW, 'BTC-NZD')
-    BTC_ORDER_COUNT_YESTERDAY = broker_order_count(BrokerOrder, YESTERDAY, TODAY, 'BTC-NZD')
-    BTC_ORDER_COUNT_WEEK = broker_order_count(BrokerOrder, MONDAY, NEXT_MONDAY, 'BTC-NZD')
-    BTC_ORDER_COUNT_MONTH = broker_order_count(BrokerOrder, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH, 'BTC-NZD')
-    BTC_ORDER_COUNT_YEAR = broker_order_count(BrokerOrder, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR, 'BTC-NZD')
-    BTC_ORDER_COUNT_LIFETIME = BrokerOrder.query.filter(BrokerOrder.market == 'BTC-NZD')\
+    btc_order_count_today = broker_order_count(BrokerOrder, TODAY, TOMORROW, 'BTC-NZD')
+    btc_order_count_yesterday = broker_order_count(BrokerOrder, YESTERDAY, TODAY, 'BTC-NZD')
+    btc_order_count_week = broker_order_count(BrokerOrder, MONDAY, NEXT_MONDAY, 'BTC-NZD')
+    btc_order_count_month = broker_order_count(BrokerOrder, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH, 'BTC-NZD')
+    btc_order_count_year = broker_order_count(BrokerOrder, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR, 'BTC-NZD')
+    btc_order_count_lifetime = BrokerOrder.query.filter(BrokerOrder.market == 'BTC-NZD')\
             .count()
-    BTC_ORDER_TODAY = broker_order_amount(BrokerOrder, TODAY, TOMORROW, 'BTC-NZD')
-    BTC_ORDER_YESTERDAY = broker_order_amount(BrokerOrder, YESTERDAY, TODAY, 'BTC-NZD')
-    BTC_ORDER_WEEK = broker_order_amount(BrokerOrder, MONDAY, NEXT_MONDAY, 'BTC-NZD')
-    BTC_ORDER_MONTH = broker_order_amount(BrokerOrder, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH, 'BTC-NZD')
-    BTC_ORDER_YEAR = broker_order_amount(BrokerOrder, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR, 'BTC-NZD')
-    BTC_ORDER_LIFETIME = broker_order_amount_lifetime(BrokerOrder, 'BTC-NZD')
-    
-    ETH_ORDER_COUNT_TODAY = broker_order_count(BrokerOrder, TODAY, TOMORROW, 'ETH-NZD')
-    ETH_ORDER_COUNT_YESTERDAY = broker_order_count(BrokerOrder, YESTERDAY, TODAY, 'ETH-NZD')
-    ETH_ORDER_COUNT_WEEK = broker_order_count(BrokerOrder, MONDAY, NEXT_MONDAY, 'ETH-NZD')
-    ETH_ORDER_COUNT_MONTH = broker_order_count(BrokerOrder, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH, 'ETH-NZD')
-    ETH_ORDER_COUNT_YEAR = broker_order_count(BrokerOrder, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR, 'ETH-NZD')
-    ETH_ORDER_COUNT_LIFETIME = BrokerOrder.query.filter(BrokerOrder.market == 'ETH-NZD').count()
-    ETH_ORDER_TODAY = broker_order_amount(BrokerOrder, TODAY, TOMORROW, 'ETH-NZD')
-    ETH_ORDER_YESTERDAY = broker_order_amount(BrokerOrder, YESTERDAY, TODAY, 'ETH-NZD')
-    ETH_ORDER_WEEK = broker_order_amount(BrokerOrder, MONDAY, NEXT_MONDAY, 'ETH-NZD')
-    ETH_ORDER_MONTH = broker_order_amount(BrokerOrder, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH, 'ETH-NZD')
-    ETH_ORDER_YEAR = broker_order_amount(BrokerOrder, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR, 'ETH-NZD')
-    ETH_ORDER_LIFETIME = broker_order_amount_lifetime(BrokerOrder, 'ETH-NZD')
+    btc_order_today = broker_order_amount(BrokerOrder, TODAY, TOMORROW, 'BTC-NZD')
+    btc_order_yesterday = broker_order_amount(BrokerOrder, YESTERDAY, TODAY, 'BTC-NZD')
+    btc_order_week = broker_order_amount(BrokerOrder, MONDAY, NEXT_MONDAY, 'BTC-NZD')
+    btc_order_month = broker_order_amount(BrokerOrder, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH, 'BTC-NZD')
+    btc_order_year = broker_order_amount(BrokerOrder, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR, 'BTC-NZD')
+    btc_order_lifetime = broker_order_amount_lifetime(BrokerOrder, 'BTC-NZD')
+    eth_order_count_today = broker_order_count(BrokerOrder, TODAY, TOMORROW, 'ETH-NZD')
+    eth_order_count_yesterday = broker_order_count(BrokerOrder, YESTERDAY, TODAY, 'ETH-NZD')
+    eth_order_count_week = broker_order_count(BrokerOrder, MONDAY, NEXT_MONDAY, 'ETH-NZD')
+    eth_order_count_month = broker_order_count(BrokerOrder, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH, 'ETH-NZD')
+    eth_order_count_year = broker_order_count(BrokerOrder, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR, 'ETH-NZD')
+    eth_order_count_lifetime = BrokerOrder.query.filter(BrokerOrder.market == 'ETH-NZD').count()
+    eth_order_today = broker_order_amount(BrokerOrder, TODAY, TOMORROW, 'ETH-NZD')
+    eth_order_yesterday = broker_order_amount(BrokerOrder, YESTERDAY, TODAY, 'ETH-NZD')
+    eth_order_week = broker_order_amount(BrokerOrder, MONDAY, NEXT_MONDAY, 'ETH-NZD')
+    eth_order_month = broker_order_amount(BrokerOrder, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH, 'ETH-NZD')
+    eth_order_year = broker_order_amount(BrokerOrder, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR, 'ETH-NZD')
+    eth_order_lifetime = broker_order_amount_lifetime(BrokerOrder, 'ETH-NZD')
     return render_template('reporting/dashboard_broker_orders.html',\
-            BTC_ORDER_COUNT_TODAY=BTC_ORDER_COUNT_TODAY, BTC_ORDER_TODAY=BTC_ORDER_TODAY,\
-            BTC_ORDER_COUNT_YESTERDAY=BTC_ORDER_COUNT_YESTERDAY, BTC_ORDER_YESTERDAY=BTC_ORDER_YESTERDAY,\
-            BTC_ORDER_COUNT_WEEK=BTC_ORDER_COUNT_WEEK, BTC_ORDER_WEEK=BTC_ORDER_WEEK,\
-            BTC_ORDER_COUNT_MONTH=BTC_ORDER_COUNT_MONTH, BTC_ORDER_MONTH=BTC_ORDER_MONTH,\
-            BTC_ORDER_COUNT_YEAR=BTC_ORDER_COUNT_YEAR, BTC_ORDER_YEAR=BTC_ORDER_YEAR,\
-            BTC_ORDER_COUNT_LIFETIME=BTC_ORDER_COUNT_LIFETIME, BTC_ORDER_LIFETIME=BTC_ORDER_LIFETIME, 
-            ETH_ORDER_COUNT_TODAY=ETH_ORDER_COUNT_TODAY, ETH_ORDER_TODAY=ETH_ORDER_TODAY,\
-            ETH_ORDER_COUNT_YESTERDAY=ETH_ORDER_COUNT_YESTERDAY, ETH_ORDER_YESTERDAY=ETH_ORDER_YESTERDAY,\
-            ETH_ORDER_COUNT_WEEK=ETH_ORDER_COUNT_WEEK, ETH_ORDER_WEEK=ETH_ORDER_WEEK,\
-            ETH_ORDER_COUNT_MONTH=ETH_ORDER_COUNT_MONTH, ETH_ORDER_MONTH=ETH_ORDER_MONTH,\
-            ETH_ORDER_COUNT_YEAR=ETH_ORDER_COUNT_YEAR, ETH_ORDER_YEAR=ETH_ORDER_YEAR,\
-            ETH_ORDER_COUNT_LIFETIME=ETH_ORDER_COUNT_LIFETIME, ETH_ORDER_LIFETIME=ETH_ORDER_LIFETIME)
+            btc_order_count_today=btc_order_count_today, btc_order_today=btc_order_today,\
+            btc_order_count_yesterday=btc_order_count_yesterday, btc_order_yesterday=btc_order_yesterday,\
+            btc_order_count_week=btc_order_count_week, btc_order_week=btc_order_week,\
+            btc_order_count_month=btc_order_count_month, btc_order_month=btc_order_month,\
+            btc_order_count_year=btc_order_count_year, btc_order_year=btc_order_year,\
+            btc_order_count_lifetime=btc_order_count_lifetime, btc_order_lifetime=btc_order_lifetime,\
+            eth_order_count_today=eth_order_count_today, eth_order_today=eth_order_today,\
+            eth_order_count_yesterday=eth_order_count_yesterday, eth_order_yesterday=eth_order_yesterday,\
+            eth_order_count_week=eth_order_count_week, eth_order_week=eth_order_week,\
+            eth_order_count_month=eth_order_count_month, eth_order_month=eth_order_month,\
+            eth_order_count_year=eth_order_count_year, eth_order_year=eth_order_year,\
+            eth_order_count_lifetime=eth_order_count_lifetime, eth_order_lifetime=eth_order_lifetime)
 
 def report_dashboard_premio(premio_balance, premio_stage_account, total_balance, claimable, dasset_balances):
     ### Premio (PayDbTransaction)
