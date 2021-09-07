@@ -132,7 +132,7 @@
 			<tr>
 				<td width="200" valign="top">
 					<div class="logo">
-						<img class="image_fix" src="<LOGOSRC/>?v=2" alt="beryllium logo" title="beryllium logo" width="106" height="40" />
+						<img class="image_fix" src="{{ config['LOGO_EMAIL_SRC'] }}" alt="beryllium logo" title="beryllium logo" width="30" />
 					</div>
 				</td>
 				<td width="200" valign="top"></td>
@@ -148,7 +148,8 @@
 			<tr>
 				<td>
 					<div class="content">
-						<EMAILCONTENT/>
+						{% block content %}
+						{% endblock %}
 					</div>
 					<div>&nbsp;</div>
 				</td>

@@ -1,4 +1,3 @@
-import os
 import re
 import io
 import decimal
@@ -8,7 +7,7 @@ import string
 
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, From, Attachment, FileContent, FileName, FileType, Disposition, ContentId
-from flask import url_for
+from flask import url_for, render_template
 import qrcode
 import qrcode.image.svg
 import qrcode.image.pil
@@ -37,11 +36,7 @@ def send_email(logger, subject, msg, recipient=None, attachment=None):
     if not recipient:
         recipient = app.config["ADMIN_EMAIL"]
     from_email = From(app.config["FROM_EMAIL"], app.config["FROM_NAME"])
-    template_path = "templates/email_template.html"
-    with open(os.path.join(os.path.dirname(__file__), template_path), 'r', encoding='utf-8') as input_file:
-        html = input_file.read()
-    logo_src = app.config["LOGO_EMAIL_SRC"]
-    html = html.replace("<LOGOSRC/>", logo_src).replace("<EMAILCONTENT/>", msg)
+    html = render_template('email_layout.html', content=msg)
     message = Mail(from_email=from_email, to_emails=recipient, subject=subject, html_content=html)
     if attachment:
         message.attachment = attachment
