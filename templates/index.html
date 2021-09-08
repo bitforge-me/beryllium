@@ -5,7 +5,8 @@
     <div class='{{ config["DASHBOARD_PAGE_WRAPPER"] }}'>
         <div class='row'>
             {% if current_user.has_role("admin") or current_user.has_role("finance") %}
-            <a href="{{ url_for('index') }}">
+	    <!--<a href="{{ url_for('index') }}">-->
+            <a href="{{ url_for('reporting.dashboard_general') }}">
             <div class='white-dashboard'>
                 <img src="static/assets/img/index_img/dashboard.png" width="100" height="100">
                 <p><center>Dashboard</center></p>

@@ -37,7 +37,7 @@
             <span class="navbar-text">
                 {{ current_user.email }}&nbsp
             </span>
-            <button class="btn btn-primary" type="button" onclick="window.location.href='{{ url_for('security.login') }}'"/>Login</button>
+            <button class="btn btn-primary" type="button" onclick="window.location.href='{{ url_for('security.logout') }}'"/>Logout</button>
             {% else %}
             <button class="btn btn-primary" type="button" onclick="window.location.href='{{ url_for('security.login') }}'"/>Login</button>
 	    {% endif %}
