@@ -5,22 +5,27 @@
     <div class='some-page-wrapper'>
         <div class='row'>
             {% if current_user.has_role("admin") or current_user.has_role("finance") %}
-            <a href="/reporting/dashboard">
+            <a href="{{ url_for('index') }}">
             <div class='white-dashboard'>
                 <img src="static/assets/img/index_img/dashboard.png" width="100" height="100">
-            <p><center>Dashboard</center></p>
+                <p><center>Dashboard</center></p>
             </div>
             </a>
-            <a href="/push_notifications">
+            <a href="{{ url_for('push_notifications') }}">
             <div class='white-dashboard'>
                 <img src="static/assets/img/index_img/notification.png" width="100" height="100">
-            <p><center>Push Notification</center></p>
+                <p><center>Push Notification</center></p>
             </div>
             </a>
             <a href="{{ url_for('admin.index') }}">
             <div class='white-dashboard'>
                 <img src="static/assets/img/index_img/admin-with-cogwheels.png" width="100" height="100">
-            <p><center>Admin</center></p>
+                <p><center>Admin</center></p>
+            </div>
+            </a>
+            <a href="{{ url_for('test_email') }}">
+            <div class='white-dashboard'>
+                <p><center>Test Email</center></p>
             </div>
             </a>
             {% endif %}

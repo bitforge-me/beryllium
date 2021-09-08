@@ -30,7 +30,6 @@ roles_users = db.Table(
 class Role(db.Model, RoleMixin):
     ROLE_ADMIN = 'admin'
     ROLE_FINANCE = 'finance'
-    ROLE_PROPOSER = 'proposer'
     ROLE_REFERRAL_CLAIMER = 'referral_claimer'
 
     id = db.Column(db.Integer(), primary_key=True)

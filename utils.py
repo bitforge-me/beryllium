@@ -36,15 +36,17 @@ def send_email(logger, subject, msg, recipient=None, attachment=None):
     if not recipient:
         recipient = app.config["ADMIN_EMAIL"]
     from_email = From(app.config["FROM_EMAIL"], app.config["FROM_NAME"])
-    html = render_template('email_layout.html', content=msg)
+    html = render_template('email.html', content=msg)
     message = Mail(from_email=from_email, to_emails=recipient, subject=subject, html_content=html)
     if attachment:
         message.attachment = attachment
     try:
         sg = SendGridAPIClient(app.config["MAIL_SENDGRID_API_KEY"])
         sg.send(message)
+        return True
     except Exception as ex: # pylint: disable=broad-except
         logger.error(f"email '{subject}': {ex}")
+    return False
 
 def email_exception(logger, msg):
     send_email(logger, "beryllium exception", msg)

@@ -72,7 +72,7 @@ def meters_to_lat_lon_displacement(meters, origin_latitude):
     return lat, lon
 
 @app.route("/push_notifications", methods=["GET", "POST"])
-@roles_accepted(Role.ROLE_ADMIN)
+@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def push_notifications():
     type_ = ''
     topic = ''
@@ -141,6 +141,22 @@ def push_notifications_register():
         db.session.add(push_location)
         db.session.commit()
     return jsonify(dict(result="ok"))
+
+@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
+@app.route('/test_email', methods=['GET', 'POST'])
+def test_email():
+    recipient = ''
+    subject = ''
+    message = ''
+    if request.method == 'POST':
+        recipient = request.form['recipient']
+        subject = request.form['subject']
+        message = request.form['message']
+        if utils.send_email(logger, subject, message, recipient):
+            flash('Email sent', 'success')
+        else:
+            flash('Email failed', 'danger')
+    return render_template('test_email.html', recipient=recipient, subject=subject, message=message)
 
 #
 # gevent class
