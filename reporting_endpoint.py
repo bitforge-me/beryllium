@@ -34,44 +34,23 @@ FIRST_DAY_NEXT_YEAR = FIRST_DAY_CURRENT_YEAR + relativedelta(years=+1)
 LAST_DAY_CURRENT_YEAR = FIRST_DAY_NEXT_YEAR - timedelta(days=1)
 
 def report_dashboard_broker_order():
-    btc_order_count_today = broker_order_count(BrokerOrder, TODAY, TOMORROW, 'BTC-NZD')
-    btc_order_count_yesterday = broker_order_count(BrokerOrder, YESTERDAY, TODAY, 'BTC-NZD')
-    btc_order_count_week = broker_order_count(BrokerOrder, MONDAY, NEXT_MONDAY, 'BTC-NZD')
-    btc_order_count_month = broker_order_count(BrokerOrder, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH, 'BTC-NZD')
-    btc_order_count_year = broker_order_count(BrokerOrder, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR, 'BTC-NZD')
-    btc_order_count_lifetime = BrokerOrder.query.filter(BrokerOrder.market == 'BTC-NZD')\
-            .count()
-    btc_order_today = broker_order_amount(BrokerOrder, TODAY, TOMORROW, 'BTC-NZD')
-    btc_order_yesterday = broker_order_amount(BrokerOrder, YESTERDAY, TODAY, 'BTC-NZD')
-    btc_order_week = broker_order_amount(BrokerOrder, MONDAY, NEXT_MONDAY, 'BTC-NZD')
-    btc_order_month = broker_order_amount(BrokerOrder, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH, 'BTC-NZD')
-    btc_order_year = broker_order_amount(BrokerOrder, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR, 'BTC-NZD')
-    btc_order_lifetime = broker_order_amount_lifetime(BrokerOrder, 'BTC-NZD')
-    eth_order_count_today = broker_order_count(BrokerOrder, TODAY, TOMORROW, 'ETH-NZD')
-    eth_order_count_yesterday = broker_order_count(BrokerOrder, YESTERDAY, TODAY, 'ETH-NZD')
-    eth_order_count_week = broker_order_count(BrokerOrder, MONDAY, NEXT_MONDAY, 'ETH-NZD')
-    eth_order_count_month = broker_order_count(BrokerOrder, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH, 'ETH-NZD')
-    eth_order_count_year = broker_order_count(BrokerOrder, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR, 'ETH-NZD')
-    eth_order_count_lifetime = BrokerOrder.query.filter(BrokerOrder.market == 'ETH-NZD').count()
-    eth_order_today = broker_order_amount(BrokerOrder, TODAY, TOMORROW, 'ETH-NZD')
-    eth_order_yesterday = broker_order_amount(BrokerOrder, YESTERDAY, TODAY, 'ETH-NZD')
-    eth_order_week = broker_order_amount(BrokerOrder, MONDAY, NEXT_MONDAY, 'ETH-NZD')
-    eth_order_month = broker_order_amount(BrokerOrder, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH, 'ETH-NZD')
-    eth_order_year = broker_order_amount(BrokerOrder, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR, 'ETH-NZD')
-    eth_order_lifetime = broker_order_amount_lifetime(BrokerOrder, 'ETH-NZD')
-    return render_template('reporting/dashboard_broker_orders.html',\
-            btc_order_count_today=btc_order_count_today, btc_order_today=btc_order_today,\
-            btc_order_count_yesterday=btc_order_count_yesterday, btc_order_yesterday=btc_order_yesterday,\
-            btc_order_count_week=btc_order_count_week, btc_order_week=btc_order_week,\
-            btc_order_count_month=btc_order_count_month, btc_order_month=btc_order_month,\
-            btc_order_count_year=btc_order_count_year, btc_order_year=btc_order_year,\
-            btc_order_count_lifetime=btc_order_count_lifetime, btc_order_lifetime=btc_order_lifetime,\
-            eth_order_count_today=eth_order_count_today, eth_order_today=eth_order_today,\
-            eth_order_count_yesterday=eth_order_count_yesterday, eth_order_yesterday=eth_order_yesterday,\
-            eth_order_count_week=eth_order_count_week, eth_order_week=eth_order_week,\
-            eth_order_count_month=eth_order_count_month, eth_order_month=eth_order_month,\
-            eth_order_count_year=eth_order_count_year, eth_order_year=eth_order_year,\
-            eth_order_count_lifetime=eth_order_count_lifetime, eth_order_lifetime=eth_order_lifetime)
+    orders_data = {}
+    for market in dasset.MARKETS:
+        asset_symbol = market.split('-')[0]
+        order_count_today = broker_order_count(BrokerOrder, TODAY, TOMORROW, market)
+        order_count_yesterday = broker_order_count(BrokerOrder, YESTERDAY, TODAY, market)
+        order_count_week = broker_order_count(BrokerOrder, MONDAY, NEXT_MONDAY, market)
+        order_count_month = broker_order_count(BrokerOrder, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH, market)
+        order_count_year = broker_order_count(BrokerOrder, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR, market)
+        order_count_lifetime = broker_order_count_lifetime(BrokerOrder, market)
+        order_amount_today = broker_order_amount(BrokerOrder, TODAY, TOMORROW, market)
+        order_amount_yesterday = broker_order_amount(BrokerOrder, YESTERDAY, TODAY, market)
+        order_amount_week = broker_order_amount(BrokerOrder, MONDAY, NEXT_MONDAY, market)
+        order_amount_month = broker_order_amount(BrokerOrder, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH, market)
+        order_amount_year = broker_order_amount(BrokerOrder, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR, market)
+        order_amount_lifetime = broker_order_amount_lifetime(BrokerOrder, market)
+        orders_data[market] = dict(asset_symbol=asset_symbol, order_count_today=order_count_today, order_count_yesterday=order_count_yesterday, order_count_week=order_count_week, order_count_month=order_count_month, order_count_year=order_count_year, order_count_lifetime=order_count_lifetime, order_amount_today=order_amount_today, order_amount_yesterday=order_amount_yesterday, order_amount_week=order_amount_week, order_amount_month=order_amount_month, order_amount_year=order_amount_year, order_amount_lifetime=order_amount_lifetime)
+    return render_template('reporting/dashboard_broker_orders.html', orders_data=orders_data)
 
 def report_dashboard_premio(premio_balance, premio_stage_account, total_balance, claimable, dasset_balances):
     ### Premio (PayDbTransaction)
@@ -259,6 +238,8 @@ def asset_amount_format(data, market):
         format_data = data / 100000000
     elif market == 'ETH-NZD':
         format_data = data / 1000000000000000000
+    else:
+        format_data = data / 100000000
     return format_data
 
 def broker_order_amount(table, start_date, end_date, market):
@@ -272,6 +253,8 @@ def broker_order_amount(table, start_date, end_date, market):
             result = '{0:.4f}'.format(asset_amount_format(result, market))
         elif market == 'ETH-NZD':
             result = '{0:.4f}'.format(asset_amount_format(result, market))
+        else:
+            result = '{0:.4f}'.format(asset_amount_format(result, market))
     return result
 
 def broker_order_amount_lifetime(table, market):
@@ -284,11 +267,20 @@ def broker_order_amount_lifetime(table, market):
             result = '{0:.4f}'.format(asset_amount_format(result, market))
         elif market == 'ETH-NZD':
             result = '{0:.4f}'.format(asset_amount_format(result, market))
+        else:
+            result = '{0:.4f}'.format(asset_amount_format(result, market))
     return result
 
 def broker_order_count(table, start_date, end_date, market):
     result = table.query.filter(table.market == market)\
             .filter(and_(table.date >= str(start_date), table.date < str(end_date)))\
+            .count()
+    if not result:
+        result = 0
+    return result
+
+def broker_order_count_lifetime(table, market):
+    result = table.query.filter(table.market == market)\
             .count()
     if not result:
         result = 0
