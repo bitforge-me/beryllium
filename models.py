@@ -1,23 +1,15 @@
 # pylint: disable=too-many-instance-attributes
 # pylint: disable=too-many-arguments
-# pylint: disable=no-self-argument
 # pylint: disable=too-few-public-methods
-# pylint: disable=too-many-locals
-# pylint: disable=too-many-lines
 
 import datetime
 import logging
 
-from flask import redirect, url_for, request, has_app_context, g, abort
+from flask import url_for
 from flask_security import Security, SQLAlchemyUserDatastore, \
-    UserMixin, RoleMixin, current_user
-from flask_admin.babel import lazy_gettext
-from flask_admin.contrib import sqla
-from flask_admin.contrib.sqla.filters import BaseSQLAFilter
-from flask_admin.model import filters, typefmt
+    UserMixin, RoleMixin
 from marshmallow import Schema, fields
-from markupsafe import Markup
-from sqlalchemy import or_, and_
+from sqlalchemy import and_
 
 from app_core import app, db
 from utils import generate_key
@@ -25,16 +17,9 @@ import dasset
 
 logger = logging.getLogger(__name__)
 
-### helper functions/classes
-
-class ReloadingIterator:
-    def __init__(self, iterator_factory):
-        self.iterator_factory = iterator_factory
-
-    def __iter__(self):
-        return self.iterator_factory()
-
-### Define premio stage models
+#
+# Define beryllium models
+#
 
 roles_users = db.Table(
     'roles_users',
@@ -45,7 +30,6 @@ roles_users = db.Table(
 class Role(db.Model, RoleMixin):
     ROLE_ADMIN = 'admin'
     ROLE_FINANCE = 'finance'
-    ROLE_PROPOSER = 'proposer'
     ROLE_REFERRAL_CLAIMER = 'referral_claimer'
 
     id = db.Column(db.Integer(), primary_key=True)
@@ -259,224 +243,6 @@ class ApiKeyRequest(db.Model):
     def __str__(self):
         return self.token
 
-class PayDbTransactionSchema(Schema):
-    token = fields.String()
-    date = fields.String()
-    timestamp = fields.Integer()
-    action = fields.String()
-    sender = fields.String()
-    recipient = fields.String()
-    amount = fields.Integer()
-    attachment = fields.String()
-
-class PayDbTransaction(db.Model):
-    ACTION_ISSUE = "issue"
-    ACTION_TRANSFER = "transfer"
-    ACTION_DESTROY = "destroy"
-
-    id = db.Column(db.Integer, primary_key=True)
-    token = db.Column(db.String(255), unique=True, nullable=False)
-    date = db.Column(db.DateTime())
-    action = db.Column(db.String(255), nullable=False)
-    sender_token = db.Column(db.String(255), db.ForeignKey('user.token'), nullable=False)
-    sender = db.relationship('User', foreign_keys=[sender_token], backref=db.backref('sent', lazy='dynamic'))
-    recipient_token = db.Column(db.String(255), db.ForeignKey('user.token'), nullable=True)
-    recipient = db.relationship('User', foreign_keys=[recipient_token], backref=db.backref('recieved', lazy='dynamic'))
-    amount = db.Column(db.Integer())
-    attachment = db.Column(db.String(255))
-
-    def __init__(self, action, sender, recipient, amount, attachment):
-        self.token = generate_key()
-        self.date = datetime.datetime.now()
-        self.action = action
-        self.sender = sender
-        self.recipient = recipient
-        self.amount = amount
-        self.attachment = attachment
-
-    @property
-    def timestamp(self):
-        if not self.date:
-            return 0
-        return int(datetime.datetime.timestamp(self.date))
-
-    @classmethod
-    def from_token(cls, session, token):
-        return session.query(cls).filter(cls.token == token).first()
-
-    @classmethod
-    def related_to_user(cls, session, user, offset, limit):
-        # pylint: disable=no-member
-        return session.query(cls).filter(or_(cls.sender_token == user.token, cls.recipient_token == user.token)).order_by(cls.id.desc()).offset(offset).limit(limit)
-
-    @classmethod
-    def all(cls, session):
-        return session.query(cls).all()
-
-    def __str__(self):
-        return self.token
-
-    def to_json(self):
-        tx_schema = PayDbTransactionSchema()
-        return tx_schema.dump(self)
-
-# Setup Flask-Security
-user_datastore = SQLAlchemyUserDatastore(db, User, Role)
-security = Security(app, user_datastore)
-
-# Setup base flask admin formatters
-
-def date_format(view, value):
-    return value.strftime('%Y.%m.%d %H:%M')
-
-MY_DEFAULT_FORMATTERS = dict(typefmt.BASE_FORMATTERS)
-MY_DEFAULT_FORMATTERS.update({
-    datetime.date: date_format,
-})
-
-# Create customized model view classes
-class BaseModelView(sqla.ModelView):
-    def _handle_view(self, name, **kwargs):
-        """
-        Override builtin _handle_view in order to redirect users when a view is not accessible.
-        """
-        if not self.is_accessible():
-            if current_user.is_authenticated:
-                # permission denied
-                return abort(403)
-            # login
-            return redirect(url_for('security.login', next=request.url))
-        return None
-
-class RestrictedModelView(BaseModelView):
-    can_create = False
-    can_delete = False
-    can_edit = False
-    column_exclude_list = ['password', 'secret']
-
-    def is_accessible(self):
-        return (current_user.is_active and
-                current_user.is_authenticated and
-                (current_user.has_role(Role.ROLE_ADMIN) or
-                current_user.has_role(Role.ROLE_FINANCE)))
-
-class BaseOnlyUserOwnedModelView(BaseModelView):
-    can_create = False
-    can_delete = False
-    can_edit = False
-    column_exclude_list = ['password', 'secret']
-
-    def is_accessible(self):
-        return (current_user.is_active and
-                current_user.is_authenticated)
-
-    def get_query(self):
-        return self.session.query(self.model).filter(self.model.user==current_user)
-
-    def get_count_query(self):
-        return self.session.query(db.func.count('*')).filter(self.model.user==current_user) # pylint: disable=no-member
-
-def format_date(self, context, model, name):
-    if model.date:
-        format_curdate = model.date
-        return format_curdate.strftime('%Y.%m.%d %H:%M')
-    return None
-
-class DateBetweenFilter(BaseSQLAFilter, filters.BaseDateBetweenFilter):
-    def __init__(self, column, name, options=None, data_type=None):
-        # pylint: disable=super-with-arguments
-        super(DateBetweenFilter, self).__init__(column,
-                                                name,
-                                                options,
-                                                data_type='daterangepicker')
-
-    def apply(self, query, value, alias=None):
-        start, end = value
-        return query.filter(self.get_column(alias).between(start, end))
-
-class FilterEqual(BaseSQLAFilter):
-    def apply(self, query, value, alias=None):
-        return query.filter(self.get_column(alias) == value)
-
-    def operation(self):
-        return lazy_gettext('equals')
-
-class FilterNotEqual(BaseSQLAFilter):
-    def apply(self, query, value, alias=None):
-        return query.filter(self.get_column(alias) != value)
-
-    def operation(self):
-        return lazy_gettext('not equal')
-
-class FilterGreater(BaseSQLAFilter):
-    def apply(self, query, value, alias=None):
-        return query.filter(self.get_column(alias) > value)
-
-    def operation(self):
-        return lazy_gettext('greater than')
-
-class FilterSmaller(BaseSQLAFilter):
-    def apply(self, query, value, alias=None):
-        return query.filter(self.get_column(alias) < value)
-
-    def operation(self):
-        return lazy_gettext('smaller than')
-
-class DateTimeGreaterFilter(FilterGreater, filters.BaseDateTimeFilter):
-    pass
-
-class DateSmallerFilter(FilterSmaller, filters.BaseDateFilter):
-    pass
-
-def get_users():
-    # prevent database access when app is not yet ready
-    if has_app_context():
-        if not hasattr(g, 'users'):
-            query = User.query.order_by(User.email)
-            # pylint: disable=assigning-non-slot
-            g.users = [(user.id, user.email) for user in query]
-        for user_id, user_email in g.users:
-            yield user_id, user_email
-
-class FilterByUserEmail(BaseSQLAFilter):
-    def apply(self, query, value, alias=None):
-        return query.filter(User.id == value)
-
-    def operation(self):
-        return 'equals'
-
-    def get_options(self, view):
-        # return a generator that is reloaded each time it is used
-        return ReloadingIterator(get_users)
-
-class UserModelView(BaseModelView):
-    can_export = True
-    can_create = False
-    can_delete = False
-    can_edit = False
-    column_list = ['token', 'email', 'roles', 'active', 'confirmed_at']
-    column_filters = [FilterByUserEmail(User.email, 'Search email'), \
-        DateBetweenFilter(User.confirmed_at, 'Search Date')]
-
-    def is_accessible(self):
-        if not (current_user.is_active and current_user.is_authenticated):
-            return False
-        if current_user.has_role(Role.ROLE_FINANCE) and not current_user.has_role(Role.ROLE_ADMIN):
-            return True
-        return False
-
-class AdminUserModelView(UserModelView):
-    column_editable_list = ['roles', 'active']
-
-    def is_accessible(self):
-        if not (current_user.is_active and current_user.is_authenticated):
-            return False
-        if current_user.has_role(Role.ROLE_ADMIN):
-            return True
-        return False
-
-### define push notification models
-
 class Topic(db.Model):
     __tablename__ = 'topics'
     id = db.Column(db.Integer, primary_key=True)
@@ -495,30 +261,6 @@ class Topic(db.Model):
 
     def __repr__(self):
         return '<Topic %r %r>' % self.topic
-
-### define key/value setting models
-
-class Setting(db.Model):
-    __tablename__ = 'settings'
-    id = db.Column(db.Integer, primary_key=True)
-    key = db.Column(db.String, nullable=False, unique=True)
-    value = db.Column(db.String, unique=False)
-
-    def __init__(self, key, value):
-        self.key = key
-        self.value = value
-
-    def __repr__(self):
-        return '<Setting %r %r>' % (self.key, self.value)
-
-### define user models
-
-class PayDbApiKeyModelView(BaseOnlyUserOwnedModelView):
-    can_create = False
-    can_delete = True
-    can_edit = False
-    column_list = ('token', 'device_name', 'expiry', 'permissions')
-    column_labels = dict(token='API Key')
 
 class PushNotificationLocation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -545,23 +287,18 @@ class PushNotificationLocation(db.Model):
         since = datetime.datetime.now() - datetime.timedelta(minutes=max_age_minutes)
         return session.query(cls).filter(and_(cls.date >= since, and_(and_(cls.latitude <= latitude + max_lat_delta, cls.latitude >= latitude - max_lat_delta), and_(cls.longitude <= longitude + max_long_delta, cls.longitude >= longitude - max_long_delta)))).all()
 
-class PushNotificationLocationModelView(RestrictedModelView):
-    can_create = False
-    can_delete = False
-    can_edit = False
+class Setting(db.Model):
+    __tablename__ = 'settings'
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String, nullable=False, unique=True)
+    value = db.Column(db.String, unique=False)
 
-    def _format_location(view, context, model, name):
-        lat = model.latitude
-        lon = model.longitude
+    def __init__(self, key, value):
+        self.key = key
+        self.value = value
 
-        # pylint: disable=duplicate-string-formatting-argument
-        html = '''
-        <a href="http://www.google.com/maps/place/{},{}">{}, {}</a>
-        '''.format(lat, lon, lat, lon)
-        return Markup(html)
-
-    column_list = ['date', 'location', 'fcm_registration_token']
-    column_formatters = {'location': _format_location}
+    def __repr__(self):
+        return '<Setting %r %r>' % (self.key, self.value)
 
 class ReferralSchema(Schema):
     token = fields.String()
@@ -716,6 +453,11 @@ class BrokerOrder(db.Model):
     def from_user(cls, session, user, offset, limit):
         # pylint: disable=no-member
         return session.query(cls).filter(cls.user_id == user.id).order_by(cls.id.desc()).offset(offset).limit(limit)
+
+    @classmethod
+    def total_for_user(cls, session, user):
+        # pylint: disable=no-member
+        return session.query(cls).filter(cls.user_id == user.id).count()
 
     @classmethod
     def all_active(cls, session):
@@ -962,4 +704,56 @@ class KycRequest(db.Model):
 
     def to_json(self):
         schema = KycRequestSchema()
-        return schema.dump(self).data
+        return schema.dump(self)
+
+class AddressBookSchema(Schema):
+    date = fields.DateTime()
+    token = fields.String()
+    asset = fields.String()
+    recipient = fields.String()
+    description = fields.String()
+
+class AddressBook(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.DateTime(), nullable=False, unique=False)
+    token = db.Column(db.String, nullable=False, unique=True)
+    asset = db.Column(db.String, nullable=False)
+    recipient = db.Column(db.String, nullable=False)
+    description = db.Column(db.String)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref=db.backref('address_book_entries', lazy='dynamic'))
+
+    def __init__(self, user, asset, recipient, description):
+        self.user = user
+        self.date = datetime.datetime.now()
+        self.token = generate_key()
+        self.asset = asset
+        self.recipient = recipient
+        self.description = description
+
+    @classmethod
+    def count(cls, session):
+        return session.query(cls).count()
+
+    @classmethod
+    def from_token(cls, session, token):
+        return session.query(cls).filter(cls.token == token).first()
+
+    @classmethod
+    def from_recipient(cls, session, user, asset, recipient):
+        return session.query(cls).filter(and_(cls.user_id == user.id, and_(cls.asset == asset, cls.recipient == recipient))).first()
+
+    @classmethod
+    def of_asset(cls, session, user, asset):
+        return session.query(cls).filter(and_(cls.user_id == user.id, cls.asset == asset)).all()
+
+    def to_json(self):
+        schema = AddressBookSchema()
+        return schema.dump(self)
+
+#
+# Setup Flask-Security
+#
+
+user_datastore = SQLAlchemyUserDatastore(db, User, Role)
+security = Security(app, user_datastore)

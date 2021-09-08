@@ -61,236 +61,59 @@
       </div>
     </div>
   </div>
+  {% for market in orders_data %}
   <div class='row'>
     <div class='column'>
       <div class='row-2line-title white'>
-      BTC-NZD
+	      {{ orders_data[market].asset_symbol }}
       </div>
       <div class='hide'>
-        The number of orders and the total amount of asset ordered in BTC
+	      No. of orders ( amount in {{ orders_data[market].asset_symbol }} )
       </div>
     </div>
     <div class='column'>
       <a href="dashboard_proposal_tx_today">
       <div class='report-row report-row-hover white'>
-        {{ btc_order_count_today }}({{ btc_order_today }} BTC)
+        {{ orders_data[market].order_count_today }}({{ orders_data[market].order_amount_today }} {{ orders_data[market].asset_symbol }})
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_proposal_tx_yesterday">
       <div class='report-row report-row-hover white'>
-        {{ btc_order_count_yesterday }}({{ btc_order_yesterday }} BTC)
+        {{ orders_data[market].order_count_yesterday }}({{ orders_data[market].order_amount_yesterday }} {{ orders_data[market].asset_symbol }})
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_proposal_tx_week">
       <div class='report-row report-row-hover white'>
-        {{ btc_order_count_week }}({{ btc_order_week }} BTC)
+        {{ orders_data[market].order_count_week }}({{ orders_data[market].order_amount_week }} {{ orders_data[market].asset_symbol }})
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_proposal_tx_month">
       <div class='report-row report-row-hover white'>
-	      {{ btc_order_count_month }}({{ btc_order_month }} BTC)
+        {{ orders_data[market].order_count_month }}({{ orders_data[market].order_amount_month }} {{ orders_data[market].asset_symbol }})
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_proposal_tx_year">
       <div class='report-row report-row-hover white'>
-	      {{ btc_order_count_year }}({{ btc_order_year }} BTC)
+        {{ orders_data[market].order_count_year }}({{ orders_data[market].order_amount_year }} {{ orders_data[market].asset_symbol }})
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_proposal_tx_lifetime">
       <div class='report-row report-row-hover white'>
-	      {{ btc_order_count_lifetime }}({{ btc_order_lifetime }} BTC)
+        {{ orders_data[market].order_count_lifetime }}({{ orders_data[market].order_amount_lifetime }} {{ orders_data[market].asset_symbol }})
       </div>
       </a>
     </div>
   </div>
-  <div class='row'>
-    <div class='column'>
-      <div class='row-2line-title white'>
-      ETH-NZD
-      </div>
-      <div class='hide'>
-        The number of orders and the total amount of asset ordered in ETH
-      </div>
-    </div>
-    <div class='column'>
-      <a href="dashboard_proposal_tx_today">
-      <div class='report-row report-row-hover white'>
-        {{ eth_order_count_today }}({{ eth_order_today }} ETH)
-      </div>
-      </a>
-    </div>
-    <div class='column'>
-      <a href="dashboard_proposal_tx_yesterday">
-      <div class='report-row report-row-hover white'>
-        {{ eth_order_count_yesterday }}({{ eth_order_yesterday }} ETH)
-      </div>
-      </a>
-    </div>
-    <div class='column'>
-      <a href="dashboard_proposal_tx_week">
-      <div class='report-row report-row-hover white'>
-        {{ eth_order_count_week }}({{ eth_order_week }} ETH)
-      </div>
-      </a>
-    </div>
-    <div class='column'>
-      <a href="dashboard_proposal_tx_month">
-      <div class='report-row report-row-hover white'>
-	{{ eth_order_count_month }}({{ eth_order_month }} ETH)
-      </div>
-      </a>
-    </div>
-    <div class='column'>
-      <a href="dashboard_proposal_tx_year">
-      <div class='report-row report-row-hover white'>
-	      {{ eth_order_count_year }}({{ eth_order_year }} ETH)
-      </div>
-      </a>
-    </div>
-    <div class='column'>
-      <a href="dashboard_proposal_tx_lifetime">
-      <div class='report-row report-row-hover white'>
-	      {{ eth_order_count_lifetime }}({{ eth_order_lifetime }} ETH)
-      </div>
-      </a>
-    </div>
-  </div>
-  <!--
-  <div class='row'>
-    <div class='column'>
-      <div class='row-1line-title green'>
-        Claimed
-      </div>
-      <div class='hide'>
-       The amount of token rewards successfully claimed by a user
-      </div>
-    </div>
-    <div class='column'>
-      <div class='report-row green'>
-      {{ payment_query_today }}
-      </div>
-    </div>
-    <div class='column'>
-      <div class='report-row green'>
-      {{ payment_query_yesterday }}
-      </div>
-    </div>
-    <div class='column'>
-      <div class='report-row green'>
-      {{ payment_query_weekly }}
-      </div>
-    </div>
-    <div class='column'>
-      <div class='report-row green'>
-        {{ payment_query_monthly }}
-      </div>
-    </div>
-    <div class='column'>
-      <div class='report-row green'>
-        {{ payment_query_yearly }}
-      </div>
-    </div>
-    <div class='column'>
-      <div class='report-row green'>
-        {{ payment_query_lifetime }}
-      </div>
-    </div>
-  </div>
-  <div class='row'>
-    <div class='column'>
-      <div class='row-1line-title red'>
-        Unclaimed
-      </div>
-      <div class='hide'>
-       The amount of token rewards not yet claimed by a user
-      </div>
-    </div>
-    <div class='column'>
-      <div class='report-row red'>
-      {{ unclaimed_payment_query_today }}
-      </div>
-    </div>
-    <div class='column'>
-      <div class='report-row red'>
-      {{ unclaimed_payment_query_yesterday }}
-      </div>
-    </div>
-    <div class='column'>
-      <div class='report-row red'>
-      {{ unclaimed_payment_query_weekly }}
-      </div>
-    </div>
-    <div class='column'>
-      <div class='report-row red'>
-        {{ unclaimed_payment_query_monthly }}
-      </div>
-    </div>
-    <div class='column'>
-      <div class='report-row red'>
-        {{ unclaimed_payment_query_yearly }}
-      </div>
-    </div>
-    <div class='column'>
-      <div class='report-row red'>
-        {{ unclaimed_payment_query_lifetime }}
-      </div>
-    </div>
-  </div>
-  <div class='row'>
-    <div class='column'>
-      <div class='row-1line-title orange'>
-        Total
-      </div>
-      <div class='hide'>
-        The total amount of token rewards
-      </div>
-    </div>
-    <div class='column'>
-      <div class='report-row orange'>
-      {{ total_payment_query_today }}
-      </div>
-    </div>
-    <div class='column'>
-      <div class='report-row orange'>
-      {{ total_payment_query_yesterday }}
-      </div>
-    </div>
-    <div class='column'>
-      <div class='report-row orange'>
-      {{ total_payment_query_weekly }}
-      </div>
-    </div>
-    <div class='column'>
-      <div class='report-row orange'>
-        {{ total_payment_query_monthly }}
-      </div>
-    </div>
-    <div class='column'>
-      <div class='report-row orange'>
-        {{ total_payment_query_yearly }}
-      </div>
-    </div>
-    <div class='column'>
-      <div class='report-row orange'>
-        {{ total_payment_query_lifetime }}
-      </div>
-    </div>
-  </div>
-  -->
+  {% endfor %}
 </div>
-<!--
-{% if config["USE_REFERRALS"] %}
-    {% include 'referral_settings.html' %}
-{% endif %}
--->
 {% endblock %}

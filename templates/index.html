@@ -4,20 +4,36 @@
 {% if current_user.is_authenticated %}
     <div class='{{ config["DASHBOARD_PAGE_WRAPPER"] }}'>
         <div class='row'>
-            {% if current_user.has_role("admin") %}
-            <div class='{{ config["DASHBOARD_BUTTON_THEME"] }}'>
-                <a href="/reporting/dashboard">
+            {% if current_user.has_role("admin") or current_user.has_role("finance") %}
+            <a href="{{ url_for('index') }}">
+            <div class='white-dashboard'>
                 <img src="static/assets/img/index_img/dashboard.png" width="100" height="100">
                 <p><center>Dashboard</center></p>
-                </a>
             </div>
-            {% endif %}
-            <div class='{{ config["DASHBOARD_BUTTON_THEME"] }}'>
-                <a href="{{ url_for('admin.index') }}">
+            </a>
+            <a href="{{ url_for('push_notifications') }}">
+            <div class='white-dashboard'>
+                <img src="static/assets/img/index_img/notification.png" width="100" height="100">
+                <p><center>Push Notification</center></p>
+            </div>
+            </a>
+            <a href="{{ url_for('admin.index') }}">
+            <div class='white-dashboard'>
                 <img src="static/assets/img/index_img/admin-with-cogwheels.png" width="100" height="100">
                 <p><center>Admin</center></p>
-                </a>
             </div>
+            </a>
+            <a href="{{ url_for('test_email') }}">
+            <div class='white-dashboard'>
+                <p><center>Test Email</center></p>
+            </div>
+            </a>
+            <a href="{{ url_for('test_ws') }}">
+                <div class='white-dashboard'>
+                    <p><center>Test Websocket</center></p>
+                </div>
+                </a>
+            {% endif %}
         </div>
     </div>
 {% endif %}

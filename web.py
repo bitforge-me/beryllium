@@ -12,7 +12,7 @@ from flask import render_template, request, flash, jsonify
 from flask_security import roles_accepted
 
 from app_core import app, db, socketio
-from models import Role, Topic, PushNotificationLocation, BrokerOrder
+from models import User, Role, Topic, PushNotificationLocation, BrokerOrder
 import utils
 from fcm import FCM
 from web_utils import bad_request, get_json_params, get_json_params_optional
@@ -22,6 +22,7 @@ from reward_endpoint import reward
 from reporting_endpoint import reporting
 from payments_endpoint import payments
 from kyc_endpoint import kyc
+import websocket
 # pylint: disable=unused-import
 import admin
 
@@ -72,7 +73,7 @@ def meters_to_lat_lon_displacement(meters, origin_latitude):
     return lat, lon
 
 @app.route("/push_notifications", methods=["GET", "POST"])
-@roles_accepted(Role.ROLE_ADMIN)
+@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def push_notifications():
     type_ = ''
     topic = ''
@@ -141,6 +142,49 @@ def push_notifications_register():
         db.session.add(push_location)
         db.session.commit()
     return jsonify(dict(result="ok"))
+
+@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
+@app.route('/test_email', methods=['GET', 'POST'])
+def test_email():
+    recipient = ''
+    subject = ''
+    message = ''
+    if request.method == 'POST':
+        recipient = request.form['recipient']
+        subject = request.form['subject']
+        message = request.form['message']
+        if utils.send_email(logger, subject, message, recipient):
+            flash('Email sent', 'success')
+        else:
+            flash('Email failed', 'danger')
+    return render_template('test_email.html', recipient=recipient, subject=subject, message=message)
+
+@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
+@app.route('/test_ws', methods=['GET', 'POST'])
+def test_ws():
+    recipient = ''
+    event = ''
+    events = ['user_info_update', 'broker_order_update', 'broker_order_new']
+    if request.method == 'POST':
+        recipient = request.form['recipient']
+        event = request.form['event']
+        if event == 'user_info_update':
+            user = User.from_email(db.session, recipient)
+            if user:
+                websocket.user_info_event(user)
+                flash('Event sent', 'success')
+            else:
+                flash('User not found', 'danger')
+        elif event == 'broker_order_update':
+            order = BrokerOrder.from_token(db.session, recipient)
+            if order:
+                websocket.broker_order_update_event(order)
+                flash('Event sent', 'success')
+            else:
+                flash('Order not found', 'danger')
+        else:
+            flash('Event not yet implemented', 'danger')
+    return render_template('test_ws.html', recipient=recipient, event=event, events=events)
 
 #
 # gevent class

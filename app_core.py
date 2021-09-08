@@ -96,15 +96,10 @@ if os.getenv("BROKER_ORDER_FEE"):
 else:
     app.config["BROKER_ORDER_FEE"] = "2.5"
 
-if os.getenv('EXCHANGE_ORDERS_MOCK'):
-    app.config['EXCHANGE_ORDERS_MOCK'] = True
+if os.getenv('EXCHANGE_ACCOUNT_MOCK'):
+    app.config['EXCHANGE_ACCOUNT_MOCK'] = True
 else:
-    app.config['EXCHANGE_ORDERS_MOCK'] = False
-
-if os.getenv('EXCHANGE_WITHDRAWALS_MOCK'):
-    app.config['EXCHANGE_WITHDRAWALS_MOCK'] = True
-else:
-    app.config['EXCHANGE_WITHDRAWALS_MOCK'] = False
+    app.config['EXCHANGE_ACCOUNT_MOCK'] = False
 
 if os.getenv("FLASK_ADMIN_SWATCH"):
     app.config["FLASK_ADMIN_SWATCH"] = os.getenv("FLASK_ADMIN_SWATCH")
