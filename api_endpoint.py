@@ -235,7 +235,7 @@ def user_update_email():
     db.session.commit()
     return 'ok'
 
-@api.route('/user_update_email_confirm/<token>', methods=['GET'])
+@api.route('/user_update_email_confirm/<token>', methods=['GET', 'POST'])
 @limiter.limit('10/hour')
 def user_update_email_confirm(token=None):
     req = UserUpdateEmailRequest.from_token(db.session, token)
@@ -250,15 +250,23 @@ def user_update_email_confirm(token=None):
     if user:
         time.sleep(5)
         return bad_request(web_utils.USER_EXISTS)
-    user = req.user
-    old_email = user.email
-    user.email = req.email
-    db.session.add(user)
-    db.session.delete(req)
-    db.session.commit()
-    websocket.user_info_event(user, old_email)
-    flash('User email updated.', 'success')
-    return redirect('/')
+    if request.method == 'POST':
+        confirm = request.form.get('confirm') == 'true'
+        if not confirm:
+            db.session.delete(req)
+            db.session.commit()
+            flash('Email update cancelled.', 'success')
+            return redirect('/')
+        user = req.user
+        old_email = user.email
+        user.email = req.email
+        db.session.add(user)
+        db.session.delete(req)
+        db.session.commit()
+        websocket.user_info_event(user, old_email)
+        flash('User email updated.', 'success')
+        return redirect('/')
+    return render_template('api/update_email_confirm.html', req=req)
 
 @api.route('/user_update_password', methods=['POST'])
 @limiter.limit('10/hour')

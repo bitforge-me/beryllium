@@ -5,7 +5,6 @@
 
 import logging
 import math
-from test_api import websocket
 import time
 
 import gevent
