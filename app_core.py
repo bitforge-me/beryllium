@@ -103,17 +103,11 @@ else:
 
 if os.getenv("FLASK_ADMIN_SWATCH"):
     app.config["FLASK_ADMIN_SWATCH"] = os.getenv("FLASK_ADMIN_SWATCH")
-#else:
-#    app.config["FLASK_ADMIN_SWATCH"] = "slate"
-#    app.config["DASHBOARD_BUTTON_THEME"] = "dark-dashboard"
-#    app.config["DASHBOARD_PAGE_WRAPPER"] = "some-page-wrapper-dark"
 
 if os.getenv("FLASK_ADMIN_SWATCH") == "slate":
-    app.config["DASHBOARD_BUTTON_THEME"] = "dark-dashboard"
-    app.config["DASHBOARD_PAGE_WRAPPER"] = "some-page-wrapper-dark"
+    app.config["CSS_THEME"] = "css/custom_reporting_dark.css"
 else:
-    app.config["DASHBOARD_BUTTON_THEME"] = "white-dashboard"
-    app.config["DASHBOARD_PAGE_WRAPPER"] = "some-page-wrapper"
+    app.config["CSS_THEME"] = "css/custom_reporting.css"
 
 def set_vital_setting(env_name, setting_name=None, acceptable_values=None):
     # pylint: disable=global-statement
