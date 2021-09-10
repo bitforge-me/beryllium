@@ -1,22 +1,15 @@
 {% extends "layout.html" %}
-<!--
 {% block head_css %}
   {{ super() }}
 {% endblock %}
--->
+
 {% block content %}
 <a class="btn btn-secondary" href="/"><i class="glyphicon glyphicon-chevron-left"></i> Back</a>&nbsp
 <a class="btn btn-secondary" href="dashboard_general"><i class="glyphicon glyphicon-chevron-left"></i>General</a>&nbsp
 <a class="btn btn-secondary" href="dashboard_report_proposals"><i class="glyphicon glyphicon-chevron-left"></i>Rewards</a>&nbsp
 <a class="btn btn-secondary" href="dashboard_user_balance"><i class="glyphicon glyphicon-chevron-left"></i>Users</a>&nbsp
 <a class="btn btn-primary" href="dashboard_report_broker_order"><i class="glyphicon glyphicon-chevron-left"></i>Broker Orders</a>&nbsp
-<!--
-{%- if config["FLASK_ADMIN_SWATCH"] == "slate"%}
-<div class='some-page-wrapper-dark'>
-{%- else -%}
-<div class='some-page-wrapper'>
-{%- endif %}
--->
+
 <div class='some-page-wrapper'>
   <div class='row'>
     <div class='column'>
@@ -27,7 +20,7 @@
   </div>
   <div class='row'>
     <div class='column'>
-      <div class='title-borderless'>
+    <div class='title-borderless'>
       </div>
     </div>
     <div class='column'>
@@ -75,46 +68,46 @@
       </div>
     </div>
     <div class='column'>
-      <a href="dashboard_proposal_tx_today">
-      <div class='report-row report-row-hover white'>
+	    <!--<a href="dashboard_proposal_tx_today">-->
+      <div class='report-row report-row-hover white text_color'>
         {{ orders_data[market].order_count_today }}({{ orders_data[market].order_amount_today }} {{ orders_data[market].asset_symbol }})
       </div>
-      </a>
+      <!--</a>-->
     </div>
     <div class='column'>
-      <a href="dashboard_proposal_tx_yesterday">
-      <div class='report-row report-row-hover white'>
+	    <!--<a href="dashboard_proposal_tx_yesterday">-->
+      <div class='report-row report-row-hover white text_color'>
         {{ orders_data[market].order_count_yesterday }}({{ orders_data[market].order_amount_yesterday }} {{ orders_data[market].asset_symbol }})
       </div>
-      </a>
+      <!--</a>-->
     </div>
     <div class='column'>
-      <a href="dashboard_proposal_tx_week">
-      <div class='report-row report-row-hover white'>
+	    <!--<a href="dashboard_proposal_tx_week">-->
+      <div class='report-row report-row-hover white text_color'>
         {{ orders_data[market].order_count_week }}({{ orders_data[market].order_amount_week }} {{ orders_data[market].asset_symbol }})
       </div>
-      </a>
+      <!--</a>-->
     </div>
     <div class='column'>
-      <a href="dashboard_proposal_tx_month">
-      <div class='report-row report-row-hover white'>
+	    <!--<a href="dashboard_proposal_tx_month">-->
+      <div class='report-row report-row-hover white text_color'>
         {{ orders_data[market].order_count_month }}({{ orders_data[market].order_amount_month }} {{ orders_data[market].asset_symbol }})
       </div>
-      </a>
+      <!--</a>-->
     </div>
     <div class='column'>
-      <a href="dashboard_proposal_tx_year">
-      <div class='report-row report-row-hover white'>
+	    <!--<a href="dashboard_proposal_tx_year">-->
+      <div class='report-row report-row-hover white text_color'>
         {{ orders_data[market].order_count_year }}({{ orders_data[market].order_amount_year }} {{ orders_data[market].asset_symbol }})
       </div>
-      </a>
+      <!--</a>-->
     </div>
     <div class='column'>
-      <a href="dashboard_proposal_tx_lifetime">
-      <div class='report-row report-row-hover white'>
+	    <!--<a href="dashboard_proposal_tx_lifetime">-->
+      <div class='report-row report-row-hover white text_color'>
         {{ orders_data[market].order_count_lifetime }}({{ orders_data[market].order_amount_lifetime }} {{ orders_data[market].asset_symbol }})
       </div>
-      </a>
+      <!--</a>-->
     </div>
   </div>
   {% endfor %}

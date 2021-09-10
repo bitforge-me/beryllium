@@ -1,7 +1,9 @@
 {% extends "layout.html" %}
+{% block head_css %}
+  {{ super() }}
+{% endblock %}
 
 {% block content %}
-
 <a class="btn btn-secondary" href="/"><i class="glyphicon glyphicon-chevron-left"></i> Back</a>&nbsp
 <a class="btn btn-secondary" href="dashboard_general"><i class="glyphicon glyphicon-chevron-left"></i>General</a>&nbsp
 <a class="btn btn-secondary" href="dashboard_report_proposals"><i class="glyphicon glyphicon-chevron-left"></i>Rewards</a>&nbsp
