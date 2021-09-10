@@ -106,8 +106,10 @@ if os.getenv("FLASK_ADMIN_SWATCH"):
 
 if os.getenv("FLASK_ADMIN_SWATCH") == "slate":
     app.config["CSS_THEME"] = "css/custom_reporting_dark.css"
+    app.config["CSS_THEME_INTENSITY"] = "dark"
 else:
     app.config["CSS_THEME"] = "css/custom_reporting.css"
+    app.config["CSS_THEME_INTENSITY"] = "light"
 
 def set_vital_setting(env_name, setting_name=None, acceptable_values=None):
     # pylint: disable=global-statement

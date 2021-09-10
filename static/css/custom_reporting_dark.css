@@ -1,6 +1,6 @@
 .some-page-wrapper {
   margin: 15px;
-  background-color: #272b30;
+  background-color: #3f454a;;
 }
 .row {
   display: flex;
@@ -161,7 +161,9 @@
   margin: 5px;
   text-align: center;
 }
-
+.text_color {
+  color: black;
+}
 .operations_account_column {
   background-color: white;
   border-width: 1px;
@@ -188,6 +190,12 @@
 .dashboard:hover {
   background-color: #262a30;
 }
+
+body {
+  color: #c8c8c8;
+  background-color: #3f454a;
+}
+
 /* USER BALANCE*/
 .title-column {
   background-color: white;

@@ -190,6 +190,10 @@
 .dashboard:hover {
   background-color:#e6ebff;
 }
+/*
+body {
+  background-color: #ffffff;
+}*/
 /* USER BALANCE*/
 .title-column {
   background-color: white;

@@ -7,13 +7,13 @@
 <a class="btn btn-secondary" href="/"><i class="glyphicon glyphicon-chevron-left"></i> Back</a>&nbsp
 <a class="btn btn-secondary" href="dashboard_general"><i class="glyphicon glyphicon-chevron-left"></i>General</a>&nbsp
 <a class="btn btn-primary" href="dashboard_report_proposals"><i class="glyphicon glyphicon-chevron-left"></i>Rewards</a>&nbsp
-<a class="btn btn-secondary" href="dashboard_user_balance"><i class="glyphicon glyphicon-chevron-left"></i>Users</a>
+<a class="btn btn-secondary" href="dashboard_user_balance"><i class="glyphicon glyphicon-chevron-left"></i>Users</a>&nbsp
 <a class="btn btn-secondary" href="dashboard_report_broker_order"><i class="glyphicon glyphicon-chevron-left"></i>Broker Orders</a>&nbsp
 
 <div class='some-page-wrapper'>
   <div class='row'>
     <div class='column'>
-      <div class='row-divider'>
+      <div class='row-divider text_color'>
         Rewards/Payments
       </div>
     </div>
@@ -24,42 +24,42 @@
       </div>
     </div>
     <div class='column'>
-      <div class='title_1line-column'>
+      <div class='title_1line-column text_color'>
         Today 
       </div>
     </div>
     <div class='column'>
-      <div class='title_1line-column'>
+      <div class='title_1line-column text_color'>
         Yesterday
       </div>
     </div>
     <div class='column'>
-      <div class='title_2lines-column'>
+      <div class='title_2lines-column text_color'>
         Week<br>
         (WTD,Mon-Sun)
       </div>
     </div>
     <div class='column'>
-      <div class='title_2lines-column'>
+      <div class='title_2lines-column text_color'>
         Month<br>
         (MTD)
       </div>
     </div>
     <div class='column'>
-      <div class='title_2lines-column'>
+      <div class='title_2lines-column text_color'>
         Year<br>
         (YTD)
       </div>
     </div>
     <div class='column'>
-      <div class='title_1line-column'>
+      <div class='title_1line-column text_color'>
         Lifetime
       </div>
     </div>
   </div>
   <div class='row'>
     <div class='column'>
-      <div class='row-2line-title white'>
+      <div class='row-2line-title white text_color'>
       Reward Count
       </div>
       <div class='hide'>
@@ -68,42 +68,42 @@
     </div>
     <div class='column'>
       <a href="dashboard_proposal_tx_today">
-      <div class='report-row report-row-hover white'>
+      <div class='report-row report-row-hover white text_color'>
 	      {{ proposal_count_today }}
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_proposal_tx_yesterday">
-      <div class='report-row report-row-hover white'>
+      <div class='report-row report-row-hover white text_color'>
 	      {{ proposal_count_yesterday }}
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_proposal_tx_week">
-      <div class='report-row report-row-hover white'>
+      <div class='report-row report-row-hover white text_color'>
 	      {{ proposal_count_weekly }}
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_proposal_tx_month">
-      <div class='report-row report-row-hover white'>
+      <div class='report-row report-row-hover white text_color'>
 	      {{ proposal_count_monthly }}
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_proposal_tx_year">
-      <div class='report-row report-row-hover white'>
+      <div class='report-row report-row-hover white text_color'>
 	      {{ proposal_count_yearly }}
       </div>
       </a>
     </div>
     <div class='column'>
       <a href="dashboard_proposal_tx_lifetime">
-      <div class='report-row report-row-hover white'>
+      <div class='report-row report-row-hover white text_color'>
        {{ proposal_count_lifetime }}
       </div>
       </a>
@@ -111,7 +111,7 @@
   </div>
   <div class='row'>
     <div class='column'>
-      <div class='row-1line-title green'>
+      <div class='row-1line-title green text_color'>
         Claimed
       </div>
       <div class='hide'>
@@ -119,39 +119,39 @@
       </div>
     </div>
     <div class='column'>
-      <div class='report-row green'>
+      <div class='report-row green text_color'>
       {{ payment_query_today }}
       </div>
     </div>
     <div class='column'>
-      <div class='report-row green'>
+      <div class='report-row green text_color'>
       {{ payment_query_yesterday }}
       </div>
     </div>
     <div class='column'>
-      <div class='report-row green'>
+      <div class='report-row green text_color'>
       {{ payment_query_weekly }}
       </div>
     </div>
     <div class='column'>
-      <div class='report-row green'>
+      <div class='report-row green text_color'>
         {{ payment_query_monthly }}
       </div>
     </div>
     <div class='column'>
-      <div class='report-row green'>
+      <div class='report-row green text_color'>
         {{ payment_query_yearly }}
       </div>
     </div>
     <div class='column'>
-      <div class='report-row green'>
+      <div class='report-row green text_color'>
         {{ payment_query_lifetime }}
       </div>
     </div>
   </div>
   <div class='row'>
     <div class='column'>
-      <div class='row-1line-title red'>
+      <div class='row-1line-title red text_color'>
         Unclaimed
       </div>
       <div class='hide'>
@@ -159,39 +159,39 @@
       </div>
     </div>
     <div class='column'>
-      <div class='report-row red'>
+      <div class='report-row red text_color'>
       {{ unclaimed_payment_query_today }}
       </div>
     </div>
     <div class='column'>
-      <div class='report-row red'>
+      <div class='report-row red text_color'>
       {{ unclaimed_payment_query_yesterday }}
       </div>
     </div>
     <div class='column'>
-      <div class='report-row red'>
+      <div class='report-row red text_color'>
       {{ unclaimed_payment_query_weekly }}
       </div>
     </div>
     <div class='column'>
-      <div class='report-row red'>
+      <div class='report-row red text_color'>
         {{ unclaimed_payment_query_monthly }}
       </div>
     </div>
     <div class='column'>
-      <div class='report-row red'>
+      <div class='report-row red text_color'>
         {{ unclaimed_payment_query_yearly }}
       </div>
     </div>
     <div class='column'>
-      <div class='report-row red'>
+      <div class='report-row red text_color'>
         {{ unclaimed_payment_query_lifetime }}
       </div>
     </div>
   </div>
   <div class='row'>
     <div class='column'>
-      <div class='row-1line-title orange'>
+      <div class='row-1line-title orange text_color'>
         Total
       </div>
       <div class='hide'>
@@ -199,32 +199,32 @@
       </div>
     </div>
     <div class='column'>
-      <div class='report-row orange'>
+      <div class='report-row orange text_color'>
       {{ total_payment_query_today }}
       </div>
     </div>
     <div class='column'>
-      <div class='report-row orange'>
+      <div class='report-row orange text_color'>
       {{ total_payment_query_yesterday }}
       </div>
     </div>
     <div class='column'>
-      <div class='report-row orange'>
+      <div class='report-row orange text_color'>
       {{ total_payment_query_weekly }}
       </div>
     </div>
     <div class='column'>
-      <div class='report-row orange'>
+      <div class='report-row orange text_color'>
         {{ total_payment_query_monthly }}
       </div>
     </div>
     <div class='column'>
-      <div class='report-row orange'>
+      <div class='report-row orange text_color'>
         {{ total_payment_query_yearly }}
       </div>
     </div>
     <div class='column'>
-      <div class='report-row orange'>
+      <div class='report-row orange text_color'>
         {{ total_payment_query_lifetime }}
       </div>
     </div>

@@ -1,23 +1,26 @@
 {% extends "layout.html" %}
+<!--
 {% block head_css %}
   {{ super() }}
 {% endblock %}
-
+-->
 {% block content %}
 <a class="btn btn-secondary" href="/"><i class="glyphicon glyphicon-chevron-left"></i> Back</a>&nbsp
 <a class="btn btn-secondary" href="dashboard_general"><i class="glyphicon glyphicon-chevron-left"></i>General</a>&nbsp
 <a class="btn btn-secondary" href="dashboard_report_proposals"><i class="glyphicon glyphicon-chevron-left"></i>Rewards</a>&nbsp
-<a class="btn btn-secondary" href="dashboard_user_balance"><i class="glyphicon glyphicon-chevron-left"></i>Users</a>
+<a class="btn btn-secondary" href="dashboard_user_balance"><i class="glyphicon glyphicon-chevron-left"></i>Users</a>&nbsp
 <a class="btn btn-primary" href="dashboard_report_broker_order"><i class="glyphicon glyphicon-chevron-left"></i>Broker Orders</a>&nbsp
-
+<!--
 {%- if config["FLASK_ADMIN_SWATCH"] == "slate"%}
 <div class='some-page-wrapper-dark'>
 {%- else -%}
 <div class='some-page-wrapper'>
 {%- endif %}
+-->
+<div class='some-page-wrapper'>
   <div class='row'>
     <div class='column'>
-      <div class='row-divider'>
+      <div class='row-divider text_color'>
         Broker Orders
       </div>
     </div>
@@ -28,35 +31,35 @@
       </div>
     </div>
     <div class='column'>
-      <div class='title_1line-column'>
+      <div class='title_1line-column text_color'>
         Today 
       </div>
     </div>
     <div class='column'>
-      <div class='title_1line-column'>
+      <div class='title_1line-column text_color'>
         Yesterday
       </div>
     </div>
     <div class='column'>
-      <div class='title_2lines-column'>
+      <div class='title_2lines-column text_color'>
         Week<br>
         (WTD,Mon-Sun)
       </div>
     </div>
     <div class='column'>
-      <div class='title_2lines-column'>
+      <div class='title_2lines-column text_color'>
         Month<br>
         (MTD)
       </div>
     </div>
     <div class='column'>
-      <div class='title_2lines-column'>
+      <div class='title_2lines-column text_color'>
         Year<br>
         (YTD)
       </div>
     </div>
     <div class='column'>
-      <div class='title_1line-column'>
+      <div class='title_1line-column text_color'>
         Lifetime
       </div>
     </div>
@@ -64,7 +67,7 @@
   {% for market in orders_data %}
   <div class='row'>
     <div class='column'>
-      <div class='row-2line-title white'>
+      <div class='row-2line-title white text_color'>
 	      {{ orders_data[market].asset_symbol }}
       </div>
       <div class='hide'>
