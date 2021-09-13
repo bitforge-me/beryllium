@@ -6,6 +6,7 @@ from flask_socketio import Namespace, emit, join_room, leave_room
 
 from app_core import db, socketio
 from web_utils import check_auth
+from security import tf_enabled_check
 
 logger = logging.getLogger(__name__)
 ws_sids = {}
@@ -23,7 +24,7 @@ def user_info_dict(api_key, all_info):
     kyc_validated = None
     kyc_url = None
     aplyid_req_exists = False
-    tf_enabled = user.tf_primary_method is not None
+    tf_enabled = tf_enabled_check(user)
     if list(user.kyc_requests):
         req = api_key.user.kyc_requests[0]
         aplyid_req_exists = req.aplyid is not None
@@ -39,7 +40,7 @@ def user_info_dict_ws(user):
     kyc_validated = user.kyc_validated()
     kyc_url = user.kyc_url()
     aplyid_req_exists = False
-    tf_enabled = user.tf_primary_method is not None
+    tf_enabled = tf_enabled_check(user)
     if list(user.kyc_requests):
         req = user.kyc_requests[0]
         aplyid_req_exists = req.aplyid is not None

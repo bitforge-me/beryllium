@@ -15,7 +15,7 @@ from web_utils import bad_request, get_json_params, auth_request, auth_request_g
 import utils
 from models import User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook
 from app_core import db, limiter
-from security import user_datastore, validate_totp
+from security import tf_enabled_check, tf_method, tf_code_send, tf_method_set, tf_method_unset, tf_secret_init, tf_code_validate, user_datastore
 import payments_core
 import kyc_core
 import dasset
@@ -82,6 +82,29 @@ def user_registration_confirm(token=None):
     flash('User registered.', 'success')
     return redirect('/')
 
+@api.route('/user_two_factor_enabled_check', methods=['POST'])
+@limiter.limit('10/hour')
+def user_two_factor_enabled_check():
+    content = request.get_json(force=True)
+    if content is None:
+        return bad_request(web_utils.INVALID_JSON)
+    params, err_response = get_json_params(content, ["email", "password"])
+    if err_response:
+        return err_response
+    email, password = params
+    if not email:
+        return bad_request(web_utils.INVALID_EMAIL)
+    email = email.lower()
+    user = User.from_email(db.session, email)
+    if not user:
+        time.sleep(5)
+        return bad_request(web_utils.AUTH_FAILED)
+    if not flask_security.verify_password(password, user.password):
+        time.sleep(5)
+        return bad_request(web_utils.AUTH_FAILED)
+    tf_code_send(user)
+    return jsonify(dict(tf_enabled=tf_enabled_check(user)))
+
 @api.route('/api_key_create', methods=['POST'])
 @limiter.limit('10/hour')
 def api_key_create():
@@ -102,7 +125,7 @@ def api_key_create():
     if not flask_security.verify_password(password, user.password):
         time.sleep(5)
         return bad_request(web_utils.AUTH_FAILED)
-    if not validate_totp(user, tf_code):
+    if tf_enabled_check(user) and not tf_code_validate(user, tf_code):
         return bad_request(web_utils.AUTH_FAILED)
     api_key = ApiKey(user, device_name)
     for name in Permission.PERMS_ALL:
@@ -182,7 +205,7 @@ def api_key_confirm(token=None, secret=None):
             flash('Email login cancelled.', 'success')
             return redirect('/')
         tf_code = request.form.get('tf_code')
-        if not validate_totp(req.user, tf_code):
+        if tf_enabled_check(req.user) and not tf_code_validate(req.user, tf_code):
             return bad_request(web_utils.AUTH_FAILED)
         perms = request.form.getlist('perms')
         api_key = ApiKey(req.user, req.device_name)
@@ -264,7 +287,7 @@ def user_update_email_confirm(token=None):
             flash('Email update cancelled.', 'success')
             return redirect('/')
         tf_code = request.form.get('tf_code')
-        if not validate_totp(req.user, tf_code):
+        if tf_enabled_check(req.user) and not tf_code_validate(req.user, tf_code):
             return bad_request(web_utils.AUTH_FAILED)
         user = req.user
         old_email = user.email
@@ -337,6 +360,50 @@ def user_update_photo():
     db.session.commit()
     websocket.user_info_event(user)
     return jsonify(dict(photo=user.photo, photo_type=user.photo_type))
+
+@api.route('/user_two_factor_enable', methods=['POST'])
+@limiter.limit('10/hour')
+def user_two_factor_enable():
+    code, api_key, err_response = auth_request_get_single_param(db, 'code')
+    if err_response:
+        return err_response
+    user = api_key.user
+    if tf_enabled_check(user):
+        return bad_request(web_utils.TWO_FACTOR_ENABLED)
+    setup_values = None
+    if not code:
+        setup_values = tf_secret_init(user)
+        if not tf_code_send(user):
+            return bad_request(web_utils.FAILED_CODE_SEND)
+    else:
+        tf_method_set(user)
+        if not tf_code_validate(user, code):
+            return bad_request(web_utils.AUTH_FAILED)
+    db.session.add(user)
+    db.session.commit()
+    websocket.user_info_event(user)
+    return jsonify(dict(method=tf_method(), setup=setup_values))
+
+@api.route('/user_two_factor_disable', methods=['POST'])
+@limiter.limit('10/hour')
+def user_two_factor_disable():
+    code, api_key, err_response = auth_request_get_single_param(db, 'code')
+    if err_response:
+        return err_response
+    user = api_key.user
+    if not tf_enabled_check(user):
+        return bad_request(web_utils.TWO_FACTOR_DISABLED)
+    if not code:
+        if not tf_code_send(user):
+            return bad_request(web_utils.FAILED_CODE_SEND)
+    else:
+        if not tf_code_validate(user, code):
+            return bad_request(web_utils.AUTH_FAILED)
+        tf_method_unset(user)
+        db.session.add(user)
+        db.session.commit()
+        websocket.user_info_event(user)
+    return jsonify(dict(method=tf_method(), setup=None))
 
 @api.route('/assets', methods=['POST'])
 def assets_req():

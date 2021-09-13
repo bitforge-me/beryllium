@@ -1,3 +1,5 @@
+import logging
+
 from flask import redirect, url_for, request, flash
 from flask_security import Security, SQLAlchemyUserDatastore, current_user
 import flask_security.forms
@@ -9,11 +11,40 @@ from wtforms import StringField, SubmitField
 from app_core import app, db
 from models import User, Role
 
+logger = logging.getLogger(__name__)
+
 #
 # Helper functions
 #
 
-def validate_totp(user, code):
+def tf_method():
+    methods = cv("TWO_FACTOR_ENABLED_METHODS")
+    assert len(methods) == 1
+    return methods[0]
+
+def tf_enabled_check(user):
+    return user.tf_primary_method is not None
+
+def tf_secret_init(user):
+    totp_factory = _security._totp_factory # pylint: disable=protected-access
+    user.tf_totp_secret = totp_factory.generate_totp_secret()
+    return totp_factory.fetch_setup_values(user.tf_totp_secret, user)
+
+def tf_method_set(user):
+    user.tf_primary_method = tf_method()
+
+def tf_method_unset(user):
+    user.tf_primary_method = None
+
+def tf_code_send(user):
+    if tf_method() == "email":
+        msg = user.tf_send_security_token(method="email", totp_secret=user.tf_totp_secret, phone_number=None)
+        if msg:
+            logger.error('failed to send two factor code to user %s (%s)', user.email, msg)
+        return not msg
+    return True
+
+def tf_code_validate(user, code):
     # codes sent by sms or mail will be valid for another window cycle
     if (
         user.tf_primary_method == "google_authenticator"
@@ -25,6 +56,7 @@ def validate_totp(user, code):
     elif user.tf_primary_method == "sms":
         window = cv("TWO_FACTOR_SMS_VALIDITY")
     else:
+        logger.error('no valid two factor method for user %s', user.email)
         return False
 
     # verify entered token with user's totp secret
@@ -67,7 +99,7 @@ class SecureVerifyForm(flask_security.forms.VerifyForm):
         if not super().validate():
             return False
 
-        return validate_totp(self.user, self.code.data)
+        return tf_code_validate(self.user, self.code.data)
 
 class SecureTwoFactorSetupForm(flask_security.forms.TwoFactorSetupForm):
     def __init__(self, *args, **kwargs):
