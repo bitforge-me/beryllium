@@ -101,7 +101,7 @@ if os.getenv('EXCHANGE_ACCOUNT_MOCK'):
 else:
     app.config['EXCHANGE_ACCOUNT_MOCK'] = False
 
-def set_vital_setting(env_name, setting_name=None, acceptable_values=None):
+def set_vital_setting(env_name, setting_name=None, acceptable_values=None, custom_handler=None):
     # pylint: disable=global-statement
     global MISSING_VITAL_SETTING
     if not setting_name:
@@ -112,16 +112,20 @@ def set_vital_setting(env_name, setting_name=None, acceptable_values=None):
         if acceptable_values and value not in acceptable_values:
             print(env_name + " not in range of acceptable values: " + str(acceptable_values))
             MISSING_VITAL_SETTING = True
+        if custom_handler:
+            custom_handler(env_name, value)
     else:
         print("no " + env_name)
         MISSING_VITAL_SETTING = True
 
-set_vital_setting("ADMIN_EMAIL")
+set_vital_setting("ADMIN_EMAIL", "SECURITY_TWO_FACTOR_RESCUE_MAIL")
 set_vital_setting("FROM_EMAIL", "SECURITY_EMAIL_SENDER")
 set_vital_setting("FROM_NAME")
 
 set_vital_setting("SESSION_KEY", "SECRET_KEY")
-set_vital_setting("PASSWORD_SALT", "SECURITY_PASSWORD_SALT")
+def set_totp_secret(name, val):
+    app.config["SECURITY_TOTP_SECRETS"] = {'1': val}
+set_vital_setting("PASSWORD_SALT", "SECURITY_PASSWORD_SALT", custom_handler=set_totp_secret)
 set_vital_setting("SENDGRID_API_KEY", "MAIL_SENDGRID_API_KEY")
 set_vital_setting("SERVER_NAME")
 set_vital_setting("FIREBASE_CREDENTIALS")

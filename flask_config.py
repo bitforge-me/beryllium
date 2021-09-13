@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 # Database settings
 SQLALCHEMY_ECHO = False
 
@@ -9,6 +11,7 @@ SECURITY_PASSWORD_HASH = "pbkdf2_sha512"
 SECURITY_LOGIN_URL = "/login/"
 SECURITY_LOGOUT_URL = "/logout/"
 SECURITY_REGISTER_URL = "/register/"
+SECURITY_VERIFY_URL = "/verify/"
 
 SECURITY_POST_LOGIN_VIEW = "/"
 SECURITY_POST_LOGOUT_VIEW = "/"
@@ -21,3 +24,8 @@ SECURITY_REGISTERABLE = True
 SECURITY_RECOVERABLE = True
 SECURITY_CHANGEABLE = True
 SQLALCHEMY_TRACK_MODIFICATIONS = False
+SECURITY_TWO_FACTOR = True
+SECURITY_TWO_FACTOR_ENABLED_METHODS = ['email'] #TODO - change to ['authenticator'] when all vulnerable paths updated
+SECURITY_TOTP_ISSUER = 'beryllium'
+SECURITY_FRESHNESS = timedelta(minutes=30)
+SECURITY_FRESHNESS_GRACE_PERIOD = timedelta(seconds=300)

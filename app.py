@@ -13,7 +13,8 @@ import web
 import utils
 import log_utils
 from app_core import MISSING_VITAL_SETTING, app, db
-from models import user_datastore, User, Role, Permission, Topic
+from models import User, Role, Permission, Topic
+from security import user_datastore
 
 logger = logging.getLogger() # root log handler
 

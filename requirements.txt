@@ -1,7 +1,7 @@
 gevent==20.9.0
 gevent-websocket==0.10.1
 Flask-Admin==1.5.7
-Flask-Security-Too==4.1.0
+Flask-Security-Too==4.1.1
 Flask-SQLAlchemy==2.4.1
 Flask-Mail-SendGrid==0.3
 Flask-SocketIO==5.0.1
@@ -25,3 +25,5 @@ python-bitcoinlib==0.11.0
 base58==2.1.0
 web3==5.23.0
 munch==2.5.0
+PyQRCode==1.2.1
+cryptography==3.4.8

@@ -13,8 +13,9 @@ from flask_security.recoverable import send_reset_password_instructions
 import web_utils
 from web_utils import bad_request, get_json_params, auth_request, auth_request_get_single_param, auth_request_get_params
 import utils
-from models import user_datastore, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook
+from models import User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook
 from app_core import db, limiter
+from security import user_datastore, validate_totp
 import payments_core
 import kyc_core
 import dasset
@@ -87,10 +88,10 @@ def api_key_create():
     content = request.get_json(force=True)
     if content is None:
         return bad_request(web_utils.INVALID_JSON)
-    params, err_response = get_json_params(content, ["email", "password", "device_name"])
+    params, err_response = get_json_params(content, ["email", "password", "device_name", "tf_code"])
     if err_response:
         return err_response
-    email, password, device_name = params
+    email, password, device_name, tf_code = params
     if not email:
         return bad_request(web_utils.INVALID_EMAIL)
     email = email.lower()
@@ -100,6 +101,8 @@ def api_key_create():
         return bad_request(web_utils.AUTH_FAILED)
     if not flask_security.verify_password(password, user.password):
         time.sleep(5)
+        return bad_request(web_utils.AUTH_FAILED)
+    if not validate_totp(user, tf_code):
         return bad_request(web_utils.AUTH_FAILED)
     api_key = ApiKey(user, device_name)
     for name in Permission.PERMS_ALL:
@@ -178,6 +181,9 @@ def api_key_confirm(token=None, secret=None):
             db.session.commit()
             flash('Email login cancelled.', 'success')
             return redirect('/')
+        tf_code = request.form.get('tf_code')
+        if not validate_totp(req.user, tf_code):
+            return bad_request(web_utils.AUTH_FAILED)
         perms = request.form.getlist('perms')
         api_key = ApiKey(req.user, req.device_name)
         for name in perms:
@@ -257,6 +263,9 @@ def user_update_email_confirm(token=None):
             db.session.commit()
             flash('Email update cancelled.', 'success')
             return redirect('/')
+        tf_code = request.form.get('tf_code')
+        if not validate_totp(req.user, tf_code):
+            return bad_request(web_utils.AUTH_FAILED)
         user = req.user
         old_email = user.email
         user.email = req.email

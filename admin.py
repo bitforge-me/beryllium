@@ -13,8 +13,8 @@ from flask_security import current_user
 from markupsafe import Markup
 
 from app_core import app, db
-from models import security, \
-    Role, User, ApiKey, Topic, PushNotificationLocation, Referral, BrokerOrder, ExchangeOrder, ExchangeWithdrawal, KycRequest, AplyId
+from models import Role, User, ApiKey, Topic, PushNotificationLocation, Referral, BrokerOrder, ExchangeOrder, ExchangeWithdrawal, KycRequest, AplyId
+from security import security
 
 # helper functions/classes
 

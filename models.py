@@ -6,12 +6,11 @@ import datetime
 import logging
 
 from flask import url_for
-from flask_security import Security, SQLAlchemyUserDatastore, \
-    UserMixin, RoleMixin
+from flask_security import UserMixin, RoleMixin
 from marshmallow import Schema, fields
 from sqlalchemy import and_
 
-from app_core import app, db
+from app_core import db
 from utils import generate_key
 import dasset
 
@@ -750,10 +749,3 @@ class AddressBook(db.Model):
     def to_json(self):
         schema = AddressBookSchema()
         return schema.dump(self)
-
-#
-# Setup Flask-Security
-#
-
-user_datastore = SQLAlchemyUserDatastore(db, User, Role)
-security = Security(app, user_datastore)
