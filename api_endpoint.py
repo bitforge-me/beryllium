@@ -156,6 +156,7 @@ def api_key_request():
     utils.email_api_key_request(logger, req, req.MINUTES_EXPIRY)
     db.session.add(req)
     db.session.commit()
+    tf_code_send(user)
     return jsonify(dict(token=req.token))
 
 @api.route('/api_key_claim', methods=['POST'])
@@ -262,6 +263,7 @@ def user_update_email():
     utils.email_user_update_email_request(logger, req, req.MINUTES_EXPIRY)
     db.session.add(req)
     db.session.commit()
+    tf_code_send(api_key.user)
     return 'ok'
 
 @api.route('/user_update_email_confirm/<token>', methods=['GET', 'POST'])
