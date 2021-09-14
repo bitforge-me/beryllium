@@ -18,6 +18,12 @@
                         <br>
                         {% endfor %}
                     </div>
+                    {% if current_user.tf_primary_method  %}
+                    <div class="form-group">
+                        <input type="text" id="tf_code" name="tf_code" value="">
+                        <label for="tf_code">Two Factor Authentication Code</label>
+                    </div>
+                    {% endif %}
                     <button type="submit" class="btn btn-primary" name="confirm" value="true">Approve Email Login</button>
                     <button type="submit" class="btn btn-primary" name="confirm" value="false">Cancel</button>
                 </form>

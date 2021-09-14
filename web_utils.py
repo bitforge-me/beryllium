@@ -38,6 +38,9 @@ KYC_REQUEST_NOT_EXISTS = 'user verification request does not exist'
 KYC_SEND_MOBILE_FAILED = 'user verification SMS failed'
 KYC_NOT_VALIDATED = 'user not verified'
 INVALID_PARAMETER = 'invalid parameter'
+FAILED_CODE_SEND = 'failed code send'
+TWO_FACTOR_ENABLED = 'two factor enabled'
+TWO_FACTOR_DISABLED = 'two factor disabled'
 
 def bad_request(message, code=400):
     logger.warning(message)
@@ -118,7 +121,7 @@ def auth_request(db):
     api_key, nonce = params
     res, reason, api_key = check_auth(db.session, api_key, nonce, sig, request.data)
     if not res:
-        return None, None, bad_request(reason)
+        return None, bad_request(reason)
     return api_key, None
 
 # pylint: disable=unbalanced-tuple-unpacking

@@ -231,6 +231,19 @@ def crypto_withdrawal_status_check(withdrawal_id):
 # Public functions
 #
 
+def market_side_nice(side):
+    if isinstance(side, str):
+        if side == MarketSide.ASK.value:
+            return 'sell'
+        if side == MarketSide.BID.value:
+            return 'buy'
+    if isinstance(side, MarketSide):
+        if side == MarketSide.ASK:
+            return 'sell'
+        if side == MarketSide.BID:
+            return 'buy'
+    return 'n/a'
+
 def assets_from_market(market):
     return market.split('-')
 
@@ -247,6 +260,10 @@ def asset_int_to_dec(asset, value):
 def asset_dec_to_int(asset, value):
     decimals = asset_decimals(asset)
     return int(value * decimal.Decimal(10**decimals))
+
+def asset_dec_to_str(asset, value):
+    decimals = asset_decimals(asset)
+    return str(value.quantize(decimal.Decimal(10) ** -decimals))
 
 def address_validate(market, side, address):
     assert side is MarketSide.BID
