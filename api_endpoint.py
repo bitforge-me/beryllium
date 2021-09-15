@@ -19,6 +19,7 @@ from security import tf_enabled_check, tf_method, tf_code_send, tf_method_set, t
 import payments_core
 import kyc_core
 import dasset
+from dasset import MarketSide, market_side_is
 import websocket
 
 logger = logging.getLogger(__name__)
@@ -455,16 +456,19 @@ def broker_order_create():
         return bad_request(web_utils.KYC_NOT_VALIDATED)
     if market not in dasset.MARKETS:
         return bad_request(web_utils.INVALID_MARKET)
-    if side != dasset.MarketSide.BID.value:
+    side = MarketSide.parse(side)
+    if not side:
         return bad_request(web_utils.INVALID_SIDE)
-    side = dasset.MarketSide.BID
     amount_dec = decimal.Decimal(amount_dec)
-    quote_amount_dec, err = dasset.bid_quote_amount(market, amount_dec)
+    if market_side_is(side, MarketSide.BID):
+        quote_amount_dec, err = dasset.bid_quote_amount(market, amount_dec)
+    else:
+        quote_amount_dec, err = dasset.ask_quote_amount(market, amount_dec)
     if err == dasset.QuoteResult.INSUFFICIENT_LIQUIDITY:
         return bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
     if err == dasset.QuoteResult.AMOUNT_TOO_LOW:
         return bad_request(web_utils.AMOUNT_TOO_LOW)
-    if not dasset.address_validate(market, side, recipient):
+    if not dasset.recipent_validate(market, side, recipient):
         return bad_request(web_utils.INVALID_RECIPIENT)
     base_asset, quote_asset = dasset.assets_from_market(market)
     if not dasset.funds_available(quote_asset, quote_amount_dec):
@@ -474,11 +478,14 @@ def broker_order_create():
     broker_order = BrokerOrder(api_key.user, market, side.value, base_asset, quote_asset, amount, quote_amount, recipient)
     db.session.add(broker_order)
     if save_recipient:
-        entry = AddressBook.from_recipient(db.session, api_key.user, base_asset, recipient)
+        asset = base_asset
+        if market_side_is(side, MarketSide.ASK):
+            asset = quote_asset
+        entry = AddressBook.from_recipient(db.session, api_key.user, asset, recipient)
         if entry:
             entry.description = recipient_description
         else:
-            entry = AddressBook(api_key.user, base_asset, recipient, recipient_description)
+            entry = AddressBook(api_key.user, asset, recipient, recipient_description)
         db.session.add(entry)
     db.session.commit()
     websocket.broker_order_new_event(broker_order)
@@ -502,6 +509,8 @@ def broker_order_accept():
     broker_order = BrokerOrder.from_token(db.session, token)
     if not broker_order or broker_order.user != api_key.user:
         return bad_request(web_utils.NOT_FOUND)
+    if market_side_is(broker_order.side, MarketSide.ASK):
+        return bad_request(web_utils.INVALID_SIDE)
     now = datetime.datetime.now()
     if now > broker_order.expiry:
         return bad_request(web_utils.EXPIRED)
