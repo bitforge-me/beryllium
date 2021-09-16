@@ -13,6 +13,7 @@ from sqlalchemy import and_
 from app_core import db
 from utils import generate_key
 import dasset
+from dasset import market_side_is, MarketSide
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +67,8 @@ class User(db.Model, UserMixin):
                             backref=db.backref('users', lazy='dynamic'))
     photo = db.Column(db.String())
     photo_type = db.Column(db.String(255))
+
+    dasset_subaccount = db.relationship('DassetSubaccount', back_populates='user')
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -376,6 +379,7 @@ class BrokerOrderSchema(Schema):
     quote_amount = fields.Integer()
     quote_amount_dec = fields.Method('get_quote_amount_dec')
     recipient = fields.String()
+    address = fields.String()
     status = fields.String()
     payment_url = fields.Method('get_payment_url')
 
@@ -389,6 +393,11 @@ class BrokerOrderSchema(Schema):
         payment_url = None
         if obj.windcave_payment_request:
             payment_url = url_for('payments.payment_interstitial', token=obj.windcave_payment_request.token, _external=True)
+        if obj.address:
+            if market_side_is(obj.side, MarketSide.BID):
+                payment_url = dasset.crypto_uri(obj.quote_asset, obj.address, obj.quote_amount)
+            else:
+                payment_url = dasset.crypto_uri(obj.base_asset, obj.address, obj.base_amount)
         return payment_url
 
 class BrokerOrder(db.Model):
@@ -424,6 +433,10 @@ class BrokerOrder(db.Model):
     exchange_order = db.relationship('ExchangeOrder')
     exchange_withdrawal_id = db.Column(db.Integer, db.ForeignKey('exchange_withdrawal.id'))
     exchange_withdrawal = db.relationship('ExchangeWithdrawal', backref=db.backref('broker_order', uselist=False))
+    exchange_deposit_id = db.Column(db.Integer, db.ForeignKey('exchange_deposit.id'))
+    exchange_deposit = db.relationship('ExchangeDeposit', backref=db.backref('broker_order', uselist=False))
+    address = db.Column(db.String)
+
     status = db.Column(db.String, nullable=False)
 
     def __init__(self, user, market, side, base_asset, quote_asset, base_amount, quote_amount, recipient):
@@ -462,6 +475,29 @@ class BrokerOrder(db.Model):
     def all_active(cls, session):
         return session.query(cls).filter(and_(cls.status != cls.STATUS_COMPLETED, and_(cls.status != cls.STATUS_EXPIRED, cls.status != cls.STATUS_CANCELLED))).all()
 
+class DassetSubaccount(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.DateTime(), nullable=False, unique=False)
+    subaccount_id = db.Column(db.String, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', uselist=False, back_populates='dasset_subaccount')
+
+    def __init__(self, user, subaccount_id):
+        self.user = user
+        self.date = datetime.datetime.now()
+        self.subaccount_id = subaccount_id
+
+    @classmethod
+    def count(cls, session):
+        return session.query(cls).count()
+
+    @classmethod
+    def from_subaccount_id(cls, session, subaccount_id):
+        return session.query(cls).filter(cls.subaccount_id == subaccount_id).first()
+
+    def __repr__(self):
+        return '<DassetSubaccount %r>' % (self.subaccount_id)
+
 class ExchangeOrder(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     token = db.Column(db.String(255), unique=True, nullable=False)
@@ -474,6 +510,17 @@ class ExchangeOrder(db.Model):
         self.exchange_reference = exchange_reference
 
 class ExchangeWithdrawal(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String(255), unique=True, nullable=False)
+    date = db.Column(db.DateTime(), nullable=False)
+    exchange_reference = db.Column(db.String, nullable=False)
+
+    def __init__(self, exchange_reference):
+        self.token = generate_key()
+        self.date = datetime.datetime.now()
+        self.exchange_reference = exchange_reference
+
+class ExchangeDeposit(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     token = db.Column(db.String(255), unique=True, nullable=False)
     date = db.Column(db.DateTime(), nullable=False)

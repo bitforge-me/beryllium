@@ -32,6 +32,7 @@ MARKETS = {'BTC-NZD': Munch(base_asset=BTC, quote_asset=NZD, min_order=decimal.D
     'LTC-NZD': Munch(base_asset=LTC, quote_asset=NZD, min_order=decimal.Decimal(1))}
 
 URL_BASE = 'https://api.dassetx.com/api'
+URL_BASE_SUBACCOUNT = 'https://api.dassetx.com/prod/api'
 
 class QuoteResult(Enum):
     OK = 0
@@ -98,22 +99,35 @@ def _parse_withdrawal(item):
 # Dasset API Requests
 #
 
-def req_get(endpoint, params=None):
+def req_get(endpoint, params=None, subaccount_id=None):
     url = URL_BASE + endpoint
     headers = {}
     headers['x-api-key'] = DASSET_API_SECRET
     headers['x-account-id'] = DASSET_ACCOUNT_ID
+    if subaccount_id:
+        headers['x-subaccount-id'] = subaccount_id
     logger.info('   GET - %s', url)
     r = requests.get(url, headers=headers, params=params)
     return r
 
-def req_post(endpoint, params):
+def req_post(endpoint, params, subaccount_id=None):
+    url = URL_BASE + endpoint
+    headers = {}
+    headers['x-api-key'] = DASSET_API_SECRET
+    headers['x-account-id'] = DASSET_ACCOUNT_ID
+    if subaccount_id:
+        headers['x-subaccount-id'] = subaccount_id
+    logger.info('   POST - %s', url)
+    r = requests.post(url, headers=headers, data=json.dumps(params))
+    return r
+
+def req_subaccount_put(endpoint, params):
     url = URL_BASE + endpoint
     headers = {}
     headers['x-api-key'] = DASSET_API_SECRET
     headers['x-account-id'] = DASSET_ACCOUNT_ID
     logger.info('   POST - %s', url)
-    r = requests.post(url, headers=headers, data=json.dumps(params))
+    r = requests.put(url, headers=headers, data=json.dumps(params))
     return r
 
 def balances_req(asset=None):
@@ -206,10 +220,6 @@ def order_status_req(order_id, market):
     logger.error('exchange order %s not found for market %s', order_id, market)
     return None
 
-def order_status_check(order_id, market):
-    order = order_status_req(order_id, market)
-    return order.status == 'Completed'
-
 def crypto_withdrawal_create_req(asset, amount, address):
     assert isinstance(amount, decimal.Decimal)
     if _account_mock():
@@ -234,6 +244,34 @@ def crypto_withdrawal_status_check(withdrawal_id):
         return Munch(id=withdrawal_id, status='Completed')
     withdrawal = crypto_withdrawal_status_req(withdrawal_id)
     return withdrawal.status == 'Completed'
+
+def addresses_req(asset, subaccount_id):
+    endpoint = f'/addresses/{asset}'
+    r = req_get(endpoint, subaccount_id=subaccount_id)
+    if r.status_code == 200:
+        addrs = []
+        for item in r.json():
+            if item['status'] == 'PROVISIONED':
+                addrs.append(item['cryptoAddress'])
+        return addrs
+    logger.error('request failed: %d, %s', r.status_code, r.content)
+    return None
+
+def addresses_create_req(asset, subaccount_id):
+    endpoint = '/addresses'
+    r = req_post(endpoint, params=dict(currencySymbol=asset), subaccount_id=subaccount_id)
+    if r.status_code == 200:
+        return r.json()[0]['status'] == 'REQUESTED'
+    logger.error('request failed: %d, %s', r.status_code, r.content)
+    return False
+
+def subaccount_req(reference):
+    endpoint = '/subaccount'
+    r = req_subaccount_put(endpoint, params=dict(reference=reference))
+    if r.status_code == 200:
+        return _parse_withdrawal(r.json()[0])
+    logger.error('request failed: %d, %s', r.status_code, r.content)
+    return None
 
 #
 # Public functions
@@ -306,6 +344,19 @@ def recipent_validate(market, side, recipient):
         logger.error('failed to validate recipient "%s" (%s)', recipient, asset)
     return result
 
+def crypto_uri(asset, address, amount_int):
+    assert isinstance(amount_int, int)
+    amount = asset_int_to_dec(asset, amount_int)
+    if asset == 'BTC':
+        return f'bitcoin:{address}?amount={amount}'
+    if asset == 'ETH':
+        return f'ethereum:{address}?value={amount}'
+    if asset == 'DOGE':
+        return f'dogecoin:{address}?amount={amount}'
+    if asset == 'LTC':
+        return f'litecoin:{address}?amount={amount}'
+    return None
+
 def bid_quote_amount(market, amount):
     assert isinstance(amount, decimal.Decimal)
     if amount < MARKETS[market].min_order:
@@ -363,6 +414,24 @@ def ask_quote_amount(market, amount):
         n += 1
 
     return decimal.Decimal(-1), QuoteResult.INSUFFICIENT_LIQUIDITY
+
+#
+# Public functions that rely on an exchange request
+#
+
+def order_status_check(order_id, market):
+    order = order_status_req(order_id, market)
+    return order.status == 'Completed'
+
+def address_get_or_create(asset, subaccount_id):
+    addrs = addresses_req(asset, subaccount_id)
+    if addrs:
+        return addrs[0]
+    if addresses_create_req(asset, subaccount_id):
+        addrs = addresses_req(asset, subaccount_id)
+        if addrs:
+            return addrs[0]
+    return None
 
 def funds_available(asset, amount):
     assert isinstance(amount, decimal.Decimal)

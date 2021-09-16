@@ -13,7 +13,7 @@ from flask_security.recoverable import send_reset_password_instructions
 import web_utils
 from web_utils import bad_request, get_json_params, auth_request, auth_request_get_single_param, auth_request_get_params
 import utils
-from models import User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook
+from models import DassetSubaccount, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook
 from app_core import db, limiter
 from security import tf_enabled_check, tf_method, tf_code_send, tf_method_set, tf_method_unset, tf_secret_init, tf_code_validate, user_datastore
 import payments_core
@@ -509,17 +509,34 @@ def broker_order_accept():
     broker_order = BrokerOrder.from_token(db.session, token)
     if not broker_order or broker_order.user != api_key.user:
         return bad_request(web_utils.NOT_FOUND)
-    if market_side_is(broker_order.side, MarketSide.ASK):
-        return bad_request(web_utils.INVALID_SIDE)
     now = datetime.datetime.now()
     if now > broker_order.expiry:
         return bad_request(web_utils.EXPIRED)
     if broker_order.status != broker_order.STATUS_CREATED:
         return bad_request(web_utils.INVALID_STATUS)
-    req = payments_core.payment_create(broker_order.quote_amount, broker_order.expiry)
-    if not req:
-        return bad_request(web_utils.FAILED_PAYMENT_CREATE)
-    broker_order.windcave_payment_request = req
+    if market_side_is(broker_order.side, MarketSide.BID):
+        # create nzd payment request
+        req = payments_core.payment_create(broker_order.quote_amount, broker_order.expiry)
+        if not req:
+            return bad_request(web_utils.FAILED_PAYMENT_CREATE)
+        broker_order.windcave_payment_request = req
+    else:
+        # create subaccount for user
+        if not api_key.user.dasset_subaccount:
+            subaccount_id = dasset.subaccount_req(api_key.user.token)
+            if not subaccount_id:
+                logger.error('failed to create subaccount for %s', api_key.user.email)
+                return bad_request(web_utils.FAILED_EXCHANGE)
+            subaccount = DassetSubaccount(api_key.user, subaccount_id)
+            db.session.add(subaccount)
+        else:
+            subaccount_id = api_key.user.subaccount.subaccount_id
+        # create crypto address
+        address = dasset.address_get_or_create(broker_order.base_asset, subaccount_id)
+        if not address:
+            logger.error('failed to get address for %s (%s)', broker_order.base_asset, subaccount_id)
+        broker_order.address = address
+    # created payment request / crypto address now update the status and commit to db
     broker_order.status = broker_order.STATUS_READY
     db.session.add(req)
     db.session.add(broker_order)
