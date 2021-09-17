@@ -520,6 +520,7 @@ def broker_order_accept():
         if not req:
             return bad_request(web_utils.FAILED_PAYMENT_CREATE)
         broker_order.windcave_payment_request = req
+        db.session.add(req)
     else:
         # create subaccount for user
         if not api_key.user.dasset_subaccount:
@@ -530,7 +531,7 @@ def broker_order_accept():
             subaccount = DassetSubaccount(api_key.user, subaccount_id)
             db.session.add(subaccount)
         else:
-            subaccount_id = api_key.user.subaccount.subaccount_id
+            subaccount_id = api_key.user.dasset_subaccount.subaccount_id
         # create crypto address
         address = dasset.address_get_or_create(broker_order.base_asset, subaccount_id)
         if not address:
@@ -538,7 +539,6 @@ def broker_order_accept():
         broker_order.address = address
     # created payment request / crypto address now update the status and commit to db
     broker_order.status = broker_order.STATUS_READY
-    db.session.add(req)
     db.session.add(broker_order)
     db.session.commit()
     websocket.broker_order_update_event(broker_order)

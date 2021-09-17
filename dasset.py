@@ -266,6 +266,8 @@ def addresses_create_req(asset, subaccount_id):
     return False
 
 def subaccount_req(reference):
+    if _account_mock():
+        return utils.generate_key()
     endpoint = '/subaccount'
     r = req_subaccount_put(endpoint, params=dict(reference=reference))
     if r.status_code == 200:
@@ -424,6 +426,8 @@ def order_status_check(order_id, market):
     return order.status == 'Completed'
 
 def address_get_or_create(asset, subaccount_id):
+    if _account_mock():
+        return 'XXX'
     addrs = addresses_req(asset, subaccount_id)
     if addrs:
         return addrs[0]

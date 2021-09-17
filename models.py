@@ -68,7 +68,7 @@ class User(db.Model, UserMixin):
     photo = db.Column(db.String())
     photo_type = db.Column(db.String(255))
 
-    dasset_subaccount = db.relationship('DassetSubaccount', back_populates='user')
+    dasset_subaccount = db.relationship('DassetSubaccount', uselist=False, back_populates='user')
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
