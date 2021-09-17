@@ -88,17 +88,6 @@ def transaction_count(table, start_date, end_date):
         result = 0
     return result
 
-def get_decimals(asset):
-    dec = eval('dasset.'+str(asset)+'.decimals')+1
-    test_string = '1'
-    format_decimals = '{:<0'+str(dec)+'}'
-    asset_decimal = format_decimals.format(test_string)
-    return asset_decimal
-
-def asset_divisor(data, divisor):
-    result = int(data) / int(divisor)
-    return result
-
 def broker_order_amount(table, start_date, end_date, market):
     result = table.query.filter(table.market == market)\
             .filter(and_(table.date >= str(start_date), table.date < str(end_date)))\
@@ -106,8 +95,7 @@ def broker_order_amount(table, start_date, end_date, market):
     if not result:
         result = 0
     asset_symbol = market.split('-')[0]
-    result_divisor = get_decimals(asset_symbol)
-    result = asset_divisor(result, result_divisor)
+    result = dasset.asset_int_to_dec(asset_symbol, result)
     result = '{0:.4f}'.format(result)
     return result
 
@@ -117,8 +105,7 @@ def broker_order_amount_lifetime(table, market):
     if not result:
         result = 0
     asset_symbol = market.split('-')[0]
-    result_divisor = get_decimals(asset_symbol)
-    result = asset_divisor(result, result_divisor)
+    result = dasset.asset_int_to_dec(asset_symbol, result)
     result = '{0:.4f}'.format(result)
     return result
 
