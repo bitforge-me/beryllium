@@ -58,13 +58,13 @@ def backblaze_upload_file(upload_url, upload_auth_token, filename, bytesio, cont
     file_size = str(len(file_content))
     file_sha1 = hashlib.sha1(file_content).hexdigest()
     # upload pdf
-    headers = {'Authorization': upload_auth_token, 'X-Bz-File-Name': '%s' % filename, 'Content-Type': content_type, 'Content-Length': file_size, 'X-Bz-Content-Sha1': file_sha1}
+    headers = {'Authorization': upload_auth_token, 'X-Bz-File-Name': filename, 'Content-Type': content_type, 'Content-Length': file_size, 'X-Bz-Content-Sha1': file_sha1}
     r = requests.post(upload_url, headers=headers, data=file_content)
     r.raise_for_status()
 
 def backblaze_download_file(download_url, auth_token, bucket, filename):
     headers = {'Authorization': auth_token}
-    file_url = '{0}/file/{1}/{2}'.format(download_url, bucket, filename)
+    file_url = f'{download_url}/file/{bucket}/{filename}'
     r = requests.get(file_url, headers=headers)
     r.raise_for_status()
     return BytesIO(r.content)

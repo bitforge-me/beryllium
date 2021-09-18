@@ -18,7 +18,7 @@ def int2asset(num):
     if num is None:
         return '!ERR!'
     num = decimal.Decimal(num)/100
-    return '{num:0.2f}'.format(num=num)
+    return f'{num:0.2f}'
 
 def _attachment(b64data, mime_type, filename, content_id, disposition='attachment'):
     attachment = Attachment()
@@ -93,11 +93,11 @@ def email_notification_alert(logger, subject, msg, recipient):
 def email_payout_group_notification(logger, group):
     recipient = app.config['PAYOUT_GROUP_EMAIL']
     server_name = app.config['SERVER_NAME']
-    subject = '%s payout' % server_name
-    html_content = '%d payout requests<br/><br/>' % len(group.requests)
+    subject = f'{server_name} payout'
+    html_content = f'{len(group.requests)} payout requests<br/><br/>'
     if len(group.requests) > 0:
         all_url = url_for('payments.payout_group', token=group.token, secret=group.secret, _external=True)
-        html_content += '<a href="%s">payout group: %s</a>' % (all_url, group.token)
+        html_content += f'<a href="{all_url}">payout group: {group.token}</a>'
     send_email(logger, subject, html_content, recipient=recipient)
 
 def generate_key(chars=10, upper=True):

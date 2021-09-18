@@ -37,7 +37,7 @@ def _broker_order_update(broker_order):
         price = quote_amount_dec / amount_total
         exchange_order_id = dasset.order_create_req(broker_order.market, MarketSide.BID, amount_total, price)
         if not exchange_order_id:
-            msg = '%s, %s, %s, %d' % (broker_order.token, broker_order.market, broker_order.side, broker_order.base_amount)
+            msg = f'{broker_order.token}, {broker_order.market}, {broker_order.side}, {broker_order.base_amount}'
             logger.error('failed to create exchange order - %s', msg)
             utils.send_email(logger, 'failed to create exchange order', msg)
             return updated_records
@@ -55,7 +55,7 @@ def _broker_order_update(broker_order):
             base_amount_dec = dasset.asset_int_to_dec(broker_order.base_asset, broker_order.base_amount)
             exchange_withdrawal_id = dasset.crypto_withdrawal_create_req(broker_order.base_asset, base_amount_dec, broker_order.recipient)
             if not exchange_withdrawal_id:
-                msg = '%s, %s, %d' % (broker_order.token, broker_order.base_asset, broker_order.base_amount)
+                msg = f'{broker_order.token}, {broker_order.base_asset}, {broker_order.base_amount}'
                 logger.error('failed to create exchange withdrawal - %s', msg)
                 utils.send_email(logger, 'failed to create exchange withdrawal', msg)
                 return updated_records
@@ -65,7 +65,7 @@ def _broker_order_update(broker_order):
             updated_records.append(exchange_withdrawal)
             updated_records.append(broker_order)
         else:
-            msg = '%s, %s' % (broker_order.token, broker_order.exchange_order.exchange_reference)
+            msg = f'{broker_order.token}, {broker_order.exchange_order.exchange_reference}'
             logger.error('failed to complete exchange order - %s', msg)
             utils.send_email(logger, 'failed to complete exchange order', msg)
             return updated_records

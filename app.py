@@ -37,7 +37,7 @@ def add_user(email, password):
 def create_role(name, desc):
     role = Role.from_name(db.session, name)
     if not role:
-        role = Role(name=name, description=desc)
+        role = Role(name=name, description=desc) # pylint: disable=unexpected-keyword-arg
     else:
         role.description = desc
     db.session.add(role)

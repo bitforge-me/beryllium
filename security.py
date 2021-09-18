@@ -46,14 +46,11 @@ def tf_code_send(user):
 
 def tf_code_validate(user, code):
     # codes sent by sms or mail will be valid for another window cycle
-    if (
-        user.tf_primary_method == "google_authenticator"
-        or user.tf_primary_method == "authenticator"
-    ):
+    if user.tf_primary_method in ('google_authenticator', 'authenticator'):
         window = cv("TWO_FACTOR_AUTHENTICATOR_VALIDITY")
-    elif user.tf_primary_method == "email" or user.tf_primary_method == "mail":
+    elif user.tf_primary_method in ('email', 'mail'):
         window = cv("TWO_FACTOR_MAIL_VALIDITY")
-    elif user.tf_primary_method == "sms":
+    elif user.tf_primary_method == 'sms':
         window = cv("TWO_FACTOR_SMS_VALIDITY")
     else:
         logger.error('no valid two factor method for user %s', user.email)

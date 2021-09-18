@@ -262,7 +262,7 @@ class Topic(db.Model):
         return session.query(cls).filter(cls.topic == name).first()
 
     def __repr__(self):
-        return '<Topic %r %r>' % self.topic
+        return f'<Topic {self.topic}>'
 
 class PushNotificationLocation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -300,7 +300,7 @@ class Setting(db.Model):
         self.value = value
 
     def __repr__(self):
-        return '<Setting %r %r>' % (self.key, self.value)
+        return f'<Setting {self.key} {self.value}>'
 
 class ReferralSchema(Schema):
     token = fields.String()
@@ -496,7 +496,7 @@ class DassetSubaccount(db.Model):
         return session.query(cls).filter(cls.subaccount_id == subaccount_id).first()
 
     def __repr__(self):
-        return '<DassetSubaccount %r>' % (self.subaccount_id)
+        return f'<DassetSubaccount {self.subaccount_id}>'
 
 class ExchangeOrder(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -576,7 +576,7 @@ class WindcavePaymentRequest(db.Model):
         return session.query(cls).filter(cls.token == token).first()
 
     def __repr__(self):
-        return '<WindcavePaymentRequest %r>' % (self.token)
+        return f'<WindcavePaymentRequest {self.token}>'
 
     def to_json(self):
         schema = WindcavePaymentRequestSchema()
@@ -672,7 +672,7 @@ class PayoutRequest(db.Model):
         return session.query(cls).filter(cls.status == 'processed')
 
     def __repr__(self):
-        return '<PayoutRequest %r>' % (self.token)
+        return f'<PayoutRequest {self.token}>'
 
     def to_json(self):
         schema = PayoutRequestSchema()
@@ -746,7 +746,7 @@ class KycRequest(db.Model):
         return session.query(cls).filter(cls.token == token).first()
 
     def __repr__(self):
-        return '<KycRequest %r>' % (self.token)
+        return f'<KycRequest {self.token}>'
 
     def to_json(self):
         schema = KycRequestSchema()

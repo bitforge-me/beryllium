@@ -22,16 +22,16 @@ def hash_total_finalize(value):
 def write_header_record(output_file, direct_debit_auth_code, sending_bank_account_number, due_date, creation_date):
     due_date = due_date.strftime("%y%m%d")
     creation_date = creation_date.strftime("%y%m%d")
-    s = "1,%s,,,%s,6,%s,%s,I\n" % (direct_debit_auth_code, sending_bank_account_number, due_date, creation_date)
-    s = "1,,,,%s,7,%s,%s,I\n" % (sending_bank_account_number, due_date, creation_date)
+    s = f"1,{direct_debit_auth_code},,,{sending_bank_account_number},6,{due_date},{creation_date},I\n"
+    s = f"1,,,,{sending_bank_account_number},7,{due_date},{creation_date},I\n"
     output_file.write(s)
 
 def write_transaction_record(output_file, account_number, amount_cents, sender_name, sender_ref, sender_code, receiver_name, receiver_ref, receiver_code, receiver_particulars):
-    s = "2,%s,50,%d,%s,%s,%s,,%s,%s,%s,%s,\n" % (account_number, amount_cents, receiver_name, receiver_ref, receiver_code, receiver_particulars, sender_name, sender_code, sender_ref)
+    s = f"2,{account_number},50,{amount_cents},{receiver_name},{receiver_ref},{receiver_code},,{receiver_particulars},{sender_name},{sender_code},{sender_ref},\n"
     output_file.write(s)
 
 def write_footer_record(output_file, amount_total_cents, num_txs, hash_total):
-    s = "3,%d,%d,%s\n" % (amount_total_cents, num_txs, hash_total)
+    s = f"3,{amount_total_cents},{num_txs},{hash_total}\n"
     output_file.write(s)
 
 def write_txs(output_file, direct_debit_auth_code, sending_bank_account_number, sender_name, txs):

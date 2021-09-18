@@ -48,7 +48,7 @@ def aplyid_request_init(req, mobile_number):
 def aplyid_download_pdf(transaction_id):
     try:
         headers = {'Aply-API-Key': APLYID_API_KEY, 'Aply-Secret': APLYID_API_SECRET}
-        r = requests.get(APLYID_BASE_URL + '/biometric/pdf/%s.pdf' % transaction_id, headers=headers)
+        r = requests.get(APLYID_BASE_URL + f'/biometric/pdf/{transaction_id}.pdf', headers=headers)
         r.raise_for_status()
         return BytesIO(r.content)
     except Exception as ex: # pylint: disable=broad-except
