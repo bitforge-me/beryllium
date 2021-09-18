@@ -73,11 +73,11 @@ def payout_group_processed():
     content = request.form
     token = content['token']
     secret = content['secret']
-    print("looking for %s" % token)
+    logger.info('looking for %s', token)
     group = PayoutGroup.from_token(db.session, token)
     if group and group.secret == secret:
         payments_core.set_payout_requests_complete(group.requests)
-        return redirect('/payout_group/%s/%s' % (token, secret))
+        return redirect(f'/payout_group/{token}/{secret}')
     flash('Sorry group not found', category='danger')
     return redirect('/')
 
@@ -88,11 +88,11 @@ def payout_suspend():
     secret = content['secret']
     group_token = content['group_token']
     group_secret = content['group_secret']
-    print("looking for %s" % token)
+    logger.info('looking for %s', token)
     req = PayoutRequest.from_token(db.session, token)
     if req and req.secret == secret:
         payments_core.set_payout_request_suspended(req)
-        return redirect('/payout_group/%s/%s' % (group_token, group_secret))
+        return redirect(f'/payout_group/{group_token}/{group_secret}')
     flash('Sorry payout not found', category='danger')
     return redirect('/')
 
@@ -103,11 +103,11 @@ def payout_unsuspend():
     secret = content['secret']
     group_token = content['group_token']
     group_secret = content['group_secret']
-    print("looking for %s" % token)
+    logger.info('looking for %s', token)
     req = PayoutRequest.from_token(db.session, token)
     if req and req.secret == secret:
         payments_core.set_payout_request_created(req)
-        return redirect('/payout_group/%s/%s' % (group_token, group_secret))
+        return redirect(f'/payout_group/{group_token}/{group_secret}')
     flash('Sorry payout not found', category='danger')
     return redirect('/')
 
@@ -133,7 +133,7 @@ def ib4b_response(token, reqs):
     # return file response
     resp = make_response(output.getvalue())
     resp.headers['Content-Type'] = "application/octet-stream"
-    resp.headers['Content-Disposition'] = "inline; filename=bnz_%s.txt" % token
+    resp.headers['Content-Disposition'] = f"inline; filename=bnz_{token}.txt"
     return resp
 
 @payments.route('/payout_group/BNZ_IB4B_file/<token>/<secret>', methods=['GET'])

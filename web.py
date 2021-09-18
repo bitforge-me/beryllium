@@ -115,7 +115,7 @@ def push_notifications():
                 fcm.send_to_tokens([registration_token], title, body, image, html)
                 flash("sent push notification", "success")
         except Exception as e: # pylint: disable=broad-except
-            flash("{}".format(str(e.args[0])), "danger")
+            flash(str(e.args[0]), "danger")
     topics = Topic.topic_list(db.session)
     return render_template("push_notifications.html", topics=topics, type_=type_, topic=topic, location=location, title=title, body=body, image=image, html=html, registration_token=registration_token)
 

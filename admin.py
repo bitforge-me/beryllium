@@ -38,11 +38,9 @@ MY_DEFAULT_FORMATTERS.update({
 def _format_location(view, context, model, name):
     lat = model.latitude
     lon = model.longitude
-
-    # pylint: disable=duplicate-string-formatting-argument
-    html = '''
-    <a href="http://www.google.com/maps/place/{},{}">{}, {}</a>
-    '''.format(lat, lon, lat, lon)
+    html = f'''
+    <a href="http://www.google.com/maps/place/{lat},{lon}">{lat}, {lon}</a>
+    '''
     return Markup(html)
 
 # flask admin filters
