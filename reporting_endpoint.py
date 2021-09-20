@@ -7,7 +7,7 @@ from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
 from sqlalchemy import func, and_
 
-from flask import Blueprint, render_template, redirect, Response
+from flask import Blueprint, render_template, redirect
 from flask_security import roles_accepted
 
 from app_core import db
@@ -126,4 +126,3 @@ def dashboard_report_broker_order():
         order_amount_lifetime = broker_order_amount_lifetime(BrokerOrder, market)
         orders_data[market] = dict(asset_symbol=asset_symbol, order_count_today=order_count_today, order_count_yesterday=order_count_yesterday, order_count_week=order_count_week, order_count_month=order_count_month, order_count_year=order_count_year, order_count_lifetime=order_count_lifetime, order_amount_today=order_amount_today, order_amount_yesterday=order_amount_yesterday, order_amount_week=order_amount_week, order_amount_month=order_amount_month, order_amount_year=order_amount_year, order_amount_lifetime=order_amount_lifetime)
     return render_template('reporting/dashboard_broker_orders.html', orders_data=orders_data)
-
