@@ -429,6 +429,8 @@ class BrokerOrder(db.Model):
     recipient = db.Column(db.String, nullable=False)
     windcave_payment_request_id = db.Column(db.Integer, db.ForeignKey('windcave_payment_request.id'))
     windcave_payment_request = db.relationship('WindcavePaymentRequest', backref=db.backref('broker_order', uselist=False))
+    payout_request_id = db.Column(db.Integer, db.ForeignKey('payout_request.id'))
+    payout_request = db.relationship('PayoutRequest', backref=db.backref('broker_order', uselist=False))
     exchange_order_id = db.Column(db.Integer, db.ForeignKey('exchange_order.id'))
     exchange_order = db.relationship('ExchangeOrder')
     exchange_withdrawal_id = db.Column(db.Integer, db.ForeignKey('exchange_withdrawal.id'))
@@ -525,11 +527,17 @@ class ExchangeDeposit(db.Model):
     token = db.Column(db.String(255), unique=True, nullable=False)
     date = db.Column(db.DateTime(), nullable=False)
     exchange_reference = db.Column(db.String, nullable=False)
+    txid = db.Column(db.String(255), unique=True, nullable=False)
 
-    def __init__(self, exchange_reference):
+    def __init__(self, exchange_reference, txid):
         self.token = generate_key()
         self.date = datetime.datetime.now()
         self.exchange_reference = exchange_reference
+        self.txid = txid
+
+    @classmethod
+    def from_txid(cls, session, txid):
+        return session.query(cls).filter(cls.txid == txid).first()
 
 class WindcavePaymentRequestSchema(Schema):
     date = fields.DateTime()
@@ -582,6 +590,14 @@ class WindcavePaymentRequest(db.Model):
         schema = WindcavePaymentRequestSchema()
         return schema.dump(self)
 
+class PayoutGroupRequest(db.Model):
+    payout_group_id = db.Column(db.Integer, db.ForeignKey('payout_group.id'), primary_key=True)
+    payout_request_id = db.Column(db.Integer, db.ForeignKey('payout_request.id'), primary_key=True)
+
+    def __init__(self, group, req):
+        self.payout_group_id = group.id
+        self.payout_request_id = req.id
+
 class PayoutRequestSchema(Schema):
     date = fields.DateTime()
     token = fields.String()
@@ -600,14 +616,6 @@ class PayoutRequestSchema(Schema):
     email_sent = fields.Boolean()
     processed = fields.Boolean()
     status = fields.String()
-
-class PayoutGroupRequest(db.Model):
-    payout_group_id = db.Column(db.Integer, db.ForeignKey('payout_group.id'), primary_key=True)
-    payout_request_id = db.Column(db.Integer, db.ForeignKey('payout_request.id'), primary_key=True)
-
-    def __init__(self, group, req):
-        self.payout_group_id = group.id
-        self.payout_request_id = req.id
 
 class PayoutRequest(db.Model):
     STATUS_CREATED = 'created'

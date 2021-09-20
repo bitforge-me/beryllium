@@ -20,11 +20,11 @@ TESTNET = app.config['TESTNET']
 DASSET_API_SECRET = app.config['DASSET_API_SECRET']
 DASSET_ACCOUNT_ID = app.config['DASSET_ACCOUNT_ID']
 BROKER_ORDER_FEE = decimal.Decimal(app.config['BROKER_ORDER_FEE'])
-NZD = Munch(symbol='NZD', name='New Zealand Dollar', decimals=2, withdraw_fee=decimal.Decimal(7))
-BTC = Munch(symbol='BTC', name='Bitcoin', decimals=8, withdraw_fee=decimal.Decimal('0.0003'))
-ETH = Munch(symbol='ETH', name='Ethereum', decimals=18, withdraw_fee=decimal.Decimal('0.0099'))
-DOGE = Munch(symbol='DOGE', name='Dogecoin', decimals=8, withdraw_fee=decimal.Decimal(5))
-LTC = Munch(symbol='LTC', name='Litecoin', decimals=8, withdraw_fee=decimal.Decimal('0.1'))
+NZD = Munch(symbol='NZD', name='New Zealand Dollar', decimals=2, withdraw_fee=decimal.Decimal(7), is_crypto=False)
+BTC = Munch(symbol='BTC', name='Bitcoin', decimals=8, withdraw_fee=decimal.Decimal('0.0003'), is_crypto=True)
+ETH = Munch(symbol='ETH', name='Ethereum', decimals=18, withdraw_fee=decimal.Decimal('0.0099'), is_crypto=True)
+DOGE = Munch(symbol='DOGE', name='Dogecoin', decimals=8, withdraw_fee=decimal.Decimal(5), is_crypto=True)
+LTC = Munch(symbol='LTC', name='Litecoin', decimals=8, withdraw_fee=decimal.Decimal('0.1'), is_crypto=True)
 ASSETS = Munch(NZD=NZD, BTC=BTC, ETH=ETH, DOGE=DOGE, LTC=LTC)
 MARKETS = {'BTC-NZD': Munch(base_asset=BTC, quote_asset=NZD, min_order=decimal.Decimal('0.01')), \
     'ETH-NZD': Munch(base_asset=ETH, quote_asset=NZD, min_order=decimal.Decimal('0.1')), \
@@ -90,10 +90,13 @@ def _parse_order(item):
     return Munch(id=item['id'], base_asset=['baseSymbol'], quote_asset=['quoteSymbol'], date=item['date'], side=side, status=item['status'], \
         base_amount=item['base_amount'], quote_amount=item['quote_amount'], filled=item['details']['filled'])
 
+def _parse_deposit(item):
+    return Munch(id=item['id'], symbol=item['currencySymbol'], address=item['cryptoAddress'], amount=decimal.Decimal(item['quantity']), date=item['updatedAt'], status=item['status'], txid=item['txId'])
+
 def _parse_withdrawal(item):
     id_ = item['id'] if 'id' in item else item['transactionId']
     amount = item['amount'] if 'amount' in item else item['quantity']
-    return Munch(id=id_, symbol=['currencySymbol'], amount=amount, date=item['createdAt'], status=item['status'], address=item['cryptoAddress'])
+    return Munch(id=id_, symbol=item['currencySymbol'], amount=amount, date=item['createdAt'], status=item['status'], address=item['cryptoAddress'])
 
 #
 # Dasset API Requests
@@ -182,11 +185,14 @@ def order_book_req(symbol):
 def order_create_req(market, side, amount, price):
     assert isinstance(amount, decimal.Decimal)
     assert isinstance(price, decimal.Decimal)
-    assert side is MarketSide.BID
     if _account_mock():
         return utils.generate_key()
     endpoint = '/orders'
-    r = req_post(endpoint, params=dict(amount=float(amount), tradingPair=market, side='BUY', orderType='LIMIT', timeInForce='FILL_OR_KILL', limit=float(price)))
+    if side is MarketSide.BID:
+        dasset_side = 'BUY'
+    else:
+        dasset_side = 'SELL'
+    r = req_post(endpoint, params=dict(amount=float(amount), tradingPair=market, side=dasset_side, orderType='LIMIT', timeInForce='FILL_OR_KILL', limit=float(price)))
     if r.status_code == 200:
         return r.json()[0]['order']['orderId']
     logger.error('request failed: %d, %s', r.status_code, r.content)
@@ -239,12 +245,6 @@ def crypto_withdrawal_status_req(withdrawal_id):
     logger.error('request failed: %d, %s', r.status_code, r.content)
     return None
 
-def crypto_withdrawal_status_check(withdrawal_id):
-    if _account_mock():
-        return Munch(id=withdrawal_id, status='Completed')
-    withdrawal = crypto_withdrawal_status_req(withdrawal_id)
-    return withdrawal.status == 'Completed'
-
 def addresses_req(asset, subaccount_id):
     endpoint = f'/addresses/{asset}'
     r = req_get(endpoint, subaccount_id=subaccount_id)
@@ -264,6 +264,34 @@ def addresses_create_req(asset, subaccount_id):
         return r.json()[0]['status'] == 'REQUESTED'
     logger.error('request failed: %d, %s', r.status_code, r.content)
     return False
+
+def crypto_deposits_pending_req(asset, subaccount_id):
+    endpoint = '/crypto/deposits/open'
+    r = req_get(endpoint, params=dict(currencySymbol=asset, status='PENDING'), subaccount_id=subaccount_id)
+    if r.status_code == 200:
+        deposits = r.json()
+        deposits = [_parse_deposit(d) for d in deposits]
+        return deposits
+    logger.error('request failed: %d, %s', r.status_code, r.content)
+    return None
+
+def crypto_deposits_closed_req(asset, subaccount_id):
+    endpoint = '/crypto/deposits/closed'
+    r = req_get(endpoint, params=dict(currencySymbol=asset), subaccount_id=subaccount_id)
+    if r.status_code == 200:
+        deposits = r.json()
+        deposits = [_parse_deposit(d) for d in deposits]
+        return deposits
+    logger.error('request failed: %d, %s', r.status_code, r.content)
+    return None
+
+def crypto_deposit_status_req(deposit_id):
+    endpoint = f'/crypto/deposits/{deposit_id}'
+    r = req_get(endpoint)
+    if r.status_code == 200:
+        return _parse_deposit(r.json()[0])
+    logger.error('request failed: %d, %s', r.status_code, r.content)
+    return None
 
 def subaccount_req(reference):
     if _account_mock():
@@ -319,6 +347,12 @@ def asset_dec_to_int(asset, value):
 def asset_dec_to_str(asset, value):
     decimals = asset_decimals(asset)
     return str(value.quantize(decimal.Decimal(10) ** -decimals))
+
+def asset_is_crypto(asset):
+    for item in ASSETS.values():
+        if item.symbol == asset and item.is_crypto:
+            return True
+    return False
 
 def recipent_validate(market, side, recipient):
     result = False
@@ -436,6 +470,37 @@ def address_get_or_create(asset, subaccount_id):
         if addrs:
             return addrs[0]
     return None
+
+def crypto_withdrawal_status_check(withdrawal_id):
+    if _account_mock():
+        return True
+    withdrawal = crypto_withdrawal_status_req(withdrawal_id)
+    return withdrawal and withdrawal.status == 'Completed'
+
+def crypto_deposit_search(asset, address, amount, subaccount_id):
+    assert isinstance(amount, decimal.Decimal)
+    if _account_mock():
+        id = utils.generate_key()
+        txid = utils.generate_key()
+        return [Munch(id=id, symbol=asset, address=address, amount=amount, date='blah', status='COMPLETED', txid=txid)]
+    deposits = []
+    deps = crypto_deposits_pending_req(asset, subaccount_id)
+    if deps:
+        for dep in deps:
+            if dep.address == address and amount == dep.amount:
+                deposits.append(dep)
+    deps = crypto_deposits_closed_req(asset, subaccount_id)
+    if deps:
+        for dep in deps:
+            if dep.address == address and amount == dep.amount:
+                deposits.append(dep)
+    return deposits
+
+def crypto_deposit_status_check(deposit_id):
+    if _account_mock():
+        return True
+    deposit = crypto_deposit_status_req(deposit_id)
+    return deposit and deposit.status == 'COMPLETED'
 
 def funds_available(asset, amount):
     assert isinstance(amount, decimal.Decimal)

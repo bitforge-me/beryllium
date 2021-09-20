@@ -7,7 +7,6 @@ import json
 import decimal
 
 from flask import url_for
-from stdnum.nz import bankaccount
 import requests
 from dateutil import tz
 
@@ -175,8 +174,6 @@ def payment_request_status_update(req):
 def payout_create(amount, sender_reference, sender_code, account_name, account_number, reference, code, particulars):
     # create payout request
     req = PayoutRequest('NZD', amount, PAYOUT_SENDER_NAME, PAYOUT_SENDER_ACCOUNT, sender_reference, sender_code, account_name, account_number, reference, code, particulars, app.config['PAYOUT_GROUP_EMAIL'], False)
-    db.session.add(req)
-    db.session.commit()
     return req
 
 def payout_group_create():
@@ -194,13 +191,6 @@ def payout_group_create():
     # expire old groups
     PayoutGroup.expire_all_but(db.session, group)
     db.session.commit()
-
-def payout_status(token):
-    logger.info("looking for %s", token)
-    return PayoutRequest.from_token(db.session, token)
-
-def bankaccount_is_valid(account):
-    return bankaccount.is_valid(account)
 
 def set_payout_requests_complete(reqs):
     for req in reqs:
