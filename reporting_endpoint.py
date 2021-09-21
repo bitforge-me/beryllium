@@ -47,7 +47,7 @@ def broker_order_amount(table, start_date, end_date, market):
         result = 0
     asset_symbol = market.split('-')[0]
     result = dasset.asset_int_to_dec(asset_symbol, result)
-    result = '{0:.4f}'.format(result)
+    result = f'{0:.4f}'.format(result)
     return result
 
 def broker_order_amount_lifetime(table, market):
