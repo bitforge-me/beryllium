@@ -12,6 +12,7 @@ from flask_security.utils import encrypt_password
 import web
 import utils
 import log_utils
+import payments_core
 from app_core import MISSING_VITAL_SETTING, app, db
 from models import User, Role, Permission, Topic
 from security import user_datastore
@@ -72,6 +73,10 @@ def add_role(email, role_name):
             logger.info("user already has role")
         db.session.commit()
 
+def payouts_notification_create():
+    with app.app_context():
+        payments_core.payouts_notification_create()
+
 def sigint_handler(signum, frame):
     # pylint: disable=global-statement
     global KEEP_RUNNING
@@ -112,6 +117,8 @@ if __name__ == "__main__":
             add_user(sys.argv[2], sys.argv[3])
         if sys.argv[1] == "add_role":
             add_role(sys.argv[2], sys.argv[3])
+        if sys.argv[1] == 'payouts_notification_create':
+            payouts_notification_create()
     else:
         if MISSING_VITAL_SETTING:
             logger.error('missing vital setting')

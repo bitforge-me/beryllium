@@ -480,9 +480,9 @@ def crypto_withdrawal_status_check(withdrawal_id):
 def crypto_deposit_search(asset, address, amount, subaccount_id):
     assert isinstance(amount, decimal.Decimal)
     if _account_mock():
-        id = utils.generate_key()
+        id_ = utils.generate_key()
         txid = utils.generate_key()
-        return [Munch(id=id, symbol=asset, address=address, amount=amount, date='blah', status='COMPLETED', txid=txid)]
+        return [Munch(id=id_, symbol=asset, address=address, amount=amount, date='blah', status='COMPLETED', txid=txid)]
     deposits = []
     deps = crypto_deposits_pending_req(asset, subaccount_id)
     if deps:

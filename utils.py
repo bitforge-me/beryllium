@@ -90,14 +90,12 @@ def email_referral(logger, referral):
 def email_notification_alert(logger, subject, msg, recipient):
     send_email(logger, subject, msg, recipient=recipient)
 
-def email_payout_group_notification(logger, group):
+def email_payouts_notification(logger, payout_requests):
     recipient = app.config['PAYOUT_GROUP_EMAIL']
     server_name = app.config['SERVER_NAME']
-    subject = f'{server_name} payout'
-    html_content = f'{len(group.requests)} payout requests<br/><br/>'
-    if len(group.requests) > 0:
-        all_url = url_for('payments.payout_group', token=group.token, secret=group.secret, _external=True)
-        html_content += f'<a href="{all_url}">payout group: {group.token}</a>'
+    subject = f'{server_name} payouts'
+    url = url_for('payments.payouts', _external=True)
+    html_content = f'{len(payout_requests)} payout requests<br/><br/><a href="{url}">payouts</a>'
     send_email(logger, subject, html_content, recipient=recipient)
 
 def generate_key(chars=10, upper=True):

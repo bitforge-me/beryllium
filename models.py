@@ -614,7 +614,6 @@ class PayoutRequestSchema(Schema):
     receiver_particulars = fields.String()
     email = fields.String()
     email_sent = fields.Boolean()
-    processed = fields.Boolean()
     status = fields.String()
 
 class PayoutRequest(db.Model):
@@ -625,7 +624,6 @@ class PayoutRequest(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.DateTime(), nullable=False, unique=False)
     token = db.Column(db.String, nullable=False, unique=True)
-    secret = db.Column(db.String, nullable=False)
     asset = db.Column(db.String, nullable=False)
     amount = db.Column(db.Integer, nullable=False)
     sender = db.Column(db.String, nullable=False)
@@ -639,14 +637,12 @@ class PayoutRequest(db.Model):
     receiver_particulars = db.Column(db.String, nullable=False)
     email = db.Column(db.String, nullable=False)
     email_sent = db.Column(db.Boolean)
-    processed = db.Column(db.Boolean)
     status = db.Column(db.String)
     groups = db.relationship('PayoutGroup', secondary='payout_group_request', back_populates='requests')
 
     def __init__(self, asset, amount, sender, sender_account, sender_reference, sender_code, receiver, receiver_account, receiver_reference, receiver_code, receiver_particulars, email, email_sent):
         self.date = datetime.datetime.now()
         self.token = generate_key()
-        self.secret = generate_key(20)
         self.asset = asset
         self.amount = amount
         self.sender = sender
@@ -660,7 +656,6 @@ class PayoutRequest(db.Model):
         self.receiver_particulars = receiver_particulars
         self.email = email
         self.email_sent = email_sent
-        self.processed = False
         self.status = self.STATUS_CREATED
 
     @classmethod
@@ -672,12 +667,16 @@ class PayoutRequest(db.Model):
         return session.query(cls).filter(cls.token == token).first()
 
     @classmethod
-    def not_processed(cls, session):
-        return session.query(cls).filter(cls.processed is False).all()
+    def where_status_created(cls, session):
+        return session.query(cls).filter(cls.status == cls.STATUS_CREATED).all()
 
     @classmethod
-    def where_status_processed(cls, session):
-        return session.query(cls).filter(cls.status == 'processed')
+    def where_status_suspended(cls, session):
+        return session.query(cls).filter(cls.status == cls.STATUS_SUSPENDED).all()
+
+    @classmethod
+    def not_completed(cls, session):
+        return session.query(cls).filter(cls.status != cls.STATUS_COMPLETED)
 
     def __repr__(self):
         return f'<PayoutRequest {self.token}>'
@@ -689,13 +688,11 @@ class PayoutRequest(db.Model):
 class PayoutGroup(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     token = db.Column(db.String, nullable=False, unique=True)
-    secret = db.Column(db.String, nullable=False, unique=True)
     expired = db.Column(db.Boolean, nullable=False)
     requests = db.relationship('PayoutRequest', secondary='payout_group_request', back_populates='groups')
 
     def __init__(self):
         self.token = generate_key()
-        self.secret = generate_key(20)
         self.expired = False
 
     @classmethod
