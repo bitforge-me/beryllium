@@ -801,3 +801,51 @@ class AddressBook(db.Model):
     def to_json(self):
         schema = AddressBookSchema()
         return schema.dump(self)
+
+class FiatDbTransactionSchema(Schema):
+    user = fields.String()
+    token = fields.String()
+    date = fields.String()
+    timestamp = fields.Integer()
+    action = fields.String()
+    asset = fields.String()
+    amount = fields.Integer()
+    attachment = fields.String()
+
+class FiatDbTransaction(db.Model):
+    ACTION_CREDIT = 'credit'
+    ACTION_DEBIT = 'debit'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref=db.backref('fiatdb_transactions', lazy='dynamic'))
+    token = db.Column(db.String(255), unique=True, nullable=False)
+    date = db.Column(db.DateTime())
+    action = db.Column(db.String(255), nullable=False)
+    asset = db.Column(db.String(255), nullable=False)
+    amount = db.Column(db.Integer())
+    attachment = db.Column(db.String(255))
+
+    def __init__(self, user, action, asset, amount, attachment):
+        self.user = user
+        self.token = generate_key()
+        self.date = datetime.datetime.now()
+        self.action = action
+        self.asset = asset
+        self.amount = amount
+        self.attachment = attachment
+
+    @classmethod
+    def from_token(cls, session, token):
+        return session.query(cls).filter(cls.token == token).first()
+
+    @classmethod
+    def all(cls, session):
+        return session.query(cls).all()
+
+    def __str__(self):
+        return self.token
+
+    def to_json(self):
+        tx_schema = FiatDbTransactionSchema()
+        return tx_schema.dump(self)

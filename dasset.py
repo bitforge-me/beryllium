@@ -445,6 +445,8 @@ def account_balances(asset=None, subaccount_id=None):
     if _account_mock():
         balances = []
         for item in ASSETS.values():
+            if subaccount_id and not asset_is_crypto(item.symbol):
+                continue
             balance = Munch(symbol=item.symbol, name=item.name, total=decimal.Decimal(9999), available=decimal.Decimal(9999), decimals=item.decimals)
             balances.append(balance)
         return balances

@@ -21,6 +21,7 @@ import kyc_core
 import dasset
 from dasset import MarketSide, market_side_is
 import websocket
+import fiatdb_core
 
 logger = logging.getLogger(__name__)
 api = Blueprint('api', __name__, template_folder='templates')
@@ -464,6 +465,8 @@ def balances_req():
     # commit if subaccount was created
     db.session.commit()
     balances = dasset.account_balances(subaccount_id=subaccount_id)
+    nzd_balance = fiatdb_core.user_balance(db.session, dasset.NZD.symbol, api_key.user)
+    balances.append(dict(symbol=dasset.NZD.symbol, name=dasset.NZD.name, total=nzd_balance, available=nzd_balance, decimals=dasset.NZD.decimals))
     return jsonify(balances=balances)
 
 @api.route('/address_book', methods=['POST'])
