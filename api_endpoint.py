@@ -27,6 +27,22 @@ api = Blueprint('api', __name__, template_folder='templates')
 limiter.limit('100/minute')(api)
 
 #
+# Helper functions
+#
+
+def _user_subaccount_get_or_create(user):
+    # create subaccount for user
+    if not user.dasset_subaccount:
+        subaccount_id = dasset.subaccount_create(user.token)
+        if not subaccount_id:
+            logger.error('failed to create subaccount for %s', user.email)
+            return None
+        subaccount = DassetSubaccount(user, subaccount_id)
+        db.session.add(subaccount)
+        return subaccount
+    return user.dasset_subaccount
+
+#
 # Private API
 #
 
@@ -435,6 +451,21 @@ def order_book_req():
     order_book, min_order, broker_fee = dasset.order_book_req(market)
     return jsonify(order_book=order_book, min_order=str(min_order), base_asset_withdraw_fee=str(base_asset_withdraw_fee), quote_asset_withdraw_fee=str(quote_asset_withdraw_fee), broker_fee=str(broker_fee))
 
+@api.route('/balances', methods=['POST'])
+def balances_req():
+    api_key, err_response = auth_request(db)
+    if err_response:
+        return err_response
+    # get subaccount for user
+    subaccount = _user_subaccount_get_or_create(api_key.user)
+    if not subaccount:
+        return bad_request(web_utils.FAILED_EXCHANGE)
+    subaccount_id = subaccount.subaccount_id
+    # commit if subaccount was created
+    db.session.commit()
+    balances = dasset.account_balances(subaccount_id=subaccount_id)
+    return jsonify(balances=balances)
+
 @api.route('/address_book', methods=['POST'])
 def address_book_req():
     asset, api_key, err_response = auth_request_get_single_param(db, 'asset')
@@ -522,16 +553,11 @@ def broker_order_accept():
         broker_order.windcave_payment_request = req
         db.session.add(req)
     else:
-        # create subaccount for user
-        if not api_key.user.dasset_subaccount:
-            subaccount_id = dasset.subaccount_req(api_key.user.token)
-            if not subaccount_id:
-                logger.error('failed to create subaccount for %s', api_key.user.email)
-                return bad_request(web_utils.FAILED_EXCHANGE)
-            subaccount = DassetSubaccount(api_key.user, subaccount_id)
-            db.session.add(subaccount)
-        else:
-            subaccount_id = api_key.user.dasset_subaccount.subaccount_id
+        # get subaccount for user
+        subaccount = _user_subaccount_get_or_create(api_key.user)
+        if not subaccount:
+            return bad_request(web_utils.FAILED_EXCHANGE)
+        subaccount_id = subaccount.subaccount_id
         # create crypto address
         address = dasset.address_get_or_create(broker_order.base_asset, subaccount_id)
         if not address:

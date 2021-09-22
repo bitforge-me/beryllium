@@ -1,61 +1,46 @@
-<div class="col-lg-12{{ ' text-muted' if req.status == req.STATUS_SUSPENDED else '' }}">
-    <p><strong>{{req.token}} payout processed: {{req.processed}}</strong></p>
-    <p>
-        Date: {{ req.date|format_timestamp }}
-    </p>
-    <p>
-        Receiver Name: {{req.receiver}}
-    </p>
-    <p>
-        Receiver Account: {{req.receiver_account}}
-    </p>
-    <p>
-        Receiver Reference: {{req.receiver_reference}}
-    </p>
-    <p>
-        Receiver Code: {{req.receiver_code}}
-    </p>
-    <p>
-        Receiver Particulars: {{req.receiver_particulars}}
-    </p>
-    <p>
-        Amount: {{req.amount}} cents
-    </p>
+<!--<div class="col-lg-12{{ ' text-muted' if req.status == req.STATUS_SUSPENDED else '' }}">-->
+<tr class="{{ 'text-muted' if req.status == req.STATUS_SUSPENDED else '' }}">
+
+    <td>{{req.token}}</td>
+    <td>{{req.status}}</td>
+    <td>
+        Date: {{ req.date }}
+    </td>
+    <td>
+        {{req.receiver}}
+    </td>
+    <td>
+        {{req.receiver_account}}
+    </td>
+    <td>
+        {{req.receiver_reference}}
+    </td>
+    <td>
+        {{req.receiver_code}}
+    </td>
+    <td>
+        {{req.receiver_particulars}}
+    </td>
+    <td>
+        {{req.amount}} cents
+    </td>
     {% if not group %}
-    <p>
-        BNZ IB4B File: <a href="/payout_request/BNZ_IB4B_file/{{req.token}}/{{req.secret}}">{{req.token}}</a>
-    </p>
+    <td>
         {% if req.status == req.STATUS_CREATED %}
-    <p>
-        <form action="/payout_request_processed" method="post" id="submit_form_processed">
-            <input type="hidden" name="token" value="{{req.token}}" />
-            <input type="hidden" name="secret" value="{{req.secret}}" />
-            <input type="button" value="Set processed" data-toggle="modal" data-action="processed" data-form="submit_form_processed" data-target="#confirm_submit" class="btn btn-default submit_button" />
-        </form>
-    </p>
-        {% endif %}
-    {% else %}
-        {% if req.status == req.STATUS_CREATED %}
-    <p>
-        <form action="/payout_request_suspend" method="post" id="submit_form_s{{req.token}}">
-            <input type="hidden" name="token" value="{{req.token}}" />
-            <input type="hidden" name="secret" value="{{req.secret}}" />
-            <input type="hidden" name="group_token" value="{{group.token}}" />
-            <input type="hidden" name="group_secret" value="{{group.secret}}" />
-            <input type="button" value="Set suspended" data-action="suspended" data-form="submit_form_s{{req.token}}" data-toggle="modal" data-target="#confirm_submit" class="btn btn-default submit_button" />
-        </form>
-    </p>
+        <p>
+            <form action="/payments/payout_request_suspend" method="post" id="submit_form_s{{req.token}}">
+                <input type="hidden" name="token" value="{{req.token}}" />
+                <input type="button" value="Suspend" data-action="set suspended" data-form="submit_form_s{{req.token}}" data-toggle="modal" data-target="#confirm_submit" class="btn btn-primary submit_button" />
+            </form>
+        </p>
         {% elif req.status == req.STATUS_SUSPENDED %}
-    <p>
-        <form action="/payout_request_unsuspend" method="post" id="submit_form_u{{req.token}}">
-            <input type="hidden" name="token" value="{{req.token}}" />
-            <input type="hidden" name="secret" value="{{req.secret}}" />
-            <input type="hidden" name="group_token" value="{{group.token}}" />
-            <input type="hidden" name="group_secret" value="{{group.secret}}" />
-            <input type="button" value="Set unsuspended" data-action="unsuspended" data-form="submit_form_u{{req.token}}" data-toggle="modal" data-target="#confirm_submit" class="btn btn-default submit_button" />
-        </form>
-    </p>
+        <p>
+            <form action="/payments/payout_request_unsuspend" method="post" id="submit_form_u{{req.token}}">
+                <input type="hidden" name="token" value="{{req.token}}" />
+                <input type="button" value="Unsuspend" data-action="set unsuspended" data-form="submit_form_u{{req.token}}" data-toggle="modal" data-target="#confirm_submit" class="btn btn-primary submit_button" />
+            </form>
+        </p>
         {% endif %}
+    </td>
     {% endif %}
-    <br/>
-</div>
+</tr>

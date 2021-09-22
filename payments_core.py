@@ -7,7 +7,6 @@ import json
 import decimal
 
 from flask import url_for
-from stdnum.nz import bankaccount
 import requests
 from dateutil import tz
 
@@ -175,42 +174,33 @@ def payment_request_status_update(req):
 def payout_create(amount, sender_reference, sender_code, account_name, account_number, reference, code, particulars):
     # create payout request
     req = PayoutRequest('NZD', amount, PAYOUT_SENDER_NAME, PAYOUT_SENDER_ACCOUNT, sender_reference, sender_code, account_name, account_number, reference, code, particulars, app.config['PAYOUT_GROUP_EMAIL'], False)
-    db.session.add(req)
-    db.session.commit()
     return req
+
+def payouts_notification_create():
+    reqs = PayoutRequest.where_status_created(db.session)
+    # send email
+    utils.email_payouts_notification(logger, reqs)
 
 def payout_group_create():
     # create payout group
     group = PayoutGroup()
     db.session.add(group)
     db.session.flush()
-    reqs = PayoutRequest.not_processed(db.session)
+    reqs = PayoutRequest.where_status_created(db.session)
     for r in reqs:
         group_req = PayoutGroupRequest(group, r)
         db.session.add(group_req)
-    db.session.commit()
-    # send email
-    utils.email_payout_group_notification(logger, group)
     # expire old groups
     PayoutGroup.expire_all_but(db.session, group)
-    db.session.commit()
-
-def payout_status(token):
-    logger.info("looking for %s", token)
-    return PayoutRequest.from_token(db.session, token)
-
-def bankaccount_is_valid(account):
-    return bankaccount.is_valid(account)
+    return group
 
 def set_payout_requests_complete(reqs):
     for req in reqs:
         # ignore suspended
         if req.status == req.STATUS_SUSPENDED:
             continue
-        req.processed = True
         req.status = req.STATUS_COMPLETED
         db.session.add(req)
-    db.session.commit()
 
 def set_payout_request_suspended(req):
     # ignore not in created state
@@ -218,7 +208,6 @@ def set_payout_request_suspended(req):
         return False
     req.status = req.STATUS_SUSPENDED
     db.session.add(req)
-    db.session.commit()
     return True
 
 def set_payout_request_created(req):
@@ -227,5 +216,4 @@ def set_payout_request_created(req):
         return False
     req.status = req.STATUS_CREATED
     db.session.add(req)
-    db.session.commit()
     return True
