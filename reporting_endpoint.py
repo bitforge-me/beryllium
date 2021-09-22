@@ -83,7 +83,7 @@ def dashboard():
 @reporting.route("/dashboard_general")
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def dashboard_general():
-    return render_template('reporting/dashboard_general.html', dasset_balances=dasset.balances_req())
+    return render_template('reporting/dashboard_general.html', dasset_balances=dasset.account_balances())
 
 @reporting.route("/dashboard_user")
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
