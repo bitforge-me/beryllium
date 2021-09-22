@@ -1,6 +1,8 @@
 import os
+import decimal
 
 from flask import Flask
+import flask.json
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_sqlalchemy import SQLAlchemy
 from flask_mail_sendgrid import MailSendGrid
@@ -11,8 +13,16 @@ from flask_limiter.util import get_remote_address
 
 MISSING_VITAL_SETTING = False
 
+class MyJSONEncoder(flask.json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, decimal.Decimal):
+            # Convert decimal instances to strings.
+            return str(o)
+        return super().default(o)
+
 # Create Flask application
 app = Flask(__name__)
+app.json_encoder = MyJSONEncoder
 app.wsgi_app = ProxyFix(app.wsgi_app)
 all_origins = {"origins": "*"}
 cors = CORS(app, resources={r"/apiv1/*": all_origins})
