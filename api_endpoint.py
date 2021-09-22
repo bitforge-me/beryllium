@@ -524,7 +524,7 @@ def broker_order_accept():
     else:
         # create subaccount for user
         if not api_key.user.dasset_subaccount:
-            subaccount_id = dasset.subaccount_req(api_key.user.token)
+            subaccount_id = dasset.subaccount_create(api_key.user.token)
             if not subaccount_id:
                 logger.error('failed to create subaccount for %s', api_key.user.email)
                 return bad_request(web_utils.FAILED_EXCHANGE)

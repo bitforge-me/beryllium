@@ -221,7 +221,7 @@ def from_int_to_user_friendly(val, divisor, decimal_places=4):
     return round(val, decimal_places)
 
 def dashboard_data_paydb():
-    dasset_balances = dasset.balances_req()
+    dasset_balances = dasset.account_balances()
     premio_stage_balance = -1
     premio_stage_account = 'blah'
     user = User.from_email(db.session, premio_stage_account)

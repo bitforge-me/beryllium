@@ -35,7 +35,7 @@ def _broker_order_buy_crypto_with_fiat_update(broker_order):
         quote_amount_dec = dasset.asset_int_to_dec(broker_order.quote_asset, broker_order.quote_amount)
         amount_total = base_amount_dec + dasset.asset_withdraw_fee(broker_order.base_asset)
         price = quote_amount_dec / amount_total
-        exchange_order_id = dasset.order_create_req(broker_order.market, MarketSide.BID, amount_total, price)
+        exchange_order_id = dasset.order_create(broker_order.market, MarketSide.BID, amount_total, price)
         if not exchange_order_id:
             msg = f'{broker_order.token}, {broker_order.market}, {broker_order.side}, {broker_order.base_amount}'
             logger.error('failed to create exchange order - %s', msg)
@@ -53,7 +53,7 @@ def _broker_order_buy_crypto_with_fiat_update(broker_order):
         if dasset.order_status_check(broker_order.exchange_order.exchange_reference, broker_order.market):
             # create exchange withdrawal
             base_amount_dec = dasset.asset_int_to_dec(broker_order.base_asset, broker_order.base_amount)
-            exchange_withdrawal_id = dasset.crypto_withdrawal_create_req(broker_order.base_asset, base_amount_dec, broker_order.recipient)
+            exchange_withdrawal_id = dasset.crypto_withdrawal_create(broker_order.base_asset, base_amount_dec, broker_order.recipient)
             if not exchange_withdrawal_id:
                 msg = f'{broker_order.token}, {broker_order.base_asset}, {broker_order.base_amount}'
                 logger.error('failed to create exchange withdrawal - %s', msg)
@@ -117,7 +117,7 @@ def _broker_order_sell_crypto_for_fiat_update(db_session, broker_order):
         quote_amount_dec = dasset.asset_int_to_dec(broker_order.quote_asset, broker_order.quote_amount)
         amount_total = base_amount_dec
         price = quote_amount_dec / amount_total
-        exchange_order_id = dasset.order_create_req(broker_order.market, MarketSide.ASK, amount_total, price)
+        exchange_order_id = dasset.order_create(broker_order.market, MarketSide.ASK, amount_total, price)
         if not exchange_order_id:
             msg = f'{broker_order.token}, {broker_order.market}, {broker_order.side}, {broker_order.base_amount}'
             logger.error('failed to create exchange order - %s', msg)
