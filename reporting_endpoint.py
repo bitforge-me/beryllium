@@ -2,7 +2,6 @@
 # pylint: disable=too-many-locals
 
 import logging
-import datetime
 from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
 from sqlalchemy import func, and_
@@ -54,7 +53,7 @@ def broker_order_amount_lifetime(table, market):
         result = 0
     asset_symbol = market.split('-')[0]
     result = dasset.asset_int_to_dec(asset_symbol, result)
-    result = '{0:.4f}'.format(result)
+    result = '{0:.4f}'.format(result) # pylint: disable=consider-using-f-string
     return result
 
 def broker_order_count(table, start_date, end_date, market):
