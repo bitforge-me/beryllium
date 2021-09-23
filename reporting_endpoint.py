@@ -18,20 +18,17 @@ import dasset
 logger = logging.getLogger(__name__)
 reporting = Blueprint('reporting', __name__, template_folder='templates/reporting')
 
-# FREQUENTLY USE DATES
-TODAY = date.today()
-YESTERDAY = TODAY - timedelta(days=1)
-TOMORROW = TODAY + timedelta(days=1)
-WEEKDAY = TODAY.weekday()
-MONDAY = TODAY - timedelta(days=WEEKDAY)
-SUNDAY = TODAY + timedelta(days=(6 - WEEKDAY))
-NEXT_MONDAY = TODAY + datetime.timedelta(days=-TODAY.weekday(), weeks=1)
-FIRST_DAY_CURRENT_MONTH = TODAY.replace(day=1)
-FIRST_DAY_NEXT_MONTH = FIRST_DAY_CURRENT_MONTH + relativedelta(months=+1)
-LAST_DAY_NEXT_MONTH = FIRST_DAY_NEXT_MONTH - timedelta(days=1)
-FIRST_DAY_CURRENT_YEAR = FIRST_DAY_CURRENT_MONTH + relativedelta(month=1)
-FIRST_DAY_NEXT_YEAR = FIRST_DAY_CURRENT_YEAR + relativedelta(years=+1)
-LAST_DAY_CURRENT_YEAR = FIRST_DAY_NEXT_YEAR - timedelta(days=1)
+### FREQUENTLY USE DATES
+TODAY = lambda: date.today() # pylint: disable=unnecessary-lambda
+YESTERDAY = lambda: date.today() - timedelta(days=1)
+TOMORROW = lambda: date.today() + timedelta(days=1)
+WEEKDAY = lambda: date.today().weekday()
+MONDAY = lambda: date.today() - timedelta(days=date.today().weekday())
+NEXT_MONDAY = lambda: date.today() + timedelta(days=-date.today().weekday(), weeks=1)
+FIRST_DAY_CURRENT_MONTH = lambda: date.today().replace(day=1)
+FIRST_DAY_NEXT_MONTH = lambda: date.today().replace(day=1) + relativedelta(months=+1)
+FIRST_DAY_CURRENT_YEAR = lambda: date.today().replace(day=1) + relativedelta(month=1)
+FIRST_DAY_NEXT_YEAR = lambda: date.today().replace(day=1) + relativedelta(month=1, years=+1)
 
 def user_counting(table, start_date, end_date):
     result = table.query.filter(and_(table.confirmed_at >= str(start_date), table.confirmed_at <= str(end_date))).count()
@@ -47,7 +44,7 @@ def broker_order_amount(table, start_date, end_date, market):
         result = 0
     asset_symbol = market.split('-')[0]
     result = dasset.asset_int_to_dec(asset_symbol, result)
-    result = '{0:.4f}'.format(result)
+    result = '{0:.4f}'.format(result) # pylint: disable=consider-using-f-string
     return result
 
 def broker_order_amount_lifetime(table, market):
@@ -90,11 +87,11 @@ def dashboard_general():
 def dashboard_user():
     users = User.query.all()
     user_count = User.query.count()
-    user_count_today = user_counting(User, TODAY, TOMORROW)
-    user_count_yesterday = user_counting(User, YESTERDAY, TODAY)
-    user_count_weekly = user_counting(User, MONDAY, NEXT_MONDAY)
-    user_count_monthly = user_counting(User, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH)
-    user_count_yearly = user_counting(User, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR)
+    user_count_today = user_counting(User, TODAY(), TOMORROW())
+    user_count_yesterday = user_counting(User, YESTERDAY(), TODAY())
+    user_count_weekly = user_counting(User, MONDAY(), NEXT_MONDAY())
+    user_count_monthly = user_counting(User, FIRST_DAY_CURRENT_MONTH(), FIRST_DAY_NEXT_MONTH())
+    user_count_yearly = user_counting(User, FIRST_DAY_CURRENT_YEAR(), FIRST_DAY_NEXT_YEAR())
     users_balances = []
     for account_user in users:
         user = User.from_email(db.session, account_user.email)
@@ -112,17 +109,17 @@ def dashboard_report_broker_order():
     orders_data = {}
     for market in dasset.MARKETS:
         asset_symbol = market.split('-')[0]
-        order_count_today = broker_order_count(BrokerOrder, TODAY, TOMORROW, market)
-        order_count_yesterday = broker_order_count(BrokerOrder, YESTERDAY, TODAY, market)
-        order_count_week = broker_order_count(BrokerOrder, MONDAY, NEXT_MONDAY, market)
-        order_count_month = broker_order_count(BrokerOrder, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH, market)
-        order_count_year = broker_order_count(BrokerOrder, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR, market)
+        order_count_today = broker_order_count(BrokerOrder, TODAY(), TOMORROW(), market)
+        order_count_yesterday = broker_order_count(BrokerOrder, YESTERDAY(), TODAY(), market)
+        order_count_week = broker_order_count(BrokerOrder, MONDAY(), NEXT_MONDAY(), market)
+        order_count_month = broker_order_count(BrokerOrder, FIRST_DAY_CURRENT_MONTH(), FIRST_DAY_NEXT_MONTH(), market)
+        order_count_year = broker_order_count(BrokerOrder, FIRST_DAY_CURRENT_YEAR(), FIRST_DAY_NEXT_YEAR(), market)
         order_count_lifetime = broker_order_count_lifetime(BrokerOrder, market)
-        order_amount_today = broker_order_amount(BrokerOrder, TODAY, TOMORROW, market)
-        order_amount_yesterday = broker_order_amount(BrokerOrder, YESTERDAY, TODAY, market)
-        order_amount_week = broker_order_amount(BrokerOrder, MONDAY, NEXT_MONDAY, market)
-        order_amount_month = broker_order_amount(BrokerOrder, FIRST_DAY_CURRENT_MONTH, FIRST_DAY_NEXT_MONTH, market)
-        order_amount_year = broker_order_amount(BrokerOrder, FIRST_DAY_CURRENT_YEAR, FIRST_DAY_NEXT_YEAR, market)
+        order_amount_today = broker_order_amount(BrokerOrder, TODAY(), TOMORROW(), market)
+        order_amount_yesterday = broker_order_amount(BrokerOrder, YESTERDAY(), TODAY(), market)
+        order_amount_week = broker_order_amount(BrokerOrder, MONDAY(), NEXT_MONDAY(), market)
+        order_amount_month = broker_order_amount(BrokerOrder, FIRST_DAY_CURRENT_MONTH(), FIRST_DAY_NEXT_MONTH(), market)
+        order_amount_year = broker_order_amount(BrokerOrder, FIRST_DAY_CURRENT_YEAR(), FIRST_DAY_NEXT_YEAR(), market)
         order_amount_lifetime = broker_order_amount_lifetime(BrokerOrder, market)
         orders_data[market] = dict(asset_symbol=asset_symbol, order_count_today=order_count_today, order_count_yesterday=order_count_yesterday, order_count_week=order_count_week, order_count_month=order_count_month, order_count_year=order_count_year, order_count_lifetime=order_count_lifetime, order_amount_today=order_amount_today, order_amount_yesterday=order_amount_yesterday, order_amount_week=order_amount_week, order_amount_month=order_amount_month, order_amount_year=order_amount_year, order_amount_lifetime=order_amount_lifetime)
     return render_template('reporting/dashboard_broker_orders.html', orders_data=orders_data)
