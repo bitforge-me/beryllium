@@ -268,7 +268,7 @@ def _crypto_deposits_closed_req(asset, subaccount_id):
     r = _req_get(endpoint, params=dict(currencySymbol=asset), subaccount_id=subaccount_id)
     if r.status_code == 200:
         deposits = r.json()
-        deposits = [_parse_deposit(d) for d in deposits]
+        deposits = [_parse_deposit(d) for d in deposits if d['currencySymbol'] == asset]
         return deposits
     logger.error('request failed: %d, %s', r.status_code, r.content)
     return None
@@ -337,6 +337,12 @@ def asset_dec_to_str(asset, value):
 def asset_is_crypto(asset):
     for item in ASSETS.values():
         if item.symbol == asset and item.is_crypto:
+            return True
+    return False
+
+def asset_is_fiat(asset):
+    for item in ASSETS.values():
+        if item.symbol == asset and not item.is_crypto:
             return True
     return False
 
@@ -445,7 +451,7 @@ def account_balances(asset=None, subaccount_id=None):
     if _account_mock():
         balances = []
         for item in ASSETS.values():
-            if subaccount_id and not asset_is_crypto(item.symbol):
+            if subaccount_id and asset_is_fiat(item.symbol):
                 continue
             balance = Munch(symbol=item.symbol, name=item.name, total=decimal.Decimal(9999), available=decimal.Decimal(9999), decimals=item.decimals)
             balances.append(balance)
@@ -488,6 +494,18 @@ def crypto_withdrawal_status_check(withdrawal_id):
         return True
     withdrawal = _crypto_withdrawal_status_req(withdrawal_id)
     return withdrawal and withdrawal.status == 'Completed'
+
+def crypto_deposits(asset, subaccount_id):
+    deposits = []
+    deps = _crypto_deposits_pending_req(asset, subaccount_id)
+    if deps:
+        for dep in deps:
+            deposits.append(dep)
+    deps = _crypto_deposits_closed_req(asset, subaccount_id)
+    if deps:
+        for dep in deps:
+            deposits.append(dep)
+    return deposits
 
 def crypto_deposit_search(asset, address, amount, subaccount_id):
     assert isinstance(amount, decimal.Decimal)

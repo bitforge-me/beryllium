@@ -11,6 +11,7 @@ import web_utils
 import bnz_ib4b
 import payments_core
 import broker
+import depwith
 
 logger = logging.getLogger(__name__)
 payments = Blueprint('payments', __name__, template_folder='templates')
@@ -28,7 +29,10 @@ def payment_interstitial(token=None):
         return redirect('/')
     if req.status != req.STATUS_CREATED:
         return redirect(url_for('payments.payment', token=token))
-    broker.broker_order_update_and_commit(db.session, req.broker_order)
+    if req.broker_order:
+        broker.broker_order_update_and_commit(db.session, req.broker_order)
+    if req.fiat_deposit:
+        depwith.fiat_deposit_update_and_commit(db.session, req.fiat_deposit)
     if req.status != req.STATUS_CREATED:
         return redirect(url_for('payments.payment', token=token))
     return render_template('payments/payment_request.html', token=token, interstitial=True, mock=payments_core.mock())
@@ -42,7 +46,10 @@ def payment_mock_confirm(token=None):
         flash('Sorry payment request not found', category='danger')
         return redirect('/')
     payments_core.payment_request_mock_confirm(req)
-    broker.broker_order_update_and_commit(db.session, req.broker_order)
+    if req.broker_order:
+        broker.broker_order_update_and_commit(db.session, req.broker_order)
+    if req.fiat_deposit:
+        depwith.fiat_deposit_update_and_commit(db.session, req.fiat_deposit)
     return redirect(url_for('payments.payment', token=token))
 
 @payments.route('/payment/x/<token>', methods=['GET'])

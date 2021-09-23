@@ -12,11 +12,12 @@ from flask import render_template, request, flash, jsonify
 from flask_security import roles_accepted
 
 from app_core import app, db, socketio
-from models import User, Role, Topic, PushNotificationLocation, BrokerOrder
+from models import FiatDeposit, User, Role, Topic, PushNotificationLocation, BrokerOrder
 import utils
 from fcm import FCM
 from web_utils import bad_request, get_json_params, get_json_params_optional
 import broker
+import depwith
 from api_endpoint import api
 from reward_endpoint import reward
 from reporting_endpoint import reporting
@@ -49,6 +50,14 @@ def process_broker_orders():
         logger.info('num orders: %d', len(orders))
         for order in orders:
             broker.broker_order_update_and_commit(db.session, order)
+
+def process_fiat_deposits():
+    logger.info('process_fiat_deposits()')
+    with app.app_context():
+        deposits = FiatDeposit.all_active(db.session)
+        logger.info('num deposits: %d', len(deposits))
+        for deposit in deposits:
+            depwith.fiat_deposit_update_and_commit(db.session, deposit)
 
 #
 # Jinja2 filters
@@ -209,6 +218,7 @@ class WebGreenlet():
             current = int(time.time())
             email_alerts_timer_last = current
             broker_orders_timer_last = current
+            fiat_deposits_timer_last = current
             while True:
                 current = time.time()
                 if current - email_alerts_timer_last > 1800:
@@ -217,6 +227,9 @@ class WebGreenlet():
                 if current - broker_orders_timer_last > 300:
                     gevent.spawn(process_broker_orders)
                     broker_orders_timer_last += 300
+                if current - fiat_deposits_timer_last > 300:
+                    gevent.spawn(process_fiat_deposits)
+                    fiat_deposits_timer_last += 300
                 gevent.sleep(5)
 
         def start_greenlets():

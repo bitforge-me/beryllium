@@ -13,7 +13,7 @@ from flask_security.recoverable import send_reset_password_instructions
 import web_utils
 from web_utils import bad_request, get_json_params, auth_request, auth_request_get_single_param, auth_request_get_params
 import utils
-from models import DassetSubaccount, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook
+from models import DassetSubaccount, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, FiatDeposit
 from app_core import db, limiter
 from security import tf_enabled_check, tf_method, tf_code_send, tf_method_set, tf_method_unset, tf_secret_init, tf_code_validate, user_datastore
 import payments_core
@@ -430,7 +430,8 @@ def assets_req():
     _, err_response = auth_request(db)
     if err_response:
         return err_response
-    return jsonify(assets=dasset.assets_req())
+    assets = list(dasset.ASSETS.values())
+    return jsonify(assets=assets)
 
 @api.route('/markets', methods=['POST'])
 def markets_req():
@@ -466,8 +467,82 @@ def balances_req():
     db.session.commit()
     balances = dasset.account_balances(subaccount_id=subaccount_id)
     nzd_balance = fiatdb_core.user_balance(db.session, dasset.NZD.symbol, api_key.user)
-    balances.append(dict(symbol=dasset.NZD.symbol, name=dasset.NZD.name, total=nzd_balance, available=nzd_balance, decimals=dasset.NZD.decimals))
+    nzd_amount_dec = dasset.asset_int_to_dec(dasset.NZD.symbol, nzd_balance)
+    balances.append(dict(symbol=dasset.NZD.symbol, name=dasset.NZD.name, total=str(nzd_amount_dec), available=str(nzd_amount_dec), decimals=dasset.NZD.decimals))
     return jsonify(balances=balances)
+
+@api.route('/crypto_deposit_address', methods=['POST'])
+def crypto_deposit_address_req():
+    asset, api_key, err_response = auth_request_get_single_param(db, 'asset')
+    if err_response:
+        return err_response
+    if not api_key.user.dasset_subaccount:
+        logger.error('user %s dasset subaccount does not exist', api_key.user.email)
+        return bad_request(web_utils.FAILED_EXCHANGE)
+    if not dasset.asset_is_crypto(asset):
+        return bad_request(web_utils.INVALID_ASSET)
+    address = dasset.address_get_or_create(asset, api_key.user.dasset_subaccount.subaccount_id)
+    if not address:
+        return bad_request(web_utils.FAILED_EXCHANGE)
+    return jsonify(address=address, asset=asset)
+
+@api.route('/crypto_deposits', methods=['POST'])
+def crypto_deposits_req():
+    params, api_key, err_response = auth_request_get_params(db, ['asset', 'offset', 'limit'])
+    if err_response:
+        return err_response
+    asset, offset, limit = params
+    if not api_key.user.dasset_subaccount:
+        logger.error('user %s dasset subaccount does not exist', api_key.user.email)
+        return bad_request(web_utils.FAILED_EXCHANGE)
+    if not dasset.asset_is_crypto(asset):
+        return bad_request(web_utils.INVALID_ASSET)
+    deposits = dasset.crypto_deposits(asset, api_key.user.dasset_subaccount.subaccount_id)
+    total = len(deposits)
+    deposits = deposits[offset:offset + limit] # dasset does not have pagination for this api :/
+    return jsonify(deposits=deposits, offset=offset, limit=limit, total=total)
+
+@api.route('/fiat_deposit_create', methods=['POST'])
+def fiat_deposit_create_req():
+    params, api_key, err_response = auth_request_get_params(db, ['asset', 'amount_dec'])
+    if err_response:
+        return err_response
+    asset, amount_dec = params
+    if not dasset.asset_is_fiat(asset):
+        return bad_request(web_utils.INVALID_ASSET)
+    amount_dec = decimal.Decimal(amount_dec)
+    if amount_dec <= 0:
+        return bad_request(web_utils.INVALID_AMOUNT)
+    amount_int = dasset.asset_dec_to_int(asset, amount_dec)
+    fiat_deposit = FiatDeposit(api_key.user, asset, amount_int)
+    payment_request = payments_core.payment_create(amount_int, fiat_deposit.expiry)
+    if not payment_request:
+        return bad_request(web_utils.FAILED_PAYMENT_CREATE)
+    fiat_deposit.windcave_payment_request = payment_request
+    db.session.add(fiat_deposit)
+    db.session.add(payment_request)
+    db.session.commit()
+    websocket.fiat_deposit_new_event(fiat_deposit)
+    return jsonify(deposit=fiat_deposit.to_json())
+
+@api.route('/fiat_deposits', methods=['POST'])
+def fiat_deposits_req():
+    params, api_key, err_response = auth_request_get_params(db, ['asset', 'offset', 'limit'])
+    if err_response:
+        return err_response
+    asset, offset, limit = params
+    if not dasset.asset_is_fiat(asset):
+        return bad_request(web_utils.INVALID_ASSET)
+    if not isinstance(offset, int):
+        return bad_request(web_utils.INVALID_PARAMETER)
+    if not isinstance(limit, int):
+        return bad_request(web_utils.INVALID_PARAMETER)
+    if limit > 1000:
+        return bad_request(web_utils.LIMIT_TOO_LARGE)
+    deposits = FiatDeposit.from_user(db.session, api_key.user, offset, limit)
+    deposits = [deposit.to_json() for deposit in deposits]
+    total = FiatDeposit.total_for_user(db.session, api_key.user)
+    return jsonify(deposits=deposits, offset=offset, limit=limit, total=total)
 
 @api.route('/address_book', methods=['POST'])
 def address_book_req():

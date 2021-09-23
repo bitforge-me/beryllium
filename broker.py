@@ -187,11 +187,11 @@ def broker_order_update_and_commit(db_session, broker_order):
         updated_records = []
         # process crypto buy with fiat
         if market_side_is(broker_order.side, MarketSide.BID):
-            if dasset.asset_is_crypto(broker_order.base_asset) and not dasset.asset_is_crypto(broker_order.quote_asset):
+            if dasset.asset_is_crypto(broker_order.base_asset) and dasset.asset_is_fiat(broker_order.quote_asset):
                 updated_records = _broker_order_buy_crypto_with_fiat_update(broker_order)
         # process crypto sell for fiat
         if market_side_is(broker_order.side, MarketSide.ASK):
-            if dasset.asset_is_crypto(broker_order.base_asset) and not dasset.asset_is_crypto(broker_order.quote_asset):
+            if dasset.asset_is_crypto(broker_order.base_asset) and dasset.asset_is_fiat(broker_order.quote_asset):
                 updated_records = _broker_order_sell_crypto_for_fiat_update(db_session, broker_order)
         # commit db if records updated
         if not updated_records:

@@ -849,3 +849,75 @@ class FiatDbTransaction(db.Model):
     def to_json(self):
         tx_schema = FiatDbTransactionSchema()
         return tx_schema.dump(self)
+
+class FiatDepositSchema(Schema):
+    token = fields.String()
+    date = fields.DateTime()
+    expiry = fields.DateTime()
+    asset = fields.String()
+    amount = fields.Integer()
+    amount_dec = fields.Method('get_amount_dec')
+    status = fields.String()
+    payment_url = fields.Method('get_payment_url')
+
+    def get_amount_dec(self, obj):
+        return str(dasset.asset_int_to_dec(obj.asset, obj.amount))
+
+    def get_payment_url(self, obj):
+        payment_url = None
+        if obj.windcave_payment_request:
+            payment_url = url_for('payments.payment_interstitial', token=obj.windcave_payment_request.token, _external=True)
+        return payment_url
+
+class FiatDeposit(db.Model):
+    STATUS_CREATED = 'created'
+    STATUS_COMPLETED = 'completed'
+    STATUS_EXPIRED = 'expired'
+    STATUS_CANCELLED = 'cancelled'
+
+    MINUTES_EXPIRY = 15
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    token = db.Column(db.String(255), unique=True, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref=db.backref('fiat_deposits', lazy='dynamic'))
+    date = db.Column(db.DateTime(), nullable=False)
+    expiry = db.Column(db.DateTime(), nullable=False)
+    asset = db.Column(db.String, nullable=False)
+    amount = db.Column(db.BigInteger, nullable=False)
+    windcave_payment_request_id = db.Column(db.Integer, db.ForeignKey('windcave_payment_request.id'))
+    windcave_payment_request = db.relationship('WindcavePaymentRequest', backref=db.backref('fiat_deposit', uselist=False))
+
+    status = db.Column(db.String, nullable=False)
+
+    def __init__(self, user, asset, amount):
+        self.token = generate_key()
+        self.user = user
+        self.date = datetime.datetime.now()
+        self.expiry = datetime.datetime.now() + datetime.timedelta(minutes=self.MINUTES_EXPIRY)
+        self.asset = asset
+        self.amount = amount
+        self.status = self.STATUS_CREATED
+
+    def to_json(self):
+        ref_schema = FiatDepositSchema()
+        return ref_schema.dump(self)
+
+    @classmethod
+    def from_token(cls, session, token):
+        return session.query(cls).filter(cls.token == token).first()
+
+    @classmethod
+    def from_user(cls, session, user, offset, limit):
+        # pylint: disable=no-member
+        return session.query(cls).filter(cls.user_id == user.id).order_by(cls.id.desc()).offset(offset).limit(limit)
+
+    @classmethod
+    def total_for_user(cls, session, user):
+        # pylint: disable=no-member
+        return session.query(cls).filter(cls.user_id == user.id).count()
+
+    @classmethod
+    def all_active(cls, session):
+        return session.query(cls).filter(and_(cls.status != cls.STATUS_COMPLETED, and_(cls.status != cls.STATUS_EXPIRED, cls.status != cls.STATUS_CANCELLED))).all()

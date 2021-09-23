@@ -13,7 +13,7 @@ from flask_security import current_user
 from markupsafe import Markup
 
 from app_core import app, db
-from models import Role, User, ApiKey, Topic, PushNotificationLocation, Referral, BrokerOrder, ExchangeOrder, ExchangeWithdrawal, KycRequest, AplyId, FiatDbTransaction
+from models import Role, User, ApiKey, Topic, PushNotificationLocation, Referral, BrokerOrder, ExchangeOrder, ExchangeWithdrawal, KycRequest, AplyId, FiatDbTransaction, FiatDeposit
 from security import security
 
 # helper functions/classes
@@ -219,6 +219,7 @@ admin.add_view(RestrictedModelView(ExchangeWithdrawal, db.session, category='Adm
 admin.add_view(RestrictedModelView(KycRequest, db.session, category='Admin'))
 admin.add_view(RestrictedModelView(AplyId, db.session, category='Admin'))
 admin.add_view(RestrictedModelView(FiatDbTransaction, db.session, category='Admin'))
+admin.add_view(RestrictedModelView(FiatDeposit, db.session, category='Admin'))
 admin.add_view(ApiKeyModelView(ApiKey, db.session, category='User'))
 if app.config["USE_REFERRALS"]:
     admin.add_view(RestrictedModelView(Referral, db.session, category='Admin', name='Referrals'))
