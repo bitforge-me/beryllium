@@ -112,6 +112,27 @@ class FilterByUserEmail(BaseSQLAFilter):
         # return a generator that is reloaded each time it is used
         return ReloadingIterator(get_users)
 
+def get_broker_order_assets():
+    # prevent database access when app is not yet ready
+    if has_app_context():
+        if not hasattr(g, 'assets'):
+            query = BrokerOrder.query.with_entities(BrokerOrder.base_asset).distinct()
+            # pylint: disable=assigning-non-slot
+            g.assets = [(broker_order.base_asset, broker_order.base_asset) for broker_order in query]
+        for base_asset_a, base_asset_b in g.assets:
+            yield base_asset_a, base_asset_b
+
+class FilterByBrokerOrderAsset(BaseSQLAFilter):
+    def apply(self, query, value, alias=None):
+        return query.filter(BrokerOrder.base_asset == value)
+
+    def operation(self):
+        return 'equals'
+
+    def get_options(self, view):
+        # return a generator that is reloaded each time it is used
+        return ReloadingIterator(get_broker_order_assets)
+
 # model view classes
 
 class BaseModelView(sqla.ModelView):
@@ -196,6 +217,13 @@ class PushNotificationLocationModelView(RestrictedModelView):
     column_list = ['date', 'location', 'fcm_registration_token']
     column_formatters = {'location': _format_location}
 
+class BrokerOrderModelView(RestrictedModelView):
+    can_create = False
+    can_delete = False
+    can_edit = False
+
+    column_filters = [ DateBetweenFilter(BrokerOrder.date, 'Search Date'), FilterByBrokerOrderAsset(BrokerOrder.base_asset, 'Search asset'), ]
+
 #
 # Create admin
 #
@@ -213,7 +241,7 @@ admin.add_view(AdminUserModelView(User, db.session, category='Admin', endpoint='
 admin.add_view(RestrictedModelView(Role, db.session, category='Admin'))
 admin.add_view(RestrictedModelView(Topic, db.session, category='Admin'))
 admin.add_view(PushNotificationLocationModelView(PushNotificationLocation, db.session, category='Admin'))
-admin.add_view(RestrictedModelView(BrokerOrder, db.session, category='Admin'))
+admin.add_view(BrokerOrderModelView(BrokerOrder, db.session, category='Admin'))
 admin.add_view(RestrictedModelView(ExchangeOrder, db.session, category='Admin'))
 admin.add_view(RestrictedModelView(ExchangeWithdrawal, db.session, category='Admin'))
 admin.add_view(RestrictedModelView(KycRequest, db.session, category='Admin'))
