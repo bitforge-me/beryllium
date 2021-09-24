@@ -108,6 +108,15 @@ def dashboard_report_broker_order():
     orders_data = {}
     for market in dasset.MARKETS:
         asset_symbol = market.split('-')[0]
+        today = str(TODAY())
+        yesterday = str(YESTERDAY())
+        tomorrow = str(TOMORROW())
+        monday = str(MONDAY())
+        next_monday = str(NEXT_MONDAY())
+        first_day_current_month = str(FIRST_DAY_CURRENT_MONTH())
+        first_day_next_month = str(FIRST_DAY_NEXT_MONTH())
+        first_day_current_year = str(FIRST_DAY_CURRENT_YEAR())
+        first_day_next_year = str(FIRST_DAY_NEXT_YEAR())
         order_count_today = broker_order_count(BrokerOrder, TODAY(), TOMORROW(), market)
         order_count_yesterday = broker_order_count(BrokerOrder, YESTERDAY(), TODAY(), market)
         order_count_week = broker_order_count(BrokerOrder, MONDAY(), NEXT_MONDAY(), market)
@@ -120,5 +129,5 @@ def dashboard_report_broker_order():
         order_amount_month = broker_order_amount(BrokerOrder, FIRST_DAY_CURRENT_MONTH(), FIRST_DAY_NEXT_MONTH(), market)
         order_amount_year = broker_order_amount(BrokerOrder, FIRST_DAY_CURRENT_YEAR(), FIRST_DAY_NEXT_YEAR(), market)
         order_amount_lifetime = broker_order_amount_lifetime(BrokerOrder, market)
-        orders_data[market] = dict(asset_symbol=asset_symbol, order_count_today=order_count_today, order_count_yesterday=order_count_yesterday, order_count_week=order_count_week, order_count_month=order_count_month, order_count_year=order_count_year, order_count_lifetime=order_count_lifetime, order_amount_today=order_amount_today, order_amount_yesterday=order_amount_yesterday, order_amount_week=order_amount_week, order_amount_month=order_amount_month, order_amount_year=order_amount_year, order_amount_lifetime=order_amount_lifetime)
+        orders_data[market] = dict(asset_symbol=asset_symbol, today=today, yesterday=yesterday, tomorrow=tomorrow, monday=monday, next_monday=next_monday, first_day_current_month=first_day_current_month, first_day_next_month=first_day_next_month, first_day_current_year=first_day_current_year, first_day_next_year=first_day_next_year, order_count_today=order_count_today, order_count_yesterday=order_count_yesterday, order_count_week=order_count_week, order_count_month=order_count_month, order_count_year=order_count_year, order_count_lifetime=order_count_lifetime, order_amount_today=order_amount_today, order_amount_yesterday=order_amount_yesterday, order_amount_week=order_amount_week, order_amount_month=order_amount_month, order_amount_year=order_amount_year, order_amount_lifetime=order_amount_lifetime)
     return render_template('reporting/dashboard_broker_orders.html', orders_data=orders_data)
