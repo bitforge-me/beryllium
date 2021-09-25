@@ -1,0 +1,21 @@
+
+.some-page-wrapper {
+  background-color: #3f454a;;
+}
+
+.text_color {
+  color: black;
+}
+
+.dashboard {
+  background-color: #343b41;
+}
+
+.dashboard:hover {
+  background-color: #262a30;
+}
+
+body {
+  color: #c8c8c8;
+  background-color: #3f454a;
+}

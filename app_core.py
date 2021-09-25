@@ -111,6 +111,15 @@ if os.getenv('EXCHANGE_ACCOUNT_MOCK'):
 else:
     app.config['EXCHANGE_ACCOUNT_MOCK'] = False
 
+if os.getenv("FLASK_ADMIN_SWATCH"):
+    app.config["FLASK_ADMIN_SWATCH"] = os.getenv("FLASK_ADMIN_SWATCH")
+
+if os.getenv("FLASK_ADMIN_SWATCH") == "slate":
+    app.config["CSS_THEME"] = "css/custom_reporting_dark.css"
+    app.config["CSS_THEME_INTENSITY"] = "dark"
+else:
+    app.config["CSS_THEME_INTENSITY"] = "light"
+
 def set_vital_setting(env_name, setting_name=None, acceptable_values=None, custom_handler=None):
     # pylint: disable=global-statement
     global MISSING_VITAL_SETTING

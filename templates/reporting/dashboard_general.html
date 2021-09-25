@@ -1,0 +1,35 @@
+{% extends "layout.html" %}
+{% block head_css %}
+  {{ super() }}
+{% endblock %}
+
+{% block content %}
+<a class="btn btn-secondary" href="/"><i class="glyphicon glyphicon-chevron-left"></i> Back</a>&nbsp
+<a class="btn btn-primary" href="dashboard_general"><i class="glyphicon glyphicon-chevron-left"></i>General</a>&nbsp
+<a class="btn btn-secondary" href="dashboard_user"><i class="glyphicon glyphicon-chevron-left"></i>Users</a>&nbsp
+<a class="btn btn-secondary" href="dashboard_report_broker_order"><i class="glyphicon glyphicon-chevron-left"></i>Broker Orders</a>&nbsp
+
+<div class='some-page-wrapper'>
+  <div class='row'>
+    {% for balance in dasset_balances %}
+    <div class='column'>
+      <div class='operations_account_column text_color'>
+        <b>{{ balance.name }}</b>
+        <div class='report-row report-row-sm blue text_color'>
+          Available: {{ balance.available }} {{ balance.symbol }}
+        </div>
+        <div class='report-row report-row-sm blue text_color'>
+          Total: {{ balance.total }} {{ balance.symbol }}
+        </div>
+      </div>
+    {% endfor %}
+    </div>
+  </div>
+
+  <hr />
+{% if config["USE_REFERRALS"] %}
+    {% include 'referral_settings.html' %}
+{% endif %}
+
+</div>
+{% endblock %}
