@@ -3,7 +3,8 @@ import logging
 
 import payments_core
 import dasset
-from dasset import market_side_is, MarketSide
+import assets
+from assets import market_side_is, MarketSide
 from models import ExchangeDeposit, ExchangeOrder, ExchangeWithdrawal
 import websocket
 import utils
@@ -31,9 +32,9 @@ def _broker_order_buy_crypto_with_fiat_update(broker_order):
                 return updated_records
     # create exchange order
     if broker_order.status == broker_order.STATUS_CONFIRMED:
-        base_amount_dec = dasset.asset_int_to_dec(broker_order.base_asset, broker_order.base_amount)
-        quote_amount_dec = dasset.asset_int_to_dec(broker_order.quote_asset, broker_order.quote_amount)
-        amount_total = base_amount_dec + dasset.asset_withdraw_fee(broker_order.base_asset)
+        base_amount_dec = assets.asset_int_to_dec(broker_order.base_asset, broker_order.base_amount)
+        quote_amount_dec = assets.asset_int_to_dec(broker_order.quote_asset, broker_order.quote_amount)
+        amount_total = base_amount_dec + assets.asset_withdraw_fee(broker_order.base_asset)
         price = quote_amount_dec / amount_total
         exchange_order_id = dasset.order_create(broker_order.market, MarketSide.BID, amount_total, price)
         if not exchange_order_id:
@@ -52,7 +53,7 @@ def _broker_order_buy_crypto_with_fiat_update(broker_order):
         # check exchange order
         if dasset.order_status_check(broker_order.exchange_order.exchange_reference, broker_order.market):
             # create exchange withdrawal
-            base_amount_dec = dasset.asset_int_to_dec(broker_order.base_asset, broker_order.base_amount)
+            base_amount_dec = assets.asset_int_to_dec(broker_order.base_asset, broker_order.base_amount)
             exchange_withdrawal_id = dasset.crypto_withdrawal_create(broker_order.base_asset, base_amount_dec, broker_order.recipient)
             if not exchange_withdrawal_id:
                 msg = f'{broker_order.token}, {broker_order.base_asset}, {broker_order.base_amount}'
@@ -95,7 +96,7 @@ def _broker_order_sell_crypto_for_fiat_update(db_session, broker_order):
     updated_records = []
     # check deposit
     if broker_order.status == broker_order.STATUS_READY:
-        amount = dasset.asset_int_to_dec(broker_order.quote_asset, broker_order.quote_amount)
+        amount = assets.asset_int_to_dec(broker_order.quote_asset, broker_order.quote_amount)
         deposits = dasset.crypto_deposit_search(broker_order.quote_asset, broker_order.address, amount, broker_order.user.dasset_subaccount.subaccount_id)
         new_deposit = _new_deposit(db_session, deposits)
         if not new_deposit:
@@ -113,8 +114,8 @@ def _broker_order_sell_crypto_for_fiat_update(db_session, broker_order):
         return updated_records
     # exchange order
     if broker_order.status == broker_order.STATUS_CONFIRMED:
-        base_amount_dec = dasset.asset_int_to_dec(broker_order.base_asset, broker_order.base_amount)
-        quote_amount_dec = dasset.asset_int_to_dec(broker_order.quote_asset, broker_order.quote_amount)
+        base_amount_dec = assets.asset_int_to_dec(broker_order.base_asset, broker_order.base_amount)
+        quote_amount_dec = assets.asset_int_to_dec(broker_order.quote_asset, broker_order.quote_amount)
         amount_total = base_amount_dec
         price = quote_amount_dec / amount_total
         exchange_order_id = dasset.order_create(broker_order.market, MarketSide.ASK, amount_total, price)
@@ -134,7 +135,7 @@ def _broker_order_sell_crypto_for_fiat_update(db_session, broker_order):
         # check exchange order
         if dasset.order_status_check(broker_order.exchange_order.exchange_reference, broker_order.market):
             # create payout
-            quote_amount_dec = dasset.asset_int_to_dec(broker_order.quote_asset, broker_order.quote_amount)
+            quote_amount_dec = assets.asset_int_to_dec(broker_order.quote_asset, broker_order.quote_amount)
             payout_req = payments_core.payout_create(broker_order.quote_amount, broker_order.token, '', broker_order.user.email, broker_order.recipient, broker_order.token, '', '')
             broker_order.payout_request = payout_req
             broker_order.status = broker_order.STATUS_WITHDRAW
@@ -167,9 +168,9 @@ def _broker_order_sell_crypto_for_fiat_update(db_session, broker_order):
     return updated_records
 
 def _email_msg(broker_order, msg):
-    side = dasset.market_side_nice(broker_order.side)
-    amount =  dasset.asset_int_to_dec(broker_order.base_asset, broker_order.base_amount)
-    amount = dasset.asset_dec_to_str(broker_order.base_asset, amount)
+    side = assets.market_side_nice(broker_order.side)
+    amount =  assets.asset_int_to_dec(broker_order.base_asset, broker_order.base_amount)
+    amount = assets.asset_dec_to_str(broker_order.base_asset, amount)
     return f'Your order {broker_order.token} ({side} {amount} {broker_order.base_asset}) is now {broker_order.status}. \n\n{msg}'
 
 def _broker_order_email(broker_order):
@@ -187,11 +188,11 @@ def broker_order_update_and_commit(db_session, broker_order):
         updated_records = []
         # process crypto buy with fiat
         if market_side_is(broker_order.side, MarketSide.BID):
-            if dasset.asset_is_crypto(broker_order.base_asset) and dasset.asset_is_fiat(broker_order.quote_asset):
+            if assets.asset_is_crypto(broker_order.base_asset) and assets.asset_is_fiat(broker_order.quote_asset):
                 updated_records = _broker_order_buy_crypto_with_fiat_update(broker_order)
         # process crypto sell for fiat
         if market_side_is(broker_order.side, MarketSide.ASK):
-            if dasset.asset_is_crypto(broker_order.base_asset) and dasset.asset_is_fiat(broker_order.quote_asset):
+            if assets.asset_is_crypto(broker_order.base_asset) and assets.asset_is_fiat(broker_order.quote_asset):
                 updated_records = _broker_order_sell_crypto_for_fiat_update(db_session, broker_order)
         # commit db if records updated
         if not updated_records:

@@ -12,8 +12,8 @@ from sqlalchemy import and_
 
 from app_core import db
 from utils import generate_key
-import dasset
-from dasset import market_side_is, MarketSide
+import assets
+from assets import market_side_is, MarketSide
 
 logger = logging.getLogger(__name__)
 
@@ -384,10 +384,10 @@ class BrokerOrderSchema(Schema):
     payment_url = fields.Method('get_payment_url')
 
     def get_base_amount_dec(self, obj):
-        return str(dasset.asset_int_to_dec(obj.base_asset, obj.base_amount))
+        return str(assets.asset_int_to_dec(obj.base_asset, obj.base_amount))
 
     def get_quote_amount_dec(self, obj):
-        return str(dasset.asset_int_to_dec(obj.quote_asset, obj.quote_amount))
+        return str(assets.asset_int_to_dec(obj.quote_asset, obj.quote_amount))
 
     def get_payment_url(self, obj):
         payment_url = None
@@ -395,9 +395,9 @@ class BrokerOrderSchema(Schema):
             payment_url = url_for('payments.payment_interstitial', token=obj.windcave_payment_request.token, _external=True)
         if obj.address:
             if market_side_is(obj.side, MarketSide.BID):
-                payment_url = dasset.crypto_uri(obj.quote_asset, obj.address, obj.quote_amount)
+                payment_url = assets.crypto_uri(obj.quote_asset, obj.address, obj.quote_amount)
             else:
-                payment_url = dasset.crypto_uri(obj.base_asset, obj.address, obj.base_amount)
+                payment_url = assets.crypto_uri(obj.base_asset, obj.address, obj.base_amount)
         return payment_url
 
 class BrokerOrder(db.Model):
@@ -861,7 +861,7 @@ class FiatDepositSchema(Schema):
     payment_url = fields.Method('get_payment_url')
 
     def get_amount_dec(self, obj):
-        return str(dasset.asset_int_to_dec(obj.asset, obj.amount))
+        return str(assets.asset_int_to_dec(obj.asset, obj.amount))
 
     def get_payment_url(self, obj):
         payment_url = None

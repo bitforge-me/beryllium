@@ -19,7 +19,8 @@ from security import tf_enabled_check, tf_method, tf_code_send, tf_method_set, t
 import payments_core
 import kyc_core
 import dasset
-from dasset import MarketSide, market_side_is
+import assets
+from assets import MarketSide, market_side_is
 import websocket
 import fiatdb_core
 
@@ -430,8 +431,7 @@ def assets_req():
     _, err_response = auth_request(db)
     if err_response:
         return err_response
-    assets = list(dasset.ASSETS.values())
-    return jsonify(assets=assets)
+    return jsonify(assets=list(assets.ASSETS.values()))
 
 @api.route('/markets', methods=['POST'])
 def markets_req():
@@ -445,11 +445,11 @@ def order_book_req():
     market, _, err_response = auth_request_get_single_param(db, 'market')
     if err_response:
         return err_response
-    if market not in dasset.MARKETS:
+    if market not in assets.MARKETS:
         return bad_request(web_utils.INVALID_MARKET)
-    base_asset, quote_asset = dasset.assets_from_market(market)
-    base_asset_withdraw_fee = dasset.asset_withdraw_fee(base_asset)
-    quote_asset_withdraw_fee = dasset.asset_withdraw_fee(quote_asset)
+    base_asset, quote_asset = assets.assets_from_market(market)
+    base_asset_withdraw_fee = assets.asset_withdraw_fee(base_asset)
+    quote_asset_withdraw_fee = assets.asset_withdraw_fee(quote_asset)
     order_book, min_order, broker_fee = dasset.order_book_req(market)
     return jsonify(order_book=order_book, min_order=str(min_order), base_asset_withdraw_fee=str(base_asset_withdraw_fee), quote_asset_withdraw_fee=str(quote_asset_withdraw_fee), broker_fee=str(broker_fee))
 
@@ -466,9 +466,9 @@ def balances_req():
     # commit if subaccount was created
     db.session.commit()
     balances = dasset.account_balances(subaccount_id=subaccount_id)
-    nzd_balance = fiatdb_core.user_balance(db.session, dasset.NZD.symbol, api_key.user)
-    nzd_amount_dec = dasset.asset_int_to_dec(dasset.NZD.symbol, nzd_balance)
-    balances.append(dict(symbol=dasset.NZD.symbol, name=dasset.NZD.name, total=str(nzd_amount_dec), available=str(nzd_amount_dec), decimals=dasset.NZD.decimals))
+    nzd_balance = fiatdb_core.user_balance(db.session, assets.NZD.symbol, api_key.user)
+    nzd_amount_dec = assets.asset_int_to_dec(assets.NZD.symbol, nzd_balance)
+    balances.append(dict(symbol=assets.NZD.symbol, name=assets.NZD.name, total=str(nzd_amount_dec), available=str(nzd_amount_dec), decimals=assets.NZD.decimals))
     return jsonify(balances=balances)
 
 @api.route('/crypto_deposit_address', methods=['POST'])
@@ -479,7 +479,7 @@ def crypto_deposit_address_req():
     if not api_key.user.dasset_subaccount:
         logger.error('user %s dasset subaccount does not exist', api_key.user.email)
         return bad_request(web_utils.FAILED_EXCHANGE)
-    if not dasset.asset_is_crypto(asset):
+    if not assets.asset_is_crypto(asset):
         return bad_request(web_utils.INVALID_ASSET)
     address = dasset.address_get_or_create(asset, api_key.user.dasset_subaccount.subaccount_id)
     if not address:
@@ -495,7 +495,7 @@ def crypto_deposits_req():
     if not api_key.user.dasset_subaccount:
         logger.error('user %s dasset subaccount does not exist', api_key.user.email)
         return bad_request(web_utils.FAILED_EXCHANGE)
-    if not dasset.asset_is_crypto(asset):
+    if not assets.asset_is_crypto(asset):
         return bad_request(web_utils.INVALID_ASSET)
     deposits = dasset.crypto_deposits(asset, api_key.user.dasset_subaccount.subaccount_id)
     total = len(deposits)
@@ -508,12 +508,12 @@ def fiat_deposit_create_req():
     if err_response:
         return err_response
     asset, amount_dec = params
-    if not dasset.asset_is_fiat(asset):
+    if not assets.asset_is_fiat(asset):
         return bad_request(web_utils.INVALID_ASSET)
     amount_dec = decimal.Decimal(amount_dec)
     if amount_dec <= 0:
         return bad_request(web_utils.INVALID_AMOUNT)
-    amount_int = dasset.asset_dec_to_int(asset, amount_dec)
+    amount_int = assets.asset_dec_to_int(asset, amount_dec)
     fiat_deposit = FiatDeposit(api_key.user, asset, amount_int)
     payment_request = payments_core.payment_create(amount_int, fiat_deposit.expiry)
     if not payment_request:
@@ -531,7 +531,7 @@ def fiat_deposits_req():
     if err_response:
         return err_response
     asset, offset, limit = params
-    if not dasset.asset_is_fiat(asset):
+    if not assets.asset_is_fiat(asset):
         return bad_request(web_utils.INVALID_ASSET)
     if not isinstance(offset, int):
         return bad_request(web_utils.INVALID_PARAMETER)
@@ -549,7 +549,7 @@ def address_book_req():
     asset, api_key, err_response = auth_request_get_single_param(db, 'asset')
     if err_response:
         return err_response
-    if asset not in dasset.ASSETS:
+    if asset not in assets.ASSETS:
         return bad_request(web_utils.INVALID_ASSET)
     entries = AddressBook.of_asset(db.session, api_key.user, asset)
     entries = [entry.to_json() for entry in entries]
@@ -563,7 +563,7 @@ def broker_order_create():
     market, side, amount_dec, recipient, save_recipient, recipient_description = params
     if not api_key.user.kyc_validated():
         return bad_request(web_utils.KYC_NOT_VALIDATED)
-    if market not in dasset.MARKETS:
+    if market not in assets.MARKETS:
         return bad_request(web_utils.INVALID_MARKET)
     side = MarketSide.parse(side)
     if not side:
@@ -577,13 +577,13 @@ def broker_order_create():
         return bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
     if err == dasset.QuoteResult.AMOUNT_TOO_LOW:
         return bad_request(web_utils.AMOUNT_TOO_LOW)
-    if not dasset.recipent_validate(market, side, recipient):
+    if not assets.recipent_validate(market, side, recipient):
         return bad_request(web_utils.INVALID_RECIPIENT)
-    base_asset, quote_asset = dasset.assets_from_market(market)
+    base_asset, quote_asset = assets.assets_from_market(market)
     if not dasset.funds_available(quote_asset, quote_amount_dec):
         return bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
-    amount = dasset.asset_dec_to_int(base_asset, amount_dec)
-    quote_amount = dasset.asset_dec_to_int(quote_asset, quote_amount_dec)
+    amount = assets.asset_dec_to_int(base_asset, amount_dec)
+    quote_amount = assets.asset_dec_to_int(quote_asset, quote_amount_dec)
     broker_order = BrokerOrder(api_key.user, market, side.value, base_asset, quote_asset, amount, quote_amount, recipient)
     db.session.add(broker_order)
     if save_recipient:

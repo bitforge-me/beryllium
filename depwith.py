@@ -2,7 +2,7 @@ import datetime
 import logging
 
 import payments_core
-import dasset
+import assets
 from models import FiatDbTransaction
 import websocket
 import utils
@@ -43,8 +43,8 @@ def _fiat_deposit_update(db_session, fiat_deposit):
     return updated_records
 
 def _email_msg(fiat_deposit, msg):
-    amount =  dasset.asset_int_to_dec(fiat_deposit.asset, fiat_deposit.amount)
-    amount = dasset.asset_dec_to_str(fiat_deposit.asset, amount)
+    amount =  assets.asset_int_to_dec(fiat_deposit.asset, fiat_deposit.amount)
+    amount = assets.asset_dec_to_str(fiat_deposit.asset, amount)
     return f'Your deposit {fiat_deposit.token} ({amount} {fiat_deposit.asset}) is now {fiat_deposit.status}. \n\n{msg}'
 
 def _fiat_deposit_email(fiat_deposit):
