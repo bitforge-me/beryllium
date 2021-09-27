@@ -13,7 +13,7 @@ from flask_security.recoverable import send_reset_password_instructions
 import web_utils
 from web_utils import bad_request, get_json_params, auth_request, auth_request_get_single_param, auth_request_get_params
 import utils
-from models import DassetSubaccount, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, FiatDeposit, CryptoAddress, CryptoDeposit
+from models import DassetSubaccount, FiatDbTransaction, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, FiatDeposit, FiatWithdrawal, CryptoAddress, CryptoDeposit
 from app_core import db, limiter
 from security import tf_enabled_check, tf_method, tf_code_send, tf_method_set, tf_method_unset, tf_secret_init, tf_code_validate, user_datastore
 import payments_core
@@ -23,6 +23,7 @@ import assets
 from assets import MarketSide, market_side_is
 import websocket
 import fiatdb_core
+import coordinator
 
 logger = logging.getLogger(__name__)
 api = Blueprint('api', __name__, template_folder='templates')
@@ -550,6 +551,60 @@ def fiat_deposits_req():
     total = FiatDeposit.total_for_user(db.session, api_key.user)
     return jsonify(deposits=deposits, offset=offset, limit=limit, total=total)
 
+@api.route('/fiat_withdrawal_create', methods=['POST'])
+def fiat_withdrawal_create_req():
+    params, api_key, err_response = auth_request_get_params(db, ['asset', 'amount_dec', 'recipient'])
+    if err_response:
+        return err_response
+    asset, amount_dec, recipient = params
+    if not assets.asset_is_fiat(asset):
+        return bad_request(web_utils.INVALID_ASSET)
+    amount_dec = decimal.Decimal(amount_dec)
+    if amount_dec <= 0:
+        return bad_request(web_utils.INVALID_AMOUNT)
+    if not assets.asset_recipient_validate(asset, recipient):
+        return bad_request(web_utils.INVALID_RECIPIENT)
+    with coordinator.lock:
+        balance = fiatdb_core.user_balance(db.session, asset, api_key.user)
+        balance_dec = assets.asset_int_to_dec(assets.NZD.symbol, balance)
+        if balance_dec < amount_dec:
+            return bad_request(web_utils.INSUFFICIENT_BALANCE)
+        amount_int = assets.asset_dec_to_int(asset, amount_dec)
+        fiat_withdrawal = FiatWithdrawal(api_key.user, asset, amount_int, recipient)
+        payout_request = payments_core.payout_create(amount_int, fiat_withdrawal.token, '', fiat_withdrawal.user.email, recipient, fiat_withdrawal.token, '', '')
+        if not payout_request:
+            return bad_request(web_utils.FAILED_PAYMENT_CREATE)
+        fiat_withdrawal.payout_request = payout_request
+        ftx = fiatdb_core.tx_create_and_play(db.session, api_key.user, FiatDbTransaction.ACTION_DEBIT, asset, amount_int, f'fiat withdrawal: {fiat_withdrawal.token}')
+        if not ftx:
+            logger.error('failed to create fiatdb transaction for fiat withdrawal %s', fiat_withdrawal.token)
+            return bad_request(web_utils.FAILED_PAYMENT_CREATE)
+        db.session.add(fiat_withdrawal)
+        db.session.add(payout_request)
+        db.session.add(ftx)
+        db.session.commit()
+    websocket.fiat_withdrawal_new_event(fiat_withdrawal)
+    return jsonify(withdrawal=fiat_withdrawal.to_json())
+
+@api.route('/fiat_withdrawals', methods=['POST'])
+def fiat_withdrawals_req():
+    params, api_key, err_response = auth_request_get_params(db, ['asset', 'offset', 'limit'])
+    if err_response:
+        return err_response
+    asset, offset, limit = params
+    if not assets.asset_is_fiat(asset):
+        return bad_request(web_utils.INVALID_ASSET)
+    if not isinstance(offset, int):
+        return bad_request(web_utils.INVALID_PARAMETER)
+    if not isinstance(limit, int):
+        return bad_request(web_utils.INVALID_PARAMETER)
+    if limit > 1000:
+        return bad_request(web_utils.LIMIT_TOO_LARGE)
+    withdrawals = FiatWithdrawal.from_user(db.session, api_key.user, offset, limit)
+    withdrawals = [withdrawal.to_json() for withdrawal in withdrawals]
+    total = FiatWithdrawal.total_for_user(db.session, api_key.user)
+    return jsonify(withdrawals=withdrawals, offset=offset, limit=limit, total=total)
+
 @api.route('/address_book', methods=['POST'])
 def address_book_req():
     asset, api_key, err_response = auth_request_get_single_param(db, 'asset')
@@ -583,7 +638,7 @@ def broker_order_create():
         return bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
     if err == dasset.QuoteResult.AMOUNT_TOO_LOW:
         return bad_request(web_utils.AMOUNT_TOO_LOW)
-    if not assets.recipent_validate(market, side, recipient):
+    if not assets.market_recipent_validate(market, side, recipient):
         return bad_request(web_utils.INVALID_RECIPIENT)
     base_asset, quote_asset = assets.assets_from_market(market)
     if not dasset.funds_available(quote_asset, quote_amount_dec):

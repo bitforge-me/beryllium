@@ -6,7 +6,7 @@ import time
 from flask import Blueprint, jsonify
 
 import web_utils
-from web_utils import bad_request, auth_request, auth_request_get_single_param
+from web_utils import auth_request_get_params, bad_request, auth_request, auth_request_get_single_param
 import utils
 from app_core import app, db, limiter
 from models import User, Role, Referral
@@ -79,12 +79,14 @@ def referral_remind():
 def referral_list():
     if not use_referrals:
         return bad_request(web_utils.NOT_AVAILABLE)
-    api_key, err_response = auth_request(db)
+    params, api_key, err_response = auth_request_get_params(db, ['offset', 'limit'])
     if err_response:
         return err_response
-    refs = Referral.from_user(db.session, api_key.user)
+    offset, limit = params
+    refs = Referral.from_user(db.session, api_key.user, offset, limit)
     refs = [ref.to_json() for ref in refs]
-    return jsonify(dict(referrals=refs))
+    total = Referral.total_for_user(db.session, api_key.user)
+    return jsonify(dict(referrals=refs, offset=offset, limit=limit, total=total))
 
 @reward.route('/referral_validate', methods=['POST'])
 def referral_validate():

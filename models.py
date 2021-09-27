@@ -21,6 +21,11 @@ logger = logging.getLogger(__name__)
 # Define beryllium models
 #
 
+class FromTokenMixin():
+    @classmethod
+    def from_token(cls, session, token):
+        return session.query(cls).filter(cls.token == token).first()
+
 class FromUserMixin():
     @classmethod
     def from_user(cls, session, user, offset, limit):
@@ -105,7 +110,7 @@ class User(db.Model, UserMixin):
     def __str__(self):
         return f'{self.email}'
 
-class UserCreateRequest(db.Model):
+class UserCreateRequest(db.Model, FromTokenMixin):
 
     MINUTES_EXPIRY = 30
 
@@ -137,14 +142,10 @@ class UserCreateRequest(db.Model):
     def from_email(cls, session, email):
         return session.query(cls).filter(cls.email == email).first()
 
-    @classmethod
-    def from_token(cls, session, token):
-        return session.query(cls).filter(cls.token == token).first()
-
     def __str__(self):
         return self.email
 
-class UserUpdateEmailRequest(db.Model):
+class UserUpdateEmailRequest(db.Model, FromTokenMixin):
 
     MINUTES_EXPIRY = 30
 
@@ -164,10 +165,6 @@ class UserUpdateEmailRequest(db.Model):
     @classmethod
     def from_email(cls, session, email):
         return session.query(cls).filter(cls.email == email).first()
-
-    @classmethod
-    def from_token(cls, session, token):
-        return session.query(cls).filter(cls.token == token).first()
 
     def __str__(self):
         return self.email
@@ -197,7 +194,7 @@ class Permission(db.Model):
     def __str__(self):
         return f'{self.name}'
 
-class ApiKey(db.Model):
+class ApiKey(db.Model, FromTokenMixin):
     MINUTES_EXPIRY = 30
 
     id = db.Column(db.Integer, primary_key=True)
@@ -225,11 +222,7 @@ class ApiKey(db.Model):
             return perm in self.permissions # pylint: disable=unsupported-membership-test
         return False
 
-    @classmethod
-    def from_token(cls, session, token):
-        return session.query(cls).filter(cls.token == token).first()
-
-class ApiKeyRequest(db.Model):
+class ApiKeyRequest(db.Model, FromTokenMixin):
     MINUTES_EXPIRY = 30
 
     id = db.Column(db.Integer, primary_key=True)
@@ -248,10 +241,6 @@ class ApiKeyRequest(db.Model):
         self.user = user
         self.device_name = device_name
         self.expiry = datetime.now() + timedelta(minutes=self.MINUTES_EXPIRY)
-
-    @classmethod
-    def from_token(cls, session, token):
-        return session.query(cls).filter(cls.token == token).first()
 
     def __str__(self):
         return self.token
@@ -275,7 +264,7 @@ class Topic(db.Model):
     def __repr__(self):
         return f'<Topic {self.topic}>'
 
-class PushNotificationLocation(db.Model):
+class PushNotificationLocation(db.Model, FromTokenMixin):
     id = db.Column(db.Integer, primary_key=True)
     fcm_registration_token = db.Column(db.String, nullable=False)
     latitude = db.Column(db.Float, nullable=False)
@@ -290,10 +279,6 @@ class PushNotificationLocation(db.Model):
         self.latitude = latitude
         self.longitude = longitude
         self.date = datetime.now()
-
-    @classmethod
-    def from_token(cls, session, token):
-        return session.query(cls).filter(cls.fcm_registration_token == token).first()
 
     @classmethod
     def tokens_at_location(cls, session, latitude, max_lat_delta, longitude, max_long_delta, max_age_minutes):
@@ -324,7 +309,7 @@ class ReferralSchema(Schema):
     recipient_min_spend = fields.Integer()
     status = fields.String()
 
-class Referral(db.Model):
+class Referral(db.Model, FromTokenMixin, FromUserMixin):
     STATUS_CREATED = 'created'
     STATUS_CLAIMED = 'claimed'
     STATUS_DELETED = 'deleted'
@@ -366,16 +351,8 @@ class Referral(db.Model):
         return ref_schema.dump(self)
 
     @classmethod
-    def from_token(cls, session, token):
-        return session.query(cls).filter(cls.token == token).first()
-
-    @classmethod
     def from_token_user(cls, session, token, user):
         return session.query(cls).filter(and_(cls.token == token, cls.user_id == user.id)).first()
-
-    @classmethod
-    def from_user(cls, session, user):
-        return session.query(cls).filter(cls.user_id == user.id).all()
 
 class BrokerOrderSchema(Schema):
     token = fields.String()
@@ -411,7 +388,7 @@ class BrokerOrderSchema(Schema):
                 payment_url = assets.crypto_uri(obj.base_asset, obj.address, obj.base_amount)
         return payment_url
 
-class BrokerOrder(db.Model, FromUserMixin):
+class BrokerOrder(db.Model, FromUserMixin, FromTokenMixin):
     STATUS_CREATED = 'created'
     STATUS_READY = 'ready'
     STATUS_INCOMING = 'incoming'
@@ -469,10 +446,6 @@ class BrokerOrder(db.Model, FromUserMixin):
     def to_json(self):
         ref_schema = BrokerOrderSchema()
         return ref_schema.dump(self)
-
-    @classmethod
-    def from_token(cls, session, token):
-        return session.query(cls).filter(cls.token == token).first()
 
     @classmethod
     def all_active(cls, session):
@@ -591,7 +564,7 @@ class WindcavePaymentRequestSchema(Schema):
     windcave_allow_retry = fields.Boolean()
     status = fields.String()
 
-class WindcavePaymentRequest(db.Model):
+class WindcavePaymentRequest(db.Model, FromTokenMixin):
     STATUS_CREATED = 'created'
     STATUS_COMPLETED = 'completed'
     STATUS_CANCELLED = 'cancelled'
@@ -619,10 +592,6 @@ class WindcavePaymentRequest(db.Model):
     @classmethod
     def count(cls, session):
         return session.query(cls).count()
-
-    @classmethod
-    def from_token(cls, session, token):
-        return session.query(cls).filter(cls.token == token).first()
 
     def __repr__(self):
         return f'<WindcavePaymentRequest {self.token}>'
@@ -657,7 +626,7 @@ class PayoutRequestSchema(Schema):
     email_sent = fields.Boolean()
     status = fields.String()
 
-class PayoutRequest(db.Model):
+class PayoutRequest(db.Model, FromTokenMixin):
     STATUS_CREATED = 'created'
     STATUS_COMPLETED = 'completed'
     STATUS_SUSPENDED = 'suspended'
@@ -704,10 +673,6 @@ class PayoutRequest(db.Model):
         return session.query(cls).count()
 
     @classmethod
-    def from_token(cls, session, token):
-        return session.query(cls).filter(cls.token == token).first()
-
-    @classmethod
     def where_status_created(cls, session):
         return session.query(cls).filter(cls.status == cls.STATUS_CREATED).all()
 
@@ -726,7 +691,7 @@ class PayoutRequest(db.Model):
         schema = PayoutRequestSchema()
         return schema.dump(self)
 
-class PayoutGroup(db.Model):
+class PayoutGroup(db.Model, FromTokenMixin):
     id = db.Column(db.Integer, primary_key=True)
     token = db.Column(db.String, nullable=False, unique=True)
     expired = db.Column(db.Boolean, nullable=False)
@@ -735,10 +700,6 @@ class PayoutGroup(db.Model):
     def __init__(self):
         self.token = generate_key()
         self.expired = False
-
-    @classmethod
-    def from_token(cls, session, token):
-        return session.query(cls).filter(cls.token == token).first()
 
     @classmethod
     def expire_all_but(cls, session, group):
@@ -759,7 +720,7 @@ class KycRequestSchema(Schema):
     token = fields.String()
     status = fields.String()
 
-class KycRequest(db.Model):
+class KycRequest(db.Model, FromTokenMixin):
     STATUS_CREATED = 'created'
     STATUS_COMPLETED = 'completed'
 
@@ -787,10 +748,6 @@ class KycRequest(db.Model):
     def count(cls, session):
         return session.query(cls).count()
 
-    @classmethod
-    def from_token(cls, session, token):
-        return session.query(cls).filter(cls.token == token).first()
-
     def __repr__(self):
         return f'<KycRequest {self.token}>'
 
@@ -805,7 +762,7 @@ class AddressBookSchema(Schema):
     recipient = fields.String()
     description = fields.String()
 
-class AddressBook(db.Model):
+class AddressBook(db.Model, FromTokenMixin):
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.DateTime(), nullable=False, unique=False)
     token = db.Column(db.String, nullable=False, unique=True)
@@ -826,10 +783,6 @@ class AddressBook(db.Model):
     @classmethod
     def count(cls, session):
         return session.query(cls).count()
-
-    @classmethod
-    def from_token(cls, session, token):
-        return session.query(cls).filter(cls.token == token).first()
 
     @classmethod
     def from_recipient(cls, session, user, asset, recipient):
@@ -853,7 +806,7 @@ class FiatDbTransactionSchema(Schema):
     amount = fields.Integer()
     attachment = fields.String()
 
-class FiatDbTransaction(db.Model):
+class FiatDbTransaction(db.Model, FromTokenMixin):
     ACTION_CREDIT = 'credit'
     ACTION_DEBIT = 'debit'
 
@@ -875,10 +828,6 @@ class FiatDbTransaction(db.Model):
         self.asset = asset
         self.amount = amount
         self.attachment = attachment
-
-    @classmethod
-    def from_token(cls, session, token):
-        return session.query(cls).filter(cls.token == token).first()
 
     @classmethod
     def all(cls, session):
@@ -910,7 +859,7 @@ class FiatDepositSchema(Schema):
             payment_url = url_for('payments.payment_interstitial', token=obj.windcave_payment_request.token, _external=True)
         return payment_url
 
-class FiatDeposit(db.Model, FromUserMixin):
+class FiatDeposit(db.Model, FromUserMixin, FromTokenMixin):
     STATUS_CREATED = 'created'
     STATUS_COMPLETED = 'completed'
     STATUS_EXPIRED = 'expired'
@@ -946,12 +895,56 @@ class FiatDeposit(db.Model, FromUserMixin):
         return ref_schema.dump(self)
 
     @classmethod
-    def from_token(cls, session, token):
-        return session.query(cls).filter(cls.token == token).first()
+    def all_active(cls, session):
+        return session.query(cls).filter(and_(cls.status != cls.STATUS_COMPLETED, and_(cls.status != cls.STATUS_EXPIRED, cls.status != cls.STATUS_CANCELLED))).all()
+
+class FiatWithdrawalSchema(Schema):
+    token = fields.String()
+    date = fields.DateTime()
+    asset = fields.String()
+    amount = fields.Integer()
+    amount_dec = fields.Method('get_amount_dec')
+    recipient = fields.String()
+    status = fields.String()
+
+    def get_amount_dec(self, obj):
+        return str(assets.asset_int_to_dec(obj.asset, obj.amount))
+
+class FiatWithdrawal(db.Model, FromUserMixin, FromTokenMixin):
+    STATUS_CREATED = 'created'
+    STATUS_COMPLETED = 'completed'
+    STATUS_CANCELLED = 'cancelled'
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    token = db.Column(db.String(255), unique=True, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref=db.backref('fiat_withdrawals', lazy='dynamic'))
+    date = db.Column(db.DateTime(), nullable=False)
+    asset = db.Column(db.String, nullable=False)
+    amount = db.Column(db.BigInteger, nullable=False)
+    recipient = db.Column(db.String, nullable=False)
+    payout_request_id = db.Column(db.Integer, db.ForeignKey('payout_request.id'))
+    payout_request = db.relationship('PayoutRequest', backref=db.backref('fiat_withdrawal', uselist=False))
+
+    status = db.Column(db.String, nullable=False)
+
+    def __init__(self, user, asset, amount, recipient):
+        self.token = generate_key()
+        self.user = user
+        self.date = datetime.now()
+        self.asset = asset
+        self.amount = amount
+        self.recipient = recipient
+        self.status = self.STATUS_CREATED
+
+    def to_json(self):
+        ref_schema = FiatWithdrawalSchema()
+        return ref_schema.dump(self)
 
     @classmethod
     def all_active(cls, session):
-        return session.query(cls).filter(and_(cls.status != cls.STATUS_COMPLETED, and_(cls.status != cls.STATUS_EXPIRED, cls.status != cls.STATUS_CANCELLED))).all()
+        return session.query(cls).filter(and_(cls.status != cls.STATUS_COMPLETED, cls.status != cls.STATUS_CANCELLED)).all()
 
 class CryptoAddress(db.Model, FromUserMixin):
 

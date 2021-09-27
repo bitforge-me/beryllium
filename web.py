@@ -45,10 +45,12 @@ def process_email_alerts():
 
 def process_deposits_and_broker_orders():
     with app.app_context():
-        logger.info('process_deposits()')
+        logger.info('process deposits..')
         depwith.fiat_deposits_update(db.session)
         depwith.crypto_deposits_check(db.session)
-        logger.info('process_broker_orders()')
+        logger.info('process withdrawals..')
+        depwith.fiat_withdrawals_update(db.session)
+        logger.info('process broker orders..')
         broker.broker_orders_update(db.session)
 
 #

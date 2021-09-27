@@ -88,6 +88,16 @@ def fiat_deposit_new_event(fiat_deposit):
     socketio.emit('fiat_deposit_new', data, json=True, room=fiat_deposit.user.email, namespace=NS)
     logger.info('fiat_deposit_new: %s', fiat_deposit.token)
 
+def fiat_withdrawal_update_event(fiat_withdrawal):
+    data = json.dumps(fiat_withdrawal.to_json())
+    socketio.emit('fiat_withdrawal_update', data, json=True, room=fiat_withdrawal.user.email, namespace=NS)
+    logger.info('fiat_withdrawal_update: %s', fiat_withdrawal.token)
+
+def fiat_withdrawal_new_event(fiat_withdrawal):
+    data = json.dumps(fiat_withdrawal.to_json())
+    socketio.emit('fiat_withdrawal_new', data, json=True, room=fiat_withdrawal.user.email, namespace=NS)
+    logger.info('fiat_withdrawal_new: %s', fiat_withdrawal.token)
+
 class EventsNamespace(Namespace):
 
     def on_error(self, err):

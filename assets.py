@@ -105,13 +105,8 @@ def asset_is_fiat(asset):
             return True
     return False
 
-def recipent_validate(market, side, recipient):
+def asset_recipient_validate(asset, recipient):
     result = False
-    base_asset, quote_asset = assets_from_market(market)
-    if side is MarketSide.BID:
-        asset = base_asset
-    else:
-        asset = quote_asset
     if asset == 'NZD':
         result = bankaccount.is_valid(recipient)
     elif asset == 'BTC':
@@ -130,6 +125,14 @@ def recipent_validate(market, side, recipient):
     if not result:
         logger.error('failed to validate recipient "%s" (%s)', recipient, asset)
     return result
+
+def market_recipent_validate(market, side, recipient):
+    base_asset, quote_asset = assets_from_market(market)
+    if side is MarketSide.BID:
+        asset = base_asset
+    else:
+        asset = quote_asset
+    return asset_recipient_validate(asset, recipient)
 
 def crypto_uri(asset, address, amount_int):
     assert isinstance(amount_int, int)
