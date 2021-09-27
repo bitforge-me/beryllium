@@ -13,7 +13,7 @@ from flask_security import current_user
 from markupsafe import Markup
 
 from app_core import app, db
-from models import Role, User, ApiKey, Topic, PushNotificationLocation, Referral, BrokerOrder, ExchangeOrder, ExchangeWithdrawal, KycRequest, AplyId, FiatDbTransaction, FiatDeposit
+from models import Role, User, ApiKey, Topic, PushNotificationLocation, Referral, BrokerOrder, ExchangeOrder, CryptoWithdrawal, CryptoDeposit, CryptoAddress, KycRequest, AplyId, FiatDbTransaction, FiatDeposit
 from security import security
 
 # helper functions/classes
@@ -243,11 +243,13 @@ admin.add_view(RestrictedModelView(Topic, db.session, category='Admin'))
 admin.add_view(PushNotificationLocationModelView(PushNotificationLocation, db.session, category='Admin'))
 admin.add_view(BrokerOrderModelView(BrokerOrder, db.session, category='Admin'))
 admin.add_view(RestrictedModelView(ExchangeOrder, db.session, category='Admin'))
-admin.add_view(RestrictedModelView(ExchangeWithdrawal, db.session, category='Admin'))
+admin.add_view(RestrictedModelView(CryptoWithdrawal, db.session, category='Admin'))
+admin.add_view(RestrictedModelView(CryptoDeposit, db.session, category='Admin'))
+admin.add_view(RestrictedModelView(CryptoAddress, db.session, category='Admin'))
+admin.add_view(RestrictedModelView(FiatDeposit, db.session, category='Admin'))
+admin.add_view(RestrictedModelView(FiatDbTransaction, db.session, category='Admin'))
 admin.add_view(RestrictedModelView(KycRequest, db.session, category='Admin'))
 admin.add_view(RestrictedModelView(AplyId, db.session, category='Admin'))
-admin.add_view(RestrictedModelView(FiatDbTransaction, db.session, category='Admin'))
-admin.add_view(RestrictedModelView(FiatDeposit, db.session, category='Admin'))
 admin.add_view(ApiKeyModelView(ApiKey, db.session, category='User'))
 if app.config["USE_REFERRALS"]:
     admin.add_view(RestrictedModelView(Referral, db.session, category='Admin', name='Referrals'))

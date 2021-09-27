@@ -68,13 +68,11 @@ def broker_order_new_event(broker_order):
     socketio.emit('broker_order_new', data, json=True, room=broker_order.user.email, namespace=NS)
     logger.info('broker_order_new: %s', broker_order.token)
 
-# TODO - use this
 def crypto_deposit_update_event(crypto_deposit):
     data = json.dumps(crypto_deposit.to_json())
     socketio.emit('crypto_deposit_update', data, json=True, room=crypto_deposit.user.email, namespace=NS)
     logger.info('crypto_deposit_update: %s', crypto_deposit.token)
 
-# TODO - use this
 def crypto_deposit_new_event(crypto_deposit):
     data = json.dumps(crypto_deposit.to_json())
     socketio.emit('crypto_deposit_new', data, json=True, room=crypto_deposit.user.email, namespace=NS)

@@ -2,7 +2,7 @@
 
 import logging
 import time
-import datetime
+from datetime import datetime
 import decimal
 
 from flask import Blueprint, request, jsonify, flash, redirect, render_template
@@ -13,7 +13,7 @@ from flask_security.recoverable import send_reset_password_instructions
 import web_utils
 from web_utils import bad_request, get_json_params, auth_request, auth_request_get_single_param, auth_request_get_params
 import utils
-from models import DassetSubaccount, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, FiatDeposit
+from models import DassetSubaccount, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, FiatDeposit, CryptoAddress, CryptoDeposit
 from app_core import db, limiter
 from security import tf_enabled_check, tf_method, tf_code_send, tf_method_set, tf_method_unset, tf_secret_init, tf_code_validate, user_datastore
 import payments_core
@@ -86,7 +86,7 @@ def user_registration_confirm(token=None):
     if user:
         flash('User already exists.', 'danger')
         return redirect('/')
-    now = datetime.datetime.now()
+    now = datetime.now()
     if now > req.expiry:
         flash('User registration expired.', 'danger')
         return redirect('/')
@@ -212,7 +212,7 @@ def api_key_confirm(token=None, secret=None):
     if req.secret != secret:
         flash('Email login code invalid.', 'danger')
         return redirect('/')
-    now = datetime.datetime.now()
+    now = datetime.now()
     if now > req.expiry:
         time.sleep(5)
         flash('Email login request expired.', 'danger')
@@ -292,7 +292,7 @@ def user_update_email_confirm(token=None):
     if not req:
         flash('User update email request not found.', 'danger')
         return redirect('/')
-    now = datetime.datetime.now()
+    now = datetime.now()
     if now > req.expiry:
         flash('User update email request expired.', 'danger')
         return redirect('/')
@@ -481,10 +481,16 @@ def crypto_deposit_address_req():
         return bad_request(web_utils.FAILED_EXCHANGE)
     if not assets.asset_is_crypto(asset):
         return bad_request(web_utils.INVALID_ASSET)
-    address = dasset.address_get_or_create(asset, api_key.user.dasset_subaccount.subaccount_id)
-    if not address:
-        return bad_request(web_utils.FAILED_EXCHANGE)
-    return jsonify(address=address, asset=asset)
+    crypto_address = CryptoAddress.from_asset(db.session, api_key.user, asset)
+    if not crypto_address:
+        address = dasset.address_get_or_create(asset, api_key.user.dasset_subaccount.subaccount_id)
+        if not address:
+            return bad_request(web_utils.FAILED_EXCHANGE)
+        crypto_address = CryptoAddress(api_key.user, asset, address)
+    crypto_address.viewed_at = datetime.timestamp(datetime.now())
+    db.session.add(crypto_address)
+    db.session.commit()
+    return jsonify(address=crypto_address.address, asset=asset)
 
 @api.route('/crypto_deposits', methods=['POST'])
 def crypto_deposits_req():
@@ -497,9 +503,9 @@ def crypto_deposits_req():
         return bad_request(web_utils.FAILED_EXCHANGE)
     if not assets.asset_is_crypto(asset):
         return bad_request(web_utils.INVALID_ASSET)
-    deposits = dasset.crypto_deposits(asset, api_key.user.dasset_subaccount.subaccount_id)
-    total = len(deposits)
-    deposits = deposits[offset:offset + limit] # dasset does not have pagination for this api :/
+    deposits = CryptoDeposit.from_user(db.session, api_key.user, offset, limit)
+    deposits = [deposit.to_json() for deposit in deposits]
+    total = CryptoDeposit.total_for_user(db.session, api_key.user)
     return jsonify(deposits=deposits, offset=offset, limit=limit, total=total)
 
 @api.route('/fiat_deposit_create', methods=['POST'])
@@ -618,7 +624,7 @@ def broker_order_accept():
     broker_order = BrokerOrder.from_token(db.session, token)
     if not broker_order or broker_order.user != api_key.user:
         return bad_request(web_utils.NOT_FOUND)
-    now = datetime.datetime.now()
+    now = datetime.now()
     if now > broker_order.expiry:
         return bad_request(web_utils.EXPIRED)
     if broker_order.status != broker_order.STATUS_CREATED:

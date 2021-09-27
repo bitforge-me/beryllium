@@ -5,7 +5,7 @@ import payments_core
 import dasset
 import assets
 from assets import market_side_is, MarketSide
-from models import ExchangeDeposit, ExchangeOrder, ExchangeWithdrawal
+from models import BrokerOrder, CryptoDeposit, ExchangeOrder, CryptoWithdrawal
 import websocket
 import utils
 
@@ -60,10 +60,10 @@ def _broker_order_buy_crypto_with_fiat_update(broker_order):
                 logger.error('failed to create exchange withdrawal - %s', msg)
                 utils.send_email(logger, 'failed to create exchange withdrawal', msg)
                 return updated_records
-            exchange_withdrawal = ExchangeWithdrawal(exchange_withdrawal_id)
-            broker_order.exchange_withdrawal = exchange_withdrawal
+            crypto_withdrawal = CryptoWithdrawal(broker_order.user, broker_order.base_asset, broker_order.base_amount, exchange_withdrawal_id)
+            broker_order.crypto_withdrawal = crypto_withdrawal
             broker_order.status = broker_order.STATUS_WITHDRAW
-            updated_records.append(exchange_withdrawal)
+            updated_records.append(crypto_withdrawal)
             updated_records.append(broker_order)
         else:
             msg = f'{broker_order.token}, {broker_order.exchange_order.exchange_reference}'
@@ -73,7 +73,7 @@ def _broker_order_buy_crypto_with_fiat_update(broker_order):
     # check withdrawal
     if broker_order.status == broker_order.STATUS_WITHDRAW:
         # check exchange withdrawal
-        if dasset.crypto_withdrawal_status_check(broker_order.exchange_withdrawal.exchange_reference):
+        if dasset.crypto_withdrawal_status_check(broker_order.crypto_withdrawal.exchange_reference):
             broker_order.status = broker_order.STATUS_COMPLETED
             updated_records.append(broker_order)
         return updated_records
@@ -85,30 +85,21 @@ def _broker_order_buy_crypto_with_fiat_update(broker_order):
             return updated_records
     return updated_records
 
-def _new_deposit(db_session, deposits):
-    for dep in deposits:
-        if not ExchangeDeposit.from_txid(db_session, dep.txid):
-            return dep
-    return None
-
 def _broker_order_sell_crypto_for_fiat_update(db_session, broker_order):
     logger.info('processing broker order %s (%s)..', broker_order.token, broker_order.status)
     updated_records = []
     # check deposit
     if broker_order.status == broker_order.STATUS_READY:
         amount = assets.asset_int_to_dec(broker_order.quote_asset, broker_order.quote_amount)
-        deposits = dasset.crypto_deposit_search(broker_order.quote_asset, broker_order.address, amount, broker_order.user.dasset_subaccount.subaccount_id)
-        new_deposit = _new_deposit(db_session, deposits)
-        if not new_deposit:
+        crypto_deposit = CryptoDeposit.not_in_broker_orders(db_session, broker_order.quote_asset, amount)
+        if not crypto_deposit:
             return updated_records
-        exchange_deposit = ExchangeDeposit(new_deposit.id, new_deposit.txid)
-        broker_order.exchange_deposit = exchange_deposit
+        broker_order.crypto_deposit = crypto_deposit
         broker_order.status = broker_order.STATUS_INCOMING
-        updated_records.append(exchange_deposit)
         updated_records.append(broker_order)
         return updated_records
     if broker_order.status == broker_order.STATUS_INCOMING:
-        if dasset.crypto_deposit_status_check(broker_order.exchange_deposit.exchange_reference):
+        if dasset.crypto_deposit_status_check(broker_order.crypto_deposit.exchange_reference):
             broker_order.status = broker_order.STATUS_CONFIRMED
             updated_records.append(broker_order)
         return updated_records
@@ -203,3 +194,9 @@ def broker_order_update_and_commit(db_session, broker_order):
         # send updates
         _broker_order_email(broker_order)
         websocket.broker_order_update_event(broker_order)
+
+def broker_orders_update(db_session):
+    orders = BrokerOrder.all_active(db_session)
+    logger.info('num orders: %d', len(orders))
+    for broker_order in orders:
+        broker_order_update_and_commit(db_session, broker_order)

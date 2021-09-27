@@ -254,6 +254,13 @@ def _subaccount_req(reference):
     return None
 
 #
+# Public functions
+#
+
+def crypto_deposit_completed(deposit):
+    return deposit and deposit.status == 'COMPLETED'
+
+#
 # Public functions that rely on an exchange request
 #
 
@@ -342,7 +349,7 @@ def order_status_check(order_id, market):
 
 def address_get_or_create(asset, subaccount_id):
     if _account_mock():
-        return 'XXX'
+        return asset + '-XXX'
     addrs = _addresses_req(asset, subaccount_id)
     if addrs:
         return addrs[0]
@@ -375,30 +382,11 @@ def crypto_deposits(asset, subaccount_id):
             deposits.append(dep)
     return deposits
 
-def crypto_deposit_search(asset, address, amount, subaccount_id):
-    assert isinstance(amount, decimal.Decimal)
-    if _account_mock():
-        id_ = utils.generate_key()
-        txid = utils.generate_key()
-        return [Munch(id=id_, symbol=asset, address=address, amount=amount, date='blah', status='COMPLETED', txid=txid)]
-    deposits = []
-    deps = _crypto_deposits_pending_req(asset, subaccount_id)
-    if deps:
-        for dep in deps:
-            if dep.address == address and amount == dep.amount:
-                deposits.append(dep)
-    deps = _crypto_deposits_closed_req(asset, subaccount_id)
-    if deps:
-        for dep in deps:
-            if dep.address == address and amount == dep.amount:
-                deposits.append(dep)
-    return deposits
-
 def crypto_deposit_status_check(deposit_id):
     if _account_mock():
         return True
     deposit = _crypto_deposit_status_req(deposit_id)
-    return deposit and deposit.status == 'COMPLETED'
+    return crypto_deposit_completed(deposit)
 
 def subaccount_create(reference):
     if _account_mock():
