@@ -7,7 +7,7 @@ import assets
 from assets import market_side_is, MarketSide
 from models import BrokerOrder, CryptoDeposit, ExchangeOrder, CryptoWithdrawal
 import websocket
-import utils
+import email_utils
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ def _broker_order_buy_crypto_with_fiat_update(broker_order):
         if not exchange_order_id:
             msg = f'{broker_order.token}, {broker_order.market}, {broker_order.side}, {broker_order.base_amount}'
             logger.error('failed to create exchange order - %s', msg)
-            utils.send_email(logger, 'failed to create exchange order', msg)
+            email_utils.send_email(logger, 'failed to create exchange order', msg)
             return updated_records
         exchange_order = ExchangeOrder(exchange_order_id)
         broker_order.exchange_order = exchange_order
@@ -58,7 +58,7 @@ def _broker_order_buy_crypto_with_fiat_update(broker_order):
             if not exchange_withdrawal_id:
                 msg = f'{broker_order.token}, {broker_order.base_asset}, {broker_order.base_amount}'
                 logger.error('failed to create exchange withdrawal - %s', msg)
-                utils.send_email(logger, 'failed to create exchange withdrawal', msg)
+                email_utils.send_email(logger, 'failed to create exchange withdrawal', msg)
                 return updated_records
             crypto_withdrawal = CryptoWithdrawal(broker_order.user, broker_order.base_asset, broker_order.base_amount, broker_order.recipient, exchange_withdrawal_id)
             broker_order.crypto_withdrawal = crypto_withdrawal
@@ -68,7 +68,7 @@ def _broker_order_buy_crypto_with_fiat_update(broker_order):
         else:
             msg = f'{broker_order.token}, {broker_order.exchange_order.exchange_reference}'
             logger.error('failed to complete exchange order - %s', msg)
-            utils.send_email(logger, 'failed to complete exchange order', msg)
+            email_utils.send_email(logger, 'failed to complete exchange order', msg)
         return updated_records
     # check withdrawal
     if broker_order.status == broker_order.STATUS_WITHDRAW:
@@ -113,7 +113,7 @@ def _broker_order_sell_crypto_for_fiat_update(db_session, broker_order):
         if not exchange_order_id:
             msg = f'{broker_order.token}, {broker_order.market}, {broker_order.side}, {broker_order.base_amount}'
             logger.error('failed to create exchange order - %s', msg)
-            utils.send_email(logger, 'failed to create exchange order', msg)
+            email_utils.send_email(logger, 'failed to create exchange order', msg)
             return updated_records
         exchange_order = ExchangeOrder(exchange_order_id)
         broker_order.exchange_order = exchange_order
@@ -135,7 +135,7 @@ def _broker_order_sell_crypto_for_fiat_update(db_session, broker_order):
         else:
             msg = f'{broker_order.token}, {broker_order.exchange_order.exchange_reference}'
             logger.error('failed to complete exchange order - %s', msg)
-            utils.send_email(logger, 'failed to complete exchange order', msg)
+            email_utils.send_email(logger, 'failed to complete exchange order', msg)
         return updated_records
     # check payout
     if broker_order.status == broker_order.STATUS_WITHDRAW:
@@ -143,7 +143,7 @@ def _broker_order_sell_crypto_for_fiat_update(db_session, broker_order):
         if not payout_req:
             msg = f'{broker_order.token}'
             logger.error('failed to find payout for broker order - %s', msg)
-            utils.send_email(logger, 'failed to find payout for broker order', msg)
+            email_utils.send_email(logger, 'failed to find payout for broker order', msg)
             return updated_records
         # check payout status
         if payout_req.status == payout_req.STATUS_COMPLETED:
@@ -166,13 +166,13 @@ def _email_msg(broker_order, msg):
 
 def _broker_order_email(broker_order):
     if broker_order.status == broker_order.STATUS_CONFIRMED:
-        utils.send_email(logger, 'Order Confirmed', _email_msg(broker_order, 'The exchange will now be made.'), broker_order.user.email)
+        email_utils.send_email(logger, 'Order Confirmed', _email_msg(broker_order, 'The exchange will now be made.'), broker_order.user.email)
     if broker_order.status == broker_order.STATUS_WITHDRAW:
-        utils.send_email(logger, 'Order Withdrawing', _email_msg(broker_order, ''), broker_order.user.email)
+        email_utils.send_email(logger, 'Order Withdrawing', _email_msg(broker_order, ''), broker_order.user.email)
     if broker_order.status == broker_order.STATUS_COMPLETED:
-        utils.send_email(logger, 'Order Completed', _email_msg(broker_order, ''), broker_order.user.email)
+        email_utils.send_email(logger, 'Order Completed', _email_msg(broker_order, ''), broker_order.user.email)
     if broker_order.status == broker_order.STATUS_EXPIRED:
-        utils.send_email(logger, 'Order Expired', _email_msg(broker_order, ''), broker_order.user.email)
+        email_utils.send_email(logger, 'Order Expired', _email_msg(broker_order, ''), broker_order.user.email)
 
 def broker_order_update_and_commit(db_session, broker_order):
     while True:

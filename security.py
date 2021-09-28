@@ -17,26 +17,26 @@ logger = logging.getLogger(__name__)
 # Helper functions
 #
 
-def tf_method():
+def tf_method() -> str:
     methods = cv("TWO_FACTOR_ENABLED_METHODS")
     assert len(methods) == 1
     return methods[0]
 
-def tf_enabled_check(user):
+def tf_enabled_check(user: User) -> bool:
     return user.tf_primary_method is not None
 
-def tf_secret_init(user):
+def tf_secret_init(user: User):
     totp_factory = _security._totp_factory # pylint: disable=protected-access
     user.tf_totp_secret = totp_factory.generate_totp_secret()
     return totp_factory.fetch_setup_values(user.tf_totp_secret, user)
 
-def tf_method_set(user):
+def tf_method_set(user: User):
     user.tf_primary_method = tf_method()
 
-def tf_method_unset(user):
+def tf_method_unset(user: User):
     user.tf_primary_method = None
 
-def tf_code_send(user):
+def tf_code_send(user: User) -> bool:
     if tf_method() == "email":
         msg = user.tf_send_security_token(method="email", totp_secret=user.tf_totp_secret, phone_number=None)
         if msg:
@@ -44,7 +44,7 @@ def tf_code_send(user):
         return not msg
     return True
 
-def tf_code_validate(user, code):
+def tf_code_validate(user: User, code: str) -> bool:
     # codes sent by sms or mail will be valid for another window cycle
     if user.tf_primary_method in ('google_authenticator', 'authenticator'):
         window = cv("TWO_FACTOR_AUTHENTICATOR_VALIDITY")

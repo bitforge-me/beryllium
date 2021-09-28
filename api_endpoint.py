@@ -13,6 +13,7 @@ from flask_security.recoverable import send_reset_password_instructions
 import web_utils
 from web_utils import bad_request, get_json_params, auth_request, auth_request_get_single_param, auth_request_get_params
 import utils
+import email_utils
 from models import CryptoWithdrawal, DassetSubaccount, FiatDbTransaction, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, FiatDeposit, FiatWithdrawal, CryptoAddress, CryptoDeposit
 from app_core import db, limiter
 from security import tf_enabled_check, tf_method, tf_code_send, tf_method_set, tf_method_unset, tf_secret_init, tf_code_validate, user_datastore
@@ -71,7 +72,7 @@ def user_register():
     if user:
         time.sleep(5)
         return bad_request(web_utils.USER_EXISTS)
-    utils.email_user_create_request(logger, req, req.MINUTES_EXPIRY)
+    email_utils.email_user_create_request(logger, req, req.MINUTES_EXPIRY)
     db.session.add(req)
     db.session.commit()
     return 'ok'
@@ -173,7 +174,7 @@ def api_key_request():
         req = ApiKeyRequest(user, device_name)
         return jsonify(dict(token=req.token))
     req = ApiKeyRequest(user, device_name)
-    utils.email_api_key_request(logger, req, req.MINUTES_EXPIRY)
+    email_utils.email_api_key_request(logger, req, req.MINUTES_EXPIRY)
     db.session.add(req)
     db.session.commit()
     tf_code_send(user)
@@ -280,7 +281,7 @@ def user_update_email():
         time.sleep(5)
         return bad_request(web_utils.USER_EXISTS)
     req = UserUpdateEmailRequest(api_key.user, email)
-    utils.email_user_update_email_request(logger, req, req.MINUTES_EXPIRY)
+    email_utils.email_user_update_email_request(logger, req, req.MINUTES_EXPIRY)
     db.session.add(req)
     db.session.commit()
     tf_code_send(api_key.user)

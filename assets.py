@@ -1,36 +1,52 @@
 import logging
-import decimal
+from decimal import Decimal as Dec
 from enum import Enum
+from typing import Union, Optional
+from dataclasses import dataclass
 
 import bitcoin
 import bitcoin.wallet
 import base58
 import web3
-from munch import Munch
 from stdnum.nz import bankaccount
 
 from app_core import app
 
 logger = logging.getLogger(__name__)
 
+@dataclass
+class Asset:
+    symbol: str
+    name: str
+    decimals: int
+    withdraw_fee: Dec
+    is_crypto: bool
+
+@dataclass
+class Market:
+    base_asset: str
+    quote_asset: str
+    min_order: Dec
+
 TESTNET = app.config['TESTNET']
-NZD = Munch(symbol='NZD', name='New Zealand Dollar', decimals=2, withdraw_fee=decimal.Decimal(7), is_crypto=False)
-BTC = Munch(symbol='BTC', name='Bitcoin', decimals=8, withdraw_fee=decimal.Decimal('0.0003'), is_crypto=True)
-ETH = Munch(symbol='ETH', name='Ethereum', decimals=18, withdraw_fee=decimal.Decimal('0.0099'), is_crypto=True)
-DOGE = Munch(symbol='DOGE', name='Dogecoin', decimals=8, withdraw_fee=decimal.Decimal(5), is_crypto=True)
-LTC = Munch(symbol='LTC', name='Litecoin', decimals=8, withdraw_fee=decimal.Decimal('0.1'), is_crypto=True)
-ASSETS = Munch(NZD=NZD, BTC=BTC, ETH=ETH, DOGE=DOGE, LTC=LTC)
-MARKETS = {'BTC-NZD': Munch(base_asset=BTC, quote_asset=NZD, min_order=decimal.Decimal('0.01')), \
-    'ETH-NZD': Munch(base_asset=ETH, quote_asset=NZD, min_order=decimal.Decimal('0.1')), \
-    'DOGE-NZD': Munch(base_asset=DOGE, quote_asset=NZD, min_order=decimal.Decimal(50)), \
-    'LTC-NZD': Munch(base_asset=LTC, quote_asset=NZD, min_order=decimal.Decimal(1))}
+NZD = Asset(symbol='NZD', name='New Zealand Dollar', decimals=2, withdraw_fee=Dec(7), is_crypto=False)
+BTC = Asset(symbol='BTC', name='Bitcoin', decimals=8, withdraw_fee=Dec('0.0003'), is_crypto=True)
+ETH = Asset(symbol='ETH', name='Ethereum', decimals=18, withdraw_fee=Dec('0.0099'), is_crypto=True)
+DOGE = Asset(symbol='DOGE', name='Dogecoin', decimals=8, withdraw_fee=Dec(5), is_crypto=True)
+LTC = Asset(symbol='LTC', name='Litecoin', decimals=8, withdraw_fee=Dec('0.1'), is_crypto=True)
+ASSETS = dict(NZD=NZD, BTC=BTC, ETH=ETH, DOGE=DOGE, LTC=LTC)
+MARKETS = {'BTC-NZD': Market(base_asset=BTC, quote_asset=NZD, min_order=Dec('0.01')), \
+    'ETH-NZD': Market(base_asset=ETH, quote_asset=NZD, min_order=Dec('0.1')), \
+    'DOGE-NZD': Market(base_asset=DOGE, quote_asset=NZD, min_order=Dec(50)), \
+    'LTC-NZD': Market(base_asset=LTC, quote_asset=NZD, min_order=Dec(1))}
+
 
 class MarketSide(Enum):
     BID = 'bid'
     ASK = 'ask'
 
     @classmethod
-    def parse(cls, val):
+    def parse(cls, val: str):
         try:
             return cls(val)
         except: # pylint: disable=bare-except
@@ -40,7 +56,7 @@ class MarketSide(Enum):
 # Helper functions
 #
 
-def _base58_validate(address, mainnet_prefixes, testnet_prefixes):
+def _base58_validate(address: str, mainnet_prefixes: list[int], testnet_prefixes: list[int]) -> bool:
     try:
         raw = base58.b58decode_check(address)
         prefix = raw[0]
@@ -52,14 +68,14 @@ def _base58_validate(address, mainnet_prefixes, testnet_prefixes):
 # Public functions
 #
 
-def market_side_is(have, should_have):
+def market_side_is(have: Union[MarketSide, str], should_have: MarketSide) -> bool:
     assert isinstance(should_have, MarketSide)
     assert isinstance(have, (MarketSide, str))
     if isinstance(have, str):
         return have == should_have.value
     return have is should_have
 
-def market_side_nice(side):
+def market_side_nice(side: Union[MarketSide, str]) -> str:
     if isinstance(side, str):
         if side == MarketSide.ASK.value:
             return 'sell'
@@ -72,40 +88,40 @@ def market_side_nice(side):
             return 'buy'
     return 'n/a'
 
-def assets_from_market(market):
+def assets_from_market(market: str) -> tuple[str, str]:
     return market.split('-')
 
-def asset_decimals(asset):
+def asset_decimals(asset: str) -> int:
     return ASSETS[asset].decimals
 
-def asset_withdraw_fee(asset):
+def asset_withdraw_fee(asset: str) -> Dec:
     return ASSETS[asset].withdraw_fee
 
-def asset_int_to_dec(asset, value):
+def asset_int_to_dec(asset: str, value: int) -> Dec:
     decimals = asset_decimals(asset)
-    return decimal.Decimal(value) / decimal.Decimal(10**decimals)
+    return Dec(value) / Dec(10**decimals)
 
-def asset_dec_to_int(asset, value):
+def asset_dec_to_int(asset: str, value: Dec) -> int:
     decimals = asset_decimals(asset)
-    return int(value * decimal.Decimal(10**decimals))
+    return int(value * Dec(10**decimals))
 
-def asset_dec_to_str(asset, value):
+def asset_dec_to_str(asset: str, value: Dec) -> str:
     decimals = asset_decimals(asset)
-    return str(value.quantize(decimal.Decimal(10) ** -decimals))
+    return str(value.quantize(Dec(10) ** -decimals))
 
-def asset_is_crypto(asset):
+def asset_is_crypto(asset: str) -> bool:
     for item in ASSETS.values():
         if item.symbol == asset and item.is_crypto:
             return True
     return False
 
-def asset_is_fiat(asset):
+def asset_is_fiat(asset: str) -> bool:
     for item in ASSETS.values():
         if item.symbol == asset and not item.is_crypto:
             return True
     return False
 
-def asset_recipient_validate(asset, recipient):
+def asset_recipient_validate(asset: str, recipient: str) -> bool:
     result = False
     if asset == 'NZD':
         result = bankaccount.is_valid(recipient)
@@ -126,7 +142,7 @@ def asset_recipient_validate(asset, recipient):
         logger.error('failed to validate recipient "%s" (%s)', recipient, asset)
     return result
 
-def market_recipent_validate(market, side, recipient):
+def market_recipent_validate(market: str, side: MarketSide, recipient: str) -> bool:
     base_asset, quote_asset = assets_from_market(market)
     if side is MarketSide.BID:
         asset = base_asset
@@ -134,7 +150,7 @@ def market_recipent_validate(market, side, recipient):
         asset = quote_asset
     return asset_recipient_validate(asset, recipient)
 
-def crypto_uri(asset, address, amount_int):
+def crypto_uri(asset: str, address: str, amount_int: int) -> Optional[str]:
     assert isinstance(amount_int, int)
     amount = asset_int_to_dec(asset, amount_int)
     if asset == 'BTC':

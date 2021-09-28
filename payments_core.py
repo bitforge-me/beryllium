@@ -11,6 +11,7 @@ import requests
 from dateutil import tz
 
 import utils
+import email_utils
 from app_core import app, db
 from models import WindcavePaymentRequest, PayoutRequest, PayoutGroup, PayoutGroupRequest
 
@@ -179,7 +180,7 @@ def payout_create(amount, sender_reference, sender_code, account_name, account_n
 def payouts_notification_create():
     reqs = PayoutRequest.where_status_created(db.session)
     # send email
-    utils.email_payouts_notification(logger, reqs)
+    email_utils.email_payouts_notification(logger, reqs)
 
 def payout_group_create():
     # create payout group

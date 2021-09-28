@@ -14,6 +14,7 @@ from flask_security import roles_accepted
 from app_core import app, db, socketio
 from models import User, Role, Topic, PushNotificationLocation, BrokerOrder, CryptoDeposit, FiatDeposit
 import utils
+import email_utils
 from fcm import FCM
 from web_utils import bad_request, get_json_params, get_json_params_optional
 import broker
@@ -40,7 +41,7 @@ app.register_blueprint(kyc, url_prefix='/kyc')
 
 def process_email_alerts():
     with app.app_context():
-        #utils.email_notification_alert(logger, subject, msg, recipient)
+        #email_utils.email_notification_alert(logger, subject, msg, recipient)
         pass
 
 def process_deposits_and_broker_orders():
@@ -157,7 +158,7 @@ def test_email():
         recipient = request.form['recipient']
         subject = request.form['subject']
         message = request.form['message']
-        if utils.send_email(logger, subject, message, recipient):
+        if email_utils.send_email(logger, subject, message, recipient):
             flash('Email sent', 'success')
         else:
             flash('Email failed', 'danger')

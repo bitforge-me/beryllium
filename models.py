@@ -1,6 +1,7 @@
 # pylint: disable=too-many-instance-attributes
 # pylint: disable=too-many-arguments
 # pylint: disable=too-few-public-methods
+# pylint: disable=too-many-lines
 
 from datetime import datetime, timedelta
 import logging
