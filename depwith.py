@@ -96,7 +96,7 @@ def crypto_deposits_check(db_session):
         if addr.asset not in asset_list:
             asset_list.append(addr.asset)
         # update checked at time of CryptoAddress
-        addr.checked_at = datetime.timestamp(datetime.now())
+        addr.checked_at = int(datetime.timestamp(datetime.now()))
         db_session.add(addr)
     # check for new deposits, update existing deposits
     new_crypto_deposits = []

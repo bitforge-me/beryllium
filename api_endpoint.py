@@ -487,7 +487,7 @@ def crypto_deposit_address_req():
         if not address:
             return bad_request(web_utils.FAILED_EXCHANGE)
         crypto_address = CryptoAddress(api_key.user, asset, address)
-    crypto_address.viewed_at = datetime.timestamp(datetime.now())
+    crypto_address.viewed_at = int(datetime.timestamp(datetime.now()))
     db.session.add(crypto_address)
     db.session.commit()
     return jsonify(address=crypto_address.address, asset=asset)
