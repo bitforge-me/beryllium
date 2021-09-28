@@ -123,7 +123,7 @@ else:
 if os.getenv("MIN_AVAILABLE_NZD_BALANCE"):
     app.config["MIN_AVAILABLE_NZD_BALANCE"] = decimal.Decimal(os.getenv("MIN_AVAILABLE_NZD_BALANCE"))
 else:
-    app.config["MIN_AVAILABLE_NZD_BALANCE"] = decimal.Decimal(2000) 
+    app.config["MIN_AVAILABLE_NZD_BALANCE"] = decimal.Decimal(2000)
 
 def set_vital_setting(env_name, setting_name=None, acceptable_values=None, custom_handler=None):
     # pylint: disable=global-statement
