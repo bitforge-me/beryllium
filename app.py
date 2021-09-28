@@ -10,7 +10,7 @@ import gevent.pool
 from flask_security.utils import encrypt_password
 
 import web
-import utils
+import email_utils
 import log_utils
 import payments_core
 from app_core import MISSING_VITAL_SETTING, app, db
@@ -90,7 +90,7 @@ def g_exception(greenlet):
     except Exception as e:
         stack_trace = traceback.format_exc()
         msg = f"{e}\n---\n{stack_trace}"
-        utils.email_exception(logger, msg)
+        email_utils.email_exception(logger, msg)
 
 KEEP_RUNNING = True
 if __name__ == "__main__":

@@ -2,8 +2,14 @@ import hmac
 import hashlib
 import base64
 import logging
+from typing import Optional, Union
 
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm.scoping import scoped_session
 from flask import jsonify, request
+from flask.wrappers import Response
+
+from models import ApiKey
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +34,7 @@ INVALID_MARKET = 'invalid market'
 INVALID_ASSET = 'invalid asset'
 INVALID_SIDE = 'invalid side'
 INSUFFICIENT_LIQUIDITY = 'insufficient liquidity'
+INSUFFICIENT_BALANCE = 'insufficient balance'
 AMOUNT_TOO_LOW = 'amount too low'
 INVALID_RECIPIENT = 'invalid recipient'
 EXPIRED = 'expired'
@@ -43,13 +50,13 @@ FAILED_CODE_SEND = 'failed code send'
 TWO_FACTOR_ENABLED = 'two factor enabled'
 TWO_FACTOR_DISABLED = 'two factor disabled'
 
-def bad_request(message, code=400):
+def bad_request(message: str, code: int = 400) -> Response:
     logger.warning(message)
     response = jsonify({'message': message})
     response.status_code = code
     return response
 
-def get_json_params(json_content, param_names):
+def get_json_params(json_content, param_names: list[str]) -> tuple[list, Optional[Response]]:
     param_values = []
     param_name = ''
     try:
@@ -62,7 +69,7 @@ def get_json_params(json_content, param_names):
         return param_values, bad_request(f"'{param_name}' not found")
     return param_values, None
 
-def get_json_params_optional(json_content, param_names):
+def get_json_params_optional(json_content, param_names: list[str]) -> list:
     param_values = []
     for param in param_names:
         try:
@@ -71,21 +78,21 @@ def get_json_params_optional(json_content, param_names):
             param_values.append(None)
     return param_values
 
-def to_bytes(data):
+def to_bytes(data: Union[str, bytes, bytearray]) -> Union[bytes, bytearray]:
     if not isinstance(data, (bytes, bytearray)):
         return data.encode("utf-8")
     return data
 
-def create_hmac_sig(api_secret, message):
+def create_hmac_sig(api_secret: str, message: str) -> str:
     _hmac = hmac.new(to_bytes(api_secret), msg=to_bytes(message), digestmod=hashlib.sha256)
     signature = _hmac.digest()
     signature = base64.b64encode(signature).decode("utf-8")
     return signature
 
-def request_get_signature():
+def request_get_signature() -> str:
     return request.headers.get('X-Signature')
 
-def check_hmac_auth(api_key, nonce, sig, body):
+def check_hmac_auth(api_key: ApiKey, nonce: int, sig: str, body: str) -> tuple[bool, str]:
     if int(nonce) <= int(api_key.nonce):
         return False, OLD_NONCE
     our_sig = create_hmac_sig(api_key.secret, body)
@@ -94,9 +101,8 @@ def check_hmac_auth(api_key, nonce, sig, body):
         return True, ""
     return False, AUTH_FAILED
 
-def check_auth(session, api_key_token, nonce, sig, body):
+def check_auth(session: scoped_session, api_key_token: str, nonce: int, sig: str, body: str) -> tuple[bool, str, Optional[ApiKey]]:
     # pylint: disable=import-outside-toplevel
-    from models import ApiKey
     api_key = ApiKey.from_token(session, api_key_token)
     if not api_key:
         return False, AUTH_FAILED, None
@@ -111,7 +117,7 @@ def check_auth(session, api_key_token, nonce, sig, body):
 
 # pylint: disable=unbalanced-tuple-unpacking
 # pylint: disable=invalid-name
-def auth_request(db):
+def auth_request(db: SQLAlchemy) -> tuple[Optional[ApiKey], Optional[Response]]:
     sig = request_get_signature()
     content = request.get_json(force=True)
     if content is None:
@@ -127,7 +133,7 @@ def auth_request(db):
 
 # pylint: disable=unbalanced-tuple-unpacking
 # pylint: disable=invalid-name
-def auth_request_get_single_param(db, param_name):
+def auth_request_get_single_param(db: SQLAlchemy, param_name: str) -> tuple[Optional[str], Optional[ApiKey], Optional[Response]]:
     sig = request_get_signature()
     content = request.get_json(force=True)
     if content is None:
@@ -141,7 +147,7 @@ def auth_request_get_single_param(db, param_name):
         return None, None, bad_request(reason)
     return param, api_key, None
 
-def auth_request_get_params(db, param_names):
+def auth_request_get_params(db: SQLAlchemy, param_names: list[str]) -> tuple[list[str], Optional[ApiKey], Optional[Response]]:
     sig = request_get_signature()
     content = request.get_json(force=True)
     if content is None:

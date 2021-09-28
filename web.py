@@ -12,8 +12,9 @@ from flask import render_template, request, flash, jsonify
 from flask_security import roles_accepted
 
 from app_core import app, db, socketio
-from models import FiatDeposit, User, Role, Topic, PushNotificationLocation, BrokerOrder
+from models import User, Role, Topic, PushNotificationLocation, BrokerOrder, CryptoDeposit, FiatDeposit
 import utils
+import email_utils
 from fcm import FCM
 from web_utils import bad_request, get_json_params, get_json_params_optional
 import broker
@@ -50,21 +51,16 @@ def process_email_alerts():
                     msg = f"Available {balance.symbol} Balance needs to be replenished in the dasset account.<br/><br/>Available {balance.symbol} balance is: ${balance_format}"
                     utils.email_notification_alert(logger, subject, msg, app.config["ADMIN_EMAIL"])
 
-def process_broker_orders():
-    logger.info('process_broker_orders()')
+def process_deposits_and_broker_orders():
     with app.app_context():
-        orders = BrokerOrder.all_active(db.session)
-        logger.info('num orders: %d', len(orders))
-        for order in orders:
-            broker.broker_order_update_and_commit(db.session, order)
-
-def process_fiat_deposits():
-    logger.info('process_fiat_deposits()')
-    with app.app_context():
-        deposits = FiatDeposit.all_active(db.session)
-        logger.info('num deposits: %d', len(deposits))
-        for deposit in deposits:
-            depwith.fiat_deposit_update_and_commit(db.session, deposit)
+        logger.info('process deposits..')
+        depwith.fiat_deposits_update(db.session)
+        depwith.crypto_deposits_check(db.session)
+        logger.info('process withdrawals..')
+        depwith.fiat_withdrawals_update(db.session)
+        depwith.crypto_withdrawals_update(db.session)
+        logger.info('process broker orders..')
+        broker.broker_orders_update(db.session)
 
 #
 # Jinja2 filters
@@ -169,7 +165,7 @@ def test_email():
         recipient = request.form['recipient']
         subject = request.form['subject']
         message = request.form['message']
-        if utils.send_email(logger, subject, message, recipient):
+        if email_utils.send_email(logger, subject, message, recipient):
             flash('Email sent', 'success')
         else:
             flash('Email failed', 'danger')
@@ -180,7 +176,7 @@ def test_email():
 def test_ws():
     recipient = ''
     event = ''
-    events = ['user_info_update', 'broker_order_update', 'broker_order_new']
+    events = ['user_info_update', 'broker_order_update', 'broker_order_new', 'fiat_deposit_update', 'fiat_deposit_new', 'crypto_deposit_update', 'crypto_deposit_new']
     if request.method == 'POST':
         recipient = request.form['recipient']
         event = request.form['event']
@@ -195,6 +191,20 @@ def test_ws():
             order = BrokerOrder.from_token(db.session, recipient)
             if order:
                 websocket.broker_order_update_event(order)
+                flash('Event sent', 'success')
+            else:
+                flash('Order not found', 'danger')
+        elif event == 'fiat_deposit_update':
+            deposit = FiatDeposit.from_token(db.session, recipient)
+            if deposit:
+                websocket.fiat_deposit_update_event(deposit)
+                flash('Event sent', 'success')
+            else:
+                flash('Order not found', 'danger')
+        elif event == 'crypto_deposit_update':
+            deposit = CryptoDeposit.from_token(db.session, recipient)
+            if deposit:
+                websocket.crypto_deposit_update_event(deposit)
                 flash('Event sent', 'success')
             else:
                 flash('Order not found', 'danger')
@@ -224,19 +234,15 @@ class WebGreenlet():
         def process_periodic_events_loop():
             current = int(time.time())
             email_alerts_timer_last = current
-            broker_orders_timer_last = current
-            fiat_deposits_timer_last = current
+            deposits_and_orders_timer_last = current
             while True:
                 current = time.time()
                 if current - email_alerts_timer_last > 1800:
                     gevent.spawn(process_email_alerts)
                     email_alerts_timer_last += 1800
-                if current - broker_orders_timer_last > 300:
-                    gevent.spawn(process_broker_orders)
-                    broker_orders_timer_last += 300
-                if current - fiat_deposits_timer_last > 300:
-                    gevent.spawn(process_fiat_deposits)
-                    fiat_deposits_timer_last += 300
+                if current - deposits_and_orders_timer_last > 300:
+                    gevent.spawn(process_deposits_and_broker_orders)
+                    deposits_and_orders_timer_last += 300
                 gevent.sleep(5)
 
         def start_greenlets():

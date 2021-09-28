@@ -1,5 +1,6 @@
 import logging
 import json
+from typing import Optional, Union
 
 from flask import request
 from flask_socketio import Namespace, emit, join_room, leave_room
@@ -7,6 +8,7 @@ from flask_socketio import Namespace, emit, join_room, leave_room
 from app_core import db, socketio
 from web_utils import check_auth
 from security import tf_enabled_check
+from models import BrokerOrder, CryptoDeposit, CryptoWithdrawal, FiatDeposit, FiatWithdrawal, User, ApiKey
 
 logger = logging.getLogger(__name__)
 ws_sids = {}
@@ -17,7 +19,7 @@ NS = '/events'
 # Helper functions
 #
 
-def user_info_dict(api_key, all_info):
+def user_info_dict(api_key: ApiKey, all_info: bool) -> dict:
     user = api_key.user
     roles = []
     perms = []
@@ -35,7 +37,7 @@ def user_info_dict(api_key, all_info):
         kyc_url = user.kyc_url()
     return dict(first_name=user.first_name, last_name=user.last_name, mobile_number=user.mobile_number, address=user.address, email=user.email, photo=user.photo, photo_type=user.photo_type, roles=roles, permissions=perms, kyc_validated=kyc_validated, kyc_url=kyc_url, aplyid_req_exists=aplyid_req_exists, tf_enabled=tf_enabled)
 
-def user_info_dict_ws(user):
+def user_info_dict_ws(user: User) -> dict:
     roles = [role.name for role in user.roles]
     kyc_validated = user.kyc_validated()
     kyc_url = user.kyc_url()
@@ -50,7 +52,7 @@ def user_info_dict_ws(user):
 # Websocket events
 #
 
-def user_info_event(user, old_email=None):
+def user_info_event(user: User, old_email: Optional[str] = None):
     email = user.email
     if old_email:
         email = old_email
@@ -58,37 +60,55 @@ def user_info_event(user, old_email=None):
     socketio.emit('user_info_update', data, json=True, room=email, namespace=NS)
     logger.info('user_info_update: %s (%s)', user.email, old_email)
 
-def broker_order_update_event(broker_order):
+def broker_order_update_event(broker_order: BrokerOrder):
     data = json.dumps(broker_order.to_json())
     socketio.emit('broker_order_update', data, json=True, room=broker_order.user.email, namespace=NS)
     logger.info('broker_order_update: %s', broker_order.token)
 
-def broker_order_new_event(broker_order):
+def broker_order_new_event(broker_order: BrokerOrder):
     data = json.dumps(broker_order.to_json())
     socketio.emit('broker_order_new', data, json=True, room=broker_order.user.email, namespace=NS)
     logger.info('broker_order_new: %s', broker_order.token)
 
-# TODO - use this
-def crypto_deposit_update_event(crypto_deposit):
+def crypto_deposit_update_event(crypto_deposit: CryptoDeposit):
     data = json.dumps(crypto_deposit.to_json())
     socketio.emit('crypto_deposit_update', data, json=True, room=crypto_deposit.user.email, namespace=NS)
     logger.info('crypto_deposit_update: %s', crypto_deposit.token)
 
-# TODO - use this
-def crypto_deposit_new_event(crypto_deposit):
+def crypto_deposit_new_event(crypto_deposit: CryptoDeposit):
     data = json.dumps(crypto_deposit.to_json())
     socketio.emit('crypto_deposit_new', data, json=True, room=crypto_deposit.user.email, namespace=NS)
     logger.info('crypto_deposit_new: %s', crypto_deposit.token)
 
-def fiat_deposit_update_event(fiat_deposit):
+def crypto_withdrawal_update_event(crypto_withdrawal: CryptoWithdrawal):
+    data = json.dumps(crypto_withdrawal.to_json())
+    socketio.emit('crypto_withdrawal_update', data, json=True, room=crypto_withdrawal.user.email, namespace=NS)
+    logger.info('crypto_withdrawal_update: %s', crypto_withdrawal.token)
+
+def crypto_withdrawal_new_event(crypto_withdrawal: CryptoWithdrawal):
+    data = json.dumps(crypto_withdrawal.to_json())
+    socketio.emit('crypto_withdrawal_new', data, json=True, room=crypto_withdrawal.user.email, namespace=NS)
+    logger.info('crypto_withdrawal_new: %s', crypto_withdrawal.token)
+
+def fiat_deposit_update_event(fiat_deposit: FiatDeposit):
     data = json.dumps(fiat_deposit.to_json())
     socketio.emit('fiat_deposit_update', data, json=True, room=fiat_deposit.user.email, namespace=NS)
     logger.info('fiat_deposit_update: %s', fiat_deposit.token)
 
-def fiat_deposit_new_event(fiat_deposit):
+def fiat_deposit_new_event(fiat_deposit: FiatDeposit):
     data = json.dumps(fiat_deposit.to_json())
     socketio.emit('fiat_deposit_new', data, json=True, room=fiat_deposit.user.email, namespace=NS)
     logger.info('fiat_deposit_new: %s', fiat_deposit.token)
+
+def fiat_withdrawal_update_event(fiat_withdrawal: FiatWithdrawal):
+    data = json.dumps(fiat_withdrawal.to_json())
+    socketio.emit('fiat_withdrawal_update', data, json=True, room=fiat_withdrawal.user.email, namespace=NS)
+    logger.info('fiat_withdrawal_update: %s', fiat_withdrawal.token)
+
+def fiat_withdrawal_new_event(fiat_withdrawal: FiatWithdrawal):
+    data = json.dumps(fiat_withdrawal.to_json())
+    socketio.emit('fiat_withdrawal_new', data, json=True, room=fiat_withdrawal.user.email, namespace=NS)
+    logger.info('fiat_withdrawal_new: %s', fiat_withdrawal.token)
 
 class EventsNamespace(Namespace):
 
@@ -98,7 +118,7 @@ class EventsNamespace(Namespace):
     def on_connect(self):
         logger.info("connect sid: %s", request.sid)
 
-    def on_auth(self, auth):
+    def on_auth(self, auth: Union[dict, str]):
         if not isinstance(auth, dict):
             try:
                 auth = json.loads(auth)

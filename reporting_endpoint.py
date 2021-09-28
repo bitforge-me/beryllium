@@ -13,6 +13,7 @@ from app_core import db
 from models import Role, User, BrokerOrder
 import utils
 import dasset
+import assets
 
 logger = logging.getLogger(__name__)
 reporting = Blueprint('reporting', __name__, template_folder='templates/reporting')
@@ -42,7 +43,7 @@ def broker_order_amount(table, start_date, end_date, market):
     if not result:
         result = 0
     asset_symbol = market.split('-')[0]
-    result = dasset.asset_int_to_dec(asset_symbol, result)
+    result = assets.asset_int_to_dec(asset_symbol, result)
     result = '{0:.4f}'.format(result) # pylint: disable=consider-using-f-string
     return result
 
@@ -52,7 +53,7 @@ def broker_order_amount_lifetime(table, market):
     if not result:
         result = 0
     asset_symbol = market.split('-')[0]
-    result = dasset.asset_int_to_dec(asset_symbol, result)
+    result = assets.asset_int_to_dec(asset_symbol, result)
     result = '{0:.4f}'.format(result) # pylint: disable=consider-using-f-string
     return result
 
@@ -106,7 +107,7 @@ def dashboard_user():
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def dashboard_report_broker_order():
     orders_data = {}
-    for market in dasset.MARKETS:
+    for market in assets.MARKETS:
         asset_symbol = market.split('-')[0]
         today = str(TODAY())
         yesterday = str(YESTERDAY())

@@ -2,7 +2,7 @@
 
 import logging
 import time
-import datetime
+from datetime import datetime
 import decimal
 
 from flask import Blueprint, request, jsonify, flash, redirect, render_template
@@ -13,15 +13,18 @@ from flask_security.recoverable import send_reset_password_instructions
 import web_utils
 from web_utils import bad_request, get_json_params, auth_request, auth_request_get_single_param, auth_request_get_params
 import utils
-from models import DassetSubaccount, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, FiatDeposit
+import email_utils
+from models import CryptoWithdrawal, DassetSubaccount, FiatDbTransaction, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, FiatDeposit, FiatWithdrawal, CryptoAddress, CryptoDeposit
 from app_core import db, limiter
 from security import tf_enabled_check, tf_method, tf_code_send, tf_method_set, tf_method_unset, tf_secret_init, tf_code_validate, user_datastore
 import payments_core
 import kyc_core
 import dasset
-from dasset import MarketSide, market_side_is
+import assets
+from assets import MarketSide, market_side_is
 import websocket
 import fiatdb_core
+import coordinator
 
 logger = logging.getLogger(__name__)
 api = Blueprint('api', __name__, template_folder='templates')
@@ -69,7 +72,7 @@ def user_register():
     if user:
         time.sleep(5)
         return bad_request(web_utils.USER_EXISTS)
-    utils.email_user_create_request(logger, req, req.MINUTES_EXPIRY)
+    email_utils.email_user_create_request(logger, req, req.MINUTES_EXPIRY)
     db.session.add(req)
     db.session.commit()
     return 'ok'
@@ -85,7 +88,7 @@ def user_registration_confirm(token=None):
     if user:
         flash('User already exists.', 'danger')
         return redirect('/')
-    now = datetime.datetime.now()
+    now = datetime.now()
     if now > req.expiry:
         flash('User registration expired.', 'danger')
         return redirect('/')
@@ -171,7 +174,7 @@ def api_key_request():
         req = ApiKeyRequest(user, device_name)
         return jsonify(dict(token=req.token))
     req = ApiKeyRequest(user, device_name)
-    utils.email_api_key_request(logger, req, req.MINUTES_EXPIRY)
+    email_utils.email_api_key_request(logger, req, req.MINUTES_EXPIRY)
     db.session.add(req)
     db.session.commit()
     tf_code_send(user)
@@ -211,7 +214,7 @@ def api_key_confirm(token=None, secret=None):
     if req.secret != secret:
         flash('Email login code invalid.', 'danger')
         return redirect('/')
-    now = datetime.datetime.now()
+    now = datetime.now()
     if now > req.expiry:
         time.sleep(5)
         flash('Email login request expired.', 'danger')
@@ -278,7 +281,7 @@ def user_update_email():
         time.sleep(5)
         return bad_request(web_utils.USER_EXISTS)
     req = UserUpdateEmailRequest(api_key.user, email)
-    utils.email_user_update_email_request(logger, req, req.MINUTES_EXPIRY)
+    email_utils.email_user_update_email_request(logger, req, req.MINUTES_EXPIRY)
     db.session.add(req)
     db.session.commit()
     tf_code_send(api_key.user)
@@ -291,7 +294,7 @@ def user_update_email_confirm(token=None):
     if not req:
         flash('User update email request not found.', 'danger')
         return redirect('/')
-    now = datetime.datetime.now()
+    now = datetime.now()
     if now > req.expiry:
         flash('User update email request expired.', 'danger')
         return redirect('/')
@@ -430,8 +433,7 @@ def assets_req():
     _, err_response = auth_request(db)
     if err_response:
         return err_response
-    assets = list(dasset.ASSETS.values())
-    return jsonify(assets=assets)
+    return jsonify(assets=list(assets.ASSETS.values()))
 
 @api.route('/markets', methods=['POST'])
 def markets_req():
@@ -445,11 +447,11 @@ def order_book_req():
     market, _, err_response = auth_request_get_single_param(db, 'market')
     if err_response:
         return err_response
-    if market not in dasset.MARKETS:
+    if market not in assets.MARKETS:
         return bad_request(web_utils.INVALID_MARKET)
-    base_asset, quote_asset = dasset.assets_from_market(market)
-    base_asset_withdraw_fee = dasset.asset_withdraw_fee(base_asset)
-    quote_asset_withdraw_fee = dasset.asset_withdraw_fee(quote_asset)
+    base_asset, quote_asset = assets.assets_from_market(market)
+    base_asset_withdraw_fee = assets.asset_withdraw_fee(base_asset)
+    quote_asset_withdraw_fee = assets.asset_withdraw_fee(quote_asset)
     order_book, min_order, broker_fee = dasset.order_book_req(market)
     return jsonify(order_book=order_book, min_order=str(min_order), base_asset_withdraw_fee=str(base_asset_withdraw_fee), quote_asset_withdraw_fee=str(quote_asset_withdraw_fee), broker_fee=str(broker_fee))
 
@@ -466,9 +468,9 @@ def balances_req():
     # commit if subaccount was created
     db.session.commit()
     balances = dasset.account_balances(subaccount_id=subaccount_id)
-    nzd_balance = fiatdb_core.user_balance(db.session, dasset.NZD.symbol, api_key.user)
-    nzd_amount_dec = dasset.asset_int_to_dec(dasset.NZD.symbol, nzd_balance)
-    balances.append(dict(symbol=dasset.NZD.symbol, name=dasset.NZD.name, total=str(nzd_amount_dec), available=str(nzd_amount_dec), decimals=dasset.NZD.decimals))
+    nzd_balance = fiatdb_core.user_balance(db.session, assets.NZD.symbol, api_key.user)
+    nzd_amount_dec = assets.asset_int_to_dec(assets.NZD.symbol, nzd_balance)
+    balances.append(dict(symbol=assets.NZD.symbol, name=assets.NZD.name, total=str(nzd_amount_dec), available=str(nzd_amount_dec), decimals=assets.NZD.decimals))
     return jsonify(balances=balances)
 
 @api.route('/crypto_deposit_address', methods=['POST'])
@@ -479,12 +481,18 @@ def crypto_deposit_address_req():
     if not api_key.user.dasset_subaccount:
         logger.error('user %s dasset subaccount does not exist', api_key.user.email)
         return bad_request(web_utils.FAILED_EXCHANGE)
-    if not dasset.asset_is_crypto(asset):
+    if not assets.asset_is_crypto(asset):
         return bad_request(web_utils.INVALID_ASSET)
-    address = dasset.address_get_or_create(asset, api_key.user.dasset_subaccount.subaccount_id)
-    if not address:
-        return bad_request(web_utils.FAILED_EXCHANGE)
-    return jsonify(address=address, asset=asset)
+    crypto_address = CryptoAddress.from_asset(db.session, api_key.user, asset)
+    if not crypto_address:
+        address = dasset.address_get_or_create(asset, api_key.user.dasset_subaccount.subaccount_id)
+        if not address:
+            return bad_request(web_utils.FAILED_EXCHANGE)
+        crypto_address = CryptoAddress(api_key.user, asset, address)
+    crypto_address.viewed_at = int(datetime.timestamp(datetime.now()))
+    db.session.add(crypto_address)
+    db.session.commit()
+    return jsonify(address=crypto_address.address, asset=asset)
 
 @api.route('/crypto_deposits', methods=['POST'])
 def crypto_deposits_req():
@@ -495,12 +503,58 @@ def crypto_deposits_req():
     if not api_key.user.dasset_subaccount:
         logger.error('user %s dasset subaccount does not exist', api_key.user.email)
         return bad_request(web_utils.FAILED_EXCHANGE)
-    if not dasset.asset_is_crypto(asset):
+    if not assets.asset_is_crypto(asset):
         return bad_request(web_utils.INVALID_ASSET)
-    deposits = dasset.crypto_deposits(asset, api_key.user.dasset_subaccount.subaccount_id)
-    total = len(deposits)
-    deposits = deposits[offset:offset + limit] # dasset does not have pagination for this api :/
+    deposits = CryptoDeposit.from_user(db.session, api_key.user, offset, limit)
+    deposits = [deposit.to_json() for deposit in deposits]
+    total = CryptoDeposit.total_for_user(db.session, api_key.user)
     return jsonify(deposits=deposits, offset=offset, limit=limit, total=total)
+
+@api.route('/crypto_withdrawal_create', methods=['POST'])
+def crypto_withdrawal_create_req():
+    params, api_key, err_response = auth_request_get_params(db, ['asset', 'amount_dec', 'recipient'])
+    if err_response:
+        return err_response
+    asset, amount_dec, recipient = params
+    if not assets.asset_is_crypto(asset):
+        return bad_request(web_utils.INVALID_ASSET)
+    amount_dec = decimal.Decimal(amount_dec)
+    if amount_dec <= 0:
+        return bad_request(web_utils.INVALID_AMOUNT)
+    if not assets.asset_recipient_validate(asset, recipient):
+        return bad_request(web_utils.INVALID_RECIPIENT)
+    with coordinator.lock:
+        ### TODO - account for dasset withdrawal fee
+        if not dasset.funds_available(asset, amount_dec):
+            return bad_request(web_utils.INSUFFICIENT_BALANCE)
+        amount_int = assets.asset_dec_to_int(asset, amount_dec)
+        withdrawal_id = dasset.crypto_withdrawal_create(asset, amount_dec, recipient)
+        if not withdrawal_id:
+            return bad_request(web_utils.FAILED_EXCHANGE)
+        crypto_withdrawal = CryptoWithdrawal(api_key.user, asset, amount_int, recipient, withdrawal_id)
+        db.session.add(crypto_withdrawal)
+        db.session.commit()
+    websocket.crypto_withdrawal_new_event(crypto_withdrawal)
+    return jsonify(withdrawal=crypto_withdrawal.to_json())
+
+@api.route('/crypto_withdrawals', methods=['POST'])
+def crypto_withdrawals_req():
+    params, api_key, err_response = auth_request_get_params(db, ['asset', 'offset', 'limit'])
+    if err_response:
+        return err_response
+    asset, offset, limit = params
+    if not assets.asset_is_crypto(asset):
+        return bad_request(web_utils.INVALID_ASSET)
+    if not isinstance(offset, int):
+        return bad_request(web_utils.INVALID_PARAMETER)
+    if not isinstance(limit, int):
+        return bad_request(web_utils.INVALID_PARAMETER)
+    if limit > 1000:
+        return bad_request(web_utils.LIMIT_TOO_LARGE)
+    withdrawals = CryptoWithdrawal.from_user(db.session, api_key.user, offset, limit)
+    withdrawals = [withdrawal.to_json() for withdrawal in withdrawals]
+    total = CryptoWithdrawal.total_for_user(db.session, api_key.user)
+    return jsonify(withdrawals=withdrawals, offset=offset, limit=limit, total=total)
 
 @api.route('/fiat_deposit_create', methods=['POST'])
 def fiat_deposit_create_req():
@@ -508,12 +562,12 @@ def fiat_deposit_create_req():
     if err_response:
         return err_response
     asset, amount_dec = params
-    if not dasset.asset_is_fiat(asset):
+    if not assets.asset_is_fiat(asset):
         return bad_request(web_utils.INVALID_ASSET)
     amount_dec = decimal.Decimal(amount_dec)
     if amount_dec <= 0:
         return bad_request(web_utils.INVALID_AMOUNT)
-    amount_int = dasset.asset_dec_to_int(asset, amount_dec)
+    amount_int = assets.asset_dec_to_int(asset, amount_dec)
     fiat_deposit = FiatDeposit(api_key.user, asset, amount_int)
     payment_request = payments_core.payment_create(amount_int, fiat_deposit.expiry)
     if not payment_request:
@@ -531,7 +585,7 @@ def fiat_deposits_req():
     if err_response:
         return err_response
     asset, offset, limit = params
-    if not dasset.asset_is_fiat(asset):
+    if not assets.asset_is_fiat(asset):
         return bad_request(web_utils.INVALID_ASSET)
     if not isinstance(offset, int):
         return bad_request(web_utils.INVALID_PARAMETER)
@@ -544,12 +598,66 @@ def fiat_deposits_req():
     total = FiatDeposit.total_for_user(db.session, api_key.user)
     return jsonify(deposits=deposits, offset=offset, limit=limit, total=total)
 
+@api.route('/fiat_withdrawal_create', methods=['POST'])
+def fiat_withdrawal_create_req():
+    params, api_key, err_response = auth_request_get_params(db, ['asset', 'amount_dec', 'recipient'])
+    if err_response:
+        return err_response
+    asset, amount_dec, recipient = params
+    if not assets.asset_is_fiat(asset):
+        return bad_request(web_utils.INVALID_ASSET)
+    amount_dec = decimal.Decimal(amount_dec)
+    if amount_dec <= 0:
+        return bad_request(web_utils.INVALID_AMOUNT)
+    if not assets.asset_recipient_validate(asset, recipient):
+        return bad_request(web_utils.INVALID_RECIPIENT)
+    with coordinator.lock:
+        balance = fiatdb_core.user_balance(db.session, asset, api_key.user)
+        balance_dec = assets.asset_int_to_dec(assets.NZD.symbol, balance)
+        if balance_dec < amount_dec:
+            return bad_request(web_utils.INSUFFICIENT_BALANCE)
+        amount_int = assets.asset_dec_to_int(asset, amount_dec)
+        fiat_withdrawal = FiatWithdrawal(api_key.user, asset, amount_int, recipient)
+        payout_request = payments_core.payout_create(amount_int, fiat_withdrawal.token, '', fiat_withdrawal.user.email, recipient, fiat_withdrawal.token, '', '')
+        if not payout_request:
+            return bad_request(web_utils.FAILED_PAYMENT_CREATE)
+        fiat_withdrawal.payout_request = payout_request
+        ftx = fiatdb_core.tx_create(db.session, api_key.user, FiatDbTransaction.ACTION_DEBIT, asset, amount_int, f'fiat withdrawal: {fiat_withdrawal.token}')
+        if not ftx:
+            logger.error('failed to create fiatdb transaction for fiat withdrawal %s', fiat_withdrawal.token)
+            return bad_request(web_utils.FAILED_PAYMENT_CREATE)
+        db.session.add(fiat_withdrawal)
+        db.session.add(payout_request)
+        db.session.add(ftx)
+        db.session.commit()
+    websocket.fiat_withdrawal_new_event(fiat_withdrawal)
+    return jsonify(withdrawal=fiat_withdrawal.to_json())
+
+@api.route('/fiat_withdrawals', methods=['POST'])
+def fiat_withdrawals_req():
+    params, api_key, err_response = auth_request_get_params(db, ['asset', 'offset', 'limit'])
+    if err_response:
+        return err_response
+    asset, offset, limit = params
+    if not assets.asset_is_fiat(asset):
+        return bad_request(web_utils.INVALID_ASSET)
+    if not isinstance(offset, int):
+        return bad_request(web_utils.INVALID_PARAMETER)
+    if not isinstance(limit, int):
+        return bad_request(web_utils.INVALID_PARAMETER)
+    if limit > 1000:
+        return bad_request(web_utils.LIMIT_TOO_LARGE)
+    withdrawals = FiatWithdrawal.from_user(db.session, api_key.user, offset, limit)
+    withdrawals = [withdrawal.to_json() for withdrawal in withdrawals]
+    total = FiatWithdrawal.total_for_user(db.session, api_key.user)
+    return jsonify(withdrawals=withdrawals, offset=offset, limit=limit, total=total)
+
 @api.route('/address_book', methods=['POST'])
 def address_book_req():
     asset, api_key, err_response = auth_request_get_single_param(db, 'asset')
     if err_response:
         return err_response
-    if asset not in dasset.ASSETS:
+    if asset not in assets.ASSETS:
         return bad_request(web_utils.INVALID_ASSET)
     entries = AddressBook.of_asset(db.session, api_key.user, asset)
     entries = [entry.to_json() for entry in entries]
@@ -563,7 +671,7 @@ def broker_order_create():
     market, side, amount_dec, recipient, save_recipient, recipient_description = params
     if not api_key.user.kyc_validated():
         return bad_request(web_utils.KYC_NOT_VALIDATED)
-    if market not in dasset.MARKETS:
+    if market not in assets.MARKETS:
         return bad_request(web_utils.INVALID_MARKET)
     side = MarketSide.parse(side)
     if not side:
@@ -577,13 +685,13 @@ def broker_order_create():
         return bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
     if err == dasset.QuoteResult.AMOUNT_TOO_LOW:
         return bad_request(web_utils.AMOUNT_TOO_LOW)
-    if not dasset.recipent_validate(market, side, recipient):
+    if not assets.market_recipent_validate(market, side, recipient):
         return bad_request(web_utils.INVALID_RECIPIENT)
-    base_asset, quote_asset = dasset.assets_from_market(market)
+    base_asset, quote_asset = assets.assets_from_market(market)
     if not dasset.funds_available(quote_asset, quote_amount_dec):
         return bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
-    amount = dasset.asset_dec_to_int(base_asset, amount_dec)
-    quote_amount = dasset.asset_dec_to_int(quote_asset, quote_amount_dec)
+    amount = assets.asset_dec_to_int(base_asset, amount_dec)
+    quote_amount = assets.asset_dec_to_int(quote_asset, quote_amount_dec)
     broker_order = BrokerOrder(api_key.user, market, side.value, base_asset, quote_asset, amount, quote_amount, recipient)
     db.session.add(broker_order)
     if save_recipient:
@@ -618,7 +726,7 @@ def broker_order_accept():
     broker_order = BrokerOrder.from_token(db.session, token)
     if not broker_order or broker_order.user != api_key.user:
         return bad_request(web_utils.NOT_FOUND)
-    now = datetime.datetime.now()
+    now = datetime.now()
     if now > broker_order.expiry:
         return bad_request(web_utils.EXPIRED)
     if broker_order.status != broker_order.STATUS_CREATED:
