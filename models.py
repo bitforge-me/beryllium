@@ -956,8 +956,8 @@ class CryptoAddress(db.Model, FromUserMixin):
     address = db.Column(db.String(255), unique=True, nullable=False)
     date = db.Column(db.DateTime(), nullable=False)
     # we make these integer timestamps so we dont have any issues with any comparisons in DB
-    viewed_at = db.Column(db.Integer(), nullable=False)
-    checked_at = db.Column(db.Integer(), nullable=False)
+    viewed_at = db.Column(db.BigInteger(), nullable=False)
+    checked_at = db.Column(db.BigInteger(), nullable=False)
 
     def __init__(self, user, asset, address):
         self.user = user
