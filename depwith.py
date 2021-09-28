@@ -27,7 +27,7 @@ def _fiat_deposit_update(db_session, fiat_deposit):
                 return updated_records
             if payment_req.status == payment_req.STATUS_COMPLETED:
                 fiat_deposit.status = fiat_deposit.STATUS_COMPLETED
-                ftx = fiatdb_core.tx_create_and_play(db_session, fiat_deposit.user, FiatDbTransaction.ACTION_CREDIT, fiat_deposit.asset, fiat_deposit.amount, f'fiat deposit: {fiat_deposit.token}')
+                ftx = fiatdb_core.tx_create(db_session, fiat_deposit.user, FiatDbTransaction.ACTION_CREDIT, fiat_deposit.asset, fiat_deposit.amount, f'fiat deposit: {fiat_deposit.token}')
                 if ftx:
                     updated_records.append(payment_req)
                     updated_records.append(fiat_deposit)

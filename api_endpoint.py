@@ -575,7 +575,7 @@ def fiat_withdrawal_create_req():
         if not payout_request:
             return bad_request(web_utils.FAILED_PAYMENT_CREATE)
         fiat_withdrawal.payout_request = payout_request
-        ftx = fiatdb_core.tx_create_and_play(db.session, api_key.user, FiatDbTransaction.ACTION_DEBIT, asset, amount_int, f'fiat withdrawal: {fiat_withdrawal.token}')
+        ftx = fiatdb_core.tx_create(db.session, api_key.user, FiatDbTransaction.ACTION_DEBIT, asset, amount_int, f'fiat withdrawal: {fiat_withdrawal.token}')
         if not ftx:
             logger.error('failed to create fiatdb transaction for fiat withdrawal %s', fiat_withdrawal.token)
             return bad_request(web_utils.FAILED_PAYMENT_CREATE)

@@ -1,72 +1,39 @@
 import logging
 import threading
-from types import SimpleNamespace
 
-from models import FiatDbTransaction
+from sqlalchemy.orm import scoped_session
+from sqlalchemy.sql import func
+
+from models import User, FiatDbTransaction
 
 logger = logging.getLogger(__name__)
-_user_balances = SimpleNamespace(lock=threading.Lock(), kvstore=None)
+_lock = threading.Lock()
 
-def __balance(asset, user):
+def __balance(session: scoped_session, asset: str, user: User):
     ## assumes lock is held
-    if not asset in _user_balances.kvstore:
-        return 0
-    if not user.token in _user_balances.kvstore[asset]:
-        return 0
-    return _user_balances.kvstore[asset][user.token]
+    query = session.query(func.sum(FiatDbTransaction.amount)) \
+        .filter(FiatDbTransaction.asset == asset)
+    if user:
+        query = query.filter(FiatDbTransaction.user_id == user.id)
+    credit = query.filter(FiatDbTransaction.action == FiatDbTransaction.ACTION_CREDIT).scalar()
+    debit = query.filter(FiatDbTransaction.action == FiatDbTransaction.ACTION_CREDIT).scalar()
+    return credit - debit
 
-def __balance_total(asset):
+def __balance_total(session: scoped_session, asset: str):
     ## assumes lock is held
-    balance = 0
-    if asset in _user_balances.kvstore:
-        for val in _user_balances.kvstore[asset].values():
-            balance += val
-    return balance
+    return __balance(session, asset, None)
 
-def __tx_play(txn):
-    ## assumes lock is held
-    if not txn.asset in _user_balances.kvstore:
-        _user_balances.kvstore[txn.asset] = {}
-    asset_balances = _user_balances.kvstore[txn.asset]
-    if not txn.user.token in asset_balances:
-        asset_balances[txn.user.token] = 0
-    if txn.action == txn.ACTION_CREDIT:
-        asset_balances[txn.user.token] += txn.amount
-    elif txn.action == txn.ACTION_DEBIT:
-        asset_balances[txn.user.token] -= txn.amount
+def user_balance(session: scoped_session, asset: str, user: User):
+    with _lock:
+        return __balance(session, asset, user)
 
-def __tx_play_all(session):
-    ## assumes lock is held
-    assert not _user_balances.kvstore
-    _user_balances.kvstore = {}
-    for tx in FiatDbTransaction.all(session):
-        __tx_play(tx)
+def balance_total(session: scoped_session, asset: str):
+    with _lock:
+        return __balance_total(session, asset)
 
-def __check_balances_inited(session):
-    ## assumes lock is held
-    # check _user_balances.kvstore has been initialized
-    if _user_balances.kvstore is None:
-        logger.info('_user_balances.kvstore not initialized, initializing now..')
-        __tx_play_all(session)
-
-def user_balance(session, asset, user):
-    with _user_balances.lock:
-        __check_balances_inited(session)
-        return __balance(asset, user)
-
-def balance_total(session, asset):
-    with _user_balances.lock:
-        __check_balances_inited(session)
-        return __balance_total(asset)
-
-def tx_play_all(session):
-    with _user_balances.lock:
-        __tx_play_all(session)
-
-def tx_create_and_play(session, user, action, asset, amount, attachment):
+def tx_create(session: scoped_session, user: User, action: str, asset: str, amount: int, attachment: str):
     logger.info('%s: %s: %s, %s, %s', user.email, action, asset, amount, attachment)
-    with _user_balances.lock:
-        __check_balances_inited(session)
+    with _lock:
         error = ''
         if not user.is_active:
             error = f'{action}: {user.email} is not active'
@@ -77,6 +44,4 @@ def tx_create_and_play(session, user, action, asset, amount, attachment):
         if error:
             logger.error(error)
             return None
-        tx = FiatDbTransaction(user, action, asset, amount, attachment)
-        __tx_play(tx)
-        return tx
+        return FiatDbTransaction(user, action, asset, amount, attachment)
