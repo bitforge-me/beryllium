@@ -485,7 +485,24 @@ class ExchangeOrder(db.Model):
         self.date = datetime.now()
         self.exchange_reference = exchange_reference
 
+class CryptoWithdrawalSchema(Schema):
+    token = fields.String()
+    date = fields.DateTime()
+    asset = fields.String()
+    amount = fields.Integer()
+    amount_dec = fields.Method('get_amount_dec')
+    recipient = fields.String()
+    txid = fields.String()
+    status = fields.String()
+
+    def get_amount_dec(self, obj):
+        return str(assets.asset_int_to_dec(obj.asset, obj.amount))
+
 class CryptoWithdrawal(db.Model, FromUserMixin):
+    STATUS_CREATED = 'created'
+    STATUS_COMPLETED = 'completed'
+    STATUS_CANCELLED = 'cancelled'
+
     id = db.Column(db.Integer, primary_key=True)
     token = db.Column(db.String(255), unique=True, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -493,16 +510,28 @@ class CryptoWithdrawal(db.Model, FromUserMixin):
     date = db.Column(db.DateTime(), nullable=False)
     asset = db.Column(db.String, nullable=False)
     amount = db.Column(db.BigInteger, nullable=False)
+    recipient = db.Column(db.String, nullable=False)
     exchange_reference = db.Column(db.String, nullable=False)
     txid = db.Column(db.String)
+    status = db.Column(db.String, nullable=False)
 
-    def __init__(self, user, asset, amount, exchange_reference):
+    def __init__(self, user, asset, amount, recipient, exchange_reference):
         self.token = generate_key()
         self.user = user
         self.date = datetime.now()
         self.asset = asset
         self.amount = amount
+        self.recipient = recipient
         self.exchange_reference = exchange_reference
+        self.status = self.STATUS_CREATED
+
+    def to_json(self):
+        ref_schema = CryptoWithdrawalSchema()
+        return ref_schema.dump(self)
+
+    @classmethod
+    def all_active(cls, session):
+        return session.query(cls).filter(and_(cls.status != cls.STATUS_COMPLETED, cls.status != cls.STATUS_CANCELLED)).all()
 
 class CryptoDepositSchema(Schema):
     token = fields.String()

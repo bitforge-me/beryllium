@@ -78,6 +78,16 @@ def crypto_deposit_new_event(crypto_deposit):
     socketio.emit('crypto_deposit_new', data, json=True, room=crypto_deposit.user.email, namespace=NS)
     logger.info('crypto_deposit_new: %s', crypto_deposit.token)
 
+def crypto_withdrawal_update_event(crypto_withdrawal):
+    data = json.dumps(crypto_withdrawal.to_json())
+    socketio.emit('crypto_withdrawal_update', data, json=True, room=crypto_withdrawal.user.email, namespace=NS)
+    logger.info('crypto_withdrawal_update: %s', crypto_withdrawal.token)
+
+def crypto_withdrawal_new_event(crypto_withdrawal):
+    data = json.dumps(crypto_withdrawal.to_json())
+    socketio.emit('crypto_withdrawal_new', data, json=True, room=crypto_withdrawal.user.email, namespace=NS)
+    logger.info('crypto_withdrawal_new: %s', crypto_withdrawal.token)
+
 def fiat_deposit_update_event(fiat_deposit):
     data = json.dumps(fiat_deposit.to_json())
     socketio.emit('fiat_deposit_update', data, json=True, room=fiat_deposit.user.email, namespace=NS)

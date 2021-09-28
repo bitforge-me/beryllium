@@ -60,7 +60,7 @@ def _broker_order_buy_crypto_with_fiat_update(broker_order):
                 logger.error('failed to create exchange withdrawal - %s', msg)
                 utils.send_email(logger, 'failed to create exchange withdrawal', msg)
                 return updated_records
-            crypto_withdrawal = CryptoWithdrawal(broker_order.user, broker_order.base_asset, broker_order.base_amount, exchange_withdrawal_id)
+            crypto_withdrawal = CryptoWithdrawal(broker_order.user, broker_order.base_asset, broker_order.base_amount, broker_order.recipient, exchange_withdrawal_id)
             broker_order.crypto_withdrawal = crypto_withdrawal
             broker_order.status = broker_order.STATUS_WITHDRAW
             updated_records.append(crypto_withdrawal)

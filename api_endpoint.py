@@ -13,7 +13,7 @@ from flask_security.recoverable import send_reset_password_instructions
 import web_utils
 from web_utils import bad_request, get_json_params, auth_request, auth_request_get_single_param, auth_request_get_params
 import utils
-from models import DassetSubaccount, FiatDbTransaction, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, FiatDeposit, FiatWithdrawal, CryptoAddress, CryptoDeposit
+from models import CryptoWithdrawal, DassetSubaccount, FiatDbTransaction, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, FiatDeposit, FiatWithdrawal, CryptoAddress, CryptoDeposit
 from app_core import db, limiter
 from security import tf_enabled_check, tf_method, tf_code_send, tf_method_set, tf_method_unset, tf_secret_init, tf_code_validate, user_datastore
 import payments_core
@@ -508,6 +508,52 @@ def crypto_deposits_req():
     deposits = [deposit.to_json() for deposit in deposits]
     total = CryptoDeposit.total_for_user(db.session, api_key.user)
     return jsonify(deposits=deposits, offset=offset, limit=limit, total=total)
+
+@api.route('/crypto_withdrawal_create', methods=['POST'])
+def crypto_withdrawal_create_req():
+    params, api_key, err_response = auth_request_get_params(db, ['asset', 'amount_dec', 'recipient'])
+    if err_response:
+        return err_response
+    asset, amount_dec, recipient = params
+    if not assets.asset_is_crypto(asset):
+        return bad_request(web_utils.INVALID_ASSET)
+    amount_dec = decimal.Decimal(amount_dec)
+    if amount_dec <= 0:
+        return bad_request(web_utils.INVALID_AMOUNT)
+    if not assets.asset_recipient_validate(asset, recipient):
+        return bad_request(web_utils.INVALID_RECIPIENT)
+    with coordinator.lock:
+        ### TODO - account for dasset withdrawal fee
+        if not dasset.funds_available(asset, amount_dec):
+            return bad_request(web_utils.INSUFFICIENT_BALANCE)
+        amount_int = assets.asset_dec_to_int(asset, amount_dec)
+        withdrawal_id = dasset.crypto_withdrawal_create(asset, amount_dec, recipient)
+        if not withdrawal_id:
+            return bad_request(web_utils.FAILED_EXCHANGE)
+        crypto_withdrawal = CryptoWithdrawal(api_key.user, asset, amount_int, recipient, withdrawal_id)
+        db.session.add(crypto_withdrawal)
+        db.session.commit()
+    websocket.crypto_withdrawal_new_event(crypto_withdrawal)
+    return jsonify(withdrawal=crypto_withdrawal.to_json())
+
+@api.route('/crypto_withdrawals', methods=['POST'])
+def crypto_withdrawals_req():
+    params, api_key, err_response = auth_request_get_params(db, ['asset', 'offset', 'limit'])
+    if err_response:
+        return err_response
+    asset, offset, limit = params
+    if not assets.asset_is_crypto(asset):
+        return bad_request(web_utils.INVALID_ASSET)
+    if not isinstance(offset, int):
+        return bad_request(web_utils.INVALID_PARAMETER)
+    if not isinstance(limit, int):
+        return bad_request(web_utils.INVALID_PARAMETER)
+    if limit > 1000:
+        return bad_request(web_utils.LIMIT_TOO_LARGE)
+    withdrawals = CryptoWithdrawal.from_user(db.session, api_key.user, offset, limit)
+    withdrawals = [withdrawal.to_json() for withdrawal in withdrawals]
+    total = CryptoWithdrawal.total_for_user(db.session, api_key.user)
+    return jsonify(withdrawals=withdrawals, offset=offset, limit=limit, total=total)
 
 @api.route('/fiat_deposit_create', methods=['POST'])
 def fiat_deposit_create_req():

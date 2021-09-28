@@ -4,7 +4,7 @@ import logging
 import payments_core
 import dasset
 import assets
-from models import CryptoAddress, CryptoDeposit, FiatDbTransaction, FiatDeposit, FiatWithdrawal
+from models import CryptoAddress, CryptoDeposit, CryptoWithdrawal, FiatDbTransaction, FiatDeposit, FiatWithdrawal
 import websocket
 import utils
 import fiatdb_core
@@ -94,7 +94,7 @@ def _fiat_withdrawal_email_msg(fiat_withdrawal, msg):
 
 def _fiat_withdrawal_email(fiat_withdrawal):
     if fiat_withdrawal.status == fiat_withdrawal.STATUS_COMPLETED:
-        utils.send_email(logger, 'Deposit Completed', _fiat_withdrawal_email_msg(fiat_withdrawal, ''), fiat_withdrawal.user.email)
+        utils.send_email(logger, 'Withdrawal Completed', _fiat_withdrawal_email_msg(fiat_withdrawal, ''), fiat_withdrawal.user.email)
 
 def fiat_withdrawal_update_and_commit(db_session, withdrawal):
     while True:
@@ -170,3 +170,44 @@ def crypto_deposits_check(db_session):
     for deposit in updated_crypto_deposits:
         _crypto_deposit_email(deposit)
         websocket.crypto_deposit_update_event(deposit)
+
+def _crypto_withdrawal_update(crypto_withdrawal):
+    logger.info('processing crypto withdrawal %s (%s)..', crypto_withdrawal.token, crypto_withdrawal.status)
+    updated_records = []
+    # check payout
+    if crypto_withdrawal.status == crypto_withdrawal.STATUS_CREATED:
+        # check exchange withdrawal
+        if dasset.crypto_withdrawal_status_check(crypto_withdrawal.exchange_reference):
+            crypto_withdrawal.status = crypto_withdrawal.STATUS_COMPLETED
+            updated_records.append(crypto_withdrawal)
+        return updated_records
+    return updated_records
+
+def _crypto_withdrawal_email_msg(crypto_withdrawal, msg):
+    amount =  assets.asset_int_to_dec(crypto_withdrawal.asset, crypto_withdrawal.amount)
+    amount = assets.asset_dec_to_str(crypto_withdrawal.asset, amount)
+    return f'Your withdrawal {crypto_withdrawal.token} ({amount} {crypto_withdrawal.asset}) is now {crypto_withdrawal.status}. \n\n{msg}'
+
+def _crypto_withdrawal_email(crypto_withdrawal):
+    if crypto_withdrawal.status == crypto_withdrawal.STATUS_COMPLETED:
+        utils.send_email(logger, 'Withdrawal Completed', _crypto_withdrawal_email_msg(crypto_withdrawal, ''), crypto_withdrawal.user.email)
+
+def crypto_withdrawal_update_and_commit(db_session, withdrawal):
+    while True:
+        with coordinator.lock:
+            updated_records = _crypto_withdrawal_update(withdrawal)
+            # commit db if records updated
+            if not updated_records:
+                return
+            for rec in updated_records:
+                db_session.add(rec)
+            db_session.commit()
+        # send updates
+        _crypto_withdrawal_email(withdrawal)
+        websocket.crypto_withdrawal_update_event(withdrawal)
+
+def crypto_withdrawals_update(db_session):
+    withdrawals = CryptoWithdrawal.all_active(db_session)
+    logger.info('num withdrawals: %d', len(withdrawals))
+    for withdrawal in withdrawals:
+        crypto_withdrawal_update_and_commit(db_session, withdrawal)
