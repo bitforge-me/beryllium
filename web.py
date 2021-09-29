@@ -27,6 +27,8 @@ from kyc_endpoint import kyc
 import websocket
 # pylint: disable=unused-import
 import admin
+import dasset
+import assets
 
 #jsonrpc = JSONRPC(app, "/api")
 logger = logging.getLogger(__name__)
@@ -41,8 +43,14 @@ app.register_blueprint(kyc, url_prefix='/kyc')
 
 def process_email_alerts():
     with app.app_context():
-        #email_utils.email_notification_alert(logger, subject, msg, recipient)
-        pass
+        data = dasset.account_balances()
+        for balance in data:
+            if balance.symbol == 'NZD':
+                if balance.available < app.config["MIN_AVAILABLE_NZD_BALANCE"]:
+                    balance_format = assets.asset_dec_to_str(balance.symbol, balance.available)
+                    subject = f"Available {balance.symbol} Balance below the minimum threshold"
+                    msg = f"Available {balance.symbol} Balance needs to be replenished in the dasset account.<br/><br/>Available {balance.symbol} balance is: ${balance_format}"
+                    email_utils.email_notification_alert(logger, subject, msg, app.config["ADMIN_EMAIL"])
 
 def process_deposits_and_broker_orders():
     with app.app_context():

@@ -120,6 +120,11 @@ if os.getenv("FLASK_ADMIN_SWATCH") == "slate":
 else:
     app.config["CSS_THEME_INTENSITY"] = "light"
 
+if os.getenv("MIN_AVAILABLE_NZD_BALANCE"):
+    app.config["MIN_AVAILABLE_NZD_BALANCE"] = decimal.Decimal(os.getenv("MIN_AVAILABLE_NZD_BALANCE"))
+else:
+    app.config["MIN_AVAILABLE_NZD_BALANCE"] = decimal.Decimal(2000)
+
 def set_vital_setting(env_name, setting_name=None, acceptable_values=None, custom_handler=None):
     # pylint: disable=global-statement
     global MISSING_VITAL_SETTING
