@@ -512,10 +512,10 @@ def crypto_deposits_req():
 
 @api.route('/crypto_withdrawal_create', methods=['POST'])
 def crypto_withdrawal_create_req():
-    params, api_key, err_response = auth_request_get_params(db, ['asset', 'amount_dec', 'recipient'])
+    params, api_key, err_response = auth_request_get_params(db, ['asset', 'amount_dec', 'recipient', 'save_recipient', 'recipient_description'])
     if err_response:
         return err_response
-    asset, amount_dec, recipient = params
+    asset, amount_dec, recipient, save_recipient, recipient_description = params
     if not assets.asset_is_crypto(asset):
         return bad_request(web_utils.INVALID_ASSET)
     amount_dec = decimal.Decimal(amount_dec)
@@ -523,6 +523,13 @@ def crypto_withdrawal_create_req():
         return bad_request(web_utils.INVALID_AMOUNT)
     if not assets.asset_recipient_validate(asset, recipient):
         return bad_request(web_utils.INVALID_RECIPIENT)
+    if save_recipient:
+        entry = AddressBook.from_recipient(db.session, api_key.user, asset, recipient)
+        if entry:
+            entry.description = recipient_description
+        else:
+            entry = AddressBook(api_key.user, asset, recipient, recipient_description)
+        db.session.add(entry)
     with coordinator.lock:
         ### TODO - account for dasset withdrawal fee
         if not dasset.funds_available(asset, amount_dec):
@@ -600,10 +607,10 @@ def fiat_deposits_req():
 
 @api.route('/fiat_withdrawal_create', methods=['POST'])
 def fiat_withdrawal_create_req():
-    params, api_key, err_response = auth_request_get_params(db, ['asset', 'amount_dec', 'recipient'])
+    params, api_key, err_response = auth_request_get_params(db, ['asset', 'amount_dec', 'recipient', 'save_recipient', 'recipient_description'])
     if err_response:
         return err_response
-    asset, amount_dec, recipient = params
+    asset, amount_dec, recipient, save_recipient, recipient_description = params
     if not assets.asset_is_fiat(asset):
         return bad_request(web_utils.INVALID_ASSET)
     amount_dec = decimal.Decimal(amount_dec)
@@ -611,6 +618,13 @@ def fiat_withdrawal_create_req():
         return bad_request(web_utils.INVALID_AMOUNT)
     if not assets.asset_recipient_validate(asset, recipient):
         return bad_request(web_utils.INVALID_RECIPIENT)
+    if save_recipient:
+        entry = AddressBook.from_recipient(db.session, api_key.user, asset, recipient)
+        if entry:
+            entry.description = recipient_description
+        else:
+            entry = AddressBook(api_key.user, asset, recipient, recipient_description)
+        db.session.add(entry)
     with coordinator.lock:
         balance = fiatdb_core.user_balance(db.session, asset, api_key.user)
         balance_dec = assets.asset_int_to_dec(assets.NZD.symbol, balance)
