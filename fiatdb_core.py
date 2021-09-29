@@ -16,7 +16,7 @@ def __balance(session: scoped_session, asset: str, user: User):
     if user:
         query = query.filter(FiatDbTransaction.user_id == user.id)
     credit = query.filter(FiatDbTransaction.action == FiatDbTransaction.ACTION_CREDIT).scalar()
-    debit = query.filter(FiatDbTransaction.action == FiatDbTransaction.ACTION_CREDIT).scalar()
+    debit = query.filter(FiatDbTransaction.action == FiatDbTransaction.ACTION_DEBIT).scalar()
     return credit - debit
 
 def __balance_total(session: scoped_session, asset: str):
