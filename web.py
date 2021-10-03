@@ -227,12 +227,11 @@ def user_kyc():
                 token = kycrequest.token
                 pdf = kyc_core.download_pdf_backup(token)
                 if pdf:
-                    filename = f"{email}.pdf"
                     return Response(
                         pdf,
                         mimetype="application/pdf",
                         headers={"Content-disposition":
-                                 f"attachment; filename={filename}"})
+                                 f"attachment; filename={email}.pdf"})
                 flash('failed to download pdf', 'danger')
             elif kycrequest.status == kycrequest.STATUS_CREATED:
                 flash('User KYC is created but not completed', 'danger')
