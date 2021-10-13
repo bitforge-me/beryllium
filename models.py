@@ -778,6 +778,10 @@ class KycRequest(db.Model, FromTokenMixin):
     def count(cls, session):
         return session.query(cls).count()
 
+    @classmethod
+    def from_user(cls, session, user):
+        return session.query(cls).filter(cls.user_id == user.id).first()
+
     def __repr__(self):
         return f'<KycRequest {self.token}>'
 

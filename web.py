@@ -8,11 +8,11 @@ import math
 import time
 
 import gevent
-from flask import render_template, request, flash, jsonify
+from flask import render_template, request, flash, jsonify, Response
 from flask_security import roles_accepted
 
 from app_core import app, db, socketio
-from models import User, Role, Topic, PushNotificationLocation, BrokerOrder, CryptoDeposit, FiatDeposit
+from models import User, Role, Topic, PushNotificationLocation, BrokerOrder, CryptoDeposit, FiatDeposit, KycRequest
 import utils
 import email_utils
 from fcm import FCM
@@ -29,6 +29,7 @@ import websocket
 import admin
 import dasset
 import assets
+import kyc_core
 
 #jsonrpc = JSONRPC(app, "/api")
 logger = logging.getLogger(__name__)
@@ -212,6 +213,37 @@ def test_ws():
         else:
             flash('Event not yet implemented', 'danger')
     return render_template('test_ws.html', recipient=recipient, event=event, events=events)
+
+@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
+@app.route('/user_kyc', methods=['GET', 'POST'])
+def user_kyc():
+    email = ''
+    if request.method == 'POST':
+        email = request.form['email']
+        if not email:
+            flash('please enter an email address', 'danger')
+            return render_template('user_kyc.html')
+        email = email.lower()
+        user = User.from_email(db.session, email)
+        if user:
+            kycrequest = KycRequest.from_user(db.session, user)
+            if kycrequest.status == kycrequest.STATUS_COMPLETED:
+                token = kycrequest.token
+                pdf = kyc_core.download_pdf_backup(token)
+                if pdf:
+                    return Response(
+                        pdf,
+                        mimetype="application/pdf",
+                        headers={"Content-disposition":
+                                 f"attachment; filename={email}.pdf"})
+                flash('failed to download pdf', 'danger')
+            elif kycrequest.status == kycrequest.STATUS_CREATED:
+                flash('User KYC is created but not completed', 'danger')
+            else:
+                flash('User KYC not found', 'danger')
+        else:
+            flash('User not found', 'danger')
+    return render_template('user_kyc.html')
 
 #
 # gevent class

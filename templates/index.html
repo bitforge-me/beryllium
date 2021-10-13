@@ -24,20 +24,25 @@
             </div>
             </a>
             <a href="{{ url_for('payments.payouts') }}">
-                <div class='white-dashboard'>
-                    <p><center>Payouts</center></p>
-                </div>
-                </a>
+            <div class='dashboard'>
+                <p><center>Payouts</center></p>
+            </div>
+            </a>
             <a href="{{ url_for('test_email') }}">
             <div class='dashboard'>
                 <p><center>Test Email</center></p>
             </div>
             </a>
             <a href="{{ url_for('test_ws') }}">
-                <div class='dashboard'>
-                    <p><center>Test Websocket</center></p>
-                </div>
-                </a>
+            <div class='dashboard'>
+                <p><center>Test Websocket</center></p>
+            </div>
+            </a>
+            <a href="{{ url_for('user_kyc') }}">
+            <div class='dashboard'>
+                <p><center>User KYC</center></p>
+            </div>
+            </a>
             {% endif %}
         </div>
     </div>
