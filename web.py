@@ -220,6 +220,10 @@ def user_kyc():
     email = ''
     if request.method == 'POST':
         email = request.form['email']
+        if not email:
+            flash('please enter an email address', 'danger')
+            return render_template('user_kyc.html')
+        email = email.lower()
         user = User.from_email(db.session, email)
         if user:
             kycrequest = KycRequest.from_user(db.session, user)
