@@ -14,7 +14,6 @@ from sqlalchemy import and_, exists
 from app_core import db
 from utils import generate_key
 import assets
-from assets import market_side_is, MarketSide
 
 logger = logging.getLogger(__name__)
 
@@ -367,10 +366,7 @@ class BrokerOrderSchema(Schema):
     quote_asset = fields.String()
     quote_amount = fields.Integer()
     quote_amount_dec = fields.Method('get_quote_amount_dec')
-    recipient = fields.String()
-    address = fields.String()
     status = fields.String()
-    payment_url = fields.Method('get_payment_url')
 
     def get_base_amount_dec(self, obj):
         return str(assets.asset_int_to_dec(obj.base_asset, obj.base_amount))
@@ -378,27 +374,14 @@ class BrokerOrderSchema(Schema):
     def get_quote_amount_dec(self, obj):
         return str(assets.asset_int_to_dec(obj.quote_asset, obj.quote_amount))
 
-    def get_payment_url(self, obj):
-        payment_url = None
-        if obj.windcave_payment_request:
-            payment_url = url_for('payments.payment_interstitial', token=obj.windcave_payment_request.token, _external=True)
-        if obj.address:
-            if market_side_is(obj.side, MarketSide.BID):
-                payment_url = assets.crypto_uri(obj.quote_asset, obj.address, obj.quote_amount)
-            else:
-                payment_url = assets.crypto_uri(obj.base_asset, obj.address, obj.base_amount)
-        return payment_url
-
 class BrokerOrder(db.Model, FromUserMixin, FromTokenMixin):
     STATUS_CREATED = 'created'
     STATUS_READY = 'ready'
-    STATUS_INCOMING = 'incoming'
-    STATUS_CONFIRMED = 'confirmed'
+    STATUS_FIAT_DEBITED = 'fiat_debited'
     STATUS_EXCHANGE = 'exchanging'
-    STATUS_WITHDRAW = 'withdrawing'
     STATUS_COMPLETED = 'completed'
     STATUS_EXPIRED = 'expired'
-    STATUS_CANCELLED = 'cancelled'
+    STATUS_FAILED = 'failed'
 
     MINUTES_EXPIRY = 15
 
@@ -415,22 +398,12 @@ class BrokerOrder(db.Model, FromUserMixin, FromTokenMixin):
     quote_asset = db.Column(db.String, nullable=False)
     base_amount = db.Column(db.BigInteger, nullable=False)
     quote_amount = db.Column(db.BigInteger, nullable=False)
-    recipient = db.Column(db.String, nullable=False)
-    windcave_payment_request_id = db.Column(db.Integer, db.ForeignKey('windcave_payment_request.id'))
-    windcave_payment_request = db.relationship('WindcavePaymentRequest', backref=db.backref('broker_order', uselist=False))
-    payout_request_id = db.Column(db.Integer, db.ForeignKey('payout_request.id'))
-    payout_request = db.relationship('PayoutRequest', backref=db.backref('broker_order', uselist=False))
     exchange_order_id = db.Column(db.Integer, db.ForeignKey('exchange_order.id'))
     exchange_order = db.relationship('ExchangeOrder')
-    crypto_withdrawal_id = db.Column(db.Integer, db.ForeignKey('crypto_withdrawal.id'))
-    crypto_withdrawal = db.relationship('CryptoWithdrawal', backref=db.backref('broker_order', uselist=False))
-    crypto_deposit_id = db.Column(db.Integer, db.ForeignKey('crypto_deposit.id'))
-    crypto_deposit = db.relationship('CryptoDeposit', backref=db.backref('broker_order', uselist=False))
-    address = db.Column(db.String)
 
     status = db.Column(db.String, nullable=False)
 
-    def __init__(self, user, market, side, base_asset, quote_asset, base_amount, quote_amount, recipient):
+    def __init__(self, user, market, side, base_asset, quote_asset, base_amount, quote_amount):
         self.token = generate_key()
         self.user = user
         self.date = datetime.now()
@@ -441,7 +414,6 @@ class BrokerOrder(db.Model, FromUserMixin, FromTokenMixin):
         self.quote_asset = quote_asset
         self.base_amount = base_amount
         self.quote_amount = quote_amount
-        self.recipient = recipient
         self.status = self.STATUS_CREATED
 
     def to_json(self):
@@ -450,7 +422,7 @@ class BrokerOrder(db.Model, FromUserMixin, FromTokenMixin):
 
     @classmethod
     def all_active(cls, session):
-        return session.query(cls).filter(and_(cls.status != cls.STATUS_COMPLETED, and_(cls.status != cls.STATUS_EXPIRED, cls.status != cls.STATUS_CANCELLED))).all()
+        return session.query(cls).filter(and_(cls.status != cls.STATUS_COMPLETED, and_(cls.status != cls.STATUS_EXPIRED, cls.status != cls.STATUS_FAILED))).all()
 
 class DassetSubaccount(db.Model):
     id = db.Column(db.Integer, primary_key=True)

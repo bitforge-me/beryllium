@@ -14,7 +14,7 @@ import web_utils
 from web_utils import bad_request, get_json_params, auth_request, auth_request_get_single_param, auth_request_get_params
 import utils
 import email_utils
-from models import CryptoWithdrawal, DassetSubaccount, FiatDbTransaction, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, FiatDeposit, FiatWithdrawal, CryptoAddress, CryptoDeposit
+from models import CryptoWithdrawal, FiatDbTransaction, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, FiatDeposit, FiatWithdrawal, CryptoAddress, CryptoDeposit
 from app_core import db, limiter
 from security import tf_enabled_check, tf_method, tf_code_send, tf_method_set, tf_method_unset, tf_secret_init, tf_code_validate, user_datastore
 import payments_core
@@ -24,27 +24,12 @@ import assets
 from assets import MarketSide, market_side_is
 import websocket
 import fiatdb_core
+import broker
 import coordinator
 
 logger = logging.getLogger(__name__)
 api = Blueprint('api', __name__, template_folder='templates')
 limiter.limit('100/minute')(api)
-
-#
-# Helper functions
-#
-
-def _user_subaccount_get_or_create(user):
-    # create subaccount for user
-    if not user.dasset_subaccount:
-        subaccount_id = dasset.subaccount_create(user.token)
-        if not subaccount_id:
-            logger.error('failed to create subaccount for %s', user.email)
-            return None
-        subaccount = DassetSubaccount(user, subaccount_id)
-        db.session.add(subaccount)
-        return subaccount
-    return user.dasset_subaccount
 
 #
 # Private API
@@ -461,7 +446,7 @@ def balances_req():
     if err_response:
         return err_response
     # get subaccount for user
-    subaccount = _user_subaccount_get_or_create(api_key.user)
+    subaccount = broker.user_subaccount_get_or_create(db.session, api_key.user)
     if not subaccount:
         return bad_request(web_utils.FAILED_EXCHANGE)
     subaccount_id = subaccount.subaccount_id
@@ -530,9 +515,14 @@ def crypto_withdrawal_create_req():
         else:
             entry = AddressBook(api_key.user, asset, recipient, recipient_description)
         db.session.add(entry)
+    # get subaccount for user
+    subaccount = broker.user_subaccount_get_or_create(db.session, api_key.user)
+    if not subaccount:
+        return bad_request(web_utils.FAILED_EXCHANGE)
+    subaccount_id = subaccount.subaccount_id
     with coordinator.lock:
         ### TODO - account for dasset withdrawal fee
-        if not dasset.funds_available(asset, amount_dec):
+        if not dasset.funds_available_user(asset, amount_dec, subaccount_id):
             return bad_request(web_utils.INSUFFICIENT_BALANCE)
         amount_int = assets.asset_dec_to_int(asset, amount_dec)
         withdrawal_id = dasset.crypto_withdrawal_create(asset, amount_dec, recipient)
@@ -627,7 +617,7 @@ def fiat_withdrawal_create_req():
         db.session.add(entry)
     with coordinator.lock:
         balance = fiatdb_core.user_balance(db.session, asset, api_key.user)
-        balance_dec = assets.asset_int_to_dec(assets.NZD.symbol, balance)
+        balance_dec = assets.asset_int_to_dec(asset, balance)
         if balance_dec < amount_dec:
             return bad_request(web_utils.INSUFFICIENT_BALANCE)
         amount_int = assets.asset_dec_to_int(asset, amount_dec)
@@ -679,10 +669,10 @@ def address_book_req():
 
 @api.route('/broker_order_create', methods=['POST'])
 def broker_order_create():
-    params, api_key, err_response = auth_request_get_params(db, ["market", "side", "amount_dec", "recipient", "save_recipient", "recipient_description"])
+    params, api_key, err_response = auth_request_get_params(db, ["market", "side", "amount_dec"])
     if err_response:
         return err_response
-    market, side, amount_dec, recipient, save_recipient, recipient_description = params
+    market, side, amount_dec = params
     if not api_key.user.kyc_validated():
         return bad_request(web_utils.KYC_NOT_VALIDATED)
     if market not in assets.MARKETS:
@@ -699,25 +689,14 @@ def broker_order_create():
         return bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
     if err == dasset.QuoteResult.AMOUNT_TOO_LOW:
         return bad_request(web_utils.AMOUNT_TOO_LOW)
-    if not assets.market_recipent_validate(market, side, recipient):
-        return bad_request(web_utils.INVALID_RECIPIENT)
     base_asset, quote_asset = assets.assets_from_market(market)
-    if not dasset.funds_available(quote_asset, quote_amount_dec):
-        return bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
+    err_msg = broker.order_check_funds(db.session, api_key.user, quote_asset, quote_amount_dec)
+    if err_msg:
+        return bad_request(err_msg)
     amount = assets.asset_dec_to_int(base_asset, amount_dec)
     quote_amount = assets.asset_dec_to_int(quote_asset, quote_amount_dec)
-    broker_order = BrokerOrder(api_key.user, market, side.value, base_asset, quote_asset, amount, quote_amount, recipient)
+    broker_order = BrokerOrder(api_key.user, market, side.value, base_asset, quote_asset, amount, quote_amount)
     db.session.add(broker_order)
-    if save_recipient:
-        asset = base_asset
-        if market_side_is(side, MarketSide.ASK):
-            asset = quote_asset
-        entry = AddressBook.from_recipient(db.session, api_key.user, asset, recipient)
-        if entry:
-            entry.description = recipient_description
-        else:
-            entry = AddressBook(api_key.user, asset, recipient, recipient_description)
-        db.session.add(entry)
     db.session.commit()
     websocket.broker_order_new_event(broker_order)
     return jsonify(broker_order=broker_order.to_json())
@@ -745,25 +724,10 @@ def broker_order_accept():
         return bad_request(web_utils.EXPIRED)
     if broker_order.status != broker_order.STATUS_CREATED:
         return bad_request(web_utils.INVALID_STATUS)
-    if market_side_is(broker_order.side, MarketSide.BID):
-        # create nzd payment request
-        req = payments_core.payment_create(broker_order.quote_amount, broker_order.expiry)
-        if not req:
-            return bad_request(web_utils.FAILED_PAYMENT_CREATE)
-        broker_order.windcave_payment_request = req
-        db.session.add(req)
-    else:
-        # get subaccount for user
-        subaccount = _user_subaccount_get_or_create(api_key.user)
-        if not subaccount:
-            return bad_request(web_utils.FAILED_EXCHANGE)
-        subaccount_id = subaccount.subaccount_id
-        # create crypto address
-        address = dasset.address_get_or_create(broker_order.base_asset, subaccount_id)
-        if not address:
-            logger.error('failed to get address for %s (%s)', broker_order.base_asset, subaccount_id)
-        broker_order.address = address
-    # created payment request / crypto address now update the status and commit to db
+    quote_amount_dec = assets.asset_int_to_dec(broker_order.quote_asset, broker_order.quote_amount)
+    err_msg = broker.order_check_funds(db.session, api_key.user, broker_order.quote_asset, quote_amount_dec)
+    if err_msg:
+        return bad_request(err_msg)
     broker_order.status = broker_order.STATUS_READY
     db.session.add(broker_order)
     db.session.commit()

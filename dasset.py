@@ -141,6 +141,7 @@ def _balances_req(asset, subaccount_id):
     return None
 
 def _order_create_req(market, side, amount, price):
+    assert isinstance(side, assets.MarketSide)
     assert isinstance(amount, decimal.Decimal)
     assert isinstance(price, decimal.Decimal)
     endpoint = '/orders'
@@ -393,7 +394,14 @@ def subaccount_create(reference):
         return utils.generate_key()
     return _subaccount_req(reference)
 
-def funds_available(asset, amount):
+def funds_available_user(asset, amount, subaccount_id):
+    assert isinstance(amount, decimal.Decimal)
+    for balance in account_balances(asset, subaccount_id):
+        if balance.symbol == asset:
+            return balance.available >= amount
+    return False
+
+def funds_available_us(asset, amount):
     assert isinstance(amount, decimal.Decimal)
     for balance in account_balances(asset):
         if balance.symbol == asset:
