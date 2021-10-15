@@ -11,6 +11,8 @@ from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
+APP_VERSION = 2
+
 MISSING_VITAL_SETTING = False
 
 class MyJSONEncoder(flask.json.JSONEncoder):
