@@ -3,8 +3,8 @@ server {
   server_name $SERVER_NAME;
 
   location / {
-    return 301 https://$host$request_uri;
-  }    
+    return 307 https://$host$request_uri;
+  }
 
   location /.well-known/acme-challenge/ {
     root /var/www/certbot;

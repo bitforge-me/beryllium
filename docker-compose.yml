@@ -49,6 +49,7 @@ services:
     environment:
       CERTBOT_EMAIL: ${ADMIN_EMAIL:?ADMIN_EMAIL unset}
       SERVER_NAME: ${SERVER_NAME:?SERVER_NAME unset}
+      USE_LOCAL_CA: ${USE_LOCAL_CA:-0}
     links:
       - app
     ports:
