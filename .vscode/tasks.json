@@ -1,0 +1,13 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "docker-compose-debug",
+        "command": "/bin/bash",
+        "args": [
+            "-c",
+            "docker-compose -f docker-compose.yml -f docker-compose.debug.yml up -d"
+        ]
+    }
+    ]
+  }

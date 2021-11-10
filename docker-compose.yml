@@ -1,0 +1,52 @@
+version: "3"
+services:
+  db:
+    image: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: beryllium
+      POSTGRES_PASSWORD: beryllium
+
+  app:
+    image: beryllium_app
+    container_name: beryllium_app
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://beryllium:beryllium@db:5432/beryllium
+      SERVER_NAME: ${SERVER_NAME:?SERVER_NAME unset}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?ADMIN_EMAIL unset}
+      FROM_EMAIL: ${FROM_EMAIL:?FROM_EMAIL unset}
+      FROM_NAME: ${FROM_NAME:?FROM_NAME unset}
+      SESSION_KEY: ${SESSION_KEY:?SESSION_KEY unset}
+      PASSWORD_SALT: ${PASSWORD_SALT:?PASSWORD_SALT unset}
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY:?SENDGRID_API_KEY unset}
+      FIREBASE_CREDENTIALS: ${FIREBASE_CREDENTIALS:?FIREBASE_CREDENTIALS unset}
+      DASSET_API_SECRET: ${DASSET_API_SECRET:?DASSET_API_SECRET unset}
+      DASSET_ACCOUNT_ID: ${DASSET_ACCOUNT_ID:?DASSET_ACCOUNT_ID unset}
+      PAYOUT_GROUP_EMAIL: ${PAYOUT_GROUP_EMAIL:?PAYOUT_GROUP_EMAIL unset}
+      APLYID_BASE_URL: ${APLYID_BASE_URL:?APLYID_BASE_URL unset}
+      APLYID_API_KEY: ${APLYID_API_KEY:?APLYID_API_KEY unset}
+      APLYID_API_SECRET: ${APLYID_API_SECRET:?APLYID_API_SECRET unset}
+      APLYID_WEBHOOK_BEARER_TOKEN: ${APLYID_WEBHOOK_BEARER_TOKEN:?APLYID_WEBHOOK_BEARER_TOKEN unset}
+      B2_ACCOUNT_ID: ${B2_ACCOUNT_ID:?B2_ACCOUNT_ID unset}
+      B2_APPLICATION_KEY: ${B2_APPLICATION_KEY:?B2_APPLICATION_KEY unset}
+      KYC_BUCKET: ${KYC_BUCKET:?KYC_BUCKET unset}
+      WINDCAVE_API_USER: ${WINDCAVE_API_USER:?WINDCAVE_API_USER not set}
+      WINDCAVE_API_KEY: ${WINDCAVE_API_KEY:?WINDCAVE_API_KEY not set}
+      PAYOUT_SENDER_NAME: ${PAYOUT_SENDER_NAME:?PAYOUT_SENDER_NAME not set}
+      PAYOUT_SENDER_ACCOUNT: ${PAYOUT_SENDER_ACCOUNT:?PAYOUT_SENDER_ACCOUNT not set}
+      WINDCAVE_MOCK: ${WINDCAVE_MOCK:?WINDCAVE_MOCK not set}
+      EXCHANGE_ACCOUNT_MOCK: ${EXCHANGE_ACCOUNT_MOCK:?EXCHANGE_ACCOUNT_MOCK not set}
+    links:
+      - db
+    expose:
+      - "5000"
+
+  web:
+    image: beryllium_web
+    container_name: beryllium_web
+    restart: unless-stopped
+    links:
+      - app
+    ports:
+      - "0.0.0.0:80:80"

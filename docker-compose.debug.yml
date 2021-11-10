@@ -1,0 +1,9 @@
+version: "3"
+services:
+  
+  app:
+    environment:
+      - DEBUG=1
+    entrypoint: [ "python", "-m", "debugpy", "--listen", "0.0.0.0:10001", "-m", "app", "--wait-for-client", "--multiprocess", "-m", "flask", "run", "-h", "0.0.0.0", "-p", "5000" ]
+    ports:
+      - 10001:10001

@@ -40,12 +40,6 @@ else:
     app.config["TESTNET"] = False
 if os.getenv("DATABASE_URL"):
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
-else:
-    if app.config["TESTNET"]:
-        DATABASE_FILE = 'beryllium_testnet.db'
-    else:
-        DATABASE_FILE = 'beryllium.db'
-    app.config["SQLALCHEMY_DATABASE_URI"] = 'sqlite:///' + DATABASE_FILE
 if os.getenv("LOGO_URL_SRC"):
     app.config["LOGO_URL_SRC"] = os.getenv("LOGO_URL_SRC")
 else:
