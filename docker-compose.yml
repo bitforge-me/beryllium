@@ -43,10 +43,17 @@ services:
       - "5000"
 
   web:
-    image: beryllium_web
+    image: jonasal/nginx-certbot:2.4.1-nginx1.21.3-alpine
     container_name: beryllium_web
     restart: unless-stopped
+    environment:
+      CERTBOT_EMAIL: ${ADMIN_EMAIL:?ADMIN_EMAIL unset}
+      SERVER_NAME: ${SERVER_NAME:?SERVER_NAME unset}
     links:
       - app
     ports:
-      - "0.0.0.0:80:80"
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./web/nginx:/etc/nginx/templates
+      - ./web/certbot/conf:/etc/letsencrypt
