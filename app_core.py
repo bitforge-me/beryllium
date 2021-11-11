@@ -43,7 +43,7 @@ if os.getenv("DATABASE_URL"):
 if os.getenv("LOGO_URL_SRC"):
     app.config["LOGO_URL_SRC"] = os.getenv("LOGO_URL_SRC")
 else:
-    app.config["LOGO_URL_SRC"] = "http://" + os.getenv("SERVER_NAME") + "/static/assets/img/logo.png"
+    app.config["LOGO_URL_SRC"] = "/static/assets/img/logo.png"
 
 if os.getenv("LOGO_EMAIL_SRC"):
     app.config["LOGO_EMAIL_SRC"] = os.getenv("LOGO_EMAIL_SRC")
