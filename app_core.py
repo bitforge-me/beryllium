@@ -107,6 +107,9 @@ if os.getenv('EXCHANGE_ACCOUNT_MOCK'):
 else:
     app.config['EXCHANGE_ACCOUNT_MOCK'] = False
 
+if os.getenv('REGISTRATION_DISABLE'):
+    app.config['SECURITY_REGISTERABLE'] = False
+
 if os.getenv("FLASK_ADMIN_SWATCH"):
     app.config["FLASK_ADMIN_SWATCH"] = os.getenv("FLASK_ADMIN_SWATCH")
 

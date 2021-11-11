@@ -15,7 +15,7 @@ from web_utils import bad_request, get_json_params, auth_request, auth_request_g
 import utils
 import email_utils
 from models import CryptoWithdrawal, FiatDbTransaction, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, FiatDeposit, FiatWithdrawal, CryptoAddress, CryptoDeposit
-from app_core import db, limiter, APP_VERSION
+from app_core import app, db, limiter, APP_VERSION
 from security import tf_enabled_check, tf_method, tf_code_send, tf_method_set, tf_method_unset, tf_secret_init, tf_code_validate, user_datastore
 import payments_core
 import kyc_core
@@ -42,6 +42,8 @@ def version():
 @api.route('/user_register', methods=['POST'])
 @limiter.limit('10/hour')
 def user_register():
+    if not app.config['SECURITY_REGISTERABLE']:
+        return bad_request(web_utils.NOT_AVAILABLE)
     content = request.get_json(force=True)
     if content is None:
         return bad_request(web_utils.INVALID_JSON)
@@ -69,6 +71,8 @@ def user_register():
 @api.route('/user_registration_confirm/<token>', methods=['GET'])
 @limiter.limit('20/minute')
 def user_registration_confirm(token=None):
+    if not app.config['SECURITY_REGISTERABLE']:
+        return bad_request(web_utils.NOT_AVAILABLE)
     req = UserCreateRequest.from_token(db.session, token)
     if not req:
         flash('User registration request not found.', 'danger')
