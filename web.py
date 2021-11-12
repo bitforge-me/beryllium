@@ -245,6 +245,11 @@ def user_kyc():
             flash('User not found', 'danger')
     return render_template('user_kyc.html')
 
+@roles_accepted(Role.ROLE_ADMIN)
+@app.route('/config', methods=['GET'])
+def config():
+    return render_template('config.html')
+
 #
 # gevent class
 #

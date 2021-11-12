@@ -44,6 +44,13 @@
             </div>
             </a>
             {% endif %}
+            {% if current_user.has_role("admin") %}
+            <a href="{{ url_for('config') }}">
+            <div class='dashboard'>
+                <p><center>Config</center></p>
+            </div>
+            </a>
+            {% endif %}
         </div>
     </div>
 {% endif %}
