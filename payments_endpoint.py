@@ -29,8 +29,6 @@ def payment_interstitial(token=None):
         return redirect('/')
     if req.status != req.STATUS_CREATED:
         return redirect(url_for('payments.payment', token=token))
-    if req.broker_order:
-        broker.broker_order_update_and_commit(db.session, req.broker_order)
     if req.fiat_deposit:
         depwith.fiat_deposit_update_and_commit(db.session, req.fiat_deposit)
     if req.status != req.STATUS_CREATED:
