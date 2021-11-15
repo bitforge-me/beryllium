@@ -227,7 +227,9 @@ def user_kyc():
         user = User.from_email(db.session, email)
         if user:
             kycrequest = KycRequest.from_user(db.session, user)
-            if kycrequest.status == kycrequest.STATUS_COMPLETED:
+            if not kycrequest:
+                flash('User KYC not found', 'danger')
+            elif kycrequest.status == kycrequest.STATUS_COMPLETED:
                 token = kycrequest.token
                 pdf = kyc_core.download_pdf_backup(token)
                 if pdf:
@@ -239,8 +241,6 @@ def user_kyc():
                 flash('failed to download pdf', 'danger')
             elif kycrequest.status == kycrequest.STATUS_CREATED:
                 flash('User KYC is created but not completed', 'danger')
-            else:
-                flash('User KYC not found', 'danger')
         else:
             flash('User not found', 'danger')
     return render_template('user_kyc.html')
