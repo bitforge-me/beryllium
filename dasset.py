@@ -75,8 +75,10 @@ def _req_get(endpoint, params=None, subaccount_id=None):
     headers['x-account-id'] = DASSET_ACCOUNT_ID
     if subaccount_id:
         headers['x-subaccount-id'] = subaccount_id
-    logger.info('   GET - %s', url)
     r = requests.get(url, headers=headers, params=params)
+    logger.info('GET - %s', url)
+    headers['x-api-key'] = 'xxxxx'
+    logger.info('HEADERS - %s', headers)
     return r
 
 def _req_post(endpoint, params, subaccount_id=None):
@@ -86,8 +88,10 @@ def _req_post(endpoint, params, subaccount_id=None):
     headers['x-account-id'] = DASSET_ACCOUNT_ID
     if subaccount_id:
         headers['x-subaccount-id'] = subaccount_id
-    logger.info('   POST - %s', url)
     r = requests.post(url, headers=headers, data=json.dumps(params))
+    logger.info('POST - %s', url)
+    headers['x-api-key'] = 'xxxxx'
+    logger.info('HEADERS - %s', headers)
     return r
 
 def _req_subaccount_put(endpoint, params):
