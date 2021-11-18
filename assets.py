@@ -36,11 +36,11 @@ DOGE = Asset(symbol='DOGE', name='Dogecoin', decimals=8, withdraw_fee=Dec(5), is
 LTC = Asset(symbol='LTC', name='Litecoin', decimals=8, withdraw_fee=Dec('0.01'), is_crypto=True)
 WAVES = Asset(symbol='WAVES', name='Waves', decimals=8, withdraw_fee=Dec('0.001'), is_crypto=True)
 ASSETS = dict(NZD=NZD, BTC=BTC, ETH=ETH, DOGE=DOGE, LTC=LTC, WAVES=WAVES)
-MARKETS = {'BTC-NZD': Market(base_asset=BTC, quote_asset=NZD, min_order=Dec('0.01')), \
-    'ETH-NZD': Market(base_asset=ETH, quote_asset=NZD, min_order=Dec('0.1')), \
-    'DOGE-NZD': Market(base_asset=DOGE, quote_asset=NZD, min_order=Dec(50)), \
-    'LTC-NZD': Market(base_asset=LTC, quote_asset=NZD, min_order=Dec(1)),
-    'WAVES-BTC': Market(base_asset=WAVES, quote_asset=BTC, min_order=Dec(1))}
+MARKETS = {'BTC-NZD': Market(base_asset=BTC, quote_asset=NZD, min_order=Dec('0.0001')), \
+    'ETH-NZD': Market(base_asset=ETH, quote_asset=NZD, min_order=Dec('0.001')), \
+    'DOGE-NZD': Market(base_asset=DOGE, quote_asset=NZD, min_order=Dec(10)), \
+    'LTC-NZD': Market(base_asset=LTC, quote_asset=NZD, min_order=Dec('0.01')),
+    'WAVES-BTC': Market(base_asset=WAVES, quote_asset=BTC, min_order=Dec('0.1'))}
 
 class MarketSide(Enum):
     BID = 'bid'
