@@ -254,7 +254,7 @@ def _subaccount_req(reference):
     endpoint = '/subaccount'
     r = _req_subaccount_put(endpoint, params=dict(reference=reference))
     if r.status_code == 200:
-        return _parse_withdrawal(r.json()[0])
+        return r.json()[0]
     logger.error('request failed: %d, %s', r.status_code, r.content)
     return None
 
