@@ -10,7 +10,6 @@ from models import PayoutRequest, PayoutGroup, WindcavePaymentRequest, Role
 import web_utils
 import bnz_ib4b
 import payments_core
-import broker
 import depwith
 
 logger = logging.getLogger(__name__)
@@ -44,8 +43,6 @@ def payment_mock_confirm(token=None):
         flash('Sorry payment request not found', category='danger')
         return redirect('/')
     payments_core.payment_request_mock_confirm(req)
-    if req.broker_order:
-        broker.broker_order_update_and_commit(db.session, req.broker_order)
     if req.fiat_deposit:
         depwith.fiat_deposit_update_and_commit(db.session, req.fiat_deposit)
     return redirect(url_for('payments.payment', token=token))
