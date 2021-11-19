@@ -275,24 +275,22 @@ def bid_quote_amount(market, amount):
         return decimal.Decimal(-1), QuoteResult.AMOUNT_TOO_LOW
 
     base_asset, _ = assets.assets_from_market(market)
-    withdraw_fee = assets.asset_withdraw_fee(base_asset)
     order_book, _, broker_fee = order_book_req(market)
 
-    amount_total = amount + withdraw_fee
     filled = decimal.Decimal(0)
     total_price = decimal.Decimal(0)
     n = 0
-    while amount_total > filled:
+    while amount > filled:
         if n >= len(order_book.asks):
             break
         rate = decimal.Decimal(order_book.asks[n]['rate'])
         quantity = decimal.Decimal(order_book.asks[n]['quantity'])
         quantity_to_use = quantity
-        if quantity_to_use > amount_total - filled:
-            quantity_to_use = amount_total - filled
+        if quantity_to_use > amount - filled:
+            quantity_to_use = amount - filled
         filled += quantity_to_use
         total_price += quantity_to_use * rate
-        if filled == amount_total:
+        if filled == amount:
             return total_price * (decimal.Decimal(1) + broker_fee / decimal.Decimal(100)), QuoteResult.OK
         n += 1
 
@@ -304,25 +302,23 @@ def ask_quote_amount(market, amount):
         return decimal.Decimal(-1), QuoteResult.AMOUNT_TOO_LOW
 
     _, quote_asset = assets.assets_from_market(market)
-    withdraw_fee = assets.asset_withdraw_fee(quote_asset)
     order_book, _, broker_fee = order_book_req(market)
 
-    amount_total = amount
     filled = decimal.Decimal(0)
     total_price = decimal.Decimal(0)
     n = 0
-    while amount_total > filled:
+    while amount > filled:
         if n >= len(order_book.bids):
             break
         rate = decimal.Decimal(order_book.bids[n]['rate'])
         quantity = decimal.Decimal(order_book.bids[n]['quantity'])
         quantity_to_use = quantity
-        if quantity_to_use > amount_total - filled:
-            quantity_to_use = amount_total - filled
+        if quantity_to_use > amount - filled:
+            quantity_to_use = amount - filled
         filled += quantity_to_use
         total_price += quantity_to_use * rate
-        if filled == amount_total:
-            return total_price * (decimal.Decimal(1) - broker_fee / decimal.Decimal(100)) - withdraw_fee, QuoteResult.OK
+        if filled == amount:
+            return total_price * (decimal.Decimal(1) - broker_fee / decimal.Decimal(100)), QuoteResult.OK
         n += 1
 
     return decimal.Decimal(-1), QuoteResult.INSUFFICIENT_LIQUIDITY
