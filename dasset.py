@@ -53,8 +53,8 @@ def _parse_order_book(item):
 
 def _parse_order(item):
     side = assets.MarketSide.BID if item['type'] == 'BUY' else assets.MarketSide.ASK
-    return Munch(id=item['id'], base_asset=['baseSymbol'], quote_asset=['quoteSymbol'], date=item['date'], side=side, status=item['status'], \
-        base_amount=item['base_amount'], quote_amount=item['quote_amount'], filled=item['details']['filled'])
+    return Munch(id=item['id'], base_asset=['baseSymbol'], quote_asset=['quoteSymbol'], date=item['timestamp'], side=side, status=item['status'], \
+        base_amount=item['baseAmount'], quote_amount=item['quoteAmount'], filled=item['details']['filled'])
 
 def _parse_deposit(item):
     return Munch(id=item['id'], symbol=item['currencySymbol'], address=item['cryptoAddress'], amount=decimal.Decimal(item['quantity']), date=item['updatedAt'], status=item['status'], txid=item['txId'])
@@ -161,7 +161,7 @@ def _order_create_req(market, side, amount, price):
 
 def _orders_req(market, offset, limit):
     endpoint = '/orders'
-    page = offset / limit + 1
+    page = int(offset / limit) + 1
     r = _req_get(endpoint, params=dict(marketSymbol=market, limit=limit, page=page))
     if r.status_code == 200:
         return r.json()[0]
@@ -346,6 +346,8 @@ def order_status(order_id, market):
 
 def order_status_check(order_id, market):
     order = order_status(order_id, market)
+    if not order:
+        return False
     return order.status == 'Completed'
 
 def address_get_or_create(asset, subaccount_id):
