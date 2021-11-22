@@ -144,7 +144,7 @@ def _balances_req(asset, subaccount_id):
     logger.error('request failed: %d, %s', r.status_code, r.content)
     return None
 
-def _order_create_req(market, side, amount, price):
+def _order_create_req(subaccount_id, market, side, amount, price):
     assert isinstance(side, assets.MarketSide)
     assert isinstance(amount, decimal.Decimal)
     assert isinstance(price, decimal.Decimal)
@@ -153,26 +153,26 @@ def _order_create_req(market, side, amount, price):
         dasset_side = 'BUY'
     else:
         dasset_side = 'SELL'
-    r = _req_post(endpoint, params=dict(amount=float(amount), tradingPair=market, side=dasset_side, orderType='LIMIT', timeInForce='FILL_OR_KILL', limit=float(price)))
+    r = _req_post(endpoint, params=dict(amount=float(amount), tradingPair=market, side=dasset_side, orderType='LIMIT', timeInForce='FILL_OR_KILL', limit=float(price)), subaccount_id=subaccount_id)
     if r.status_code == 200:
         return r.json()[0]['order']['orderId']
     logger.error('request failed: %d, %s', r.status_code, r.content)
     return None
 
-def _orders_req(market, offset, limit):
+def _orders_req(subaccount_id, market, offset, limit):
     endpoint = '/orders'
     page = int(offset / limit) + 1
-    r = _req_get(endpoint, params=dict(marketSymbol=market, limit=limit, page=page))
+    r = _req_get(endpoint, params=dict(marketSymbol=market, limit=limit, page=page), subaccount_id=subaccount_id)
     if r.status_code == 200:
         return r.json()[0]
     logger.error('request failed: %d, %s', r.status_code, r.content)
     return None
 
-def _order_status_req(order_id, market):
+def _order_status_req(subaccount_id, order_id, market):
     offset = 0
     limit = 1000
     while True:
-        orders = _orders_req(market, offset, limit)
+        orders = _orders_req(subaccount_id, market, offset, limit)
         if orders:
             for item in orders['results']:
                 if item['id'] == order_id:
@@ -343,12 +343,12 @@ def account_balances(asset=None, subaccount_id=None):
 def order_create(subaccount_id, market, side, amount, price):
     if _account_mock():
         return utils.generate_key()
-    return _order_create_req(market, side, amount, price)
+    return _order_create_req(subaccount_id, market, side, amount, price)
 
 def order_status(subaccount_id, order_id, market):
     if _account_mock():
         return Munch(id=order_id, status='Completed')
-    return _order_status_req(order_id, market)
+    return _order_status_req(subaccount_id, order_id, market)
 
 def order_status_check(subaccount_id, order_id, market):
     order = order_status(subaccount_id, order_id, market)
