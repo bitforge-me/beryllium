@@ -44,3 +44,7 @@ def qrcode_pngb64_create(data: str, box_size: int = 10) -> str:
     output = qrcode_create(factory, data, box_size)
     b64 = base64.b64encode(output.getvalue()).decode('utf-8')
     return b64
+
+def round_dec(value: decimal.Decimal, places: int) -> decimal.Decimal:
+    fmt = '.' + (places - 1) * '0' + '1'
+    return value.quantize(decimal.Decimal(fmt), rounding=decimal.ROUND_DOWN)

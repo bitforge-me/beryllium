@@ -92,6 +92,7 @@ def _req_post(endpoint, params, subaccount_id=None):
     logger.info('POST - %s', url)
     headers['x-api-key'] = 'xxxxx'
     logger.info('HEADERS - %s', headers)
+    logger.info('PARAMS - %s', params)
     return r
 
 def _req_put(endpoint, params):

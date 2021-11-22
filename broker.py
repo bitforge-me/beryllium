@@ -10,6 +10,7 @@ import websocket
 import email_utils
 import web_utils
 import coordinator
+import utils
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,7 @@ def _broker_order_action(db_session, broker_order):
     base_amount_dec = assets.asset_int_to_dec(broker_order.base_asset, broker_order.base_amount)
     quote_amount_dec = assets.asset_int_to_dec(broker_order.quote_asset, broker_order.quote_amount)
     price = quote_amount_dec / base_amount_dec
+    price = utils.round_dec(price, assets.asset_decimals(broker_order.quote_asset))
     side = MarketSide.parse(broker_order.side)
     # check side
     if not side:
@@ -96,7 +98,7 @@ def _broker_order_action(db_session, broker_order):
     if broker_order.status == broker_order.STATUS_FIAT_DEBITED:
         exchange_order_id = dasset.order_create(subaccount_id, broker_order.market, side, base_amount_dec, price)
         if not exchange_order_id:
-            msg = f'{broker_order.token}, {broker_order.market}, {broker_order.side}, {broker_order.base_amount}'
+            msg = f'{broker_order.token}, {broker_order.market}, {broker_order.side}, {base_amount_dec}, {quote_amount_dec}, {price}'
             logger.error('failed to create exchange order - %s', msg)
             email_utils.send_email(logger, 'failed to create exchange order', msg)
             return updated_records
