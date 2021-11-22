@@ -57,6 +57,10 @@ def order_check_funds(db_session, user, asset, amount_dec):
 def _broker_order_action(db_session, broker_order):
     logger.info('processing broker order %s (%s)..', broker_order.token, broker_order.status)
     updated_records = []
+    if not broker_order.user.dasset_subaccount:
+        logger.error('user %s does not have dasset subaccount', broker_order.user.email)
+        return updated_records
+    subaccount_id = broker_order.user.dasset_subaccount.subaccount_id
     base_amount_dec = assets.asset_int_to_dec(broker_order.base_asset, broker_order.base_amount)
     quote_amount_dec = assets.asset_int_to_dec(broker_order.quote_asset, broker_order.quote_amount)
     price = quote_amount_dec / base_amount_dec
@@ -90,7 +94,7 @@ def _broker_order_action(db_session, broker_order):
         return updated_records
     # create exchange order
     if broker_order.status == broker_order.STATUS_FIAT_DEBITED:
-        exchange_order_id = dasset.order_create(broker_order.market, side, base_amount_dec, price)
+        exchange_order_id = dasset.order_create(subaccount_id, broker_order.market, side, base_amount_dec, price)
         if not exchange_order_id:
             msg = f'{broker_order.token}, {broker_order.market}, {broker_order.side}, {broker_order.base_amount}'
             logger.error('failed to create exchange order - %s', msg)
@@ -105,7 +109,7 @@ def _broker_order_action(db_session, broker_order):
     # finalize
     if broker_order.status == broker_order.STATUS_EXCHANGE:
         # check exchange order
-        if dasset.order_status_check(broker_order.exchange_order.exchange_reference, broker_order.market):
+        if dasset.order_status_check(subaccount_id, broker_order.exchange_order.exchange_reference, broker_order.market):
             if side is MarketSide.ASK and asset_is_fiat(broker_order.quote_asset):
                 asset = broker_order.quote_asset
                 amount_int = broker_order.quote_amount

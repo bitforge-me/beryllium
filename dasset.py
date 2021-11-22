@@ -94,7 +94,7 @@ def _req_post(endpoint, params, subaccount_id=None):
     logger.info('HEADERS - %s', headers)
     return r
 
-def _req_subaccount_put(endpoint, params):
+def _req_put(endpoint, params):
     url = URL_BASE + endpoint
     headers = {}
     headers['x-api-key'] = DASSET_API_SECRET
@@ -252,11 +252,19 @@ def _crypto_deposit_status_req(deposit_id):
 
 def _subaccount_req(reference):
     endpoint = '/subaccount'
-    r = _req_subaccount_put(endpoint, params=dict(reference=reference))
+    r = _req_put(endpoint, params=dict(reference=reference))
     if r.status_code == 200:
         return r.json()[0]
     logger.error('request failed: %d, %s', r.status_code, r.content)
     return None
+
+def _transfer_req(to_master, from_subaccount_id, to_subaccount_id, asset, amount):
+    endpoint = '/subaccount'
+    r = _req_put(endpoint, params=dict(toMasterAccount=to_master, fromSubaccountId=from_subaccount_id, toSubaccountId=to_subaccount_id, asset=asset, amount=str(amount)))
+    if r.status_code == 200:
+        return True
+    logger.error('request failed: %d, %s', r.status_code, r.content)
+    return False
 
 #
 # Public functions
@@ -274,7 +282,6 @@ def bid_quote_amount(market, amount):
     if amount < assets.MARKETS[market].min_order:
         return decimal.Decimal(-1), QuoteResult.AMOUNT_TOO_LOW
 
-    base_asset, _ = assets.assets_from_market(market)
     order_book, _, broker_fee = order_book_req(market)
 
     filled = decimal.Decimal(0)
@@ -301,7 +308,6 @@ def ask_quote_amount(market, amount):
     if amount < assets.MARKETS[market].min_order:
         return decimal.Decimal(-1), QuoteResult.AMOUNT_TOO_LOW
 
-    _, quote_asset = assets.assets_from_market(market)
     order_book, _, broker_fee = order_book_req(market)
 
     filled = decimal.Decimal(0)
@@ -334,18 +340,18 @@ def account_balances(asset=None, subaccount_id=None):
         return balances
     return _balances_req(asset, subaccount_id)
 
-def order_create(market, side, amount, price):
+def order_create(subaccount_id, market, side, amount, price):
     if _account_mock():
         return utils.generate_key()
     return _order_create_req(market, side, amount, price)
 
-def order_status(order_id, market):
+def order_status(subaccount_id, order_id, market):
     if _account_mock():
         return Munch(id=order_id, status='Completed')
     return _order_status_req(order_id, market)
 
-def order_status_check(order_id, market):
-    order = order_status(order_id, market)
+def order_status_check(subaccount_id, order_id, market):
+    order = order_status(subaccount_id, order_id, market)
     if not order:
         return False
     return order.status == 'Completed'
@@ -395,6 +401,12 @@ def subaccount_create(reference):
     if _account_mock():
         return utils.generate_key()
     return _subaccount_req(reference)
+
+def transfer(to_subaccount_id, from_subaccount_id, asset, amount):
+    assert to_subaccount_id is None or from_subaccount_id is None
+    assert isinstance(amount, decimal.Decimal)
+    to_master = not to_subaccount_id
+    return _transfer_req(to_master, from_subaccount_id, to_subaccount_id, asset, amount)
 
 def funds_available_user(asset, amount, subaccount_id):
     assert isinstance(amount, decimal.Decimal)
