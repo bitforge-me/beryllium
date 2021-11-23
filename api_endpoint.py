@@ -675,6 +675,43 @@ def address_book_req():
     entries = [entry.to_json() for entry in entries]
     return jsonify(entries=entries, asset=asset)
 
+def _broker_order_validate(user, market, side, amount_dec):
+    def return_error(err_response):
+        return err_response, None, None, None, None, None
+    if market not in assets.MARKETS:
+        return return_error(bad_request(web_utils.INVALID_MARKET))
+    side = MarketSide.parse(side)
+    if not side:
+        return return_error(bad_request(web_utils.INVALID_SIDE))
+    amount_dec = decimal.Decimal(amount_dec)
+    if market_side_is(side, MarketSide.BID):
+        quote_amount_dec, err = dasset.bid_quote_amount(market, amount_dec)
+    else:
+        quote_amount_dec, err = dasset.ask_quote_amount(market, amount_dec)
+    if err == dasset.QuoteResult.INSUFFICIENT_LIQUIDITY:
+        return return_error(bad_request(web_utils.INSUFFICIENT_LIQUIDITY))
+    if err == dasset.QuoteResult.AMOUNT_TOO_LOW:
+        return return_error(bad_request(web_utils.AMOUNT_TOO_LOW))
+    base_asset, quote_asset = assets.assets_from_market(market)
+    err_msg = broker.order_check_funds(db.session, user, quote_asset, quote_amount_dec)
+    if err_msg:
+        return return_error(bad_request(err_msg))
+    base_amount = assets.asset_dec_to_int(base_asset, amount_dec)
+    quote_amount = assets.asset_dec_to_int(quote_asset, quote_amount_dec)
+    return None, side, base_asset, quote_asset, base_amount, quote_amount
+
+@api.route('/broker_order_validate', methods=['POST'])
+def broker_order_validate():
+    params, api_key, err_response = auth_request_get_params(db, ["market", "side", "amount_dec"])
+    if err_response:
+        return err_response
+    market, side, amount_dec = params
+    err_response, side, base_asset, quote_asset, base_amount, quote_amount = _broker_order_validate(api_key.user, market, side, amount_dec)
+    if err_response:
+        return err_response
+    broker_order = BrokerOrder(api_key.user, market, side.value, base_asset, quote_asset, base_amount, quote_amount)
+    return jsonify(broker_order=broker_order.to_json())
+
 @api.route('/broker_order_create', methods=['POST'])
 def broker_order_create():
     params, api_key, err_response = auth_request_get_params(db, ["market", "side", "amount_dec"])
@@ -683,27 +720,10 @@ def broker_order_create():
     market, side, amount_dec = params
     if not api_key.user.kyc_validated():
         return bad_request(web_utils.KYC_NOT_VALIDATED)
-    if market not in assets.MARKETS:
-        return bad_request(web_utils.INVALID_MARKET)
-    side = MarketSide.parse(side)
-    if not side:
-        return bad_request(web_utils.INVALID_SIDE)
-    amount_dec = decimal.Decimal(amount_dec)
-    if market_side_is(side, MarketSide.BID):
-        quote_amount_dec, err = dasset.bid_quote_amount(market, amount_dec)
-    else:
-        quote_amount_dec, err = dasset.ask_quote_amount(market, amount_dec)
-    if err == dasset.QuoteResult.INSUFFICIENT_LIQUIDITY:
-        return bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
-    if err == dasset.QuoteResult.AMOUNT_TOO_LOW:
-        return bad_request(web_utils.AMOUNT_TOO_LOW)
-    base_asset, quote_asset = assets.assets_from_market(market)
-    err_msg = broker.order_check_funds(db.session, api_key.user, quote_asset, quote_amount_dec)
-    if err_msg:
-        return bad_request(err_msg)
-    amount = assets.asset_dec_to_int(base_asset, amount_dec)
-    quote_amount = assets.asset_dec_to_int(quote_asset, quote_amount_dec)
-    broker_order = BrokerOrder(api_key.user, market, side.value, base_asset, quote_asset, amount, quote_amount)
+    err_response, side, base_asset, quote_asset, base_amount, quote_amount = _broker_order_validate(api_key.user, market, side, amount_dec)
+    if err_response:
+        return err_response
+    broker_order = BrokerOrder(api_key.user, market, side.value, base_asset, quote_asset, base_amount, quote_amount)
     db.session.add(broker_order)
     db.session.commit()
     websocket.broker_order_new_event(broker_order)
