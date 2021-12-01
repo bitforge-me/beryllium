@@ -65,9 +65,9 @@ def email_referral(logger: Logger, referral: Referral):
     if not sender_name:
         sender_name = referral.user.email
     asset_name = app.config["ASSET_NAME"]
-    spend = utils.int2asset(referral.recipient_min_spend)
+    spend = referral.recipient_min_spend
     spend_asset = app.config["REFERRAL_SPEND_ASSET"]
-    gift = f"Spend {spend} {spend_asset} and recieve {utils.int2asset(referral.reward_recipient)} {asset_name}"
+    gift = f"Spend {spend} {spend_asset} and recieve {referral.reward_recipient} {asset_name}"
     if referral.reward_recipient_type == referral.REWARD_TYPE_PERCENT:
         gift = f"Spend {spend} {spend_asset} or more and recieve {referral.reward_recipient}% off your purchase price"
     msg = f"You have been recieved a referral from {sender_name}<br/><br/>{gift}<br/<br/><img src=\"cid:qrcode\"><br/><br/>"

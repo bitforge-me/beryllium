@@ -65,14 +65,6 @@ def process_deposits_and_broker_orders():
         broker.broker_orders_update(db.session)
 
 #
-# Jinja2 filters
-#
-
-@app.template_filter()
-def int2asset(num):
-    return utils.int2asset(num)
-
-#
 # Flask views
 #
 

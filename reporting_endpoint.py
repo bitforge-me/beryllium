@@ -9,9 +9,7 @@ from sqlalchemy import func, and_
 from flask import Blueprint, render_template, redirect
 from flask_security import roles_accepted
 
-from app_core import db
 from models import Role, User, BrokerOrder
-import utils
 import dasset
 import assets
 
@@ -85,23 +83,13 @@ def dashboard_general():
 @reporting.route("/dashboard_user")
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def dashboard_user():
-    users = User.query.all()
     user_count = User.query.count()
     user_count_today = user_counting(User, TODAY(), TOMORROW())
     user_count_yesterday = user_counting(User, YESTERDAY(), TODAY())
     user_count_weekly = user_counting(User, MONDAY(), NEXT_MONDAY())
     user_count_monthly = user_counting(User, FIRST_DAY_CURRENT_MONTH(), FIRST_DAY_NEXT_MONTH())
     user_count_yearly = user_counting(User, FIRST_DAY_CURRENT_YEAR(), FIRST_DAY_NEXT_YEAR())
-    users_balances = []
-    for account_user in users:
-        user = User.from_email(db.session, account_user.email)
-        if user:
-            balance = 0
-            balance = utils.int2asset(balance)
-            email_balance = {'user': user.email, 'balance': balance}
-            users_balances.append(email_balance)
-            sorted_users_balances = sorted(users_balances, key=lambda k:float(k['balance']), reverse=True)
-    return render_template("reporting/dashboard_user.html", user_count=user_count, users_balances=sorted_users_balances[:10], user_count_today=user_count_today, user_count_yesterday=user_count_yesterday, user_count_weekly=user_count_weekly, user_count_monthly=user_count_monthly, user_count_yearly=user_count_yearly, user_count_lifetime=user_count)
+    return render_template("reporting/dashboard_user.html", user_count_today=user_count_today, user_count_yesterday=user_count_yesterday, user_count_weekly=user_count_weekly, user_count_monthly=user_count_monthly, user_count_yearly=user_count_yearly, user_count_lifetime=user_count)
 
 @reporting.route("/dashboard_report_broker_order")
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)

@@ -9,12 +9,6 @@ import qrcode
 import qrcode.image.svg
 import qrcode.image.pil
 
-def int2asset(num):
-    if num is None:
-        return '!ERR!'
-    num = decimal.Decimal(num)/100
-    return f'{num:0.2f}'
-
 def generate_key(chars: int = 10, upper: bool = True) -> str:
     alphabet = string.ascii_letters + string.digits
     if upper:
