@@ -148,21 +148,33 @@ def crypto_deposits_check(db_session):
         for asset in asset_list:
             dasset_deposits = dasset.crypto_deposits(asset, user.dasset_subaccount.subaccount_id)
             for dasset_deposit in dasset_deposits:
-                completed = dasset.crypto_deposit_completed(dasset_deposit)
-                crypto_deposit = CryptoDeposit.from_txid(db_session, dasset_deposit.txid)
-                if not crypto_deposit:
-                    amount_int = assets.asset_dec_to_int(asset, dasset_deposit.amount)
-                    crypto_deposit = CryptoDeposit(user, asset, amount_int, dasset_deposit.id, dasset_deposit.txid, completed)
-                    new_crypto_deposits.append(crypto_deposit)
-                elif not crypto_deposit.confirmed and completed:
-                    crypto_deposit.confirmed = completed
-                    updated_crypto_deposits.append(crypto_deposit)
-                if not crypto_deposit.crypto_address:
-                    addr = CryptoAddress.from_addr(db_session, dasset_deposit.address)
-                    if addr:
-                        crypto_deposit.crypto_address = addr
-                db_session.add(crypto_deposit)
-    db_session.commit()
+                with coordinator.lock:
+                    completed = dasset.crypto_deposit_completed(dasset_deposit)
+                    crypto_deposit = CryptoDeposit.from_txid(db_session, dasset_deposit.txid)
+                    if not crypto_deposit:
+                        amount_int = assets.asset_dec_to_int(asset, dasset_deposit.amount)
+                        crypto_deposit = CryptoDeposit(user, asset, amount_int, dasset_deposit.id, dasset_deposit.txid, completed)
+                        new_crypto_deposits.append(crypto_deposit)
+                    elif not crypto_deposit.confirmed and completed:
+                        # if deposit now completed transfer the funds to the master account
+                        if not dasset.transfer(None, user.dasset_subaccount.subaccount_id, asset, dasset_deposit.amount):
+                            logger.error('failed to transfer funds from subaccount to master %s', dasset_deposit.id)
+                            continue
+                        # and credit the users account
+                        ftx = fiatdb_core.tx_create(db_session, user, FiatDbTransaction.ACTION_CREDIT, asset, amount_int, f'crypto deposit: {crypto_deposit.token}')
+                        if not ftx:
+                            logger.error('failed to create fiatdb transaction for crypto deposit %s', crypto_deposit.token)
+                            continue
+                        db_session.add(ftx)
+                        # update crypto deposit
+                        crypto_deposit.confirmed = completed
+                        updated_crypto_deposits.append(crypto_deposit)
+                    if not crypto_deposit.crypto_address:
+                        addr = CryptoAddress.from_addr(db_session, dasset_deposit.address)
+                        if addr:
+                            crypto_deposit.crypto_address = addr
+                    db_session.add(crypto_deposit)
+                    db_session.commit()
     # send updates
     for deposit in new_crypto_deposits:
         _crypto_deposit_email(deposit)

@@ -453,18 +453,12 @@ def balances_req():
     api_key, err_response = auth_request(db)
     if err_response:
         return err_response
-    # get subaccount for user
-    subaccount = broker.user_subaccount_get_or_create(db.session, api_key.user)
-    if not subaccount:
-        return bad_request(web_utils.FAILED_EXCHANGE)
-    subaccount_id = subaccount.subaccount_id
-    # commit if subaccount was created
-    db.session.commit()
-    balances = dasset.account_balances(subaccount_id=subaccount_id)
-    nzd_balance = fiatdb_core.user_balance(db.session, assets.NZD.symbol, api_key.user)
-    nzd_amount_dec = assets.asset_int_to_dec(assets.NZD.symbol, nzd_balance)
-    balances.append(dict(symbol=assets.NZD.symbol, name=assets.NZD.name, total=str(nzd_amount_dec), available=str(nzd_amount_dec), decimals=assets.NZD.decimals))
-    return jsonify(balances=balances)
+    balances = fiatdb_core.user_balances(db.session, api_key.user)
+    balances_formatted = {}
+    for asset, balance in balances.items():
+        balance_dec = assets.asset_int_to_dec(asset, balance)
+        balances_formatted[asset] = dict(symbol=asset, name=assets.ASSETS[asset].name, total=str(balance_dec), available=str(balance_dec))
+    return jsonify(balances=balances_formatted)
 
 @api.route('/crypto_deposit_address', methods=['POST'])
 def crypto_deposit_address_req():
@@ -527,17 +521,22 @@ def crypto_withdrawal_create_req():
     subaccount = broker.user_subaccount_get_or_create(db.session, api_key.user)
     if not subaccount:
         return bad_request(web_utils.FAILED_EXCHANGE)
-    subaccount_id = subaccount.subaccount_id
     with coordinator.lock:
-        ### TODO - account for dasset withdrawal fee
-        if not dasset.funds_available_user(asset, amount_dec, subaccount_id):
+        if not fiatdb_core.funds_available_user(db.session, api_key.user, asset, amount_dec):
             return bad_request(web_utils.INSUFFICIENT_BALANCE)
-        amount_int = assets.asset_dec_to_int(asset, amount_dec)
+        if not dasset.funds_available_us(asset, amount_dec):
+            return bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
         withdrawal_id = dasset.crypto_withdrawal_create(asset, amount_dec, recipient)
         if not withdrawal_id:
             return bad_request(web_utils.FAILED_EXCHANGE)
+        amount_int = assets.asset_dec_to_int(asset, amount_dec)
         crypto_withdrawal = CryptoWithdrawal(api_key.user, asset, amount_int, recipient, withdrawal_id)
+        ftx = fiatdb_core.tx_create(db.session, api_key.user, FiatDbTransaction.ACTION_DEBIT, asset, amount_int, f'crypto withdrawal: {crypto_withdrawal.token}')
+        if not ftx:
+            logger.error('failed to create fiatdb transaction for crypto withdrawal %s', crypto_withdrawal.token)
+            return bad_request(web_utils.FAILED_PAYMENT_CREATE)
         db.session.add(crypto_withdrawal)
+        db.session.add(ftx)
         db.session.commit()
     websocket.crypto_withdrawal_new_event(crypto_withdrawal)
     return jsonify(withdrawal=crypto_withdrawal.to_json())
@@ -677,7 +676,7 @@ def address_book_req():
 
 def _broker_order_validate(user, market, side, amount_dec):
     def return_error(err_response):
-        return err_response, None, None, None, None, None
+        return err_response, None
     if market not in assets.MARKETS:
         return return_error(bad_request(web_utils.INVALID_MARKET))
     side = MarketSide.parse(side)
@@ -693,12 +692,13 @@ def _broker_order_validate(user, market, side, amount_dec):
     if err == dasset.QuoteResult.AMOUNT_TOO_LOW:
         return return_error(bad_request(web_utils.AMOUNT_TOO_LOW))
     base_asset, quote_asset = assets.assets_from_market(market)
-    err_msg = broker.order_check_funds(db.session, user, quote_asset, quote_amount_dec)
-    if err_msg:
-        return return_error(bad_request(err_msg))
     base_amount = assets.asset_dec_to_int(base_asset, amount_dec)
     quote_amount = assets.asset_dec_to_int(quote_asset, quote_amount_dec)
-    return None, side, base_asset, quote_asset, base_amount, quote_amount
+    order = BrokerOrder(user, market, side.value, base_asset, quote_asset, base_amount, quote_amount)
+    err_msg = broker.order_check_funds(db.session, order)
+    if err_msg:
+        return return_error(bad_request(err_msg))
+    return None, order
 
 @api.route('/broker_order_validate', methods=['POST'])
 def broker_order_validate():
@@ -706,11 +706,10 @@ def broker_order_validate():
     if err_response:
         return err_response
     market, side, amount_dec = params
-    err_response, side, base_asset, quote_asset, base_amount, quote_amount = _broker_order_validate(api_key.user, market, side, amount_dec)
+    err_response, order = _broker_order_validate(api_key.user, market, side, amount_dec)
     if err_response:
         return err_response
-    broker_order = BrokerOrder(api_key.user, market, side.value, base_asset, quote_asset, base_amount, quote_amount)
-    return jsonify(broker_order=broker_order.to_json())
+    return jsonify(broker_order=order.to_json())
 
 @api.route('/broker_order_create', methods=['POST'])
 def broker_order_create():
@@ -752,13 +751,30 @@ def broker_order_accept():
         return bad_request(web_utils.EXPIRED)
     if broker_order.status != broker_order.STATUS_CREATED:
         return bad_request(web_utils.INVALID_STATUS)
-    quote_amount_dec = assets.asset_int_to_dec(broker_order.quote_asset, broker_order.quote_amount)
-    err_msg = broker.order_check_funds(db.session, api_key.user, broker_order.quote_asset, quote_amount_dec)
-    if err_msg:
-        return bad_request(err_msg)
-    broker_order.status = broker_order.STATUS_READY
-    db.session.add(broker_order)
-    db.session.commit()
+    side = MarketSide.parse(broker_order.side)
+    if not side:
+        return bad_request(web_utils.INVALID_SIDE)
+    with coordinator.lock:
+        # check funds
+        err_msg = broker.order_check_funds(db.session, broker_order)
+        if err_msg:
+            return bad_request(err_msg)
+        # debit users account
+        if side is MarketSide.BID:
+            asset = broker_order.quote_asset
+            amount_int = broker_order.quote_amount
+        else:
+            asset = broker_order.base_asset
+            amount_int = broker_order.base_amount
+        ftx = fiatdb_core.tx_create(db.session, broker_order.user, FiatDbTransaction.ACTION_DEBIT, asset, amount_int, f'broker order: {broker_order.token}')
+        if not ftx:
+            logger.error('failed to create fiatdb transaction for broker order %s', broker_order.token)
+            return bad_request(web_utils.FAILED_PAYMENT_CREATE)
+        # update status
+        broker_order.status = broker_order.STATUS_READY
+        db.session.add(broker_order)
+        db.session.add(ftx)
+        db.session.commit()
     websocket.broker_order_update_event(broker_order)
     return jsonify(broker_order=broker_order.to_json())
 

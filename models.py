@@ -377,7 +377,6 @@ class BrokerOrderSchema(Schema):
 class BrokerOrder(db.Model, FromUserMixin, FromTokenMixin):
     STATUS_CREATED = 'created'
     STATUS_READY = 'ready'
-    STATUS_FIAT_DEBITED = 'fiat_debited'
     STATUS_EXCHANGE = 'exchanging'
     STATUS_COMPLETED = 'completed'
     STATUS_EXPIRED = 'expired'

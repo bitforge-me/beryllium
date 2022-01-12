@@ -13,7 +13,6 @@ from flask_security import roles_accepted
 
 from app_core import app, db, socketio
 from models import User, Role, Topic, PushNotificationLocation, BrokerOrder, CryptoDeposit, FiatDeposit, KycRequest
-import utils
 import email_utils
 from fcm import FCM
 from web_utils import bad_request, get_json_params, get_json_params_optional

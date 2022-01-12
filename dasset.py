@@ -5,6 +5,7 @@ from enum import Enum
 
 import requests
 from munch import Munch
+import pyotp
 
 import utils
 from app_core import app
@@ -59,10 +60,21 @@ def _parse_order(item):
 def _parse_deposit(item):
     return Munch(id=item['id'], symbol=item['currencySymbol'], address=item['cryptoAddress'], amount=decimal.Decimal(item['quantity']), date=item['updatedAt'], status=item['status'], txid=item['txId'])
 
-def _parse_withdrawal(item):
+def _parse_withdrawal_full(item):
     id_ = item['id'] if 'id' in item else item['transactionId']
     amount = item['amount'] if 'amount' in item else item['quantity']
     return Munch(id=id_, symbol=item['currencySymbol'], amount=amount, date=item['createdAt'], status=item['status'], address=item['cryptoAddress'])
+
+def _parse_withdrawal_2fa(item):
+    id_ = item['transactionId']
+    status = item['mfaStatus']
+    return Munch(id=id_, symbol='', amount=0, date='', status=status, address='')
+
+def _parse_withdrawal(item):
+    try:
+        return _parse_withdrawal_full(item)
+    except: # pylint: disable=bare-except
+        return _parse_withdrawal_2fa(item)
 
 #
 # Dasset API Requests
@@ -145,7 +157,7 @@ def _balances_req(asset, subaccount_id):
     logger.error('request failed: %d, %s', r.status_code, r.content)
     return None
 
-def _order_create_req(subaccount_id, market, side, amount, price):
+def _order_create_req(market, side, amount, price):
     assert isinstance(side, assets.MarketSide)
     assert isinstance(amount, decimal.Decimal)
     assert isinstance(price, decimal.Decimal)
@@ -154,26 +166,26 @@ def _order_create_req(subaccount_id, market, side, amount, price):
         dasset_side = 'BUY'
     else:
         dasset_side = 'SELL'
-    r = _req_post(endpoint, params=dict(amount=float(amount), tradingPair=market, side=dasset_side, orderType='LIMIT', timeInForce='FILL_OR_KILL', limit=float(price)), subaccount_id=subaccount_id)
+    r = _req_post(endpoint, params=dict(amount=float(amount), tradingPair=market, side=dasset_side, orderType='LIMIT', timeInForce='FILL_OR_KILL', limit=float(price)))
     if r.status_code == 200:
         return r.json()[0]['order']['orderId']
     logger.error('request failed: %d, %s', r.status_code, r.content)
     return None
 
-def _orders_req(subaccount_id, market, offset, limit):
+def _orders_req(market, offset, limit):
     endpoint = '/orders'
     page = int(offset / limit) + 1
-    r = _req_get(endpoint, params=dict(marketSymbol=market, limit=limit, page=page), subaccount_id=subaccount_id)
+    r = _req_get(endpoint, params=dict(marketSymbol=market, limit=limit, page=page))
     if r.status_code == 200:
         return r.json()[0]
     logger.error('request failed: %d, %s', r.status_code, r.content)
     return None
 
-def _order_status_req(subaccount_id, order_id, market):
+def _order_status_req(order_id, market):
     offset = 0
     limit = 1000
     while True:
-        orders = _orders_req(subaccount_id, market, offset, limit)
+        orders = _orders_req(market, offset, limit)
         if orders:
             for item in orders['results']:
                 if item['id'] == order_id:
@@ -191,7 +203,8 @@ def _crypto_withdrawal_create_req(asset, amount, address):
     endpoint = '/crypto/withdrawals'
     r = _req_post(endpoint, params=dict(currencySymbol=asset, quantity=float(amount), cryptoAddress=address))
     if r.status_code == 200:
-        return r.json()[0]['withdrawal']['id']
+        withdrawal = _parse_withdrawal(r.json()[0])
+        return withdrawal['id']
     logger.error('request failed: %d, %s', r.status_code, r.content)
     return None
 
@@ -202,6 +215,14 @@ def _crypto_withdrawal_status_req(withdrawal_id):
         return _parse_withdrawal(r.json()[0])
     logger.error('request failed: %d, %s', r.status_code, r.content)
     return None
+
+def _crypto_withdrawal_confirm_req(withdrawal_id, totp_code):
+    endpoint = '/crypto/withdrawals/confirm'
+    r = _req_post(endpoint, params=dict(txId=withdrawal_id, token=totp_code))
+    if r.status_code == 200:
+        return True
+    logger.error('request failed: %d, %s', r.status_code, r.content)
+    return False
 
 def _addresses_req(asset, subaccount_id):
     endpoint = f'/addresses/{asset}'
@@ -341,18 +362,18 @@ def account_balances(asset=None, subaccount_id=None):
         return balances
     return _balances_req(asset, subaccount_id)
 
-def order_create(subaccount_id, market, side, amount, price):
+def order_create(market, side, amount, price):
     if _account_mock():
         return utils.generate_key()
-    return _order_create_req(subaccount_id, market, side, amount, price)
+    return _order_create_req(market, side, amount, price)
 
-def order_status(subaccount_id, order_id, market):
+def order_status(order_id, market):
     if _account_mock():
         return Munch(id=order_id, status='Completed')
-    return _order_status_req(subaccount_id, order_id, market)
+    return _order_status_req(order_id, market)
 
-def order_status_check(subaccount_id, order_id, market):
-    order = order_status(subaccount_id, order_id, market)
+def order_status_check(order_id, market):
+    order = order_status(order_id, market)
     if not order:
         return False
     return order.status == 'Completed'
@@ -379,6 +400,12 @@ def crypto_withdrawal_status_check(withdrawal_id):
         return True
     withdrawal = _crypto_withdrawal_status_req(withdrawal_id)
     return withdrawal and withdrawal.status == 'Completed'
+
+def crypto_withdrawal_confirm(withdrawal_id):
+    key = app.config['DASSET_TOTP_KEY']
+    totp = pyotp.TOTP(key)
+    code = totp.now()
+    return _crypto_withdrawal_confirm_req(withdrawal_id, code)
 
 def crypto_deposits(asset, subaccount_id):
     deposits = []
@@ -408,13 +435,6 @@ def transfer(to_subaccount_id, from_subaccount_id, asset, amount):
     assert isinstance(amount, decimal.Decimal)
     to_master = not to_subaccount_id
     return _transfer_req(to_master, from_subaccount_id, to_subaccount_id, asset, amount)
-
-def funds_available_user(asset, amount, subaccount_id):
-    assert isinstance(amount, decimal.Decimal)
-    for balance in account_balances(asset, subaccount_id):
-        if balance.symbol == asset:
-            return balance.available >= amount
-    return False
 
 def funds_available_us(asset, amount):
     assert isinstance(amount, decimal.Decimal)
