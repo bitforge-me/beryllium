@@ -32,6 +32,11 @@ import assets
 import kyc_core
 import fiatdb_core
 
+USER_BALANCE_SHOW = 'show balance'
+USER_BALANCE_CREDIT = 'credit'
+USER_BALANCE_DEBIT = 'debit'
+USER_BALANCE_SWEEP = 'sweep'
+
 #jsonrpc = JSONRPC(app, "/api")
 logger = logging.getLogger(__name__)
 fcm = FCM(app.config["FIREBASE_CREDENTIALS"])
@@ -241,17 +246,9 @@ def user_kyc():
 @roles_accepted(Role.ROLE_ADMIN)
 @app.route('/user_balance', methods=['GET', 'POST'])
 def user_balance():
-    BALANCE = 'check_balance'
-    CREDIT = 'credit'
-    DEBIT = 'debit'
-    SWEEP = 'sweep'
-    actions = (BALANCE, CREDIT, DEBIT, SWEEP)
+    actions = (USER_BALANCE_SHOW, USER_BALANCE_CREDIT, USER_BALANCE_DEBIT, USER_BALANCE_SWEEP)
     asset_names = assets.ASSETS.keys()
-    action = ''
-    email = ''
-    asset = ''
-    amount = ''
-    desc = ''
+    action = email = asset = amount = desc = ''
     def return_response(err_msg=None):
         if err_msg:
             flash(err_msg, 'danger')
@@ -262,7 +259,7 @@ def user_balance():
         asset = request.form['asset']
         amount = request.form['amount']
         desc = request.form['desc']
-        if action not in (BALANCE, CREDIT, DEBIT, SWEEP):
+        if action not in actions:
             return return_response('invalid action')
         if not email:
             return return_response('please enter an email address')
@@ -270,18 +267,17 @@ def user_balance():
         user = User.from_email(db.session, email)
         if not user:
             return return_response('User not found')
-
-        if action == BALANCE:
+        if action == USER_BALANCE_SHOW:
             balances = fiatdb_core.user_balances(db.session, user)
             for key, val in balances.items():
                 balances[key] = assets.asset_int_to_dec(key, val)
             flash(balances)
-        elif action == CREDIT or action == DEBIT:
+        elif action in (USER_BALANCE_CREDIT, USER_BALANCE_DEBIT):
             if asset not in asset_names:
                 return return_response('Invalid asset')
             try:
                 amount_dec = decimal.Decimal(amount)
-            except:
+            except: # pylint: disable=bare-except
                 amount_dec = decimal.Decimal(0)
             if amount_dec <= decimal.Decimal(0):
                 return return_response('Invalid amount')
@@ -289,7 +285,7 @@ def user_balance():
             balance = fiatdb_core.user_balance(db.session, asset, user)
             balance = assets.asset_int_to_dec(asset, balance)
             flash(f'current balance: {balance} {asset}')
-            fiatdb_action = FiatDbTransaction.ACTION_CREDIT if action == CREDIT else FiatDbTransaction.ACTION_DEBIT
+            fiatdb_action = FiatDbTransaction.ACTION_CREDIT if action == USER_BALANCE_CREDIT else FiatDbTransaction.ACTION_DEBIT
             ftx = fiatdb_core.tx_create(db.session, user, fiatdb_action, asset, amount_int, desc)
             if not ftx:
                 return return_response('failed to create transaction')
@@ -298,7 +294,7 @@ def user_balance():
             balance = fiatdb_core.user_balance(db.session, asset, user)
             balance = assets.asset_int_to_dec(asset, balance)
             flash(f'new balance: {balance} {asset}')
-        elif action == SWEEP:
+        elif action == USER_BALANCE_SWEEP:
             if not user.dasset_subaccount:
                 return return_response('user does not have dasset subaccount')
             balances = dasset.account_balances(subaccount_id=user.dasset_subaccount.subaccount_id)
@@ -311,8 +307,6 @@ def user_balance():
                     flash(f'transfered {balance.available} of {balance.total} {balance.symbol} to master account')
                 else:
                     flash(f'no available balance of {balance.total} {balance.symbol} to transfer')
-        else:
-            flash('invalid action')
     return return_response()
 
 @roles_accepted(Role.ROLE_ADMIN)
