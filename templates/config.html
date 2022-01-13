@@ -16,7 +16,13 @@
                 {% for key, value in config.items() %}
                 <tr>
                     <td>{{ key }}</td>
-                    <td>{{ value }}</td>
+                    <td>
+                        {% if 'SECRET' in key.upper() or '_SALT' in key.upper() or '_KEY' in key.upper() %}
+                            *****
+                        {% else %}
+                            {{ value }}
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
