@@ -281,7 +281,7 @@ def _subaccount_req(reference):
     return None
 
 def _transfer_req(to_master, from_subaccount_id, to_subaccount_id, asset, amount):
-    endpoint = '/subaccount'
+    endpoint = '/transfer'
     r = _req_put(endpoint, params=dict(toMasterAccount=to_master, fromSubaccountId=from_subaccount_id, toSubaccountId=to_subaccount_id, asset=asset, amount=str(amount)))
     if r.status_code == 200:
         return True
