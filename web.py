@@ -3,6 +3,7 @@
 # pylint: disable=import-outside-toplevel
 # pylint: disable=unbalanced-tuple-unpacking
 
+import decimal
 import logging
 import math
 import time
@@ -12,7 +13,7 @@ from flask import render_template, request, flash, jsonify, Response
 from flask_security import roles_accepted
 
 from app_core import app, db, socketio
-from models import User, Role, Topic, PushNotificationLocation, BrokerOrder, CryptoDeposit, FiatDeposit, KycRequest
+from models import User, Role, Topic, PushNotificationLocation, BrokerOrder, CryptoDeposit, FiatDeposit, KycRequest, FiatDbTransaction
 import email_utils
 from fcm import FCM
 from web_utils import bad_request, get_json_params, get_json_params_optional
@@ -29,6 +30,7 @@ import admin
 import dasset
 import assets
 import kyc_core
+import fiatdb_core
 
 #jsonrpc = JSONRPC(app, "/api")
 logger = logging.getLogger(__name__)
@@ -235,6 +237,83 @@ def user_kyc():
         else:
             flash('User not found', 'danger')
     return render_template('user_kyc.html')
+
+@roles_accepted(Role.ROLE_ADMIN)
+@app.route('/user_balance', methods=['GET', 'POST'])
+def user_balance():
+    BALANCE = 'check_balance'
+    CREDIT = 'credit'
+    DEBIT = 'debit'
+    SWEEP = 'sweep'
+    actions = (BALANCE, CREDIT, DEBIT, SWEEP)
+    asset_names = assets.ASSETS.keys()
+    action = ''
+    email = ''
+    asset = ''
+    amount = ''
+    desc = ''
+    def return_response(err_msg=None):
+        if err_msg:
+            flash(err_msg, 'danger')
+        return render_template('user_balance.html', actions=actions, assets=asset_names, action=action, email=email, asset=asset, amount=amount, desc=desc)
+    if request.method == 'POST':
+        action = request.form['action']
+        email = request.form['email']
+        asset = request.form['asset']
+        amount = request.form['amount']
+        desc = request.form['desc']
+        if action not in (BALANCE, CREDIT, DEBIT, SWEEP):
+            return return_response('invalid action')
+        if not email:
+            return return_response('please enter an email address')
+        email = email.lower()
+        user = User.from_email(db.session, email)
+        if not user:
+            return return_response('User not found')
+
+        if action == BALANCE:
+            balances = fiatdb_core.user_balances(db.session, user)
+            for key, val in balances.items():
+                balances[key] = assets.asset_int_to_dec(key, val)
+            flash(balances)
+        elif action == CREDIT or action == DEBIT:
+            if asset not in asset_names:
+                return return_response('Invalid asset')
+            try:
+                amount_dec = decimal.Decimal(amount)
+            except:
+                amount_dec = decimal.Decimal(0)
+            if amount_dec <= decimal.Decimal(0):
+                return return_response('Invalid amount')
+            amount_int = assets.asset_dec_to_int(asset, amount_dec)
+            balance = fiatdb_core.user_balance(db.session, asset, user)
+            balance = assets.asset_int_to_dec(asset, balance)
+            flash(f'current balance: {balance} {asset}')
+            fiatdb_action = FiatDbTransaction.ACTION_CREDIT if action == CREDIT else FiatDbTransaction.ACTION_DEBIT
+            ftx = fiatdb_core.tx_create(db.session, user, fiatdb_action, asset, amount_int, desc)
+            if not ftx:
+                return return_response('failed to create transaction')
+            db.session.add(ftx)
+            db.session.commit()
+            balance = fiatdb_core.user_balance(db.session, asset, user)
+            balance = assets.asset_int_to_dec(asset, balance)
+            flash(f'new balance: {balance} {asset}')
+        elif action == SWEEP:
+            if not user.dasset_subaccount:
+                return return_response('user does not have dasset subaccount')
+            balances = dasset.account_balances(subaccount_id=user.dasset_subaccount.subaccount_id)
+            if not balances:
+                return return_response('failed to retreive dasset balances')
+            for balance in balances:
+                if balance.available > decimal.Decimal(0):
+                    if not dasset.transfer(None, user.dasset_subaccount.subaccount_id, balance.symbol, balance.available):
+                        return return_response(f'failed to transfer {balance.symbol} funds from {email} subaccount to master')
+                    flash(f'transfered {balance.available} of {balance.total} {balance.symbol} to master account')
+                else:
+                    flash(f'no available balance of {balance.total} {balance.symbol} to transfer')
+        else:
+            flash('invalid action')
+    return return_response()
 
 @roles_accepted(Role.ROLE_ADMIN)
 @app.route('/config', methods=['GET'])
