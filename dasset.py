@@ -20,6 +20,10 @@ BROKER_ORDER_FEE = decimal.Decimal(app.config['BROKER_ORDER_FEE'])
 URL_BASE = 'https://api.dassetx.com/api'
 URL_BASE_SUBACCOUNT = 'https://api.dassetx.com/prod/api'
 
+CRYPTO_WITHDRAWAL_STATUS_COMPLETED = 'completed'
+CRYPTO_WITHDRAWAL_STATUS_2FA = '2fa'
+CRYPTO_WITHDRAWAL_STATUS_UNKNOWN = 'unknown'
+
 class QuoteResult(Enum):
     OK = 0
     AMOUNT_TOO_LOW = 1
@@ -67,7 +71,10 @@ def _parse_withdrawal_full(item):
 
 def _parse_withdrawal_2fa(item):
     id_ = item['transactionId']
-    status = item['mfaStatus']
+    if 'status' in item:
+        status = item['status']
+    else:
+        status = item['mfaStatus']
     return Munch(id=id_, symbol='', amount=0, date='', status=status, address='')
 
 def _parse_withdrawal(item):
@@ -397,9 +404,15 @@ def crypto_withdrawal_create(asset, amount, address):
 
 def crypto_withdrawal_status_check(withdrawal_id):
     if _account_mock():
-        return True
+        return CRYPTO_WITHDRAWAL_STATUS_COMPLETED
     withdrawal = _crypto_withdrawal_status_req(withdrawal_id)
-    return withdrawal and withdrawal.status == 'Completed'
+    if not withdrawal:
+        return CRYPTO_WITHDRAWAL_STATUS_UNKNOWN
+    if withdrawal.status == 'Completed':
+        return CRYPTO_WITHDRAWAL_STATUS_COMPLETED
+    if withdrawal.status == 'awaiting_mfa_confirmation':
+        return CRYPTO_WITHDRAWAL_STATUS_2FA
+    return CRYPTO_WITHDRAWAL_STATUS_UNKNOWN
 
 def crypto_withdrawal_confirm(withdrawal_id):
     key = app.config['DASSET_TOTP_KEY']

@@ -192,9 +192,15 @@ def _crypto_withdrawal_update(crypto_withdrawal):
     # check payout
     if crypto_withdrawal.status == crypto_withdrawal.STATUS_CREATED:
         # check exchange withdrawal
-        if dasset.crypto_withdrawal_status_check(crypto_withdrawal.exchange_reference):
+        status = dasset.crypto_withdrawal_status_check(crypto_withdrawal.exchange_reference)
+        if status == dasset.CRYPTO_WITHDRAWAL_STATUS_COMPLETED:
             crypto_withdrawal.status = crypto_withdrawal.STATUS_COMPLETED
             updated_records.append(crypto_withdrawal)
+        elif status == dasset.CRYPTO_WITHDRAWAL_STATUS_2FA:
+            if not dasset.crypto_withdrawal_confirm(crypto_withdrawal.exchange_reference):
+                logger.error('failed to confirm crypto withdrawal %s', crypto_withdrawal.token)
+        elif status == dasset.CRYPTO_WITHDRAWAL_STATUS_UNKNOWN:
+            logger.error('failed to get crypto withdrawal %s status', crypto_withdrawal.token)
         return updated_records
     return updated_records
 
