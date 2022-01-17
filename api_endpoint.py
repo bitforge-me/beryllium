@@ -719,14 +719,13 @@ def broker_order_create():
     market, side, amount_dec = params
     if not api_key.user.kyc_validated():
         return bad_request(web_utils.KYC_NOT_VALIDATED)
-    err_response, side, base_asset, quote_asset, base_amount, quote_amount = _broker_order_validate(api_key.user, market, side, amount_dec)
+    err_response, order = _broker_order_validate(api_key.user, market, side, amount_dec)
     if err_response:
         return err_response
-    broker_order = BrokerOrder(api_key.user, market, side.value, base_asset, quote_asset, base_amount, quote_amount)
-    db.session.add(broker_order)
+    db.session.add(order)
     db.session.commit()
-    websocket.broker_order_new_event(broker_order)
-    return jsonify(broker_order=broker_order.to_json())
+    websocket.broker_order_new_event(order)
+    return jsonify(broker_order=order.to_json())
 
 @api.route('/broker_order_status', methods=['POST'])
 def broker_order_status():
