@@ -31,7 +31,7 @@ def user_subaccount_get_or_create(db_session, user):
     return user.dasset_subaccount
 
 def order_required_asset(order, side):
-    assert side is MarketSide
+    assert isinstance(side, MarketSide)
     if side is MarketSide.BID:
         return order.quote_asset, order.quote_amount
     return order.base_asset, order.base_amount
