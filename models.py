@@ -823,7 +823,7 @@ class FiatDbTransaction(db.Model, FromTokenMixin):
     date = db.Column(db.DateTime())
     action = db.Column(db.String(255), nullable=False)
     asset = db.Column(db.String(255), nullable=False)
-    amount = db.Column(db.Integer())
+    amount = db.Column(db.BigInteger())
     attachment = db.Column(db.String(255))
 
     def __init__(self, user, action, asset, amount, attachment):
