@@ -46,7 +46,7 @@ def order_check_funds(db_session, order, check_user=True):
     if not dasset.funds_available_us(asset, amount_dec):
         return web_utils.INSUFFICIENT_LIQUIDITY
     # and funds user has with us
-    if check_user and not fiatdb_core.funds_available_user(db_session, asset, order.user, amount_dec):
+    if check_user and not fiatdb_core.funds_available_user(db_session, order.user, asset, amount_dec):
         return web_utils.INSUFFICIENT_BALANCE
     return None
 
