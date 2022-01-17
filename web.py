@@ -31,11 +31,15 @@ import dasset
 import assets
 import kyc_core
 import fiatdb_core
+import coordinator
 
 USER_BALANCE_SHOW = 'show balance'
 USER_BALANCE_CREDIT = 'credit'
 USER_BALANCE_DEBIT = 'debit'
 USER_BALANCE_SWEEP = 'sweep'
+
+USER_ORDER_SHOW = 'show'
+USER_ORDER_CANCEL = 'cancel'
 
 #jsonrpc = JSONRPC(app, "/api")
 logger = logging.getLogger(__name__)
@@ -307,6 +311,42 @@ def user_balance():
                     flash(f'transfered {balance.available} of {balance.total} {balance.symbol} to master account')
                 else:
                     flash(f'no available balance of {balance.total} {balance.symbol} to transfer')
+    return return_response()
+
+@roles_accepted(Role.ROLE_ADMIN)
+@app.route('/user_order', methods=['GET', 'POST'])
+def user_order():
+    actions = (USER_ORDER_SHOW, USER_ORDER_CANCEL)
+    action = token = ''
+    def return_response(err_msg=None):
+        if err_msg:
+            flash(err_msg, 'danger')
+        return render_template('user_order.html', actions=actions, action=action, token=token)
+    if request.method == 'POST':
+        action = request.form['action']
+        token = request.form['token']
+        if action not in actions:
+            return return_response('invalid action')
+        if not token:
+            return return_response('please enter a order token')
+        order = BrokerOrder.from_token(db.session, token)
+        if not order:
+            return return_response('Order not found')
+        if action == USER_ORDER_SHOW:
+            flash(f'order: {order.to_json()}')
+        elif action == USER_ORDER_CANCEL:
+            if order.status not in (order.STATUS_READY,):
+                return return_response('invalid order status')
+            with coordinator.lock:
+                side = assets.MarketSide.parse(order.side)
+                ftx = broker.order_refund(db.session, order, side)
+                if not ftx:
+                    return return_response('failed to create refund')
+                order.status = order.STATUS_CANCELLED
+                db.session.add(ftx)
+                db.session.add(order)
+                db.session.commit()
+            flash(f'canceled and refunded order {token}')
     return return_response()
 
 @roles_accepted(Role.ROLE_ADMIN)

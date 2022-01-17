@@ -18,6 +18,17 @@ logger = logging.getLogger(__name__)
 # Helper functions (public)
 #
 
+def order_refund(db_session, order, side):
+    side = MarketSide.parse(order.side)
+    # refund users account
+    if side is MarketSide.BID:
+        asset = order.quote_asset
+        amount_int = order.quote_amount
+    else:
+        asset = order.base_asset
+        amount_int = order.base_amount
+    return fiatdb_core.tx_create(db_session, order.user, FiatDbTransaction.ACTION_CREDIT, asset, amount_int, f'broker order refund: {order.token}')
+
 def order_required_asset(order, side):
     assert isinstance(side, MarketSide)
     if side is MarketSide.BID:
@@ -64,14 +75,7 @@ def _broker_order_action(db_session, broker_order):
             logger.error('"%s" for broker order %s', err_msg, broker_order.token)
             broker_order.status = broker_order.STATUS_FAILED
             updated_records.append(broker_order)
-            # refund users account
-            if side is MarketSide.BID:
-                asset = broker_order.quote_asset
-                amount_int = broker_order.quote_amount
-            else:
-                asset = broker_order.base_asset
-                amount_int = broker_order.base_amount
-            ftx = fiatdb_core.tx_create(db_session, broker_order.user, FiatDbTransaction.ACTION_CREDIT, asset, amount_int, f'broker order refund: {broker_order.token}')
+            ftx = order_refund(db_session, broker_order, side)
             if not ftx:
                 logger.error('failed to create fiatdb transaction for broker order %s', broker_order.token)
                 return updated_records
@@ -129,6 +133,8 @@ def _email_msg(broker_order, msg):
 def _broker_order_email(broker_order):
     if broker_order.status == broker_order.STATUS_FAILED:
         email_utils.send_email(logger, 'Order Failed', _email_msg(broker_order, ''), broker_order.user.email)
+    if broker_order.status == broker_order.STATUS_CANCELLED:
+        email_utils.send_email(logger, 'Order Cancelled', _email_msg(broker_order, ''), broker_order.user.email)
     if broker_order.status == broker_order.STATUS_COMPLETED:
         email_utils.send_email(logger, 'Order Completed', _email_msg(broker_order, ''), broker_order.user.email)
     if broker_order.status == broker_order.STATUS_EXPIRED:

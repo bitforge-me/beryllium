@@ -381,6 +381,7 @@ class BrokerOrder(db.Model, FromUserMixin, FromTokenMixin):
     STATUS_COMPLETED = 'completed'
     STATUS_EXPIRED = 'expired'
     STATUS_FAILED = 'failed'
+    STATUS_CANCELLED = 'cancelled'
 
     MINUTES_EXPIRY = 15
 
@@ -421,7 +422,7 @@ class BrokerOrder(db.Model, FromUserMixin, FromTokenMixin):
 
     @classmethod
     def all_active(cls, session):
-        return session.query(cls).filter(and_(cls.status != cls.STATUS_COMPLETED, and_(cls.status != cls.STATUS_EXPIRED, cls.status != cls.STATUS_FAILED))).all()
+        return session.query(cls).filter(and_(cls.status != cls.STATUS_COMPLETED, and_(cls.status != cls.STATUS_EXPIRED, and_(cls.status != cls.STATUS_FAILED, cls.status != cls.STATUS_CANCELLED)))).all()
 
 class DassetSubaccount(db.Model):
     id = db.Column(db.Integer, primary_key=True)
