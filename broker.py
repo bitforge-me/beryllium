@@ -5,7 +5,7 @@ import fiatdb_core
 import dasset
 import assets
 from assets import MarketSide
-from models import BrokerOrder, ExchangeOrder, DassetSubaccount, FiatDbTransaction
+from models import BrokerOrder, ExchangeOrder, FiatDbTransaction
 import websocket
 import email_utils
 import web_utils
@@ -17,18 +17,6 @@ logger = logging.getLogger(__name__)
 #
 # Helper functions (public)
 #
-
-def user_subaccount_get_or_create(db_session, user):
-    # create subaccount for user
-    if not user.dasset_subaccount:
-        subaccount_id = dasset.subaccount_create(user.token)
-        if not subaccount_id:
-            logger.error('failed to create subaccount for %s', user.email)
-            return None
-        subaccount = DassetSubaccount(user, subaccount_id)
-        db_session.add(subaccount)
-        return subaccount
-    return user.dasset_subaccount
 
 def order_required_asset(order, side):
     assert isinstance(side, MarketSide)
@@ -58,9 +46,6 @@ def order_check_funds(db_session, order, check_user=True):
 def _broker_order_action(db_session, broker_order):
     logger.info('processing broker order %s (%s)..', broker_order.token, broker_order.status)
     updated_records = []
-    if not broker_order.user.dasset_subaccount:
-        logger.error('user %s does not have dasset subaccount', broker_order.user.email)
-        return updated_records
     base_amount_dec = assets.asset_int_to_dec(broker_order.base_asset, broker_order.base_amount)
     quote_amount_dec = assets.asset_int_to_dec(broker_order.quote_asset, broker_order.quote_amount)
     price = quote_amount_dec / base_amount_dec

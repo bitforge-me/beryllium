@@ -14,7 +14,7 @@ import web_utils
 from web_utils import bad_request, get_json_params, auth_request, auth_request_get_single_param, auth_request_get_params
 import utils
 import email_utils
-from models import CryptoWithdrawal, FiatDbTransaction, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, FiatDeposit, FiatWithdrawal, CryptoAddress, CryptoDeposit
+from models import CryptoWithdrawal, FiatDbTransaction, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, FiatDeposit, FiatWithdrawal, CryptoAddress, CryptoDeposit, DassetSubaccount
 from app_core import app, db, limiter, APP_VERSION
 from security import tf_enabled_check, tf_method, tf_code_send, tf_method_set, tf_method_unset, tf_secret_init, tf_code_validate, user_datastore
 import payments_core
@@ -30,6 +30,22 @@ import coordinator
 logger = logging.getLogger(__name__)
 api = Blueprint('api', __name__, template_folder='templates')
 limiter.limit('100/minute')(api)
+
+def _user_subaccount_get_or_create(db_session, user):
+    # create subaccount for user
+    if not user.dasset_subaccount:
+        subaccount_id = dasset.subaccount_create(user.token)
+        if not subaccount_id:
+            logger.error('failed to create subaccount for %s', user.email)
+            return None
+        subaccount = DassetSubaccount(user, subaccount_id)
+        db_session.add(subaccount)
+        return subaccount
+    return user.dasset_subaccount
+
+#
+# Public API
+#
 
 @api.route('/version', methods=['GET', 'POST'])
 def version():
@@ -470,9 +486,15 @@ def crypto_deposit_address_req():
         return bad_request(web_utils.FAILED_EXCHANGE)
     if not assets.asset_is_crypto(asset):
         return bad_request(web_utils.INVALID_ASSET)
+    # get subaccount for user
+    subaccount = _user_subaccount_get_or_create(db.session, api_key.user)
+    if not subaccount:
+        return bad_request(web_utils.FAILED_EXCHANGE)
+    db.session.commit() # commit early so we only create subaccount once
+    # create address
     crypto_address = CryptoAddress.from_asset(db.session, api_key.user, asset)
     if not crypto_address:
-        address = dasset.address_get_or_create(asset, api_key.user.dasset_subaccount.subaccount_id)
+        address = dasset.address_get_or_create(asset, subaccount.subaccount_id)
         if not address:
             return bad_request(web_utils.FAILED_EXCHANGE)
         crypto_address = CryptoAddress(api_key.user, asset, address)
@@ -487,9 +509,6 @@ def crypto_deposits_req():
     if err_response:
         return err_response
     asset, offset, limit = params
-    if not api_key.user.dasset_subaccount:
-        logger.error('user %s dasset subaccount does not exist', api_key.user.email)
-        return bad_request(web_utils.FAILED_EXCHANGE)
     if not assets.asset_is_crypto(asset):
         return bad_request(web_utils.INVALID_ASSET)
     deposits = CryptoDeposit.from_user(db.session, api_key.user, offset, limit)
@@ -510,6 +529,7 @@ def crypto_withdrawal_create_req():
         return bad_request(web_utils.INVALID_AMOUNT)
     if not assets.asset_recipient_validate(asset, recipient):
         return bad_request(web_utils.INVALID_RECIPIENT)
+    # save recipient
     if save_recipient:
         entry = AddressBook.from_recipient(db.session, api_key.user, asset, recipient)
         if entry:
@@ -517,10 +537,7 @@ def crypto_withdrawal_create_req():
         else:
             entry = AddressBook(api_key.user, asset, recipient, recipient_description)
         db.session.add(entry)
-    # get subaccount for user
-    subaccount = broker.user_subaccount_get_or_create(db.session, api_key.user)
-    if not subaccount:
-        return bad_request(web_utils.FAILED_EXCHANGE)
+    # create withdrawal
     with coordinator.lock:
         if not fiatdb_core.funds_available_user(db.session, api_key.user, asset, amount_dec):
             return bad_request(web_utils.INSUFFICIENT_BALANCE)

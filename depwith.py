@@ -145,6 +145,9 @@ def crypto_deposits_check(db_session):
     new_crypto_deposits = []
     updated_crypto_deposits = []
     for user, asset_list in user_assets.values():
+        if not user.dasset_subaccount:
+            logger.error('user %s dasset subaccount does not exist', user.email)
+            continue
         for asset in asset_list:
             dasset_deposits = dasset.crypto_deposits(asset, user.dasset_subaccount.subaccount_id)
             for dasset_deposit in dasset_deposits:
