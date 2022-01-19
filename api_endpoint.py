@@ -527,6 +527,8 @@ def crypto_withdrawal_create_req():
     amount_dec = decimal.Decimal(amount_dec)
     if amount_dec <= 0:
         return bad_request(web_utils.INVALID_AMOUNT)
+    if amount_dec <= assets.asset_min_withdraw(asset):
+        return bad_request(web_utils.AMOUNT_TOO_LOW)
     if not assets.asset_recipient_validate(asset, recipient):
         return bad_request(web_utils.INVALID_RECIPIENT)
     # save recipient
@@ -630,6 +632,8 @@ def fiat_withdrawal_create_req():
     amount_dec = decimal.Decimal(amount_dec)
     if amount_dec <= 0:
         return bad_request(web_utils.INVALID_AMOUNT)
+    if amount_dec <= assets.asset_min_withdraw(asset):
+        return bad_request(web_utils.AMOUNT_TOO_LOW)
     if not assets.asset_recipient_validate(asset, recipient):
         return bad_request(web_utils.INVALID_RECIPIENT)
     if save_recipient:

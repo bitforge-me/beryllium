@@ -20,6 +20,7 @@ class Asset:
     name: str
     decimals: int
     withdraw_fee: Dec
+    min_withdraw: Dec
     is_crypto: bool
 
 @dataclass
@@ -29,12 +30,12 @@ class Market:
     min_order: Dec
 
 TESTNET = app.config['TESTNET']
-NZD = Asset(symbol='NZD', name='New Zealand Dollar', decimals=2, withdraw_fee=Dec(7), is_crypto=False)
-BTC = Asset(symbol='BTC', name='Bitcoin', decimals=8, withdraw_fee=Dec('0.0003'), is_crypto=True)
-ETH = Asset(symbol='ETH', name='Ethereum', decimals=18, withdraw_fee=Dec('0.0052'), is_crypto=True)
-DOGE = Asset(symbol='DOGE', name='Dogecoin', decimals=8, withdraw_fee=Dec(5), is_crypto=True)
-LTC = Asset(symbol='LTC', name='Litecoin', decimals=8, withdraw_fee=Dec('0.01'), is_crypto=True)
-WAVES = Asset(symbol='WAVES', name='Waves', decimals=8, withdraw_fee=Dec('0.001'), is_crypto=True)
+NZD = Asset(symbol='NZD', name='New Zealand Dollar', decimals=2, withdraw_fee=Dec(7), min_withdraw=Dec(20), is_crypto=False)
+BTC = Asset(symbol='BTC', name='Bitcoin', decimals=8, withdraw_fee=Dec('0.0003'), min_withdraw=Dec('0.001'), is_crypto=True)
+ETH = Asset(symbol='ETH', name='Ethereum', decimals=18, withdraw_fee=Dec('0.0052'), min_withdraw=Dec('0.01'), is_crypto=True)
+DOGE = Asset(symbol='DOGE', name='Dogecoin', decimals=8, withdraw_fee=Dec(5), min_withdraw=Dec(20), is_crypto=True)
+LTC = Asset(symbol='LTC', name='Litecoin', decimals=8, withdraw_fee=Dec('0.01'), min_withdraw=Dec('0.03'), is_crypto=True)
+WAVES = Asset(symbol='WAVES', name='Waves', decimals=8, withdraw_fee=Dec('0.001'), min_withdraw=Dec('0.003'), is_crypto=True)
 ASSETS = dict(NZD=NZD, BTC=BTC, ETH=ETH, DOGE=DOGE, LTC=LTC, WAVES=WAVES)
 MARKETS = {'BTC-NZD': Market(base_asset=BTC, quote_asset=NZD, min_order=Dec('0.0005')), \
     'ETH-NZD': Market(base_asset=ETH, quote_asset=NZD, min_order=Dec('0.01')), \
@@ -97,6 +98,9 @@ def asset_decimals(asset: str) -> int:
 
 def asset_withdraw_fee(asset: str) -> Dec:
     return ASSETS[asset].withdraw_fee
+
+def asset_min_withdraw(asset: str) -> Dec:
+    return ASSETS[asset].min_withdraw
 
 def asset_int_to_dec(asset: str, value: int) -> Dec:
     decimals = asset_decimals(asset)
