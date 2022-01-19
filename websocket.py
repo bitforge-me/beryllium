@@ -5,7 +5,7 @@ from typing import Optional, Union
 from flask import request
 from flask_socketio import Namespace, emit, join_room, leave_room
 
-from app_core import db, socketio
+from app_core import SERVER_VERSION, CLIENT_VERSION_DEPLOYED, db, socketio
 from web_utils import check_auth
 from security import tf_enabled_check
 from models import BrokerOrder, CryptoDeposit, CryptoWithdrawal, FiatDeposit, FiatWithdrawal, User, ApiKey
@@ -117,6 +117,7 @@ class EventsNamespace(Namespace):
 
     def on_connect(self):
         logger.info("connect sid: %s", request.sid)
+        emit('version', json.dumps(dict(server_version=SERVER_VERSION, client_version_deployed=CLIENT_VERSION_DEPLOYED)), json=True, namespace=NS)
 
     def on_auth(self, auth: Union[dict, str]):
         if not isinstance(auth, dict):

@@ -15,7 +15,7 @@ from web_utils import bad_request, get_json_params, auth_request, auth_request_g
 import utils
 import email_utils
 from models import CryptoWithdrawal, FiatDbTransaction, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, FiatDeposit, FiatWithdrawal, CryptoAddress, CryptoDeposit, DassetSubaccount
-from app_core import app, db, limiter, APP_VERSION
+from app_core import app, db, limiter, SERVER_VERSION, CLIENT_VERSION_DEPLOYED
 from security import tf_enabled_check, tf_method, tf_code_send, tf_method_set, tf_method_unset, tf_secret_init, tf_code_validate, user_datastore
 import payments_core
 import kyc_core
@@ -49,7 +49,7 @@ def _user_subaccount_get_or_create(db_session, user):
 
 @api.route('/version', methods=['GET', 'POST'])
 def version():
-    return jsonify(dict(version=APP_VERSION))
+    return jsonify(dict(server_version=SERVER_VERSION, client_version_deployed=CLIENT_VERSION_DEPLOYED))
 
 #
 # Private API
