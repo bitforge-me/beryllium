@@ -159,8 +159,8 @@ def push_notifications_register():
         db.session.commit()
     return jsonify(dict(result="ok"))
 
-@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 @app.route('/test_email', methods=['GET', 'POST'])
+@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def test_email():
     recipient = ''
     subject = ''
@@ -175,8 +175,8 @@ def test_email():
             flash('Email failed', 'danger')
     return render_template('test_email.html', recipient=recipient, subject=subject, message=message)
 
-@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 @app.route('/test_ws', methods=['GET', 'POST'])
+@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def test_ws():
     recipient = ''
     event = ''
@@ -216,8 +216,8 @@ def test_ws():
             flash('Event not yet implemented', 'danger')
     return render_template('test_ws.html', recipient=recipient, event=event, events=events)
 
-@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 @app.route('/user_kyc', methods=['GET', 'POST'])
+@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def user_kyc():
     email = ''
     if request.method == 'POST':
@@ -247,8 +247,8 @@ def user_kyc():
             flash('User not found', 'danger')
     return render_template('user_kyc.html')
 
-@roles_accepted(Role.ROLE_ADMIN)
 @app.route('/user_balance', methods=['GET', 'POST'])
+@roles_accepted(Role.ROLE_ADMIN)
 def user_balance():
     actions = (USER_BALANCE_SHOW, USER_BALANCE_CREDIT, USER_BALANCE_DEBIT, USER_BALANCE_SWEEP)
     asset_names = assets.ASSETS.keys()
@@ -313,8 +313,8 @@ def user_balance():
                     flash(f'no available balance of {balance.total} {balance.symbol} to transfer')
     return return_response()
 
-@roles_accepted(Role.ROLE_ADMIN)
 @app.route('/user_order', methods=['GET', 'POST'])
+@roles_accepted(Role.ROLE_ADMIN)
 def user_order():
     actions = (USER_ORDER_SHOW, USER_ORDER_CANCEL)
     action = token = ''
@@ -349,8 +349,8 @@ def user_order():
             flash(f'canceled and refunded order {token}')
     return return_response()
 
-@roles_accepted(Role.ROLE_ADMIN)
 @app.route('/config', methods=['GET'])
+@roles_accepted(Role.ROLE_ADMIN)
 def config():
     return render_template('config.html')
 
