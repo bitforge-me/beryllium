@@ -289,7 +289,7 @@ def _subaccount_req(reference):
 
 def _transfer_req(to_master, from_subaccount_id, to_subaccount_id, asset, amount):
     endpoint = '/transfer'
-    r = _req_put(endpoint, params=dict(toMasterAccount=to_master, fromSubaccountId=from_subaccount_id, toSubaccountId=to_subaccount_id, asset=asset, amount=str(amount)))
+    r = _req_put(endpoint, params=dict(toMasterAccount=to_master, fromSubaccountId=from_subaccount_id, toSubaccountId=to_subaccount_id, symbol=asset, quantity=str(amount)))
     if r.status_code == 200:
         return True
     logger.error('request failed: %d, %s', r.status_code, r.content)
