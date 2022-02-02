@@ -94,7 +94,7 @@ def g_exception(greenlet):
 
 KEEP_RUNNING = True
 if __name__ == "__main__":
-    ch = log_utils.setup_logging(logger, logging.DEBUG)
+    ch = log_utils.setup_logging(logger, logging.INFO)
     log_utils.log_socketio_version(logger)
 
     # create tables

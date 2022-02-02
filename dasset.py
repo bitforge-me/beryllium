@@ -18,6 +18,7 @@ DASSET_ACCOUNT_ID = app.config['DASSET_ACCOUNT_ID']
 BROKER_ORDER_FEE = decimal.Decimal(app.config['BROKER_ORDER_FEE'])
 
 URL_BASE = 'https://api.dassetx.com/api'
+URL_BASE_NOAPI = 'https://api.dassetx.com'
 URL_BASE_SUBACCOUNT = 'https://api.dassetx.com/prod/api'
 
 CRYPTO_WITHDRAWAL_STATUS_COMPLETED = 'completed'
@@ -87,8 +88,10 @@ def _parse_withdrawal(item):
 # Dasset API Requests
 #
 
-def _req_get(endpoint, params=None, subaccount_id=None):
+def _req_get(endpoint, params=None, subaccount_id=None, noapi_in_path=False):
     url = URL_BASE + endpoint
+    if noapi_in_path:
+        url = URL_BASE_NOAPI + endpoint
     headers = {}
     headers['x-api-key'] = DASSET_API_SECRET
     headers['x-account-id'] = DASSET_ACCOUNT_ID
@@ -100,8 +103,10 @@ def _req_get(endpoint, params=None, subaccount_id=None):
     logger.info('HEADERS - %s', headers)
     return r
 
-def _req_post(endpoint, params, subaccount_id=None):
+def _req_post(endpoint, params, subaccount_id=None, noapi_in_path=False):
     url = URL_BASE + endpoint
+    if noapi_in_path:
+        url = URL_BASE_NOAPI + endpoint
     headers = {}
     headers['x-api-key'] = DASSET_API_SECRET
     headers['x-account-id'] = DASSET_ACCOUNT_ID
@@ -225,7 +230,7 @@ def _crypto_withdrawal_status_req(withdrawal_id):
 
 def _crypto_withdrawal_confirm_req(withdrawal_id, totp_code):
     endpoint = '/crypto/withdrawals/confirm'
-    r = _req_post(endpoint, params=dict(txId=withdrawal_id, token=totp_code))
+    r = _req_post(endpoint, params=dict(txId=withdrawal_id, token=totp_code), noapi_in_path=True)
     if r.status_code == 200:
         return True
     logger.error('request failed: %d, %s', r.status_code, r.content)
@@ -253,7 +258,7 @@ def _addresses_create_req(asset, subaccount_id):
 
 def _crypto_deposits_pending_req(asset, subaccount_id):
     endpoint = '/crypto/deposits/open'
-    r = _req_get(endpoint, params=dict(currencySymbol=asset, status='PENDING'), subaccount_id=subaccount_id)
+    r = _req_get(endpoint, params=dict(currencySymbol=asset, status='PENDING'), subaccount_id=subaccount_id, noapi_in_path=True)
     if r.status_code == 200:
         deposits = r.json()
         deposits = [_parse_deposit(d) for d in deposits]
@@ -263,7 +268,7 @@ def _crypto_deposits_pending_req(asset, subaccount_id):
 
 def _crypto_deposits_closed_req(asset, subaccount_id):
     endpoint = '/crypto/deposits/closed'
-    r = _req_get(endpoint, params=dict(currencySymbol=asset), subaccount_id=subaccount_id)
+    r = _req_get(endpoint, params=dict(currencySymbol=asset), subaccount_id=subaccount_id, noapi_in_path=True)
     if r.status_code == 200:
         deposits = r.json()
         deposits = [_parse_deposit(d) for d in deposits if d['currencySymbol'] == asset]
