@@ -1,0 +1,27 @@
+---
+- name: beryllium
+  hosts: all
+  become: yes
+  become_user: root
+
+  tasks:
+
+    - name: get beryllium code
+      ansible.builtin.git:
+        repo: 'https://github.com/zap-me/beryllium.git'
+        dest: /root/beryllium
+        version: master
+
+    - name: get alloy code
+      ansible.builtin.git:
+        repo: 'https://github.com/zap-me/alloy.git'
+        dest: /root/beryllium/web/alloy
+        version: gh-pages
+
+    - name: build containers
+      shell:
+        cmd: cd ~/beryllium && ./build-docker-images.sh
+
+    - name: run containers
+      shell:
+        cmd: cd ~/beryllium && docker-compose up --detach
