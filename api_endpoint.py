@@ -344,7 +344,11 @@ def user_update_password():
     if not verified_password:
         return bad_request(web_utils.INCORRECT_PASSWORD)
     ### set the new_password:
-    if (len(new_password) <= 7) or (not any(elem in new_password for elem in '1234567890')) or (not any(elem in new_password for elem in '!@#$%^&*')):
+    if ((len(new_password) <= 7) 
+            or (not any(elem in new_password for elem in '1234567890')) 
+            or (not any(elem in new_password for elem in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')) 
+            or (not any(elem in new_password for elem in 'abcdefghijklmnopqrstuvwxyz')) 
+            or (not any(elem in new_password for elem in '!@#$%^&*()'))):
         return bad_request(web_utils.WEAK_PASSWORD)
     user.password = encrypt_password(new_password)
     db.session.add(user)
