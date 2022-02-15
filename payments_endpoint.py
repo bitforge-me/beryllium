@@ -53,6 +53,7 @@ def payment(token=None):
     if not req:
         flash('Sorry payment request not found', category='danger')
         return redirect('/')
+    payments_core.payment_request_status_update(req)
     completed = req.status == req.STATUS_COMPLETED
     cancelled = req.status == req.STATUS_CANCELLED
     return render_template('payments/payment_request.html', token=token, completed=completed, cancelled=cancelled, req=req)

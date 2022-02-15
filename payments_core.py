@@ -163,6 +163,7 @@ def payment_request_status_update(req):
     # get status from windcave
     state, windcave_url, tx_state = windcave_get_session_status(req.windcave_session_id)
     req.windcave_status = state
+    req.windcave_url = windcave_url
     if tx_state:
         if tx_state[0]:
             req.status = req.STATUS_COMPLETED
@@ -170,7 +171,6 @@ def payment_request_status_update(req):
             req.status = req.STATUS_CANCELLED
         req.windcave_authorised = tx_state[0]
         req.windcave_allow_retry = tx_state[1]
-        req.windcave_url = windcave_url
 
 def payout_create(amount, sender_reference, sender_code, account_name, account_number, reference, code, particulars):
     # create payout request
