@@ -27,7 +27,6 @@ class Asset:
 class Market:
     base_asset: str
     quote_asset: str
-    min_order: Dec
 
 TESTNET = app.config['TESTNET']
 NZD = Asset(symbol='NZD', name='New Zealand Dollar', decimals=2, withdraw_fee=Dec(7), min_withdraw=Dec(20), is_crypto=False)
@@ -37,11 +36,11 @@ DOGE = Asset(symbol='DOGE', name='Dogecoin', decimals=8, withdraw_fee=Dec(5), mi
 LTC = Asset(symbol='LTC', name='Litecoin', decimals=8, withdraw_fee=Dec('0.01'), min_withdraw=Dec('0.03'), is_crypto=True)
 WAVES = Asset(symbol='WAVES', name='Waves', decimals=8, withdraw_fee=Dec('0.001'), min_withdraw=Dec('0.003'), is_crypto=True)
 ASSETS = dict(NZD=NZD, BTC=BTC, ETH=ETH, DOGE=DOGE, LTC=LTC, WAVES=WAVES)
-MARKETS = {'BTC-NZD': Market(base_asset=BTC, quote_asset=NZD, min_order=Dec('0.0005')), \
-    'ETH-NZD': Market(base_asset=ETH, quote_asset=NZD, min_order=Dec('0.01')), \
-    'DOGE-NZD': Market(base_asset=DOGE, quote_asset=NZD, min_order=Dec(50)), \
-    'LTC-NZD': Market(base_asset=LTC, quote_asset=NZD, min_order=Dec('0.05')),
-    'WAVES-BTC': Market(base_asset=WAVES, quote_asset=BTC, min_order=Dec('0.5'))}
+MARKETS = {'BTC-NZD': Market(base_asset=BTC, quote_asset=NZD), \
+    'ETH-NZD': Market(base_asset=ETH, quote_asset=NZD), \
+    'DOGE-NZD': Market(base_asset=DOGE, quote_asset=NZD), \
+    'LTC-NZD': Market(base_asset=LTC, quote_asset=NZD), \
+    'WAVES-BTC': Market(base_asset=WAVES, quote_asset=BTC)}
 
 class MarketSide(Enum):
     BID = 'bid'

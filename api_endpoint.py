@@ -461,8 +461,8 @@ def order_book_req():
     base_asset, quote_asset = assets.assets_from_market(market)
     base_asset_withdraw_fee = assets.asset_withdraw_fee(base_asset)
     quote_asset_withdraw_fee = assets.asset_withdraw_fee(quote_asset)
-    order_book, min_order, broker_fee = dasset.order_book_req(market)
-    return jsonify(bids=order_book.bids, asks=order_book.asks, min_order=str(min_order), base_asset_withdraw_fee=str(base_asset_withdraw_fee), quote_asset_withdraw_fee=str(quote_asset_withdraw_fee), broker_fee=str(broker_fee))
+    order_book, broker_fee = dasset.order_book_req(market)
+    return jsonify(bids=order_book.bids, asks=order_book.asks, base_asset_withdraw_fee=str(base_asset_withdraw_fee), quote_asset_withdraw_fee=str(quote_asset_withdraw_fee), broker_fee=str(broker_fee))
 
 @api.route('/balances', methods=['POST'])
 def balances_req():
@@ -712,6 +712,12 @@ def _broker_order_validate(user, market, side, amount_dec):
         return return_error(bad_request(web_utils.INSUFFICIENT_LIQUIDITY))
     if err == dasset.QuoteResult.AMOUNT_TOO_LOW:
         return return_error(bad_request(web_utils.AMOUNT_TOO_LOW))
+    if err == dasset.QuoteResult.MARKET_API_FAIL:
+        logger.error('failled getting quote amount due to error in dasset market API')
+        return return_error(bad_request(web_utils.NOT_AVAILABLE))
+    if err != dasset.QuoteResult.OK:
+        logger.error('failded getting quote amount due to unknown error')
+        return return_error(bad_request(web_utils.UNKNOWN_ERROR))
     base_asset, quote_asset = assets.assets_from_market(market)
     base_amount = assets.asset_dec_to_int(base_asset, amount_dec)
     quote_amount = assets.asset_dec_to_int(quote_asset, quote_amount_dec)

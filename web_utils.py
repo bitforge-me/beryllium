@@ -49,6 +49,7 @@ INVALID_PARAMETER = 'invalid parameter'
 FAILED_CODE_SEND = 'failed code send'
 TWO_FACTOR_ENABLED = 'two factor enabled'
 TWO_FACTOR_DISABLED = 'two factor disabled'
+UNKNOWN_ERROR = 'unknown error'
 
 def bad_request(message: str, code: int = 400) -> Response:
     logger.warning(message)

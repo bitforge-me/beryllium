@@ -29,6 +29,7 @@ class QuoteResult(Enum):
     OK = 0
     AMOUNT_TOO_LOW = 1
     INSUFFICIENT_LIQUIDITY = 2
+    MARKET_API_FAIL = 3
 
 #
 # Helper functions
@@ -148,12 +149,18 @@ def markets_req():
     logger.error('request failed: %d, %s', r.status_code, r.content)
     return None
 
+def market_req(name):
+    markets = markets_req()
+    for market in markets:
+        if market.symbol == name:
+            return market
+    return None
+
 def order_book_req(symbol):
     endpoint = f'/markets/{symbol}/orderbook'
     r = _req_get(endpoint)
     if r.status_code == 200:
-        min_order = assets.MARKETS[symbol].min_order
-        return _parse_order_book(r.json()[0]), min_order, BROKER_ORDER_FEE
+        return _parse_order_book(r.json()[0]), BROKER_ORDER_FEE
     logger.error('request failed: %d, %s', r.status_code, r.content)
     return None
 
@@ -313,10 +320,17 @@ def crypto_deposit_completed(deposit):
 
 def bid_quote_amount(market, amount):
     assert isinstance(amount, decimal.Decimal)
-    if amount < assets.MARKETS[market].min_order:
+    dasset_market = market_req(market)
+    if not dasset_market:
+        return decimal.Decimal(-1), QuoteResult.MARKET_API_FAIL
+    min_trade = decimal.Decimal(dasset_market.min_trade)
+    if amount < min_trade:
         return decimal.Decimal(-1), QuoteResult.AMOUNT_TOO_LOW
 
-    order_book, _, broker_fee = order_book_req(market)
+    order_book_result = order_book_req(market)
+    if not order_book_result:
+        return QuoteResult.MARKET_API_FAIL
+    order_book, broker_fee = order_book_result
 
     filled = decimal.Decimal(0)
     total_price = decimal.Decimal(0)
@@ -339,10 +353,17 @@ def bid_quote_amount(market, amount):
 
 def ask_quote_amount(market, amount):
     assert isinstance(amount, decimal.Decimal)
-    if amount < assets.MARKETS[market].min_order:
+    dasset_market = market_req(market)
+    if not dasset_market:
+        return decimal.Decimal(-1), QuoteResult.MARKET_API_FAIL
+    min_trade = decimal.Decimal(dasset_market.min_trade)
+    if amount < min_trade:
         return decimal.Decimal(-1), QuoteResult.AMOUNT_TOO_LOW
 
-    order_book, _, broker_fee = order_book_req(market)
+    order_book_result = order_book_req(market)
+    if not order_book_result:
+        return QuoteResult.MARKET_API_FAIL
+    order_book, broker_fee = order_book_result
 
     filled = decimal.Decimal(0)
     total_price = decimal.Decimal(0)
