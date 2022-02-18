@@ -344,6 +344,8 @@ def user_update_password():
     if not verified_password:
         return bad_request(web_utils.INCORRECT_PASSWORD)
     ### set the new_password:
+    if flask_security.password_length_validator(new_password) or flask_security.password_complexity_validator(new_password, True) or flask_security.password_breached_validator(new_password):
+        return bad_request(web_utils.WEAK_PASSWORD)
     user.password = encrypt_password(new_password)
     db.session.add(user)
     db.session.commit()
