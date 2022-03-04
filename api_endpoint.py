@@ -445,7 +445,7 @@ def user_two_factor_send():
     if err_response:
         return err_response
     user = api_key.user
-    if not tf_enabled_check(user):
+    if tf_enabled_check(user):
         if not tf_code_send(user):
             return bad_request(web_utils.FAILED_CODE_SEND)
     return jsonify(dict(method=tf_method(), setup=None))
