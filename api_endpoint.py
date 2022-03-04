@@ -203,7 +203,6 @@ def api_key_claim():
     if not token:
         time.sleep(5)
         return bad_request(web_utils.NOT_FOUND)
-    req = ApiKeyRequest.from_token(db.session, token)
     if not req.created_api_key:
         time.sleep(5)
         return bad_request(web_utils.NOT_CREATED)
@@ -439,6 +438,18 @@ def user_two_factor_disable():
         websocket.user_info_event(user)
     return jsonify(dict(method=tf_method(), setup=None))
 
+@api.route('/user_two_factor_send', methods=['POST'])
+@limiter.limit('10/hour')
+def user_two_factor_send():
+    api_key, err_response = auth_request(db)
+    if err_response:
+        return err_response
+    user = api_key.user
+    if not tf_enabled_check(user):
+        if not tf_code_send(user):
+            return bad_request(web_utils.FAILED_CODE_SEND)
+    return jsonify(dict(method=tf_method(), setup=None))
+
 @api.route('/assets', methods=['POST'])
 def assets_req():
     _, err_response = auth_request(db)
@@ -520,10 +531,15 @@ def crypto_deposits_req():
 
 @api.route('/crypto_withdrawal_create', methods=['POST'])
 def crypto_withdrawal_create_req():
-    params, api_key, err_response = auth_request_get_params(db, ['asset', 'amount_dec', 'recipient', 'save_recipient', 'recipient_description'])
+    params, api_key, err_response = auth_request_get_params(db, ['asset', 'amount_dec', 'recipient', 'save_recipient', 'recipient_description', 'tf_code'])
     if err_response:
         return err_response
-    asset, amount_dec, recipient, save_recipient, recipient_description = params
+    asset, amount_dec, recipient, save_recipient, recipient_description, tf_code = params
+    if tf_enabled_check(api_key.user):
+        if not tf_code:
+            return bad_request(web_utils.AUTH_FAILED)
+        if not tf_code_validate(api_key.user, tf_code):
+            return bad_request(web_utils.AUTH_FAILED)
     if not assets.asset_is_crypto(asset):
         return bad_request(web_utils.INVALID_ASSET)
     amount_dec = decimal.Decimal(amount_dec)
@@ -625,10 +641,15 @@ def fiat_deposits_req():
 
 @api.route('/fiat_withdrawal_create', methods=['POST'])
 def fiat_withdrawal_create_req():
-    params, api_key, err_response = auth_request_get_params(db, ['asset', 'amount_dec', 'recipient', 'save_recipient', 'recipient_description'])
+    params, api_key, err_response = auth_request_get_params(db, ['asset', 'amount_dec', 'recipient', 'save_recipient', 'recipient_description', 'tf_code'])
     if err_response:
         return err_response
-    asset, amount_dec, recipient, save_recipient, recipient_description = params
+    asset, amount_dec, recipient, save_recipient, recipient_description, tf_code = params
+    if tf_enabled_check(api_key.user):
+        if not tf_code:
+            return bad_request(web_utils.AUTH_FAILED)
+        if not tf_code_validate(api_key.user, tf_code):
+            return bad_request(web_utils.AUTH_FAILED)
     if not assets.asset_is_fiat(asset):
         return bad_request(web_utils.INVALID_ASSET)
     amount_dec = decimal.Decimal(amount_dec)
