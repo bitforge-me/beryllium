@@ -16,7 +16,7 @@ class EventType:
 
 LOGIN = EventType(name='login', attempts=0, last_attempt=time(), ok=True)
 WITHDRAWAL = EventType(name='withdrawal', attempts=0, last_attempt=time(), ok=True)
-DATA = dict(LOGIN, WITHDRAWAL)
+DATA = dict(login=LOGIN, withdrawal=WITHDRAWAL)
 
 def login_attempt():
     if not LOGIN.ok:
