@@ -32,6 +32,7 @@ import assets
 import kyc_core
 import fiatdb_core
 import coordinator
+import tripwire
 
 USER_BALANCE_SHOW = 'show balance'
 USER_BALANCE_CREDIT = 'credit'
@@ -353,6 +354,11 @@ def user_order():
 @roles_accepted(Role.ROLE_ADMIN)
 def config():
     return render_template('config.html')
+
+@app.route('/tripwire', methods=['GET'])
+@roles_accepted(Role.ROLE_ADMIN)
+def tripwire_ep():
+    return render_template('tripwire.html', data=tripwire.DATA)
 
 #
 # gevent class
