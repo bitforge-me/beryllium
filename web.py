@@ -32,6 +32,7 @@ import assets
 import kyc_core
 import fiatdb_core
 import coordinator
+from ln import LightningInstance
 
 USER_BALANCE_SHOW = 'show balance'
 USER_BALANCE_CREDIT = 'credit'
