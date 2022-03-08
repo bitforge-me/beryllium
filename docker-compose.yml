@@ -61,3 +61,111 @@ services:
       - ./web/nginx:/etc/nginx/templates
       - ./web/alloy:/etc/nginx/alloy
       - ./web/certbot/conf:/etc/letsencrypt
+
+  bitcoind:
+    image: btcpayserver/bitcoin:22.0
+    container_name: bitcoind
+    restart: unless-stopped
+    environment:
+      BITCOIN_NETWORK: testnet
+      BITCOIN_WALLETDIR: "/walletdata"
+      BITCOIN_EXTRA_ARGS: |
+        server=1
+        whitelist=0.0.0.0/0
+        rpcuser=rpcuser
+        rpcpassword=rpcpass
+        rpcbind=0.0.0.0:18332
+        rpcallowip=0.0.0.0/0
+        settings=false
+    ports:
+      - "0.0.0.0:18333:18333"
+      - "0.0.0.0:18332:18332"
+    volumes:
+      - "bitcoin_datadir:/data"
+      - "bitcoin_wallet_datadir:/walletdata"
+
+  clightning_bitcoin:
+    image: clightning_bitcoin
+    container_name: clightning_bitcoin
+    restart: unless-stopped
+    environment:
+      LIGHTNINGD_NETWORK: testnet
+      LIGHTNINGD_CHAIN: btc
+      LIGHTNINGD_ALIAS: myawesomenode
+      LIGHTNINGD_PORT: 9735
+      LIGHTNINGD_OPT: |
+        bitcoin-datadir=/etc/bitcoin
+        bitcoin-rpcconnect=bitcoind
+    volumes:
+      - "clightning_bitcoin_datadir:/root/.lightning"
+      - "bitcoin_datadir:/etc/bitcoin"
+    ports:
+      - "9735:9735"
+    links:
+      - bitcoind
+
+  clightning_bitcoin_charge:
+    image: shesek/lightning-charge:0.4.23-1-standalone
+    container_name: clightning_bitcoin_charge
+    restart: unless-stopped
+    environment:
+      NETWORK: testnet
+      # TODO - set API_TOKEN a different way
+      API_TOKEN: test
+      LN_NET_PATH: /etc/lightning
+      LN_NET: /etc/lightning
+    volumes:
+      - "clightning_bitcoin_datadir:/etc/lightning"
+      - "clightning_bitcoin_charge:/data"
+    expose:
+      - "9112"
+    links:
+      - clightning_bitcoin
+
+  clightning_bitcoin_spark:
+    image: shesek/spark-wallet:0.2.9-standalone
+    container_name: clightning_bitcoin_spark
+    restart: unless-stopped
+    environment:
+      NETWORK: testnet
+      # TODO - set `--login` a different way
+      SPARK_OPT: --no-tls -C /data/.cookie --login test:test
+    volumes:
+      - "clightning_bitcoin_datadir:/etc/lightning"
+      - "clightning_bitcoin_spark:/data"
+    links:
+      - clightning_bitcoin
+    expose:
+      - "9737"
+
+#  app:
+#    image: app
+#    container_name: app
+#    restart: unless-stopped
+#    environment:
+#      SERVICE_URL: http://rpcuser:rpcpass@bitcoind:18332
+#      RPC_FILE: /etc/lightning/lightning-rpc
+#    volumes:
+#      - "clightning_bitcoin_datadir:/etc/lightning"
+#    links:
+#      - bitcoind
+#      - clightning_bitcoin
+#    expose:
+#      - "5000"
+#
+#  web:
+#    image: web
+#    container_name: web
+#    restart: unless-stopped
+#    links:
+#      - clightning_bitcoin
+#      - app
+#    ports:
+#      - "0.0.0.0:80:80"
+#
+volumes:
+  bitcoin_datadir:
+  bitcoin_wallet_datadir:
+  clightning_bitcoin_datadir:
+  clightning_bitcoin_spark:
+  clightning_bitcoin_charge:
