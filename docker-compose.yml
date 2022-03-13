@@ -85,7 +85,7 @@ services:
       - "bitcoin_wallet_datadir:/walletdata"
 
   clightning_bitcoin:
-    image: blockstream/lightningd:v0.10.2-rebalance
+    image: clightning_bitcoin
     container_name: clightning_bitcoin
     restart: unless-stopped
     environment:
