@@ -1,7 +1,8 @@
 import os
 import datetime
-import pytz
+from typing import Optional
 
+import pytz
 from pyln.client import LightningRpc
 
 def _msat_to_sat(msats):
@@ -38,26 +39,32 @@ class LnRpc():
         # create a LN invoice
         return self.instance.invoice(_sat_to_msat(sats), label, msg)
 
-    def pay(self, bolt11):
+    def pay(self, bolt11: str) -> Optional[dict]:
         # pay a bolt11 invoice
         invoice_result = self.instance.pay(bolt11)
+        if not invoice_result:
+            return None
         invoice_result["sats_sent"] = _msat_to_sat(invoice_result["msatoshi_sent"])
         return invoice_result
 
-    def pay_status(self, bolt11):
+    def pay_status(self, bolt11: str) -> Optional[dict]:
         # show the status of a specific paid bolt11 invoice
         return self.instance.listpays(bolt11=bolt11)
+
+    def pay_status_from_hash(self, payment_hash: str) -> Optional[dict]:
+        # show the status of a specific payment hash
+        return self.instance.listpays(payment_hash=payment_hash)
 
     def list_paid(self):
         # show the status of all paid bolt11 invoice
         results = []
-        list_pays = self.instance.listpays()
-        for list_pay in list_pays["pays"]:
-            created_at = list_pay["created_at"]
+        pays = self.instance.listpays()
+        for pay in pays["pays"]:
+            created_at = pay["created_at"]
             date = datetime.datetime.fromtimestamp(
-                list_pay["created_at"], pytz.timezone('Pacific/Auckland'))
-            status = list_pay["status"]
-            amount_msat = list_pay["amount_sent_msat"]
+                created_at, pytz.timezone('Pacific/Auckland'))
+            status = pay["status"]
+            amount_msat = pay["amount_sent_msat"]
             amount_sats = _msat_to_sat(amount_msat)
             results.append({"created_at": created_at,
                             "date": date,
@@ -66,14 +73,13 @@ class LnRpc():
                             "amount_sats": amount_sats})
         return results
 
-    def decode_pay(self, bolt11):
-        bolt11_result = self.instance.decodepay(bolt11)
-        amount_sats = int(
-            int(str(bolt11_result["amount_msat"]).split("msat", 1)[0]) / 1000)
-        return {
-            "amount": amount_sats,
-            "description": bolt11_result["description"],
-            "payee": bolt11_result["payee"]}
+    def decode_pay(self, bolt11: str) -> Optional[dict]:
+        result = self.instance.decodepay(bolt11)
+        if not result:
+            return None
+        sats = _msat_to_sat(result["amount_msat"].split("msat")[0])
+        result['amount_sat'] = sats
+        return result
 
     def wait_any(self):
         invoice_list = self.list_paid()
@@ -102,21 +108,25 @@ class LnRpc():
 
     def list_funds(self):
         funds_dict = self.instance.listfunds()
-        msats_channel = 0
+        msats_largest_channel = 0
+        msats_channels = 0
         msats_onchain = 0
-        sats_channel = 0
+        sats_largest_channel = 0
+        sats_channels = 0
         sats_onchain = 0
         # Only shows after the very first transaction otherwise errors.
-        for i in range(len(funds_dict["channels"])):
-            msats_channel += int(str(funds_dict["channels"]
-                                 [i]["our_amount_msat"]).split("msat", 1)[0])
-        sats_channel += _msat_to_sat(msats_channel)
-        for i in range(len(funds_dict["outputs"])):
-            if funds_dict["outputs"][i]["status"] == "confirmed":
-                msats_onchain += int(str(funds_dict["outputs"]
-                                     [i]["amount_msat"]).split("msat", 1)[0])
+        for chan in funds_dict["channels"]:
+            msats_channel = int(chan["our_amount_msat"].split("msat")[0])
+            if msats_channel > msats_largest_channel:
+                msats_largest_channel = msats_channel
+            msats_channels += msats_channel
+        sats_largest_channel = _msat_to_sat(msats_largest_channel)
+        sats_channels = _msat_to_sat(msats_channels)
+        for output in funds_dict["outputs"]:
+            if output["status"] == "confirmed":
+                msats_onchain += int(output["amount_msat"].split("msat")[0])
         sats_onchain += _msat_to_sat(msats_onchain)
-        return({"msats_channel": msats_channel, "msats_onchain": msats_onchain, "sats_channel": sats_channel, "sats_onchain": sats_onchain})
+        return dict(msats_largest_channel=msats_largest_channel, msats_channels=msats_channels, msats_onchain=msats_onchain, sats_largest_channel=sats_largest_channel, sats_channels=sats_channels, sats_onchain=sats_onchain)
 
     #def open_channel(self, node_id, sats):
     #    return self.instance.fundchannel_start(node_id, _sat_to_msat(sats))

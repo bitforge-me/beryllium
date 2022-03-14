@@ -462,6 +462,7 @@ class CryptoWithdrawalSchema(Schema):
     token = fields.String()
     date = fields.DateTime()
     asset = fields.String()
+    l2_network = fields.String()
     amount = fields.Integer()
     amount_dec = fields.Method('get_amount_dec')
     recipient = fields.String()
@@ -482,20 +483,24 @@ class CryptoWithdrawal(db.Model, FromUserMixin):
     user = db.relationship('User', backref=db.backref('crypto_withdrawals', lazy='dynamic'))
     date = db.Column(db.DateTime(), nullable=False)
     asset = db.Column(db.String, nullable=False)
+    l2_network = db.Column(db.String)
     amount = db.Column(db.BigInteger, nullable=False)
     recipient = db.Column(db.String, nullable=False)
-    exchange_reference = db.Column(db.String, nullable=False)
+    exchange_reference = db.Column(db.String)
+    wallet_reference = db.Column(db.String)
     txid = db.Column(db.String)
     status = db.Column(db.String, nullable=False)
 
-    def __init__(self, user, asset, amount, recipient, exchange_reference):
+    def __init__(self, user, asset, l2_network, amount, recipient, exchange_reference, wallet_reference):
         self.token = generate_key()
         self.user = user
         self.date = datetime.now()
         self.asset = asset
+        self.l2_network = l2_network
         self.amount = amount
         self.recipient = recipient
         self.exchange_reference = exchange_reference
+        self.wallet_reference = wallet_reference
         self.status = self.STATUS_CREATED
 
     def to_json(self):

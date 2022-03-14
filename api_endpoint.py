@@ -26,6 +26,7 @@ import websocket
 import fiatdb_core
 import broker
 import coordinator
+import wallet
 
 logger = logging.getLogger(__name__)
 api = Blueprint('api', __name__, template_folder='templates')
@@ -42,6 +43,14 @@ def _user_subaccount_get_or_create(db_session, user):
         db_session.add(subaccount)
         return subaccount
     return user.dasset_subaccount
+
+def _tf_check_withdrawal(user, tf_code):
+    if tf_enabled_check(user):
+        if not tf_code:
+            return bad_request(web_utils.AUTH_FAILED)
+        if not tf_code_validate(user, tf_code):
+            return bad_request(web_utils.AUTH_FAILED)
+    return None
 
 #
 # Public API
@@ -529,28 +538,37 @@ def crypto_deposits_req():
     total = CryptoDeposit.total_for_user(db.session, api_key.user)
     return jsonify(deposits=deposits, offset=offset, limit=limit, total=total)
 
-@api.route('/crypto_withdrawal_create', methods=['POST'])
-def crypto_withdrawal_create_req():
-    params, api_key, err_response = auth_request_get_params(db, ['asset', 'amount_dec', 'recipient', 'save_recipient', 'recipient_description', 'tf_code'])
-    if err_response:
-        return err_response
-    asset, amount_dec, recipient, save_recipient, recipient_description, tf_code = params
-    if tf_enabled_check(api_key.user):
-        if not tf_code:
-            return bad_request(web_utils.AUTH_FAILED)
-        if not tf_code_validate(api_key.user, tf_code):
-            return bad_request(web_utils.AUTH_FAILED)
+def _validate_crypto_asset(asset, l2_network, recipient):
     if not assets.asset_is_crypto(asset):
         return bad_request(web_utils.INVALID_ASSET)
+    if not assets.asset_has_l2(asset, l2_network):
+        return bad_request(web_utils.INVALID_NETWORK)
+    if not assets.asset_recipient_validate(asset, l2_network, recipient):
+        return bad_request(web_utils.INVALID_RECIPIENT)
+    return None
+
+@api.route('/crypto_withdrawal_create', methods=['POST'])
+def crypto_withdrawal_create_req():
+    params, api_key, err_response = auth_request_get_params(db, ['asset', 'l2_network', 'amount_dec', 'recipient', 'save_recipient', 'recipient_description', 'tf_code'])
+    if err_response:
+        return err_response
+    asset, l2_network, amount_dec, recipient, save_recipient, recipient_description, tf_code = params
+    err_response = _tf_check_withdrawal(api_key.user, tf_code)
+    if err_response:
+        return err_response
+    err_response = _validate_crypto_asset(asset, l2_network, recipient)
+    if err_response:
+        return err_response
     amount_dec = decimal.Decimal(amount_dec)
+    amount_from_recipient = assets.asset_recipient_extract_amount(asset, l2_network, recipient)
+    if amount_dec == 0 and amount_from_recipient > 0:
+        amount_dec = amount_from_recipient
     if amount_dec <= 0:
         return bad_request(web_utils.INVALID_AMOUNT)
-    if amount_dec <= assets.asset_min_withdraw(asset):
+    if amount_dec <= assets.asset_min_withdraw(asset, l2_network):
         return bad_request(web_utils.AMOUNT_TOO_LOW)
-    if not assets.asset_recipient_validate(asset, recipient):
-        return bad_request(web_utils.INVALID_RECIPIENT)
     # save recipient
-    if save_recipient:
+    if save_recipient and not l2_network:
         entry = AddressBook.from_recipient(db.session, api_key.user, asset, recipient)
         if entry:
             entry.description = recipient_description
@@ -561,13 +579,22 @@ def crypto_withdrawal_create_req():
     with coordinator.lock:
         if not fiatdb_core.funds_available_user(db.session, api_key.user, asset, amount_dec):
             return bad_request(web_utils.INSUFFICIENT_BALANCE)
-        if not dasset.funds_available_us(asset, amount_dec):
-            return bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
-        withdrawal_id = dasset.crypto_withdrawal_create(asset, amount_dec, recipient)
-        if not withdrawal_id:
-            return bad_request(web_utils.FAILED_EXCHANGE)
+        exchange_reference = None
+        wallet_reference = None
+        if wallet.withdrawals_supported(asset, l2_network):
+            if not wallet.funds_available(asset, l2_network, amount_dec):
+                return bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
+            wallet_reference = wallet.withdrawal_create(asset, l2_network, amount_dec, recipient)
+            if not wallet_reference:
+                return bad_request(web_utils.FAILED_PAYMENT_CREATE)
+        else:
+            if not dasset.funds_available_us(asset, amount_dec):
+                return bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
+            exchange_reference = dasset.crypto_withdrawal_create(asset, amount_dec, recipient)
+            if not exchange_reference:
+                return bad_request(web_utils.FAILED_EXCHANGE)
         amount_int = assets.asset_dec_to_int(asset, amount_dec)
-        crypto_withdrawal = CryptoWithdrawal(api_key.user, asset, amount_int, recipient, withdrawal_id)
+        crypto_withdrawal = CryptoWithdrawal(api_key.user, asset, l2_network, amount_int, recipient, exchange_reference, wallet_reference)
         ftx = fiatdb_core.tx_create(db.session, api_key.user, FiatDbTransaction.ACTION_DEBIT, asset, amount_int, f'crypto withdrawal: {crypto_withdrawal.token}')
         if not ftx:
             logger.error('failed to create fiatdb transaction for crypto withdrawal %s', crypto_withdrawal.token)
@@ -645,19 +672,17 @@ def fiat_withdrawal_create_req():
     if err_response:
         return err_response
     asset, amount_dec, recipient, save_recipient, recipient_description, tf_code = params
-    if tf_enabled_check(api_key.user):
-        if not tf_code:
-            return bad_request(web_utils.AUTH_FAILED)
-        if not tf_code_validate(api_key.user, tf_code):
-            return bad_request(web_utils.AUTH_FAILED)
+    err_response = _tf_check_withdrawal(api_key.user, tf_code)
+    if err_response:
+        return err_response
     if not assets.asset_is_fiat(asset):
         return bad_request(web_utils.INVALID_ASSET)
     amount_dec = decimal.Decimal(amount_dec)
     if amount_dec <= 0:
         return bad_request(web_utils.INVALID_AMOUNT)
-    if amount_dec <= assets.asset_min_withdraw(asset):
+    if amount_dec <= assets.asset_min_withdraw(asset, None):
         return bad_request(web_utils.AMOUNT_TOO_LOW)
-    if not assets.asset_recipient_validate(asset, recipient):
+    if not assets.asset_recipient_validate(asset, None, recipient):
         return bad_request(web_utils.INVALID_RECIPIENT)
     if save_recipient:
         entry = AddressBook.from_recipient(db.session, api_key.user, asset, recipient)

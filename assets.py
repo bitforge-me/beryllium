@@ -11,6 +11,7 @@ import web3
 from stdnum.nz import bankaccount
 
 from app_core import app
+from ln import LnRpc
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ class Asset:
     withdraw_fee: Dec
     min_withdraw: Dec
     is_crypto: bool
+    l2_network: Optional['Asset']
 
 @dataclass
 class Market:
@@ -29,12 +31,13 @@ class Market:
     quote_asset: str
 
 TESTNET = app.config['TESTNET']
-NZD = Asset(symbol='NZD', name='New Zealand Dollar', decimals=2, withdraw_fee=Dec(7), min_withdraw=Dec(20), is_crypto=False)
-BTC = Asset(symbol='BTC', name='Bitcoin', decimals=8, withdraw_fee=Dec('0.0003'), min_withdraw=Dec('0.001'), is_crypto=True)
-ETH = Asset(symbol='ETH', name='Ethereum', decimals=18, withdraw_fee=Dec('0.0052'), min_withdraw=Dec('0.01'), is_crypto=True)
-DOGE = Asset(symbol='DOGE', name='Dogecoin', decimals=8, withdraw_fee=Dec(5), min_withdraw=Dec(20), is_crypto=True)
-LTC = Asset(symbol='LTC', name='Litecoin', decimals=8, withdraw_fee=Dec('0.01'), min_withdraw=Dec('0.03'), is_crypto=True)
-WAVES = Asset(symbol='WAVES', name='Waves', decimals=8, withdraw_fee=Dec('0.001'), min_withdraw=Dec('0.003'), is_crypto=True)
+NZD = Asset(symbol='NZD', name='New Zealand Dollar', decimals=2, withdraw_fee=Dec(7), min_withdraw=Dec(20), is_crypto=False, l2_network=None)
+BTCLN = Asset(symbol='BTC-LN', name='Bitcoin (Lightning)', decimals=8, withdraw_fee=Dec('0'), min_withdraw=Dec('0.00000001'), is_crypto=True, l2_network=None)
+BTC = Asset(symbol='BTC', name='Bitcoin', decimals=8, withdraw_fee=Dec('0.0003'), min_withdraw=Dec('0.001'), is_crypto=True, l2_network=BTCLN)
+ETH = Asset(symbol='ETH', name='Ethereum', decimals=18, withdraw_fee=Dec('0.0052'), min_withdraw=Dec('0.01'), is_crypto=True, l2_network=None)
+DOGE = Asset(symbol='DOGE', name='Dogecoin', decimals=8, withdraw_fee=Dec(5), min_withdraw=Dec(20), is_crypto=True, l2_network=None)
+LTC = Asset(symbol='LTC', name='Litecoin', decimals=8, withdraw_fee=Dec('0.01'), min_withdraw=Dec('0.03'), is_crypto=True, l2_network=None)
+WAVES = Asset(symbol='WAVES', name='Waves', decimals=8, withdraw_fee=Dec('0.001'), min_withdraw=Dec('0.003'), is_crypto=True, l2_network=None)
 ASSETS = dict(NZD=NZD, BTC=BTC, ETH=ETH, DOGE=DOGE, LTC=LTC, WAVES=WAVES)
 MARKETS = {'BTC-NZD': Market(base_asset=BTC, quote_asset=NZD), \
     'ETH-NZD': Market(base_asset=ETH, quote_asset=NZD), \
@@ -98,8 +101,12 @@ def asset_decimals(asset: str) -> int:
 def asset_withdraw_fee(asset: str) -> Dec:
     return ASSETS[asset].withdraw_fee
 
-def asset_min_withdraw(asset: str) -> Dec:
-    return ASSETS[asset].min_withdraw
+def asset_min_withdraw(asset: str, l2_network: Optional[str]) -> Dec:
+    ass = ASSETS[asset]
+    if l2_network:
+        assert ass.l2_network is not None and ass.l2_network.symbol == l2_network
+        return ass.l2_network.min_withdraw
+    return ass.min_withdraw
 
 def asset_int_to_dec(asset: str, value: int) -> Dec:
     decimals = asset_decimals(asset)
@@ -119,40 +126,50 @@ def asset_is_crypto(asset: str) -> bool:
             return True
     return False
 
+def asset_has_l2(asset: str, l2_network: str) -> bool:
+    for item in ASSETS.values():
+        if item.symbol == asset and item.l2_network is not None and item.l2_network.symbol == l2_network:
+            return True
+    return False
+
 def asset_is_fiat(asset: str) -> bool:
     for item in ASSETS.values():
         if item.symbol == asset and not item.is_crypto:
             return True
     return False
 
-def asset_recipient_validate(asset: str, recipient: str) -> bool:
+def asset_recipient_extract_amount(asset: str, l2_network: Optional[str], recipient: str) -> Dec:
+    if asset == BTC.symbol and l2_network == BTCLN.symbol:
+        rpc = LnRpc()
+        result = rpc.decode_pay(recipient)
+        if not result:
+            return Dec(0)
+        return asset_int_to_dec(asset, result['amount_sat'])
+    return Dec(0)
+
+def asset_recipient_validate(asset: str, l2_network: Optional[str], recipient: str) -> bool:
     result = False
-    if asset == 'NZD':
+    if asset == NZD.symbol:
         result = bankaccount.is_valid(recipient)
-    elif asset == 'BTC':
+    elif asset == BTC.symbol:
+        if l2_network == BTCLN.symbol:
+            # if a valid lightning invoice it should have a positive amount to send
+            return asset_recipient_extract_amount(asset, l2_network, recipient) > 0
         bitcoin.SelectParams('testnet' if TESTNET else 'mainnet')
         try:
             bitcoin.wallet.CBitcoinAddress(recipient)
             result = True
         except: # pylint: disable=bare-except
             pass
-    elif asset == 'ETH':
+    elif asset == ETH.symbol:
         result = web3.Web3.isAddress(recipient)
-    elif asset == 'DOGE':
+    elif asset == DOGE.symbol:
         result = _base58_validate(recipient, [0x1E], [0x71])
-    elif asset == 'LTC':
+    elif asset == LTC.symbol:
         result = _base58_validate(recipient, [0x30], [0x6F])
     if not result:
         logger.error('failed to validate recipient "%s" (%s)', recipient, asset)
     return result
-
-def market_recipent_validate(market: str, side: MarketSide, recipient: str) -> bool:
-    base_asset, quote_asset = assets_from_market(market)
-    if side is MarketSide.BID:
-        asset = base_asset
-    else:
-        asset = quote_asset
-    return asset_recipient_validate(asset, recipient)
 
 def crypto_uri(asset: str, address: str, amount_int: int) -> Optional[str]:
     assert isinstance(amount_int, int)
