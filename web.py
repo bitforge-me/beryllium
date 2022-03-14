@@ -354,7 +354,15 @@ def user_order():
 @roles_accepted(Role.ROLE_ADMIN)
 def ln_ep():
     rpc = LnRpc()
-    return render_template('ln.html', info=rpc.get_info())
+    return render_template('ln.html', info=rpc.get_info(), funds_dict=rpc.list_funds())
+
+@app.route('/ln/getinfo')
+@roles_accepted(Role.ROLE_ADMIN)
+def lightningd_getinfo_ep():
+    rpc = LnRpc()
+    """ Returns template with info about lightningd"""
+    return render_template('lightning/lightningd_getinfo.html', info=rpc.get_info())
+
 
 @app.route('/config', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)

@@ -1,0 +1,25 @@
+{% extends "layout.html" %}
+
+{% block title %}Invoice Generated!{% endblock %}
+
+{% block content %}
+<script>
+	const copyInvoice = function() {
+		navigator.clipboard.writeText("{{ bolt11 }}");
+	}
+</script>
+<h2> Invoice Generated! </h2>
+{{ qrcode_svg | safe }}
+<div class="form-group">
+  <label for="readonlytextarea" class="form-label mt-4">Invoice ID</label>
+  <textarea class="form-control" id="readonlytextarea" rows="3" placeholder="{{ bolt11 }}" readonly></textarea>
+</div>
+<a class="button submit" onclick="copyInvoice()">
+  <button type="button" class="btn btn-primary btn-lg mt-3">Copy Invoice ID</button>
+</a>
+{% endblock %}
+
+{% block footer %}
+{{ super() }}
+{% endblock %}
+
