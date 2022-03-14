@@ -32,7 +32,7 @@ import assets
 import kyc_core
 import fiatdb_core
 import coordinator
-from ln import LightningInstance
+from ln import LnRpc
 
 USER_BALANCE_SHOW = 'show balance'
 USER_BALANCE_CREDIT = 'credit'
@@ -349,6 +349,12 @@ def user_order():
                 db.session.commit()
             flash(f'canceled and refunded order {token}')
     return return_response()
+
+@app.route('/ln', methods=['GET', 'POST'])
+@roles_accepted(Role.ROLE_ADMIN)
+def ln_ep():
+    rpc = LnRpc()
+    return render_template('ln.html', info=rpc.get_info())
 
 @app.route('/config', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)

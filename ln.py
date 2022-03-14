@@ -1,35 +1,28 @@
-"""
-A class object that will be called on certain lightning-related endpoints
-"""
 import os
-import random
 import datetime
 import pytz
 
 from pyln.client import LightningRpc
 
-
-class LightningInstance():
+# pylint: disable=too-many-public-methods
+class LnRpc():
     def __init__(self):
-        if 'RPC_FILE' in os.environ:
-            self.instance = LightningRpc(os.environ['RPC_FILE'])
+        if 'LN_RPC_FILE' in os.environ:
+            self.instance = LightningRpc(os.environ['LN_RPC_FILE'])
         else:
             self.instance = LightningRpc("/etc/lightning/lightning-rpc")
 
     def get_info(self):
         return self.instance.getinfo()
 
-    def create_invoice(self, amount, msg):
+    def create_invoice(self, amount, label, msg):
         # create a LN invoice
-        return self.instance.invoice(
-            amount, "lbl{}".format(
-                random.random()), msg)
+        return self.instance.invoice(amount, label, msg)
 
     def send_invoice(self, bolt11):
         # pay a bolt11 invoice
         invoice_result = self.instance.pay(bolt11)
-        invoice_result["sats_sent"] = int(
-            invoice_result["msatoshi_sent"] / 1000)
+        invoice_result["sats_sent"] = int(invoice_result["msatoshi_sent"] / 1000)
         return invoice_result
 
     def payment_status(self, bolt11string):
@@ -86,7 +79,6 @@ class LightningInstance():
         funds_onchain = 0
         sats_channel = 0
         sats_onchain = 0
-        results = []
         # Only shows after the very first transaction otherwise errors.
         for i in range(len(funds_dict["channels"])):
             funds_channel += int(str(funds_dict["channels"]
