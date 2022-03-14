@@ -424,6 +424,28 @@ def list_txs():
 def config():
     return render_template('config.html')
 
+'''
+socket-io notifications
+'''
+
+
+@socketio.on('connect')
+def test_connect(auth):
+    print("Client connected")
+
+
+@socketio.on('disconnect')
+def test_disconnect():
+    print('Client disconnected')
+
+
+@socketio.on('waitany')
+def wait_any_invoice():
+    print('client called recieveany')
+    ln_instance = LightningInstance()
+    res = ln_instance.wait_any()
+    emit('invoice', {'data': res})
+
 #
 # gevent class
 #
