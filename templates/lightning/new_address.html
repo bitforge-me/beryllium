@@ -1,0 +1,49 @@
+{% extends "layout.html" %}
+{% block title %}Generate New Bitcoin Address{% endblock %}
+{% block head %}
+{{ super() }}
+{% endblock %}
+{% block content %}
+<br/>
+<h2>Generate New Bitcoin Address</h2>
+<div id="wrapper">
+    <section id="intro" class="wrapper style1 fullscreen fade-up">
+        <div class="inner">
+            <div id="qrcode"></div>
+                <h1 style="margin-top: 50px;">{{ address.bech32 }}</h1>
+                <p>Save your newly-generated Bitcoin address</p>
+                <a href="" class="button submit" id="export-wallet-button">
+                    <button type="button" class="btn btn-primary">Save Bitcoin Address</button>
+                </a>
+        </div>
+    </section>
+</div>
+<script src="{{ url_for('static',filename='assets/js/jquery.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/js/jquery.scrollex.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/js/jquery.scrolly.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/js/browser.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/js/breakpoints.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/js/qrcode.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/js/util.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/js/main.js') }}"></script>
+<script type="text/javascript">
+    var qrcode = new QRCode("qrcode", {
+        text: "{{ address.bech32 }}",
+        width: 400,
+        height: 400,
+        colorDark : "#000000",
+        colorLight : "#ffffff",
+        correctLevel : QRCode.CorrectLevel.H
+    });
+    var exportButton = document.querySelector("#export-wallet-button");
+    // Later include xpub, mnemonic etc
+        exportButton.setAttribute("href",  "data:text/plain;charset=utf-8," + 
+        encodeURIComponent(`publicAddress:{{ address.bech32 }}`
+        )
+    );
+    exportButton.setAttribute("download", "wallet-info.txt");
+</script>
+{% endblock %}
+{% block footer %}
+  {{ super() }}
+{% endblock %}

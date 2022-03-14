@@ -75,6 +75,24 @@ def process_deposits_and_broker_orders():
         logger.info('process broker orders..')
         broker.broker_orders_update(db.session)
 
+#def qrcode_svg_create(data):
+#    """ Returns SVG of input data """
+#    factory = qrcode.image.svg.SvgPathImage
+#    img = qrcode.make(data, image_factory=factory, box_size=35)
+#    output = io.BytesIO()
+#    img.save(output)
+#    svg = output.getvalue().decode('utf-8')
+#    return svg
+#
+#def qrcode_svg_create_ln(data):
+#    """ Returns SVG of input data (LN focused) """
+#    factory = qrcode.image.svg.SvgPathImage
+#    img = qrcode.make(data, image_factory=factory, box_size=10)
+#    output = io.BytesIO()
+#    img.save(output)
+#    svg = output.getvalue().decode('utf-8')
+#    return svg
+
 #
 # Flask views
 #
@@ -354,7 +372,52 @@ def user_order():
 @roles_accepted(Role.ROLE_ADMIN)
 def ln_ep():
     rpc = LnRpc()
-    return render_template('ln.html', info=rpc.get_info())
+    return render_template('ln.html', info=rpc.get_info(), funds_dict=rpc.list_funds())
+
+@app.route('/ln/getinfo')
+@roles_accepted(Role.ROLE_ADMIN)
+def lightningd_getinfo_ep():
+    rpc = LnRpc()
+    """ Returns template with info about lightningd"""
+    return render_template('lightning/lightningd_getinfo.html', info=rpc.get_info())
+
+@app.route('/ln/send_bitcoin')
+@roles_accepted(Role.ROLE_ADMIN)
+def send_bitcoin():
+    """ Returns template for sending BTC """
+    rpc = LnRpc()
+    onchain = int(rpc.list_funds()["sats_onchain"]) / 100000000
+    return render_template(
+        'lightning/send_bitcoin.html',
+        bitcoin_explorer=app.config["BITCOIN_EXPLORER"],
+        onchain=onchain)
+
+@app.route('/ln/new_address')
+@roles_accepted(Role.ROLE_ADMIN)
+def new_address_ep():
+    """ Returns template showing a new address created by our HD wallet """
+    rpc = LnRpc()
+    address = rpc.new_address()
+    return render_template("lightning/new_address.html", address=address)
+
+@app.route('/ln/list_txs')
+@roles_accepted(Role.ROLE_ADMIN)
+def list_txs():
+    """ Returns template of on-chain txs """
+    rpc = LnRpc()
+    transactions = rpc.list_txs()
+    sorted_txs = sorted(
+        transactions["transactions"],
+        key=lambda d: d["blockheight"],
+        reverse=True)
+    for tx in transactions["transactions"]:
+        for output in tx["outputs"]:
+            output["sats"] = int(output["msat"] / 1000)
+            output.update({"sats": str(output["sats"]) + " satoshi"})
+    return render_template(
+        "lightning/list_transactions.html",
+        transactions=sorted_txs,
+        bitcoin_explorer=app.config["BITCOIN_EXPLORER"])
 
 @app.route('/config', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
