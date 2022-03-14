@@ -18,14 +18,14 @@
         </div>
     </section>
 </div>
-<script src="{{ url_for('static',filename='assets/js/jquery.min.js') }}"></script>
-<script src="{{ url_for('static',filename='assets/js/jquery.scrollex.min.js') }}"></script>
-<script src="{{ url_for('static',filename='assets/js/jquery.scrolly.min.js') }}"></script>
-<script src="{{ url_for('static',filename='assets/js/browser.min.js') }}"></script>
-<script src="{{ url_for('static',filename='assets/js/breakpoints.min.js') }}"></script>
-<script src="{{ url_for('static',filename='assets/js/qrcode.min.js') }}"></script>
-<script src="{{ url_for('static',filename='assets/js/util.js') }}"></script>
-<script src="{{ url_for('static',filename='assets/js/main.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/lightning/jquery.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/lightning/jquery.scrollex.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/lightning/jquery.scrolly.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/lightning/browser.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/lightning/breakpoints.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/lightning/qrcode.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/lightning/util.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/lightning/main.js') }}"></script>
 <script type="text/javascript">
     var qrcode = new QRCode("qrcode", {
         text: "{{ address.bech32 }}",
