@@ -44,7 +44,6 @@ class LnRpc():
         invoice_result = self.instance.pay(bolt11)
         if not invoice_result:
             return None
-        invoice_result["sats_sent"] = _msat_to_sat(invoice_result["msatoshi_sent"].millisatoshis)
         return invoice_result
 
     def pay_status(self, bolt11: str) -> Optional[dict]:
