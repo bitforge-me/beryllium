@@ -32,7 +32,7 @@ class Market:
 
 TESTNET = app.config['TESTNET']
 NZD = Asset(symbol='NZD', name='New Zealand Dollar', decimals=2, withdraw_fee=Dec(7), min_withdraw=Dec(20), is_crypto=False, l2_network=None)
-BTCLN = Asset(symbol='BTC-LN', name='Bitcoin (Lightning)', decimals=8, withdraw_fee=Dec('0'), min_withdraw=Dec('0.00000001'), is_crypto=True, l2_network=None)
+BTCLN = Asset(symbol='BTC-LN', name='Bitcoin Lightning', decimals=8, withdraw_fee=Dec('0'), min_withdraw=Dec('0.00000001'), is_crypto=True, l2_network=None)
 BTC = Asset(symbol='BTC', name='Bitcoin', decimals=8, withdraw_fee=Dec('0.0003'), min_withdraw=Dec('0.001'), is_crypto=True, l2_network=BTCLN)
 ETH = Asset(symbol='ETH', name='Ethereum', decimals=18, withdraw_fee=Dec('0.0052'), min_withdraw=Dec('0.01'), is_crypto=True, l2_network=None)
 DOGE = Asset(symbol='DOGE', name='Dogecoin', decimals=8, withdraw_fee=Dec(5), min_withdraw=Dec(20), is_crypto=True, l2_network=None)
@@ -126,7 +126,9 @@ def asset_is_crypto(asset: str) -> bool:
             return True
     return False
 
-def asset_has_l2(asset: str, l2_network: str) -> bool:
+def asset_has_l2(asset: str, l2_network: Optional[str]) -> bool:
+    if not l2_network:
+        return True
     for item in ASSETS.values():
         if item.symbol == asset and item.l2_network is not None and item.l2_network.symbol == l2_network:
             return True

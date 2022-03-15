@@ -4,6 +4,7 @@ import logging
 import time
 from datetime import datetime
 import decimal
+from typing import Optional
 
 from flask import Blueprint, request, jsonify, flash, redirect, render_template
 import flask_security
@@ -538,12 +539,12 @@ def crypto_deposits_req():
     total = CryptoDeposit.total_for_user(db.session, api_key.user)
     return jsonify(deposits=deposits, offset=offset, limit=limit, total=total)
 
-def _validate_crypto_asset(asset, l2_network, recipient):
+def _validate_crypto_asset(asset: str, l2_network: Optional[str], recipient: Optional[str]):
     if not assets.asset_is_crypto(asset):
         return bad_request(web_utils.INVALID_ASSET)
     if not assets.asset_has_l2(asset, l2_network):
         return bad_request(web_utils.INVALID_NETWORK)
-    if not assets.asset_recipient_validate(asset, l2_network, recipient):
+    if recipient and not assets.asset_recipient_validate(asset, l2_network, recipient):
         return bad_request(web_utils.INVALID_RECIPIENT)
     return None
 
@@ -607,21 +608,22 @@ def crypto_withdrawal_create_req():
 
 @api.route('/crypto_withdrawals', methods=['POST'])
 def crypto_withdrawals_req():
-    params, api_key, err_response = auth_request_get_params(db, ['asset', 'offset', 'limit'])
+    params, api_key, err_response = auth_request_get_params(db, ['asset', 'l2_network', 'offset', 'limit'])
     if err_response:
         return err_response
-    asset, offset, limit = params
-    if not assets.asset_is_crypto(asset):
-        return bad_request(web_utils.INVALID_ASSET)
+    asset, l2_network, offset, limit = params
+    err_response = _validate_crypto_asset(asset, l2_network, None)
+    if err_response:
+        return err_response
     if not isinstance(offset, int):
         return bad_request(web_utils.INVALID_PARAMETER)
     if not isinstance(limit, int):
         return bad_request(web_utils.INVALID_PARAMETER)
     if limit > 1000:
         return bad_request(web_utils.LIMIT_TOO_LARGE)
-    withdrawals = CryptoWithdrawal.from_user(db.session, api_key.user, offset, limit)
+    withdrawals = CryptoWithdrawal.of_asset(db.session, api_key.user, asset, l2_network, offset, limit)
     withdrawals = [withdrawal.to_json() for withdrawal in withdrawals]
-    total = CryptoWithdrawal.total_for_user(db.session, api_key.user)
+    total = CryptoWithdrawal.total_of_asset(db.session, api_key.user, asset, l2_network)
     return jsonify(withdrawals=withdrawals, offset=offset, limit=limit, total=total)
 
 @api.route('/fiat_deposit_create', methods=['POST'])

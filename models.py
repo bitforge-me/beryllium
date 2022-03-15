@@ -37,6 +37,17 @@ class FromUserMixin():
         # pylint: disable=no-member
         return session.query(cls).filter(cls.user_id == user.id).count()
 
+class OfAssetMixin():
+    @classmethod
+    def of_asset(cls, session, user, asset, l2_network, offset, limit):
+        # pylint: disable=no-member
+        return session.query(cls).filter(and_(cls.user_id == user.id, and_(cls.asset == asset, cls.l2_network == l2_network))).order_by(cls.id.desc()).offset(offset).limit(limit)
+
+    @classmethod
+    def total_of_asset(cls, session, user, asset, l2_network):
+        # pylint: disable=no-member
+        return session.query(cls).filter(and_(cls.user_id == user.id, and_(cls.asset == asset, cls.l2_network == l2_network))).count()
+
 roles_users = db.Table(
     'roles_users',
     db.Column('user_id', db.Integer(), db.ForeignKey('user.id')),
@@ -472,7 +483,7 @@ class CryptoWithdrawalSchema(Schema):
     def get_amount_dec(self, obj):
         return str(assets.asset_int_to_dec(obj.asset, obj.amount))
 
-class CryptoWithdrawal(db.Model, FromUserMixin):
+class CryptoWithdrawal(db.Model, FromUserMixin, OfAssetMixin):
     STATUS_CREATED = 'created'
     STATUS_COMPLETED = 'completed'
     STATUS_CANCELLED = 'cancelled'
