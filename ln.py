@@ -44,7 +44,7 @@ class LnRpc():
         invoice_result = self.instance.pay(bolt11)
         if not invoice_result:
             return None
-        invoice_result["sats_sent"] = _msat_to_sat(invoice_result["msatoshi_sent"])
+        invoice_result["sats_sent"] = _msat_to_sat(invoice_result["msatoshi_sent"].millisatoshis)
         return invoice_result
 
     def pay_status(self, bolt11: str) -> Optional[dict]:
@@ -64,7 +64,7 @@ class LnRpc():
             date = datetime.datetime.fromtimestamp(
                 created_at, pytz.timezone('Pacific/Auckland'))
             status = pay["status"]
-            amount_msat = pay["amount_sent_msat"]
+            amount_msat = pay["amount_sent_msat"].millisatoshis
             amount_sats = _msat_to_sat(amount_msat)
             results.append({"created_at": created_at,
                             "date": date,
@@ -77,7 +77,7 @@ class LnRpc():
         result = self.instance.decodepay(bolt11)
         if not result:
             return None
-        sats = _msat_to_sat(result["amount_msat"].split("msat")[0])
+        sats = _msat_to_sat(result["amount_msat"].millisatoshis)
         result['amount_sat'] = sats
         return result
 
@@ -116,7 +116,7 @@ class LnRpc():
         sats_onchain = 0
         # Only shows after the very first transaction otherwise errors.
         for chan in funds_dict["channels"]:
-            msats_channel = int(chan["our_amount_msat"].split("msat")[0])
+            msats_channel = chan["our_amount_msat"].millisatoshis
             if msats_channel > msats_largest_channel:
                 msats_largest_channel = msats_channel
             msats_channels += msats_channel
@@ -124,7 +124,7 @@ class LnRpc():
         sats_channels = _msat_to_sat(msats_channels)
         for output in funds_dict["outputs"]:
             if output["status"] == "confirmed":
-                msats_onchain += int(output["amount_msat"].split("msat")[0])
+                msats_onchain += output["amount_msat"].millisatoshis
         sats_onchain += _msat_to_sat(msats_onchain)
         return dict(msats_largest_channel=msats_largest_channel, msats_channels=msats_channels, msats_onchain=msats_onchain, sats_largest_channel=sats_largest_channel, sats_channels=sats_channels, sats_onchain=sats_onchain)
 
