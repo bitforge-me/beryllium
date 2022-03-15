@@ -574,9 +574,9 @@ def _create_withdrawal(user: User, asset: str, l2_network: Optional[str], amount
             if not wallet.funds_available(asset, l2_network, amount_dec):
                 return None, bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
             logger.info('create local wallet withdrawal')
-            wallet_reference = wallet.withdrawal_create(asset, l2_network, amount_dec, recipient)
-            if not wallet_reference:
-                return None, bad_request(web_utils.FAILED_PAYMENT_CREATE)
+            wallet_reference, err_msg = wallet.withdrawal_create(asset, l2_network, amount_dec, recipient)
+            if err_msg:
+                return None, bad_request(f'{web_utils.FAILED_PAYMENT_CREATE} - {err_msg}')
         else:
             if not dasset.funds_available_us(asset, amount_dec):
                 return None, bad_request(web_utils.INSUFFICIENT_LIQUIDITY)

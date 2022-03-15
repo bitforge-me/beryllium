@@ -1,6 +1,7 @@
 from decimal import Decimal
 from typing import Optional
 import logging
+from pyln.client.lightning import RpcError
 
 import assets
 from ln import LnRpc
@@ -22,20 +23,22 @@ def withdrawals_supported(asset: str, l2_network: Optional[str]):
 def withdrawal_create(asset: str, l2_network: Optional[str], amount_dec: Decimal, recipient: str):
     assert withdrawals_supported(asset, l2_network)
     rpc = LnRpc()
-    result = rpc.decode_pay(recipient)
-    if not result:
-        logger.error('ln pay not decoded: %s', recipient)
-        return None
-    amount_sat = assets.asset_dec_to_int(asset, amount_dec)
-    if amount_sat != result['amount_sat']:
-        logger.error('ln pay amount does not match: %d, %d', amount_sat, result['amount_sat'])
-        return None
-    result = rpc.pay(recipient)
-    if not result:
-        logger.error('ln pay failed: %s', recipient)
-        return None
-    logger.info('ln pay made: %s', result['payment_hash'])
-    return result['payment_hash']
+    try:
+        result = rpc.decode_pay(recipient)
+        amount_sat = assets.asset_dec_to_int(asset, amount_dec)
+        if amount_sat != result['amount_sat']:
+            logger.error('ln pay amount does not match: %d, %d', amount_sat, result['amount_sat'])
+            return None, 'pay amount does not match'
+        result = rpc.pay(recipient)
+        if not result:
+            logger.error('ln pay failed: %s', recipient)
+            return None, 'pay failed'
+        logger.info('ln pay made: %s', result['payment_hash'])
+        return result['payment_hash'], None
+    except RpcError as e:
+        logger.error('ln pay error: %s', e.error)
+        return None, e.error
+
 
 def withdrawal_completed(wallet_reference: str) -> bool:
     rpc = LnRpc()
