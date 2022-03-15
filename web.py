@@ -428,16 +428,13 @@ def config():
 socket-io notifications
 '''
 
-
 @socketio.on('connect')
 def test_connect(auth):
     print("Client connected")
 
-
 @socketio.on('disconnect')
 def test_disconnect():
     print('Client disconnected')
-
 
 @socketio.on('waitany')
 def wait_any_invoice():
