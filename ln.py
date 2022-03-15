@@ -4,6 +4,7 @@ from typing import Optional
 
 import pytz
 from pyln.client import LightningRpc
+from pyln.client.lightning import RpcError
 
 def _msat_to_sat(msats):
     return int(int(msats) / 1000)
@@ -74,12 +75,15 @@ class LnRpc():
         return results
 
     def decode_pay(self, bolt11: str) -> Optional[dict]:
-        result = self.instance.decodepay(bolt11)
-        if not result:
+        try:
+            result = self.instance.decodepay(bolt11)
+            if not result:
+                return None
+            sats = _msat_to_sat(result["amount_msat"].millisatoshis)
+            result['amount_sat'] = sats
+            return result
+        except RpcError:
             return None
-        sats = _msat_to_sat(result["amount_msat"].millisatoshis)
-        result['amount_sat'] = sats
-        return result
 
     def wait_any(self):
         invoice_list = self.list_paid()
