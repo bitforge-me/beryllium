@@ -548,12 +548,55 @@ def _validate_crypto_asset(asset: str, l2_network: Optional[str], recipient: Opt
         return bad_request(web_utils.INVALID_RECIPIENT)
     return None
 
+def _create_withdrawal(user: User, asset: str, l2_network: Optional[str], amount_dec: decimal.Decimal, recipient: str):
+    with coordinator.lock:
+        amount_plus_fee_dec = amount_dec + assets.asset_withdraw_fee(asset)
+        if wallet.withdrawals_supported(asset, l2_network):
+            amount_plus_fee_dec = amount_dec + assets.asset_withdraw_fee(l2_network)
+        logger.info('amount plus withdraw fee: %s', amount_plus_fee_dec)
+        if not fiatdb_core.funds_available_user(db.session, user, asset, amount_plus_fee_dec):
+            return None, bad_request(web_utils.INSUFFICIENT_BALANCE)
+        exchange_reference = None
+        wallet_reference = None
+        # step 1) create CryptoWithdrawal and ftx and commit so that users balance is updated
+        amount_plus_fee_int = assets.asset_dec_to_int(asset, amount_plus_fee_dec)
+        crypto_withdrawal = CryptoWithdrawal(user, asset, l2_network, amount_plus_fee_int, recipient, exchange_reference, wallet_reference)
+        ftx = fiatdb_core.tx_create(db.session, user, FiatDbTransaction.ACTION_DEBIT, asset, amount_plus_fee_int, f'crypto withdrawal: {crypto_withdrawal.token}')
+        if not ftx:
+            logger.error('failed to create fiatdb transaction for crypto withdrawal %s', crypto_withdrawal.token)
+            return None, bad_request(web_utils.FAILED_PAYMENT_CREATE)
+        db.session.add(crypto_withdrawal)
+        db.session.add(ftx)
+        db.session.commit()
+        # step 2) make withdrawal
+        if wallet.withdrawals_supported(asset, l2_network):
+            logger.info('check local wallet has funds available')
+            if not wallet.funds_available(asset, l2_network, amount_dec):
+                return None, bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
+            logger.info('create local wallet withdrawal')
+            wallet_reference = wallet.withdrawal_create(asset, l2_network, amount_dec, recipient)
+            if not wallet_reference:
+                return None, bad_request(web_utils.FAILED_PAYMENT_CREATE)
+        else:
+            if not dasset.funds_available_us(asset, amount_dec):
+                return None, bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
+            exchange_reference = dasset.crypto_withdrawal_create(asset, amount_dec, recipient)
+            if not exchange_reference:
+                return None, bad_request(web_utils.FAILED_EXCHANGE)
+        # step 3) update cryptowithdrawal with exchange/wallet reference
+        crypto_withdrawal.wallet_reference = wallet_reference
+        crypto_withdrawal.exchange_reference = exchange_reference
+        db.session.add(crypto_withdrawal)
+        db.session.commit()
+        return crypto_withdrawal, None
+
 @api.route('/crypto_withdrawal_create', methods=['POST'])
 def crypto_withdrawal_create_req():
     params, api_key, err_response = auth_request_get_params(db, ['asset', 'l2_network', 'amount_dec', 'recipient', 'save_recipient', 'recipient_description', 'tf_code'])
     if err_response:
         return err_response
     asset, l2_network, amount_dec, recipient, save_recipient, recipient_description, tf_code = params
+    logger.info('crypto withdrawal: %s, %s, %s, %s', asset, l2_network, amount_dec, recipient)
     err_response = _tf_check_withdrawal(api_key.user, tf_code)
     if err_response:
         return err_response
@@ -577,32 +620,9 @@ def crypto_withdrawal_create_req():
             entry = AddressBook(api_key.user, asset, recipient, recipient_description)
         db.session.add(entry)
     # create withdrawal
-    with coordinator.lock:
-        if not fiatdb_core.funds_available_user(db.session, api_key.user, asset, amount_dec):
-            return bad_request(web_utils.INSUFFICIENT_BALANCE)
-        exchange_reference = None
-        wallet_reference = None
-        if wallet.withdrawals_supported(asset, l2_network):
-            if not wallet.funds_available(asset, l2_network, amount_dec):
-                return bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
-            wallet_reference = wallet.withdrawal_create(asset, l2_network, amount_dec, recipient)
-            if not wallet_reference:
-                return bad_request(web_utils.FAILED_PAYMENT_CREATE)
-        else:
-            if not dasset.funds_available_us(asset, amount_dec):
-                return bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
-            exchange_reference = dasset.crypto_withdrawal_create(asset, amount_dec, recipient)
-            if not exchange_reference:
-                return bad_request(web_utils.FAILED_EXCHANGE)
-        amount_int = assets.asset_dec_to_int(asset, amount_dec)
-        crypto_withdrawal = CryptoWithdrawal(api_key.user, asset, l2_network, amount_int, recipient, exchange_reference, wallet_reference)
-        ftx = fiatdb_core.tx_create(db.session, api_key.user, FiatDbTransaction.ACTION_DEBIT, asset, amount_int, f'crypto withdrawal: {crypto_withdrawal.token}')
-        if not ftx:
-            logger.error('failed to create fiatdb transaction for crypto withdrawal %s', crypto_withdrawal.token)
-            return bad_request(web_utils.FAILED_PAYMENT_CREATE)
-        db.session.add(crypto_withdrawal)
-        db.session.add(ftx)
-        db.session.commit()
+    crypto_withdrawal, err_response = _create_withdrawal(api_key.user, asset, l2_network, amount_dec, recipient)
+    if err_response:
+        return err_response
     websocket.crypto_withdrawal_new_event(crypto_withdrawal)
     return jsonify(withdrawal=crypto_withdrawal.to_json())
 

@@ -192,12 +192,12 @@ def _crypto_withdrawal_update(crypto_withdrawal):
     updated_records = []
     # check payout
     if crypto_withdrawal.status == crypto_withdrawal.STATUS_CREATED:
-        if wallet.withdrawals_supported(crypto_withdrawal.asset, crypto_withdrawal.l2_network):
+        if crypto_withdrawal.wallet_reference:
             # check wallet withdrawal
             if wallet.withdrawal_completed(crypto_withdrawal.wallet_reference):
                 crypto_withdrawal.status = crypto_withdrawal.STATUS_COMPLETED
                 updated_records.append(crypto_withdrawal)
-        else:
+        elif crypto_withdrawal.exchange_reference:
             # check exchange withdrawal
             status = dasset.crypto_withdrawal_status_check(crypto_withdrawal.exchange_reference)
             if status == dasset.CRYPTO_WITHDRAWAL_STATUS_COMPLETED:
