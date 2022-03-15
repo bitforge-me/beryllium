@@ -490,6 +490,11 @@ def list_peers():
 def send_node():
     return render_template("lightning/send_node.html")
 
+@app.route('/ln/list_forwards')
+def list_forwards():
+    ln_instance = LnRpc()
+    return ln_instance.list_forwards()
+
 '''
 socket-io notifications
 '''
