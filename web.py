@@ -486,7 +486,9 @@ def list_peers():
         peers[i]["can_receive"] = int(peers[i]["can_receive"])
     return render_template("lightning/list_peers.html", peers=peers)
 
-
+@app.route('/ln/send_node')
+def send_node():
+    return render_template("lightning/send_node.html")
 
 '''
 socket-io notifications
