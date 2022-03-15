@@ -18,7 +18,7 @@
             confirmButtonText: 'Confirm'
         }).then((result) => {
             if (result.isConfirmed) {
-                var invoiceUrl = `/create_invoice/${amountSats}/${messageValue}`;
+                var invoiceUrl = `/ln/create_invoice/${amountSats}/${messageValue}`;
                 window.location = invoiceUrl;
             }
         })

@@ -419,6 +419,22 @@ def list_txs():
         transactions=sorted_txs,
         bitcoin_explorer=app.config["BITCOIN_EXPLORER"])
 
+@app.route('/ln/ln_invoice', methods=['GET'])
+def ln_invoice():
+    """ Returns template for creating lightning invoices """
+    return render_template("lightning/ln_invoice.html")
+
+@app.route('/ln/create_invoice/<int:amount>/<string:message>/')
+def create_invoice(amount, message):
+    """ Returns template showing a created invoice from the inputs """
+    rpc = LnRpc()
+    bolt11 = rpc.create_invoice(int(amount * 1000), message)["bolt11"]
+    qrcode_svg = qrcode_svg_create_ln(bolt11)
+    return render_template(
+        "lightning/create_invoice.html",
+        bolt11=bolt11,
+        qrcode_svg=qrcode_svg)
+
 @app.route('/config', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
 def config():

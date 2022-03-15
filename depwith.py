@@ -9,6 +9,7 @@ import websocket
 import email_utils
 import fiatdb_core
 import coordinator
+import wallet
 
 logger = logging.getLogger(__name__)
 
@@ -191,16 +192,22 @@ def _crypto_withdrawal_update(crypto_withdrawal):
     updated_records = []
     # check payout
     if crypto_withdrawal.status == crypto_withdrawal.STATUS_CREATED:
-        # check exchange withdrawal
-        status = dasset.crypto_withdrawal_status_check(crypto_withdrawal.exchange_reference)
-        if status == dasset.CRYPTO_WITHDRAWAL_STATUS_COMPLETED:
-            crypto_withdrawal.status = crypto_withdrawal.STATUS_COMPLETED
-            updated_records.append(crypto_withdrawal)
-        elif status == dasset.CRYPTO_WITHDRAWAL_STATUS_2FA:
-            if not dasset.crypto_withdrawal_confirm(crypto_withdrawal.exchange_reference):
-                logger.error('failed to confirm crypto withdrawal %s', crypto_withdrawal.token)
-        elif status == dasset.CRYPTO_WITHDRAWAL_STATUS_UNKNOWN:
-            logger.error('failed to get crypto withdrawal %s status', crypto_withdrawal.token)
+        if wallet.withdrawals_supported(crypto_withdrawal.asset, crypto_withdrawal.l2_network):
+            # check wallet withdrawal
+            if wallet.withdrawal_completed(crypto_withdrawal.wallet_reference):
+                crypto_withdrawal.status = crypto_withdrawal.STATUS_COMPLETED
+                updated_records.append(crypto_withdrawal)
+        else:
+            # check exchange withdrawal
+            status = dasset.crypto_withdrawal_status_check(crypto_withdrawal.exchange_reference)
+            if status == dasset.CRYPTO_WITHDRAWAL_STATUS_COMPLETED:
+                crypto_withdrawal.status = crypto_withdrawal.STATUS_COMPLETED
+                updated_records.append(crypto_withdrawal)
+            elif status == dasset.CRYPTO_WITHDRAWAL_STATUS_2FA:
+                if not dasset.crypto_withdrawal_confirm(crypto_withdrawal.exchange_reference):
+                    logger.error('failed to confirm crypto withdrawal %s', crypto_withdrawal.token)
+            elif status == dasset.CRYPTO_WITHDRAWAL_STATUS_UNKNOWN:
+                logger.error('failed to get crypto withdrawal %s status', crypto_withdrawal.token)
         return updated_records
     return updated_records
 

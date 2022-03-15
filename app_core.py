@@ -11,8 +11,8 @@ from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
-SERVER_VERSION = 5
-CLIENT_VERSION_DEPLOYED = 4
+SERVER_VERSION = 6
+CLIENT_VERSION_DEPLOYED = 5
 
 MISSING_VITAL_SETTING = False
 
@@ -128,7 +128,7 @@ else:
 if os.getenv("BITCOIN_EXPLORER"):
     app.config["BITCOIN_EXPLORER"] = os.getenv("BITCOIN_EXPLORER")
 else:
-    app.config["BITCOIN_EXPLORER"] = "https://testnet.bitcoinexplorer.org/tx"
+    app.config["BITCOIN_EXPLORER"] = "https://testnet.bitcoinexplorer.org"
 
 def set_vital_setting(env_name, setting_name=None, acceptable_values=None, custom_handler=None):
     # pylint: disable=global-statement
