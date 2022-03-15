@@ -128,7 +128,7 @@ else:
 if os.getenv("BITCOIN_EXPLORER"):
     app.config["BITCOIN_EXPLORER"] = os.getenv("BITCOIN_EXPLORER")
 else:
-    app.config["BITCOIN_EXPLORER"] = "https://testnet.bitcoinexplorer.org/tx"
+    app.config["BITCOIN_EXPLORER"] = "https://testnet.bitcoinexplorer.org"
 
 def set_vital_setting(env_name, setting_name=None, acceptable_values=None, custom_handler=None):
     # pylint: disable=global-statement
