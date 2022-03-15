@@ -440,6 +440,54 @@ def create_invoice(amount, message):
 def config():
     return render_template('config.html')
 
+@roles_accepted(Role.ROLE_ADMIN)
+@app.route('/ln/list_peers', methods=['GET', 'POST'])
+def list_peers():
+    """ Returns a template listing all connected LN peers """
+    ln_instance = LnRpc()
+    if request.method == 'POST':
+        oscid = request.form["oscid"]
+        iscid = request.form["iscid"]
+        sats = request.form["amount"]
+        amount = str(int(sats) * 1000) + str('msat')
+        try:
+            ln_instance = LnRpc()
+            result = ln_instance.rebalance_individual_channel(
+                oscid, iscid, amount)
+            flash(
+                Markup(f'successfully move funds from:'
+                + '{oscid} to: {iscid} with the amount:'
+                + '{sats}sats'),
+                'success')
+        except Exception as e:
+            flash(Markup(e.args[0]), 'danger')
+    peers = ln_instance.list_peers()["peers"]
+    for i in range(len(peers)):
+        peers[i]["sats_total"] = 0
+        peers[i]["can_send"] = 0
+        peers[i]["can_receive"] = 0
+        peers[i]["scid"] = ""
+        # I'm assuming there will only be one channel for each node, but I'm
+        # using an array in case there's more
+        peers[i]["channel_states"] = []
+        for channel in peers[i]["channels"]:
+            if channel["state"] == 'CHANNELD_NORMAL':
+                peers[i]["sats_total"] += int(channel["msatoshi_total"]) / 1000
+                peers[i]["can_send"] += int(channel["msatoshi_to_us"]) / 1000
+                peers[i]["can_receive"] += int(
+                    channel["out_msatoshi_fulfilled"]) / 1000
+                for scid in channel["short_channel_id"]:
+                    peers[i]["scid"] += scid
+                peers[i]["channel_states"].append(channel["state"])
+
+        # round as a last step, for accuracy
+        peers[i]["sats_total"] = int(peers[i]["sats_total"])
+        peers[i]["can_send"] = int(peers[i]["can_send"])
+        peers[i]["can_receive"] = int(peers[i]["can_receive"])
+    return render_template("lightning/list_peers.html", peers=peers)
+
+
+
 '''
 socket-io notifications
 '''
@@ -455,7 +503,7 @@ def test_disconnect():
 @socketio.on('waitany')
 def wait_any_invoice():
     print('client called recieveany')
-    ln_instance = LightningInstance()
+    ln_instance = LnRpc()
     res = ln_instance.wait_any()
     emit('invoice', {'data': res})
 
