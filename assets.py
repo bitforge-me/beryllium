@@ -98,8 +98,10 @@ def assets_from_market(market: str) -> tuple[str, str]:
 def asset_decimals(asset: str) -> int:
     return ASSETS[asset].decimals
 
-def asset_withdraw_fee(asset: str) -> Dec:
-    return ASSETS[asset].withdraw_fee
+def asset_withdraw_fee(asset: str, l2_network: Optional[str]) -> Dec:
+    if not l2_network:
+        return ASSETS[asset].withdraw_fee
+    return ASSETS[asset].l2_network.withdraw_fee
 
 def asset_min_withdraw(asset: str, l2_network: Optional[str]) -> Dec:
     ass = ASSETS[asset]

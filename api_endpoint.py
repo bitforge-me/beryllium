@@ -482,8 +482,8 @@ def order_book_req():
     if market not in assets.MARKETS:
         return bad_request(web_utils.INVALID_MARKET)
     base_asset, quote_asset = assets.assets_from_market(market)
-    base_asset_withdraw_fee = assets.asset_withdraw_fee(base_asset)
-    quote_asset_withdraw_fee = assets.asset_withdraw_fee(quote_asset)
+    base_asset_withdraw_fee = assets.asset_withdraw_fee(base_asset, None)
+    quote_asset_withdraw_fee = assets.asset_withdraw_fee(quote_asset, None)
     order_book, broker_fee = dasset.order_book_req(market)
     return jsonify(bids=order_book.bids, asks=order_book.asks, base_asset_withdraw_fee=str(base_asset_withdraw_fee), quote_asset_withdraw_fee=str(quote_asset_withdraw_fee), broker_fee=str(broker_fee))
 
@@ -550,9 +550,9 @@ def _validate_crypto_asset(asset: str, l2_network: Optional[str], recipient: Opt
 
 def _create_withdrawal(user: User, asset: str, l2_network: Optional[str], amount_dec: decimal.Decimal, recipient: str):
     with coordinator.lock:
-        amount_plus_fee_dec = amount_dec + assets.asset_withdraw_fee(asset)
+        amount_plus_fee_dec = amount_dec + assets.asset_withdraw_fee(asset, None)
         if wallet.withdrawals_supported(asset, l2_network):
-            amount_plus_fee_dec = amount_dec + assets.asset_withdraw_fee(l2_network)
+            amount_plus_fee_dec = amount_dec + assets.asset_withdraw_fee(asset, l2_network)
         logger.info('amount plus withdraw fee: %s', amount_plus_fee_dec)
         if not fiatdb_core.funds_available_user(db.session, user, asset, amount_plus_fee_dec):
             return None, bad_request(web_utils.INSUFFICIENT_BALANCE)
