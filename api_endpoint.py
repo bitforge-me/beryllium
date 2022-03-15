@@ -606,6 +606,7 @@ def crypto_withdrawal_create_req():
     amount_dec = decimal.Decimal(amount_dec)
     amount_from_recipient = assets.asset_recipient_extract_amount(asset, l2_network, recipient)
     if amount_dec == 0 and amount_from_recipient > 0:
+        logger.info('amount from recipient: %s', amount_from_recipient)
         amount_dec = amount_from_recipient
     if amount_dec <= 0:
         return bad_request(web_utils.INVALID_AMOUNT)

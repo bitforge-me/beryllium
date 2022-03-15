@@ -8,7 +8,7 @@ from ln import LnRpc
 logger = logging.getLogger(__name__)
 
 def funds_available(asset: str, l2_network: Optional[str], amount_dec: Decimal) -> bool:
-    if asset != assets.BTC.name or l2_network != assets.BTCLN.name:
+    if asset != assets.BTC.symbol or l2_network != assets.BTCLN.symbol:
         return False
     rpc = LnRpc()
     funds = rpc.list_funds()
@@ -17,7 +17,7 @@ def funds_available(asset: str, l2_network: Optional[str], amount_dec: Decimal) 
     return funds['sats_largest_channel'] > sats
 
 def withdrawals_supported(asset: str, l2_network: Optional[str]):
-    return asset == assets.BTC.name and l2_network == assets.BTCLN.name
+    return asset == assets.BTC.symbol and l2_network == assets.BTCLN.symbol
 
 def withdrawal_create(asset: str, l2_network: Optional[str], amount_dec: Decimal, recipient: str):
     assert withdrawals_supported(asset, l2_network)
