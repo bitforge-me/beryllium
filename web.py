@@ -594,6 +594,16 @@ def psbt():
     except Exception as e:
         tx_result = str(e)
     return tx_result
+
+@app.route('/ln/send_psbt', methods=['GET', 'POST'])
+def send_psbt():
+    rpc = LnRpc()
+    outputs_dict = request.json["signed_psbt"]
+    try:
+        tx_result = rpc.send_psbt(outputs_dict)
+    except Exception as e:
+        tx_result = str(e)
+    return tx_result
 '''
 socket-io notifications
 '''
