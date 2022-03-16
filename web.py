@@ -524,7 +524,7 @@ def pay(bolt11):
     """ Returns template showing a paid LN invoice """
     rpc = LnRpc()
     try:
-        invoice_result = LnRpc.send_invoice(bolt11)
+        invoice_result = rpc.send_invoice(bolt11)
         return render_template("lightning/pay.html", invoice_result=invoice_result)
     except BaseException:
         return redirect(url_for("pay_error"))
@@ -542,7 +542,7 @@ def invoices():
     paid_invoices = rpc.list_paid()
     return render_template("lightning/invoices.html", paid_invoices=paid_invoices)
 
-@app.route('/ln/decode_pay', strict_slashes=False)
+#@app.route('/ln/decode_pay', strict_slashes=False)
 @app.route('/ln/decode_pay/<bolt11>', strict_slashes=False)
 def decode_pay(bolt11=None):
     if bolt11 is None:
