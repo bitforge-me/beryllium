@@ -13,7 +13,7 @@ import io
 import gevent
 import qrcode
 import qrcode.image.svg
-from flask import render_template, request, flash, jsonify, Response, redirect, url_for
+from flask import render_template, request, flash, jsonify, Response, redirect, url_for, Markup
 from flask_security import roles_accepted
 
 from app_core import app, db, socketio
@@ -558,6 +558,21 @@ def decode_pay(bolt11=None):
 @app.route('/ln/channel_opener', methods=['GET'])
 def channel_opener():
     """ Returns template for opening LN channels """
+    return render_template("lightning/channel_opener.html")
+
+@app.route('/ln/open_channel/<string:node_pubkey>/<int:amount>', methods=['GET'])
+def open_channel(node_pubkey, amount):
+    """ Opens a LN channel """
+    rpc = LnRpc()
+    try:
+        rpc.connect_node(node_pubkey)
+        node_id = node_pubkey.split("@")
+        result = rpc.fund_channel(node_id[0], amount)
+        flash(
+            Markup(f'successfully added node id: {node_id[0]} with the amount: {amount}'),
+            'success')
+    except Exception as e:
+        flash(Markup(e.args[0]), 'danger')
     return render_template("lightning/channel_opener.html")
 
 '''
