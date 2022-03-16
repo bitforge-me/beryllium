@@ -554,6 +554,12 @@ def decode_pay(bolt11=None):
         return str(e)
     return "Something went wrong"
 
+
+@app.route('/ln/channel_opener', methods=['GET'])
+def channel_opener():
+    """ Returns template for opening LN channels """
+    return render_template("lightning/channel_opener.html")
+
 '''
 socket-io notifications
 '''

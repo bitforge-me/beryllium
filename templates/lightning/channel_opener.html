@@ -4,7 +4,7 @@
 {{ super() }}
 {% endblock %}
 {% block content %}
-<script src="{{ url_for('static',filename='assets/js/qrcode.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/lightning/qrcode.min.js') }}"></script>
 <script>
     const openChannel = function() {
         var openChannelUrl = `/open_channel/${document.querySelector('#nodeid').value}/${document.querySelector('#amount').value}`;
