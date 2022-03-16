@@ -448,15 +448,15 @@ def config():
 @app.route('/ln/list_peers', methods=['GET', 'POST'])
 def list_peers():
     """ Returns a template listing all connected LN peers """
-    ln_instance = LnRpc()
+    rpc = LnRpc()
     if request.method == 'POST':
         oscid = request.form["oscid"]
         iscid = request.form["iscid"]
         sats = request.form["amount"]
         amount = str(int(sats) * 1000) + str('msat')
         try:
-            ln_instance = LnRpc()
-            result = ln_instance.rebalance_individual_channel(
+            rpc = LnRpc()
+            result = rpc.rebalance_individual_channel(
                 oscid, iscid, amount)
             flash(
                 Markup(f'successfully move funds from:'
@@ -465,7 +465,7 @@ def list_peers():
                 'success')
         except Exception as e:
             flash(Markup(e.args[0]), 'danger')
-    peers = ln_instance.list_peers()["peers"]
+    peers = rpc.list_peers()["peers"]
     for i in range(len(peers)):
         peers[i]["sats_total"] = 0
         peers[i]["can_send"] = 0
@@ -496,8 +496,8 @@ def send_node():
 
 @app.route('/ln/list_forwards')
 def list_forwards():
-    ln_instance = LnRpc()
-    return ln_instance.list_forwards()
+    rpc = LnRpc()
+    return rpc.list_forwards()
 
 '''
 socket-io notifications
@@ -514,8 +514,8 @@ def test_disconnect():
 @socketio.on('waitany')
 def wait_any_invoice():
     print('client called recieveany')
-    ln_instance = LnRpc()
-    res = ln_instance.wait_any()
+    rpc = LnRpc()
+    res = rpc.wait_any()
     emit('invoice', {'data': res})
 
 #
