@@ -575,6 +575,25 @@ def open_channel(node_pubkey, amount):
         flash(Markup(e.args[0]), 'danger')
     return render_template("lightning/channel_opener.html")
 
+@app.route('/ln/create_psbt')
+def create_psbt():
+    """ Returns template for creating a PSBT """
+    rpc = LnRpc()
+    onchain = int(rpc.list_funds()["sats_onchain"]) / 100000000
+    return render_template(
+        'lightning/create_psbt.html',
+        bitcoin_explorer=app.config["BITCOIN_EXPLORER"],
+        onchain=onchain)
+
+@app.route('/ln/psbt', methods=['GET', 'POST'])
+def psbt():
+    rpc = LnRpc()
+    outputs_dict = request.json["address_amount"]
+    try:
+        tx_result = rpc.prepare_psbt(outputs_dict)
+    except Exception as e:
+        tx_result = str(e)
+    return tx_result
 '''
 socket-io notifications
 '''

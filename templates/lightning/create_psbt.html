@@ -4,9 +4,9 @@
 {{ super() }}
 {% endblock %}
 {% block content %}
-<script src="{{ url_for('static',filename='assets/js/qrcode.min.js') }}"></script>
-<script src="{{ url_for('static',filename='assets/js/sweetalert2.all.min.js') }}"></script>
-<script src="{{ url_for('static',filename='assets/css/sweetalert2.min.css') }}"></script>
+<script src="{{ url_for('static',filename='assets/lightning/qrcode.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/lightning/sweetalert2.all.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/lightning/sweetalert2.min.css') }}"></script>
 <script src="//ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
 <script>
 	const expand = function() {
@@ -51,7 +51,7 @@
 		}).then((result) => {
 			if (result.isConfirmed) {
 				var requestLoadString = JSON.stringify({"address_amount" : requestLoad});
-				fetch('/psbt', {
+				fetch('/ln/psbt', {
 					method: 'POST',
 					headers: {
 					  'Content-Type': 'application/json',
