@@ -424,11 +424,13 @@ def list_txs():
         bitcoin_explorer=app.config["BITCOIN_EXPLORER"])
 
 @app.route('/ln/ln_invoice', methods=['GET'])
+@roles_accepted(Role.ROLE_ADMIN)
 def ln_invoice():
     """ Returns template for creating lightning invoices """
     return render_template("lightning/ln_invoice.html")
 
 @app.route('/ln/create_invoice/<int:amount>/<string:message>/')
+@roles_accepted(Role.ROLE_ADMIN)
 def create_invoice(amount, message):
     """ Returns template showing a created invoice from the inputs """
     rpc = LnRpc()
@@ -444,8 +446,8 @@ def create_invoice(amount, message):
 def config():
     return render_template('config.html')
 
-@roles_accepted(Role.ROLE_ADMIN)
 @app.route('/ln/list_peers', methods=['GET', 'POST'])
+@roles_accepted(Role.ROLE_ADMIN)
 def list_peers():
     """ Returns a template listing all connected LN peers """
     rpc = LnRpc()
@@ -491,15 +493,18 @@ def list_peers():
     return render_template("lightning/list_peers.html", peers=peers)
 
 @app.route('/ln/send_node')
+@roles_accepted(Role.ROLE_ADMIN)
 def send_node():
     return render_template("lightning/send_node.html")
 
 @app.route('/ln/list_forwards')
+@roles_accepted(Role.ROLE_ADMIN)
 def list_forwards():
     rpc = LnRpc()
     return rpc.list_forwards()
 
 @app.route('/ln/withdraw', methods=['GET', 'POST'])
+@roles_accepted(Role.ROLE_ADMIN)
 def withdraw():
     rpc = LnRpc()
     outputs_dict = request.json["address_amount"]
