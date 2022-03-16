@@ -7,8 +7,12 @@ import decimal
 import logging
 import math
 import time
+import random
+import io
 
 import gevent
+import qrcode
+import qrcode.image.svg
 from flask import render_template, request, flash, jsonify, Response
 from flask_security import roles_accepted
 
@@ -84,14 +88,14 @@ def process_deposits_and_broker_orders():
 #    svg = output.getvalue().decode('utf-8')
 #    return svg
 #
-#def qrcode_svg_create_ln(data):
-#    """ Returns SVG of input data (LN focused) """
-#    factory = qrcode.image.svg.SvgPathImage
-#    img = qrcode.make(data, image_factory=factory, box_size=10)
-#    output = io.BytesIO()
-#    img.save(output)
-#    svg = output.getvalue().decode('utf-8')
-#    return svg
+def qrcode_svg_create_ln(data):
+    """ Returns SVG of input data (LN focused) """
+    factory = qrcode.image.svg.SvgPathImage
+    img = qrcode.make(data, image_factory=factory, box_size=10)
+    output = io.BytesIO()
+    img.save(output)
+    svg = output.getvalue().decode('utf-8')
+    return svg
 
 #
 # Flask views
@@ -428,7 +432,7 @@ def ln_invoice():
 def create_invoice(amount, message):
     """ Returns template showing a created invoice from the inputs """
     rpc = LnRpc()
-    bolt11 = rpc.create_invoice(int(amount * 1000), message)["bolt11"]
+    bolt11 = rpc.invoice(int(amount * 1000), "lbl{}".format(random.random()), message)["bolt11"]
     qrcode_svg = qrcode_svg_create_ln(bolt11)
     return render_template(
         "lightning/create_invoice.html",

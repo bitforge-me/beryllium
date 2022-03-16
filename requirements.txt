@@ -31,3 +31,4 @@ debugpy==1.5.0
 pyotp==2.6.0
 zxcvbn==4.4.28
 pyln-client==0.10.1 
+qrcode==6.1
