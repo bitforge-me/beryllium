@@ -7,8 +7,12 @@ import decimal
 import logging
 import math
 import time
+import random
+import io
 
 import gevent
+import qrcode
+import qrcode.image.svg
 from flask import render_template, request, flash, jsonify, Response
 from flask_security import roles_accepted
 
@@ -74,6 +78,24 @@ def process_deposits_and_broker_orders():
         depwith.crypto_withdrawals_update(db.session)
         logger.info('process broker orders..')
         broker.broker_orders_update(db.session)
+
+#def qrcode_svg_create(data):
+#    """ Returns SVG of input data """
+#    factory = qrcode.image.svg.SvgPathImage
+#    img = qrcode.make(data, image_factory=factory, box_size=35)
+#    output = io.BytesIO()
+#    img.save(output)
+#    svg = output.getvalue().decode('utf-8')
+#    return svg
+#
+def qrcode_svg_create_ln(data):
+    """ Returns SVG of input data (LN focused) """
+    factory = qrcode.image.svg.SvgPathImage
+    img = qrcode.make(data, image_factory=factory, box_size=10)
+    output = io.BytesIO()
+    img.save(output)
+    svg = output.getvalue().decode('utf-8')
+    return svg
 
 #
 # Flask views
@@ -354,12 +376,147 @@ def user_order():
 @roles_accepted(Role.ROLE_ADMIN)
 def ln_ep():
     rpc = LnRpc()
-    return render_template('ln.html', info=rpc.get_info())
+    return render_template('ln.html', info=rpc.get_info(), funds_dict=rpc.list_funds())
+
+@app.route('/ln/getinfo')
+@roles_accepted(Role.ROLE_ADMIN)
+def lightningd_getinfo_ep():
+    rpc = LnRpc()
+    """ Returns template with info about lightningd"""
+    return render_template('lightning/lightningd_getinfo.html', info=rpc.get_info())
+
+@app.route('/ln/send_bitcoin')
+@roles_accepted(Role.ROLE_ADMIN)
+def send_bitcoin():
+    """ Returns template for sending BTC """
+    rpc = LnRpc()
+    onchain = int(rpc.list_funds()["sats_onchain"]) / 100000000
+    return render_template(
+        'lightning/send_bitcoin.html',
+        bitcoin_explorer=app.config["BITCOIN_EXPLORER"],
+        onchain=onchain)
+
+@app.route('/ln/new_address')
+@roles_accepted(Role.ROLE_ADMIN)
+def new_address_ep():
+    """ Returns template showing a new address created by our HD wallet """
+    rpc = LnRpc()
+    address = rpc.new_address()
+    return render_template("lightning/new_address.html", address=address)
+
+@app.route('/ln/list_txs')
+@roles_accepted(Role.ROLE_ADMIN)
+def list_txs():
+    """ Returns template of on-chain txs """
+    rpc = LnRpc()
+    transactions = rpc.list_txs()
+    sorted_txs = sorted(
+        transactions["transactions"],
+        key=lambda d: d["blockheight"],
+        reverse=True)
+    for tx in transactions["transactions"]:
+        for output in tx["outputs"]:
+            output["sats"] = int(output["msat"] / 1000)
+            output.update({"sats": str(output["sats"]) + " satoshi"})
+    return render_template(
+        "lightning/list_transactions.html",
+        transactions=sorted_txs,
+        bitcoin_explorer=app.config["BITCOIN_EXPLORER"])
+
+@app.route('/ln/ln_invoice', methods=['GET'])
+def ln_invoice():
+    """ Returns template for creating lightning invoices """
+    return render_template("lightning/ln_invoice.html")
+
+@app.route('/ln/create_invoice/<int:amount>/<string:message>/')
+def create_invoice(amount, message):
+    """ Returns template showing a created invoice from the inputs """
+    rpc = LnRpc()
+    bolt11 = rpc.invoice(int(amount * 1000), "lbl{}".format(random.random()), message)["bolt11"]
+    qrcode_svg = qrcode_svg_create_ln(bolt11)
+    return render_template(
+        "lightning/create_invoice.html",
+        bolt11=bolt11,
+        qrcode_svg=qrcode_svg)
 
 @app.route('/config', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
 def config():
     return render_template('config.html')
+
+@roles_accepted(Role.ROLE_ADMIN)
+@app.route('/ln/list_peers', methods=['GET', 'POST'])
+def list_peers():
+    """ Returns a template listing all connected LN peers """
+    rpc = LnRpc()
+    if request.method == 'POST':
+        oscid = request.form["oscid"]
+        iscid = request.form["iscid"]
+        sats = request.form["amount"]
+        amount = str(int(sats) * 1000) + str('msat')
+        try:
+            rpc = LnRpc()
+            result = rpc.rebalance_individual_channel(
+                oscid, iscid, amount)
+            flash(
+                Markup(f'successfully move funds from:'
+                + '{oscid} to: {iscid} with the amount:'
+                + '{sats}sats'),
+                'success')
+        except Exception as e:
+            flash(Markup(e.args[0]), 'danger')
+    peers = rpc.list_peers()["peers"]
+    for i in range(len(peers)):
+        peers[i]["sats_total"] = 0
+        peers[i]["can_send"] = 0
+        peers[i]["can_receive"] = 0
+        peers[i]["scid"] = ""
+        # I'm assuming there will only be one channel for each node, but I'm
+        # using an array in case there's more
+        peers[i]["channel_states"] = []
+        for channel in peers[i]["channels"]:
+            if channel["state"] == 'CHANNELD_NORMAL':
+                peers[i]["sats_total"] += int(channel["msatoshi_total"]) / 1000
+                peers[i]["can_send"] += int(channel["msatoshi_to_us"]) / 1000
+                peers[i]["can_receive"] += int(
+                    channel["out_msatoshi_fulfilled"]) / 1000
+                for scid in channel["short_channel_id"]:
+                    peers[i]["scid"] += scid
+                peers[i]["channel_states"].append(channel["state"])
+
+        # round as a last step, for accuracy
+        peers[i]["sats_total"] = int(peers[i]["sats_total"])
+        peers[i]["can_send"] = int(peers[i]["can_send"])
+        peers[i]["can_receive"] = int(peers[i]["can_receive"])
+    return render_template("lightning/list_peers.html", peers=peers)
+
+@app.route('/ln/send_node')
+def send_node():
+    return render_template("lightning/send_node.html")
+
+@app.route('/ln/list_forwards')
+def list_forwards():
+    rpc = LnRpc()
+    return rpc.list_forwards()
+
+'''
+socket-io notifications
+'''
+
+@socketio.on('connect')
+def test_connect(auth):
+    print("Client connected")
+
+@socketio.on('disconnect')
+def test_disconnect():
+    print('Client disconnected')
+
+@socketio.on('waitany')
+def wait_any_invoice():
+    print('client called recieveany')
+    rpc = LnRpc()
+    res = rpc.wait_any()
+    emit('invoice', {'data': res})
 
 #
 # gevent class

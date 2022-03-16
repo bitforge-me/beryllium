@@ -1,0 +1,36 @@
+{% extends "layout.html" %}
+{% block title %}{% endblock %}
+{% block head %}
+{{ super() }}
+{% endblock %}
+{% block content %}
+<br>
+<h2>{{ invoice_result.status }}</h2>
+<br>
+<h4>Paid a total of {{ invoice_result.sats_sent }} sats</h4>
+    <!-- Scripts -->
+    <script src="{{ url_for('static',filename='assets/js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static',filename='assets/js/jquery.scrollex.min.js') }}"></script>
+    <script src="{{ url_for('static',filename='assets/js/jquery.scrolly.min.js') }}"></script>
+    <script src="{{ url_for('static',filename='assets/js/browser.min.js') }}"></script>
+    <script src="{{ url_for('static',filename='assets/js/breakpoints.min.js') }}"></script>
+    <script src="{{ url_for('static',filename='assets/js/qrcode.min.js') }}"></script>
+    <script src="{{ url_for('static',filename='assets/js/util.js') }}"></script>
+    <script src="{{ url_for('static',filename='assets/js/main.js') }}"></script>
+    <script type="text/javascript">
+        var receiptButton = document.querySelector("#export-wallet-button");
+        // Later include xpub, mnemonic etc
+            receiptButton.setAttribute("href",  "data:text/plain;charset=utf-8," + 
+                encodeURIComponent(`{{ invoice_result }}`
+                )
+            );
+            receiptButton.setAttribute("download", "ln-receipt.txt");
+            var paymentStatus = "{{ invoice_result.status }}";
+            // Capitalize payment status and insert into DOM
+            document.querySelector(".payment-status").innerText = paymentStatus.charAt(0).toUpperCase() + paymentStatus.slice(1);
+            document.querySelector(".sent-msats").innerText = "Paid a total of {{ invoice_result.sats_sent }} sats";
+    </script>
+{% endblock %}
+{% block footer %}
+{{ super() }}
+{% endblock %}

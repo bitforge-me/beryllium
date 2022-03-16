@@ -125,6 +125,11 @@ if os.getenv("MIN_AVAILABLE_NZD_BALANCE"):
 else:
     app.config["MIN_AVAILABLE_NZD_BALANCE"] = decimal.Decimal(2000)
 
+if os.getenv("BITCOIN_EXPLORER"):
+    app.config["BITCOIN_EXPLORER"] = os.getenv("BITCOIN_EXPLORER")
+else:
+    app.config["BITCOIN_EXPLORER"] = "https://testnet.bitcoinexplorer.org"
+
 def set_vital_setting(env_name, setting_name=None, acceptable_values=None, custom_handler=None):
     # pylint: disable=global-statement
     global MISSING_VITAL_SETTING
