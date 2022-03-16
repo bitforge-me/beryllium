@@ -515,11 +515,13 @@ def withdraw():
     return tx_result
 
 @app.route('/ln/pay_invoice', methods=['GET'])
+@roles_accepted(Role.ROLE_ADMIN)
 def pay_invoice():
     """ Returns template for paying LN invoices """
     return render_template("lightning/pay_invoice.html")
 
 @app.route('/ln/pay/<string:bolt11>')
+@roles_accepted(Role.ROLE_ADMIN)
 def pay(bolt11):
     """ Returns template showing a paid LN invoice """
     rpc = LnRpc()
@@ -530,12 +532,14 @@ def pay(bolt11):
         return redirect(url_for("pay_error"))
 
 @app.route('/ln/pay_error')
+@roles_accepted(Role.ROLE_ADMIN)
 def pay_error():
     """ Returns template for a generic pay error """
     return render_template("lightning/pay_error.html")
 
 
 @app.route('/ln/invoices', methods=['GET'])
+@roles_accepted(Role.ROLE_ADMIN)
 def invoices():
     """ Returns template listing all LN paid invoices """
     rpc = LnRpc()
@@ -544,6 +548,7 @@ def invoices():
 
 #@app.route('/ln/decode_pay', strict_slashes=False)
 @app.route('/ln/decode_pay/<bolt11>', strict_slashes=False)
+@roles_accepted(Role.ROLE_ADMIN)
 def decode_pay(bolt11=None):
     if bolt11 is None:
         return "Please enter a non-empty bolt11 string"
@@ -556,11 +561,13 @@ def decode_pay(bolt11=None):
 
 
 @app.route('/ln/channel_opener', methods=['GET'])
+@roles_accepted(Role.ROLE_ADMIN)
 def channel_opener():
     """ Returns template for opening LN channels """
     return render_template("lightning/channel_opener.html")
 
 @app.route('/ln/open_channel/<string:node_pubkey>/<int:amount>', methods=['GET'])
+@roles_accepted(Role.ROLE_ADMIN)
 def open_channel(node_pubkey, amount):
     """ Opens a LN channel """
     rpc = LnRpc()
@@ -576,6 +583,7 @@ def open_channel(node_pubkey, amount):
     return render_template("lightning/channel_opener.html")
 
 @app.route('/ln/create_psbt')
+@roles_accepted(Role.ROLE_ADMIN)
 def create_psbt():
     """ Returns template for creating a PSBT """
     rpc = LnRpc()
@@ -586,6 +594,7 @@ def create_psbt():
         onchain=onchain)
 
 @app.route('/ln/psbt', methods=['GET', 'POST'])
+@roles_accepted(Role.ROLE_ADMIN)
 def psbt():
     rpc = LnRpc()
     outputs_dict = request.json["address_amount"]
@@ -596,6 +605,7 @@ def psbt():
     return tx_result
 
 @app.route('/ln/send_psbt', methods=['GET', 'POST'])
+@roles_accepted(Role.ROLE_ADMIN)
 def send_psbt():
     rpc = LnRpc()
     outputs_dict = request.json["signed_psbt"]
