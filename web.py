@@ -499,6 +499,16 @@ def list_forwards():
     rpc = LnRpc()
     return rpc.list_forwards()
 
+@app.route('/ln/withdraw', methods=['GET', 'POST'])
+def withdraw():
+    rpc = LnRpc()
+    outputs_dict = request.json["address_amount"]
+    try:
+        tx_result = rpc.multi_withdraw(outputs_dict)
+    except BaseException:
+        tx_result = "error"
+    return tx_result
+
 '''
 socket-io notifications
 '''

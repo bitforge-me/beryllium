@@ -50,7 +50,7 @@
 		}).then((result) => {
 			if (result.isConfirmed) {
 				var requestLoadString = JSON.stringify({"address_amount" : requestLoad});
-				fetch('/withdraw', {
+				fetch('/ln/withdraw', {
 					method: 'POST',
 					headers: {
 					  'Content-Type': 'application/json',
