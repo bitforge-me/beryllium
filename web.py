@@ -13,7 +13,7 @@ import io
 import gevent
 import qrcode
 import qrcode.image.svg
-from flask import render_template, request, flash, jsonify, Response, redirect, url_for
+from flask import render_template, request, flash, jsonify, Response, redirect, url_for, Markup
 from flask_security import roles_accepted
 
 from app_core import app, db, socketio
@@ -515,11 +515,13 @@ def withdraw():
     return tx_result
 
 @app.route('/ln/pay_invoice', methods=['GET'])
+@roles_accepted(Role.ROLE_ADMIN)
 def pay_invoice():
     """ Returns template for paying LN invoices """
     return render_template("lightning/pay_invoice.html")
 
 @app.route('/ln/pay/<string:bolt11>')
+@roles_accepted(Role.ROLE_ADMIN)
 def pay(bolt11):
     """ Returns template showing a paid LN invoice """
     rpc = LnRpc()
@@ -530,12 +532,14 @@ def pay(bolt11):
         return redirect(url_for("pay_error"))
 
 @app.route('/ln/pay_error')
+@roles_accepted(Role.ROLE_ADMIN)
 def pay_error():
     """ Returns template for a generic pay error """
     return render_template("lightning/pay_error.html")
 
 
 @app.route('/ln/invoices', methods=['GET'])
+@roles_accepted(Role.ROLE_ADMIN)
 def invoices():
     """ Returns template listing all LN paid invoices """
     rpc = LnRpc()
@@ -544,6 +548,7 @@ def invoices():
 
 #@app.route('/ln/decode_pay', strict_slashes=False)
 @app.route('/ln/decode_pay/<bolt11>', strict_slashes=False)
+@roles_accepted(Role.ROLE_ADMIN)
 def decode_pay(bolt11=None):
     if bolt11 is None:
         return "Please enter a non-empty bolt11 string"
@@ -554,6 +559,61 @@ def decode_pay(bolt11=None):
         return str(e)
     return "Something went wrong"
 
+
+@app.route('/ln/channel_opener', methods=['GET'])
+@roles_accepted(Role.ROLE_ADMIN)
+def channel_opener():
+    """ Returns template for opening LN channels """
+    return render_template("lightning/channel_opener.html")
+
+@app.route('/ln/open_channel/<string:node_pubkey>/<int:amount>', methods=['GET'])
+@roles_accepted(Role.ROLE_ADMIN)
+def open_channel(node_pubkey, amount):
+    """ Opens a LN channel """
+    rpc = LnRpc()
+    try:
+        rpc.connect_node(node_pubkey)
+        node_id = node_pubkey.split("@")
+        result = rpc.fund_channel(node_id[0], amount)
+        flash(
+            Markup(f'successfully added node id: {node_id[0]} with the amount: {amount}'),
+            'success')
+    except Exception as e:
+        flash(Markup(e.args[0]), 'danger')
+    return render_template("lightning/channel_opener.html")
+
+@app.route('/ln/create_psbt')
+@roles_accepted(Role.ROLE_ADMIN)
+def create_psbt():
+    """ Returns template for creating a PSBT """
+    rpc = LnRpc()
+    onchain = int(rpc.list_funds()["sats_onchain"]) / 100000000
+    return render_template(
+        'lightning/create_psbt.html',
+        bitcoin_explorer=app.config["BITCOIN_EXPLORER"],
+        onchain=onchain)
+
+@app.route('/ln/psbt', methods=['GET', 'POST'])
+@roles_accepted(Role.ROLE_ADMIN)
+def psbt():
+    rpc = LnRpc()
+    outputs_dict = request.json["address_amount"]
+    try:
+        tx_result = rpc.prepare_psbt(outputs_dict)
+    except Exception as e:
+        tx_result = str(e)
+    return tx_result
+
+@app.route('/ln/send_psbt', methods=['GET', 'POST'])
+@roles_accepted(Role.ROLE_ADMIN)
+def send_psbt():
+    rpc = LnRpc()
+    outputs_dict = request.json["signed_psbt"]
+    try:
+        tx_result = rpc.send_psbt(outputs_dict)
+    except Exception as e:
+        tx_result = str(e)
+    return tx_result
 '''
 socket-io notifications
 '''
