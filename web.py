@@ -13,7 +13,7 @@ import io
 import gevent
 import qrcode
 import qrcode.image.svg
-from flask import render_template, request, flash, jsonify, Response
+from flask import render_template, request, flash, jsonify, Response, redirect, url_for
 from flask_security import roles_accepted
 
 from app_core import app, db, socketio
@@ -513,6 +513,46 @@ def withdraw():
     except BaseException:
         tx_result = "error"
     return tx_result
+
+@app.route('/ln/pay_invoice', methods=['GET'])
+def pay_invoice():
+    """ Returns template for paying LN invoices """
+    return render_template("lightning/pay_invoice.html")
+
+@app.route('/ln/pay/<string:bolt11>')
+def pay(bolt11):
+    """ Returns template showing a paid LN invoice """
+    rpc = LnRpc()
+    try:
+        invoice_result = LnRpc.send_invoice(bolt11)
+        return render_template("lightning/pay.html", invoice_result=invoice_result)
+    except BaseException:
+        return redirect(url_for("pay_error"))
+
+@app.route('/ln/pay_error')
+def pay_error():
+    """ Returns template for a generic pay error """
+    return render_template("lightning/pay_error.html")
+
+
+@app.route('/ln/invoices', methods=['GET'])
+def invoices():
+    """ Returns template listing all LN paid invoices """
+    rpc = LnRpc()
+    paid_invoices = rpc.list_paid()
+    return render_template("lightning/invoices.html", paid_invoices=paid_invoices)
+
+@app.route('/ln/decode_pay', strict_slashes=False)
+@app.route('/ln/decode_pay/<bolt11>', strict_slashes=False)
+def decode_pay(bolt11=None):
+    if bolt11 is None:
+        return "Please enter a non-empty bolt11 string"
+    try:
+        rpc = LnRpc()
+        return rpc.decode_pay(str(bolt11))
+    except Exception as e:
+        return str(e)
+    return "Something went wrong"
 
 '''
 socket-io notifications

@@ -1,13 +1,13 @@
 {% extends "layout.html" %}
 {% block title %}Pay Invoice{% endblock %}
 {% block content %}
-<script src="{{ url_for('static',filename='assets/js/qrcode.min.js') }}"></script>
-<script src="{{ url_for('static',filename='assets/js/sweetalert2.all.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/lightning/qrcode.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/lightning/sweetalert2.all.min.js') }}"></script>
 <script src="{{ url_for('static',filename='assets/css/sweetalert2.min.css') }}"></script>
 <script>
     const sendInvoice = function() {
         var bolt11String = document.querySelector('#name').value;
-        fetch(`/decode_pay/${bolt11String}`)
+        fetch(`/ln/decode_pay/${bolt11String}`)
             .then(res => res.json())
             .then(
                 function(data) {
@@ -21,7 +21,7 @@
                         confirmButtonText: 'Confirm'
                     }).then((result) => {
                         if (result.isConfirmed) {
-                            var invoiceUrl = `/pay/${bolt11String}`;
+                            var invoiceUrl = `/ln/pay/${bolt11String}`;
                             window.location = invoiceUrl;
                         }
                     });
