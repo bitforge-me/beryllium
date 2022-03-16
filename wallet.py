@@ -39,13 +39,12 @@ def withdrawal_create(asset: str, l2_network: Optional[str], amount_dec: Decimal
         logger.error('ln pay error: %s', e.error)
         return None, e.error
 
-
 def withdrawal_completed(wallet_reference: str) -> bool:
     rpc = LnRpc()
     result = rpc.pay_status_from_hash(wallet_reference)
-    if not result:
+    if not result and len(result) != 1:
         logger.error('ln pay not found: %s', wallet_reference)
         return False
-    complete = result['status'] == 'complete'
+    complete = result[0]['status'] == 'complete'
     logger.info('ln pay complete: %s', complete)
     return complete

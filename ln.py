@@ -46,11 +46,11 @@ class LnRpc():
             return None
         return invoice_result
 
-    def pay_status(self, bolt11: str) -> Optional[dict]:
+    def pay_status(self, bolt11: str) -> list:
         # show the status of a specific paid bolt11 invoice
         return self.instance.listpays(bolt11=bolt11)
 
-    def pay_status_from_hash(self, payment_hash: str) -> Optional[dict]:
+    def pay_status_from_hash(self, payment_hash: str) -> list:
         # show the status of a specific payment hash
         return self.instance.listpays(payment_hash=payment_hash)
 
