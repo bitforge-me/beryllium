@@ -2,7 +2,7 @@
 {% block title %}Peers{% endblock %}
 {% block content %}
 <div>
-    <br>
+    <br> 
     <h2>Peers</h2>
     <form id="rebalance-channel-form" method="POST">
     <div class="input-group mb-3" id="payment-fields">
@@ -37,7 +37,7 @@
       </thead>
     </table>
 </div>
-<script src="{{ url_for('static',filename='assets/js/blockies.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/lightning/blockies.min.js') }}"></script>
 <script>
 	var table = document.querySelector(".table");
 	var tableBody = document.createElement("tbody");
