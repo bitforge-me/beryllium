@@ -515,7 +515,12 @@ def crypto_deposit_recipient_req():
     err_response = _validate_crypto_asset_deposit(asset, l2_network)
     if err_response:
         return err_response
+    amount_dec = decimal.Decimal(amount_dec)
+
+    # use local wallet if possible
     if wallet.deposits_supported(asset, l2_network):
+        if amount_dec <= 0:
+            return bad_request(web_utils.INVALID_AMOUNT)
         if not wallet.incoming_available(asset, l2_network, amount_dec):
             return None, bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
         amount_int = assets.asset_dec_to_int(asset, amount_dec)
@@ -528,6 +533,8 @@ def crypto_deposit_recipient_req():
         db.session.add(crypto_deposit)
         db.session.commit()
         return jsonify(recipient=wallet_reference, asset=asset, l2_network=l2_network, amount_dec=amount_dec)
+
+    # otherwise use dasset
     # get subaccount for user
     if not api_key.user.dasset_subaccount:
         logger.error('user %s dasset subaccount does not exist', api_key.user.email)
@@ -546,6 +553,7 @@ def crypto_deposit_recipient_req():
     crypto_address.viewed_at = int(datetime.timestamp(datetime.now()))
     db.session.add(crypto_address)
     db.session.commit()
+
     return jsonify(recipient=crypto_address.address, asset=asset, l2_network=l2_network, amount_dec=decimal.Decimal(0))
 
 @api.route('/crypto_deposits', methods=['POST'])

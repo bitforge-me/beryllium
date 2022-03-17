@@ -9,7 +9,7 @@ from ln import LnRpc
 logger = logging.getLogger(__name__)
 
 def _is_ln(asset: str, l2_network: Optional[str]) -> bool:
-    return asset != assets.BTC.symbol or l2_network != assets.BTCLN.symbol
+    return asset == assets.BTC.symbol and l2_network == assets.BTCLN.symbol
 
 def incoming_available(asset: str, l2_network: Optional[str], amount_dec: Decimal) -> bool:
     if not _is_ln(asset, l2_network):
