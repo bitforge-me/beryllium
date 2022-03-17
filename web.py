@@ -614,6 +614,32 @@ def send_psbt():
     except Exception as e:
         tx_result = str(e)
     return tx_result
+
+@app.route('/ln/sign')
+def sign():
+    rpc = LnRpc()
+    return render_template(
+        'lightning/sign.html',
+        bitcoin_explorer=app.config["BITCOIN_EXPLORER"])
+
+
+@app.route('/ln/sign_psbt', methods=['GET', 'POST'])
+def sign_psbt():
+    rpc = LnRpc()
+    outputs_dict = request.json["unsigned_psbt"]
+    try:
+        tx_result = rpc.sign_psbt(outputs_dict)
+    except Exception as e:
+        tx_result = str(e)
+    return tx_result
+
+@app.route('/ln/broadcast')
+@roles_accepted(Role.ROLE_ADMIN)
+def broadcast():
+    rpc = LnRpc()
+    return render_template(
+        'lightning/broadcast.html',
+        bitcoin_explorer=app.config["BITCOIN_EXPLORER"])
 '''
 socket-io notifications
 '''

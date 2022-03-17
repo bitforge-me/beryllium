@@ -1,10 +1,10 @@
 {% extends "layout.html" %}
 {% block title %}Create Invoice{% endblock %}
 {% block content %}
-<script src="{{ url_for('static',filename='assets/js/qrcode.min.js') }}"></script>
-<script src="{{ url_for('static',filename='assets/js/sweetalert2.all.min.js') }}"></script>
-<script src="{{ url_for('static',filename='assets/css/sweetalert2.min.css') }}"></script>
-<script src="{{ url_for('static',filename='assets/js/psbt-amount-browserified.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/lightning/qrcode.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/lightning/sweetalert2.all.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/lightning/sweetalert2.min.css') }}"></script>
+<script src="{{ url_for('static',filename='assets/lightning/psbt-amount-browserified.js') }}"></script>
 <script>
     const createInvoice = function() {
         var unsignedPsbt = document.querySelector('#message').value;
@@ -21,7 +21,7 @@
 		  "unsigned_psbt" : unsignedPsbt
 		});
             if (result.isConfirmed) {
-			fetch('/sign_psbt', {
+			fetch('/ln/sign_psbt', {
 				method: 'POST',
 				headers: {
 				  'Content-Type': 'application/json',
