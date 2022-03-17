@@ -499,17 +499,39 @@ def balances_req():
         balances_formatted[asset] = dict(symbol=asset, name=assets.ASSETS[asset].name, total=str(balance_dec), available=str(balance_dec))
     return jsonify(balances=balances_formatted)
 
-@api.route('/crypto_deposit_address', methods=['POST'])
-def crypto_deposit_address_req():
-    asset, api_key, err_response = auth_request_get_single_param(db, 'asset')
+def _validate_crypto_asset_deposit(asset: str, l2_network: Optional[str]):
+    if not assets.asset_is_crypto(asset):
+        return bad_request(web_utils.INVALID_ASSET)
+    if not assets.asset_has_l2(asset, l2_network):
+        return bad_request(web_utils.INVALID_NETWORK)
+    return None
+
+@api.route('/crypto_deposit_recipient', methods=['POST'])
+def crypto_deposit_recipient_req():
+    params, api_key, err_response = auth_request_get_params(db, ['asset', 'l2_network', 'amount_dec'])
     if err_response:
         return err_response
+    asset, l2_network, amount_dec = params
+    err_response = _validate_crypto_asset_deposit(asset, l2_network)
+    if err_response:
+        return err_response
+    if wallet.deposits_supported(asset, l2_network):
+        if not wallet.incoming_available(asset, l2_network, amount_dec):
+            return None, bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
+        amount_int = assets.asset_dec_to_int(asset, amount_dec)
+        crypto_deposit = CryptoDeposit(api_key.user, asset, l2_network, amount_int, None, None, None, False, False)
+        logger.info('create local wallet deposit: %s, %s, %s', asset, l2_network, amount_dec)
+        wallet_reference, err_msg = wallet.deposit_create(asset, l2_network, crypto_deposit.token, 'deposit to Bronze', amount_dec)
+        if err_msg:
+            return None, bad_request(f'{web_utils.FAILED_PAYMENT_CREATE} - {err_msg}')
+        crypto_deposit.wallet_reference = wallet_reference
+        db.session.add(crypto_deposit)
+        db.session.commit()
+        return jsonify(recipient=wallet_reference, asset=asset, l2_network=l2_network, amount_dec=amount_dec)
+    # get subaccount for user
     if not api_key.user.dasset_subaccount:
         logger.error('user %s dasset subaccount does not exist', api_key.user.email)
         return bad_request(web_utils.FAILED_EXCHANGE)
-    if not assets.asset_is_crypto(asset):
-        return bad_request(web_utils.INVALID_ASSET)
-    # get subaccount for user
     subaccount = _user_subaccount_get_or_create(db.session, api_key.user)
     if not subaccount:
         return bad_request(web_utils.FAILED_EXCHANGE)
@@ -524,22 +546,22 @@ def crypto_deposit_address_req():
     crypto_address.viewed_at = int(datetime.timestamp(datetime.now()))
     db.session.add(crypto_address)
     db.session.commit()
-    return jsonify(address=crypto_address.address, asset=asset)
+    return jsonify(recipient=crypto_address.address, asset=asset, l2_network=l2_network, amount_dec=decimal.Decimal(0))
 
 @api.route('/crypto_deposits', methods=['POST'])
 def crypto_deposits_req():
-    params, api_key, err_response = auth_request_get_params(db, ['asset', 'offset', 'limit'])
+    params, api_key, err_response = auth_request_get_params(db, ['asset', 'l2_network', 'offset', 'limit'])
     if err_response:
         return err_response
-    asset, offset, limit = params
+    asset, l2_network, offset, limit = params
     if not assets.asset_is_crypto(asset):
         return bad_request(web_utils.INVALID_ASSET)
-    deposits = CryptoDeposit.from_user(db.session, api_key.user, offset, limit)
+    deposits = CryptoDeposit.of_asset(db.session, api_key.user, asset, l2_network, offset, limit)
     deposits = [deposit.to_json() for deposit in deposits]
-    total = CryptoDeposit.total_for_user(db.session, api_key.user)
+    total = CryptoDeposit.total_of_asset(db.session, api_key.user, asset, l2_network)
     return jsonify(deposits=deposits, offset=offset, limit=limit, total=total)
 
-def _validate_crypto_asset(asset: str, l2_network: Optional[str], recipient: Optional[str]):
+def _validate_crypto_asset_withdraw(asset: str, l2_network: Optional[str], recipient: Optional[str]):
     if not assets.asset_is_crypto(asset):
         return bad_request(web_utils.INVALID_ASSET)
     if not assets.asset_has_l2(asset, l2_network):
@@ -600,7 +622,7 @@ def crypto_withdrawal_create_req():
     err_response = _tf_check_withdrawal(api_key.user, tf_code)
     if err_response:
         return err_response
-    err_response = _validate_crypto_asset(asset, l2_network, recipient)
+    err_response = _validate_crypto_asset_withdraw(asset, l2_network, recipient)
     if err_response:
         return err_response
     amount_dec = decimal.Decimal(amount_dec)
@@ -633,7 +655,7 @@ def crypto_withdrawals_req():
     if err_response:
         return err_response
     asset, l2_network, offset, limit = params
-    err_response = _validate_crypto_asset(asset, l2_network, None)
+    err_response = _validate_crypto_asset_withdraw(asset, l2_network, None)
     if err_response:
         return err_response
     if not isinstance(offset, int):
