@@ -522,13 +522,13 @@ def crypto_deposit_recipient_req():
         if amount_dec <= 0:
             return bad_request(web_utils.INVALID_AMOUNT)
         if not wallet.incoming_available(asset, l2_network, amount_dec):
-            return None, bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
+            return bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
         amount_int = assets.asset_dec_to_int(asset, amount_dec)
         crypto_deposit = CryptoDeposit(api_key.user, asset, l2_network, amount_int, None, None, None, False, False)
         logger.info('create local wallet deposit: %s, %s, %s', asset, l2_network, amount_dec)
         wallet_reference, err_msg = wallet.deposit_create(asset, l2_network, crypto_deposit.token, 'deposit to Bronze', amount_dec)
         if err_msg:
-            return None, bad_request(f'{web_utils.FAILED_PAYMENT_CREATE} - {err_msg}')
+            return bad_request(f'{web_utils.FAILED_PAYMENT_CREATE} - {err_msg}')
         crypto_deposit.wallet_reference = wallet_reference
         db.session.add(crypto_deposit)
         db.session.commit()
