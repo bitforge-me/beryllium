@@ -529,11 +529,19 @@ class CryptoDepositSchema(Schema):
     l2_network = fields.String()
     amount = fields.Integer()
     amount_dec = fields.Method('get_amount_dec')
+    recipient = fields.Method('get_recipient')
     txid = fields.String()
     confirmed = fields.Boolean()
 
     def get_amount_dec(self, obj):
         return str(assets.asset_int_to_dec(obj.asset, obj.amount))
+
+    def get_recipient(self, obj):
+        if obj.crypto_address:
+            return obj.crypto_address.address
+        if obj.wallet_reference:
+            return obj.wallet_reference
+        return None
 
 class CryptoDeposit(db.Model, FromUserMixin, OfAssetMixin):
     id = db.Column(db.Integer, primary_key=True)
