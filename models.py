@@ -540,7 +540,7 @@ class CryptoDeposit(db.Model, FromUserMixin, OfAssetMixin):
     token = db.Column(db.String(255), unique=True, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     user = db.relationship('User', backref=db.backref('crypto_deposits', lazy='dynamic'))
-    crypto_address_id = db.Column(db.Integer, db.ForeignKey('crypto_address.id'), nullable=False)
+    crypto_address_id = db.Column(db.Integer, db.ForeignKey('crypto_address.id'))
     crypto_address = db.relationship('CryptoAddress', backref=db.backref('crypto_deposits', lazy='dynamic'))
     date = db.Column(db.DateTime(), nullable=False)
     asset = db.Column(db.String, nullable=False)
