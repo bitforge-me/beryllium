@@ -548,7 +548,7 @@ class CryptoDeposit(db.Model, FromUserMixin, OfAssetMixin):
     amount = db.Column(db.BigInteger, nullable=False)
     exchange_reference = db.Column(db.String)
     wallet_reference = db.Column(db.String)
-    txid = db.Column(db.String(255), unique=True, nullable=False)
+    txid = db.Column(db.String(255), unique=True)
     confirmed = db.Column(db.Boolean, nullable=False)
     expired = db.Column(db.Boolean, nullable=False)
 
