@@ -623,7 +623,6 @@ def sign():
         'lightning/sign.html',
         bitcoin_explorer=app.config["BITCOIN_EXPLORER"])
 
-
 @app.route('/ln/sign_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def sign_psbt():
