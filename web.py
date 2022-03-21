@@ -372,6 +372,11 @@ def user_order():
             flash(f'canceled and refunded order {token}')
     return return_response()
 
+@app.route('/config', methods=['GET'])
+@roles_accepted(Role.ROLE_ADMIN)
+def config():
+    return render_template('config.html')
+
 @app.route('/ln', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def ln_ep():
@@ -440,11 +445,6 @@ def create_invoice(amount, message):
         "lightning/create_invoice.html",
         bolt11=bolt11,
         qrcode_svg=qrcode_svg)
-
-@app.route('/config', methods=['GET'])
-@roles_accepted(Role.ROLE_ADMIN)
-def config():
-    return render_template('config.html')
 
 @app.route('/ln/list_peers', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
@@ -616,6 +616,7 @@ def send_psbt():
     return tx_result
 
 @app.route('/ln/sign')
+@roles_accepted(Role.ROLE_ADMIN)
 def sign():
     rpc = LnRpc()
     return render_template(
@@ -624,6 +625,7 @@ def sign():
 
 
 @app.route('/ln/sign_psbt', methods=['GET', 'POST'])
+@roles_accepted(Role.ROLE_ADMIN)
 def sign_psbt():
     rpc = LnRpc()
     outputs_dict = request.json["unsigned_psbt"]
