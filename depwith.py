@@ -181,7 +181,7 @@ def crypto_deposits_dasset_check(db_session, new_crypto_deposits, updated_crypto
 def crypto_deposits_wallet_check(db_session, updated_crypto_deposits):
     for deposit in CryptoDeposit.of_wallet(db_session, False, False):
         with coordinator.lock:
-            logger.info('processing crypto deposit %s (%s)..', deposit.token, deposit.status)
+            logger.info('processing crypto deposit %s (confirmed: %s)..', deposit.token, deposit.confirmed)
             if wallet.deposit_expired(deposit.wallet_reference):
                 deposit.expired = True
                 updated_crypto_deposits.append(deposit)
