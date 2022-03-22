@@ -78,10 +78,13 @@ class LnRpc():
         result['amount_sat'] = sats
         return result
 
-    def wait_any(self):
-        invoice_list = self.list_paid()
-        last_index = len(invoice_list)
-        return self.instance.waitanyinvoice(lastpay_index=last_index)
+    def wait_any_invoice(self, lastpay_index=0, timeout=5):
+        res = self.instance.waitanyinvoice(lastpay_index=lastpay_index, timeout=timeout)
+        if res == 1: # timeout error:
+            return None, 'timeout'
+        if isinstance(res, int):
+            return None, 'unknown error'
+        return res, None
 
     def list_channels(self):
         return self.instance.listchannels()

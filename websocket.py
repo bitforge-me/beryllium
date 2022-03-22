@@ -110,6 +110,11 @@ def fiat_withdrawal_new_event(fiat_withdrawal: FiatWithdrawal):
     socketio.emit('fiat_withdrawal_new', data, json=True, room=fiat_withdrawal.user.email, namespace=NS)
     logger.info('fiat_withdrawal_new: %s', fiat_withdrawal.token)
 
+def ln_invoice_paid_event(label, payment_hash, bolt11, email):
+    data = json.dumps(dict(label=label, payment_hash=payment_hash, bolt11=bolt11))
+    socketio.emit('ln_invoice_paid', data, json=True, room=label, namespace=NS)
+    socketio.emit('ln_invoice_paid', data, json=True, room=email, namespace=NS)
+
 class EventsNamespace(Namespace):
 
     def on_error(self, err):

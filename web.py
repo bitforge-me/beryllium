@@ -372,6 +372,7 @@ class WebGreenlet():
         self.port = port
         self.runloop_greenlet = None
         self.process_periodic_events_greenlet = None
+        self.ln_invoice_greenlet = None
         self.exception_func = exception_func
 
     def start(self):
@@ -394,14 +395,35 @@ class WebGreenlet():
                     deposits_and_orders_timer_last += 300
                 gevent.sleep(5)
 
+        def process_ln_invoices_loop():
+            lastpay_index = 0
+            rpc = LnRpc()
+            while True:
+                pay, err = rpc.wait_any_invoice(lastpay_index)
+                if err:
+                    logger.debug('wait any index failed: "%s"', err)
+                else:
+                    if pay['status'] == 'paid':
+                        label = pay['label']
+                        payment_hash = pay['payment_hash']
+                        bolt11 = pay['bolt11']
+                        lastpay_index = pay['pay_index']
+                        deposit = CryptoDeposit.from_wallet_reference(db.session, bolt11)
+                        if not deposit:
+                            logger.error('Unable to find matching CryptoDeposit for bolt11 reference: %s', bolt11)
+                            return
+                        email = deposit.user.email
+                        websocket.ln_invoice_paid_event(label, payment_hash, bolt11, email)
+
         def start_greenlets():
             logger.info("starting WebGreenlet runloop...")
             self.runloop_greenlet.start()
             self.process_periodic_events_greenlet.start()
 
-        # create greenlet
+        # create greenlets
         self.runloop_greenlet = gevent.Greenlet(runloop)
         self.process_periodic_events_greenlet = gevent.Greenlet(process_periodic_events_loop)
+        self.ln_invoice_greenlet = gevent.Greenlet(process_ln_invoices_loop)
         if self.exception_func:
             self.runloop_greenlet.link_exception(self.exception_func)
         # start greenlets
@@ -410,7 +432,8 @@ class WebGreenlet():
     def stop(self):
         self.runloop_greenlet.kill()
         self.process_periodic_events_greenlet.kill()
-        gevent.joinall([self.runloop_greenlet, self.process_periodic_events_greenlet])
+        self.ln_invoice_greenlet.kill()
+        gevent.joinall([self.runloop_greenlet, self.process_periodic_events_greenlet, self.ln_invoice_greenlet])
 
 def run():
     # setup logging
