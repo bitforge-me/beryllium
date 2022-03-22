@@ -381,18 +381,20 @@ def config():
 @roles_accepted(Role.ROLE_ADMIN)
 def ln_ep():
     rpc = LnRpc()
-    return render_template('ln.html', info=rpc.get_info(), funds_dict=rpc.list_funds())
+    return render_template('ln.html', funds_dict=rpc.list_funds())
 
 @app.route('/ln/getinfo')
 @roles_accepted(Role.ROLE_ADMIN)
 def lightningd_getinfo_ep():
     rpc = LnRpc()
+    # pylint: disable=pointless-string-statement
     """ Returns template with info about lightningd"""
     return render_template('lightning/lightningd_getinfo.html', info=rpc.get_info())
 
 @app.route('/ln/send_bitcoin')
 @roles_accepted(Role.ROLE_ADMIN)
 def send_bitcoin():
+    # pylint: disable=pointless-string-statement
     """ Returns template for sending BTC """
     rpc = LnRpc()
     onchain = int(rpc.list_funds()["sats_onchain"]) / 100000000
@@ -404,6 +406,7 @@ def send_bitcoin():
 @app.route('/ln/new_address')
 @roles_accepted(Role.ROLE_ADMIN)
 def new_address_ep():
+    # pylint: disable=pointless-string-statement
     """ Returns template showing a new address created by our HD wallet """
     rpc = LnRpc()
     address = rpc.new_address()
@@ -412,6 +415,7 @@ def new_address_ep():
 @app.route('/ln/list_txs')
 @roles_accepted(Role.ROLE_ADMIN)
 def list_txs():
+    # pylint: disable=pointless-string-statement
     """ Returns template of on-chain txs """
     rpc = LnRpc()
     transactions = rpc.list_txs()
@@ -431,15 +435,17 @@ def list_txs():
 @app.route('/ln/ln_invoice', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
 def ln_invoice():
+    # pylint: disable=pointless-string-statement
     """ Returns template for creating lightning invoices """
     return render_template("lightning/ln_invoice.html")
 
 @app.route('/ln/create_invoice/<int:amount>/<string:message>/')
 @roles_accepted(Role.ROLE_ADMIN)
 def create_invoice(amount, message):
+    # pylint: disable=pointless-string-statement
     """ Returns template showing a created invoice from the inputs """
     rpc = LnRpc()
-    bolt11 = rpc.invoice(int(amount * 1000), "lbl{}".format(random.random()), message)["bolt11"]
+    bolt11 = rpc.invoice(int(amount * 1000), "lbl{}".format(random.random()), message)["bolt11"] # pylint: disable=consider-using-f-string
     qrcode_svg = qrcode_svg_create_ln(bolt11)
     return render_template(
         "lightning/create_invoice.html",
@@ -449,6 +455,7 @@ def create_invoice(amount, message):
 @app.route('/ln/list_peers', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def list_peers():
+    # pylint: disable=pointless-string-statement
     """ Returns a template listing all connected LN peers """
     rpc = LnRpc()
     if request.method == 'POST':
@@ -458,16 +465,14 @@ def list_peers():
         amount = str(int(sats) * 1000) + str('msat')
         try:
             rpc = LnRpc()
-            result = rpc.rebalance_individual_channel(
-                oscid, iscid, amount)
-            flash(
-                Markup(f'successfully move funds from:'
-                + '{oscid} to: {iscid} with the amount:'
-                + '{sats}sats'),
-                'success')
-        except Exception as e:
+            # pylint: disable=no-member
+            # pylint: disable=unused-variable
+            result = rpc.rebalance_individual_channel(oscid, iscid, amount)
+            flash(Markup(f'successfully move funds from: {oscid} to: {iscid} with the amount: {sats}sats'),'success')
+        except Exception as e: # pylint: disable=broad-except
             flash(Markup(e.args[0]), 'danger')
     peers = rpc.list_peers()["peers"]
+    # pylint: disable=consider-using-enumerate
     for i in range(len(peers)):
         peers[i]["sats_total"] = 0
         peers[i]["can_send"] = 0
@@ -510,30 +515,33 @@ def withdraw():
     outputs_dict = request.json["address_amount"]
     try:
         tx_result = rpc.multi_withdraw(outputs_dict)
-    except BaseException:
+    except BaseException: # pylint: disable=broad-except
         tx_result = "error"
     return tx_result
 
 @app.route('/ln/pay_invoice', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
 def pay_invoice():
+    # pylint: disable=pointless-string-statement
     """ Returns template for paying LN invoices """
     return render_template("lightning/pay_invoice.html")
 
 @app.route('/ln/pay/<string:bolt11>')
 @roles_accepted(Role.ROLE_ADMIN)
-def pay(bolt11):
+def ln_pay(bolt11):
+    # pylint: disable=pointless-string-statement
     """ Returns template showing a paid LN invoice """
     rpc = LnRpc()
     try:
         invoice_result = rpc.send_invoice(bolt11)
         return render_template("lightning/pay.html", invoice_result=invoice_result)
-    except BaseException:
+    except BaseException: # pylint: disable=broad-except
         return redirect(url_for("pay_error"))
 
 @app.route('/ln/pay_error')
 @roles_accepted(Role.ROLE_ADMIN)
 def pay_error():
+    # pylint: disable=pointless-string-statement
     """ Returns template for a generic pay error """
     return render_template("lightning/pay_error.html")
 
@@ -541,6 +549,7 @@ def pay_error():
 @app.route('/ln/invoices', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
 def invoices():
+    # pylint: disable=pointless-string-statement
     """ Returns template listing all LN paid invoices """
     rpc = LnRpc()
     paid_invoices = rpc.list_paid()
@@ -555,7 +564,7 @@ def decode_pay(bolt11=None):
     try:
         rpc = LnRpc()
         return rpc.decode_pay(str(bolt11))
-    except Exception as e:
+    except Exception as e: # pylint: disable=broad-except
         return str(e)
     return "Something went wrong"
 
@@ -563,28 +572,30 @@ def decode_pay(bolt11=None):
 @app.route('/ln/channel_opener', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
 def channel_opener():
+    # pylint: disable=pointless-string-statement
     """ Returns template for opening LN channels """
     return render_template("lightning/channel_opener.html")
 
 @app.route('/ln/open_channel/<string:node_pubkey>/<int:amount>', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
 def open_channel(node_pubkey, amount):
+    # pylint: disable=pointless-string-statement
     """ Opens a LN channel """
     rpc = LnRpc()
     try:
         rpc.connect_node(node_pubkey)
         node_id = node_pubkey.split("@")
+        # pylint: disable=unused-variable
         result = rpc.fund_channel(node_id[0], amount)
-        flash(
-            Markup(f'successfully added node id: {node_id[0]} with the amount: {amount}'),
-            'success')
-    except Exception as e:
+        flash(Markup(f'successfully added node id: {node_id[0]} with the amount: {amount}'), 'success')
+    except Exception as e: # pylint: disable=broad-except
         flash(Markup(e.args[0]), 'danger')
     return render_template("lightning/channel_opener.html")
 
 @app.route('/ln/create_psbt')
 @roles_accepted(Role.ROLE_ADMIN)
 def create_psbt():
+    # pylint: disable=pointless-string-statement
     """ Returns template for creating a PSBT """
     rpc = LnRpc()
     onchain = int(rpc.list_funds()["sats_onchain"]) / 100000000
@@ -600,7 +611,7 @@ def psbt():
     outputs_dict = request.json["address_amount"]
     try:
         tx_result = rpc.prepare_psbt(outputs_dict)
-    except Exception as e:
+    except Exception as e: # pylint: disable=broad-except
         tx_result = str(e)
     return tx_result
 
@@ -611,17 +622,14 @@ def send_psbt():
     outputs_dict = request.json["signed_psbt"]
     try:
         tx_result = rpc.send_psbt(outputs_dict)
-    except Exception as e:
+    except Exception as e: # pylint: disable=broad-except
         tx_result = str(e)
     return tx_result
 
 @app.route('/ln/sign')
 @roles_accepted(Role.ROLE_ADMIN)
 def sign():
-    rpc = LnRpc()
-    return render_template(
-        'lightning/sign.html',
-        bitcoin_explorer=app.config["BITCOIN_EXPLORER"])
+    return render_template('lightning/sign.html', bitcoin_explorer=app.config["BITCOIN_EXPLORER"])
 
 @app.route('/ln/sign_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
@@ -630,20 +638,18 @@ def sign_psbt():
     outputs_dict = request.json["unsigned_psbt"]
     try:
         tx_result = rpc.sign_psbt(outputs_dict)
-    except Exception as e:
+    except Exception as e: # pylint: disable=broad-except
         tx_result = str(e)
     return tx_result
 
 @app.route('/ln/broadcast')
 @roles_accepted(Role.ROLE_ADMIN)
 def broadcast():
-    rpc = LnRpc()
-    return render_template(
-        'lightning/broadcast.html',
-        bitcoin_explorer=app.config["BITCOIN_EXPLORER"])
-'''
-socket-io notifications
-'''
+    return render_template('lightning/broadcast.html', bitcoin_explorer=app.config["BITCOIN_EXPLORER"])
+
+#
+#socket-io notifications
+#
 
 @socketio.on('connect')
 def test_connect(auth):
@@ -657,8 +663,9 @@ def test_disconnect():
 def wait_any_invoice():
     print('client called recieveany')
     rpc = LnRpc()
+    # pylint: disable=no-member
     res = rpc.wait_any()
-    emit('invoice', {'data': res})
+    emit('invoice', {'data': res})# pylint: disable=undefined-variable
 
 #
 # gevent class
