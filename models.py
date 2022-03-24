@@ -587,7 +587,7 @@ class CryptoDeposit(db.Model, FromUserMixin, OfAssetMixin):
 
     @classmethod
     def from_wallet_reference(cls, session, wallet_reference):
-        return session.query(cls).filter(cls.wallet_reference == wallet_reference)
+        return session.query(cls).filter(cls.wallet_reference == wallet_reference).first()
 
 class WindcavePaymentRequestSchema(Schema):
     date = fields.DateTime()

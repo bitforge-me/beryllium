@@ -396,13 +396,14 @@ class WebGreenlet():
                 gevent.sleep(5)
 
         def process_ln_invoices_loop():
-            lastpay_index = 0
+            gevent.sleep(10, False) # HACK: wait for the webserver to start
+            lastpay_index = 0       # TODO: persist lastpay index
             rpc = LnRpc()
             while True:
                 try:
                     pay, err = rpc.wait_any_invoice(lastpay_index)
                     if err:
-                        logger.debug('wait_any_invoice failed: "%s"', err)
+                        logger.info('wait_any_invoice failed: "%s"', err)
                     else:
                         logger.info('wait_any_invoice: %s', pay)
                         if pay['status'] == 'paid':
@@ -417,8 +418,8 @@ class WebGreenlet():
                             email = deposit.user.email
                             websocket.ln_invoice_paid_event(label, payment_hash, bolt11, email)
                 except ConnectionError as e:
-                    logger.error('wait_any_invoice error: %s', e)
                     gevent.sleep(5, False)
+                    logger.error('wait_any_invoice error: %s', e)
 
         def start_greenlets():
             logger.info("starting WebGreenlet runloop...")
