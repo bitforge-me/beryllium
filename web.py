@@ -399,22 +399,26 @@ class WebGreenlet():
             lastpay_index = 0
             rpc = LnRpc()
             while True:
-                pay, err = rpc.wait_any_invoice(lastpay_index)
-                if err:
-                    logger.debug('wait any index failed: "%s"', err)
-                else:
-                    logger.info('wait any invoice: %s', pay)
-                    if pay['status'] == 'paid':
-                        label = pay['label']
-                        payment_hash = pay['payment_hash']
-                        bolt11 = pay['bolt11']
-                        lastpay_index = pay['pay_index']
-                        deposit = CryptoDeposit.from_wallet_reference(db.session, bolt11)
-                        if not deposit:
-                            logger.error('Unable to find matching CryptoDeposit for bolt11 reference: %s', bolt11)
-                            return
-                        email = deposit.user.email
-                        websocket.ln_invoice_paid_event(label, payment_hash, bolt11, email)
+                try:
+                    pay, err = rpc.wait_any_invoice(lastpay_index)
+                    if err:
+                        logger.debug('wait_any_invoice failed: "%s"', err)
+                    else:
+                        logger.info('wait_any_invoice: %s', pay)
+                        if pay['status'] == 'paid':
+                            label = pay['label']
+                            payment_hash = pay['payment_hash']
+                            bolt11 = pay['bolt11']
+                            lastpay_index = pay['pay_index']
+                            deposit = CryptoDeposit.from_wallet_reference(db.session, bolt11)
+                            if not deposit:
+                                logger.error('Unable to find matching CryptoDeposit for bolt11 reference: %s', bolt11)
+                                return
+                            email = deposit.user.email
+                            websocket.ln_invoice_paid_event(label, payment_hash, bolt11, email)
+                except ConnectionError as e:
+                    logger.error('wait_any_invoice error: %s', e)
+                    gevent.sleep(5, False)
 
         def start_greenlets():
             logger.info("starting WebGreenlet runloop...")
