@@ -8,11 +8,8 @@ import logging
 import math
 import time
 import random
-import io
 
 import gevent
-import qrcode
-import qrcode.image.svg
 from flask import render_template, request, flash, jsonify, Response, redirect, url_for, Markup
 from flask_security import roles_accepted
 
