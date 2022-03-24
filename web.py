@@ -37,6 +37,7 @@ import kyc_core
 import fiatdb_core
 import coordinator
 from ln import LnRpc
+from utils import qrcode_svg_create
 
 USER_BALANCE_SHOW = 'show balance'
 USER_BALANCE_CREDIT = 'credit'
@@ -78,24 +79,6 @@ def process_deposits_and_broker_orders():
         depwith.crypto_withdrawals_update(db.session)
         logger.info('process broker orders..')
         broker.broker_orders_update(db.session)
-
-#def qrcode_svg_create(data):
-#    """ Returns SVG of input data """
-#    factory = qrcode.image.svg.SvgPathImage
-#    img = qrcode.make(data, image_factory=factory, box_size=35)
-#    output = io.BytesIO()
-#    img.save(output)
-#    svg = output.getvalue().decode('utf-8')
-#    return svg
-#
-def qrcode_svg_create_ln(data):
-    """ Returns SVG of input data (LN focused) """
-    factory = qrcode.image.svg.SvgPathImage
-    img = qrcode.make(data, image_factory=factory, box_size=10)
-    output = io.BytesIO()
-    img.save(output)
-    svg = output.getvalue().decode('utf-8')
-    return svg
 
 #
 # Flask views
@@ -446,7 +429,7 @@ def create_invoice(amount, message):
     """ Returns template showing a created invoice from the inputs """
     rpc = LnRpc()
     bolt11 = rpc.invoice(int(amount * 1000), "lbl{}".format(random.random()), message)["bolt11"] # pylint: disable=consider-using-f-string
-    qrcode_svg = qrcode_svg_create_ln(bolt11)
+    qrcode_svg = qrcode_svg_create(bolt11, 10)
     return render_template(
         "lightning/create_invoice.html",
         bolt11=bolt11,
