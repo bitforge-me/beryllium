@@ -420,6 +420,7 @@ class WebGreenlet():
             logger.info("starting WebGreenlet runloop...")
             self.runloop_greenlet.start()
             self.process_periodic_events_greenlet.start()
+            self.ln_invoice_greenlet.start()
 
         # create greenlets
         self.runloop_greenlet = gevent.Greenlet(runloop)
