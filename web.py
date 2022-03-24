@@ -403,6 +403,7 @@ class WebGreenlet():
                 if err:
                     logger.debug('wait any index failed: "%s"', err)
                 else:
+                    logger.info('wait any invoice: %s', pay)
                     if pay['status'] == 'paid':
                         label = pay['label']
                         payment_hash = pay['payment_hash']
