@@ -398,9 +398,11 @@ class WebGreenlet():
 
         def process_ln_invoices_loop():
             gevent.sleep(10, False) # HACK: wait for the webserver to start
-            lastpay_index = 0       # TODO: persist lastpay index
+            lastpay_index = 0
             while True:
                 try:
+                    if lastpay_index == 0:
+                        lastpay_index = LnRpc().lastpay_index()
                     pay, err = wallet.any_deposit_completed(lastpay_index)
                     if err:
                         logger.debug('wait_any_invoice failed: "%s"', err)

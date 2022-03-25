@@ -54,6 +54,11 @@ class LnRpc():
         # show the status of a specific payment hash
         return self.instance.listpays(payment_hash=payment_hash)
 
+    def lastpay_index(self):
+        result = self.instance.listpays()
+        pays = result['pays']
+        return len(pays)
+
     def list_paid(self):
         # show the status of all paid bolt11 invoice
         results = []
