@@ -78,7 +78,7 @@ class LnRpc():
         result['amount_sat'] = sats
         return result
 
-    def wait_any_invoice(self, lastpay_index=0, timeout=5):
+    def wait_any_invoice(self, lastpay_index=0, timeout=None):
         return self.instance.waitanyinvoice(lastpay_index=lastpay_index, timeout=timeout)
 
     def list_channels(self):

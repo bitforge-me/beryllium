@@ -403,7 +403,8 @@ class WebGreenlet():
                 try:
                     pay, err = wallet.any_deposit_completed(lastpay_index)
                     if err:
-                        logger.info('wait_any_invoice failed: "%s"', err)
+                        logger.debug('wait_any_invoice failed: "%s"', err)
+                        gevent.sleep(2, False) # probably timeout so we wait a short time before polling again
                     else:
                         logger.info('wait_any_invoice: %s', pay)
                         if pay['status'] == 'paid':

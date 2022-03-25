@@ -102,6 +102,6 @@ def deposit_completed(bolt11: str) -> bool:
 def any_deposit_completed(lastpay_index):
     rpc = LnRpc()
     try:
-        return rpc.wait_any_invoice(lastpay_index, 5), None
+        return rpc.wait_any_invoice(lastpay_index, 0), None
     except RpcError as e:
         return None, e.error
