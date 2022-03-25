@@ -33,6 +33,7 @@ import kyc_core
 import fiatdb_core
 import coordinator
 from ln import LnRpc
+import wallet
 
 USER_BALANCE_SHOW = 'show balance'
 USER_BALANCE_CREDIT = 'credit'
@@ -398,10 +399,9 @@ class WebGreenlet():
         def process_ln_invoices_loop():
             gevent.sleep(10, False) # HACK: wait for the webserver to start
             lastpay_index = 0       # TODO: persist lastpay index
-            rpc = LnRpc()
             while True:
                 try:
-                    pay, err = rpc.wait_any_invoice(lastpay_index)
+                    pay, err = wallet.any_deposit_completed(lastpay_index)
                     if err:
                         logger.info('wait_any_invoice failed: "%s"', err)
                     else:

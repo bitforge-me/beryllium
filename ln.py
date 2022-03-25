@@ -79,12 +79,7 @@ class LnRpc():
         return result
 
     def wait_any_invoice(self, lastpay_index=0, timeout=5):
-        res = self.instance.waitanyinvoice(lastpay_index=lastpay_index, timeout=timeout)
-        if res == 1: # timeout error:
-            return None, 'timeout'
-        if isinstance(res, int):
-            return None, 'unknown error'
-        return res, None
+        return self.instance.waitanyinvoice(lastpay_index=lastpay_index, timeout=timeout)
 
     def list_channels(self):
         return self.instance.listchannels()
