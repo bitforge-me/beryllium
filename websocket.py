@@ -114,6 +114,7 @@ def ln_invoice_paid_event(label, payment_hash, bolt11, email):
     data = json.dumps(dict(label=label, payment_hash=payment_hash, bolt11=bolt11))
     socketio.emit('ln_invoice_paid', data, json=True, room=label, namespace=NS)
     socketio.emit('ln_invoice_paid', data, json=True, room=email, namespace=NS)
+    logger.info('ln_invoice_paid: %s, %s', label, email)
 
 class EventsNamespace(Namespace):
 
