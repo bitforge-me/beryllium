@@ -55,9 +55,15 @@ class LnRpc():
         return self.instance.listpays(payment_hash=payment_hash)
 
     def lastpay_index(self):
-        result = self.instance.listpays()
-        pays = result['pays']
-        return len(pays)
+        result = self.instance.listinvoices()
+        invoices = result['invoices']
+        current_pay_index = 0
+        for invoice in invoices:
+            if invoice['status'] == 'paid':
+                pay_index = invoice['pay_index']
+                if pay_index > current_pay_index:
+                    current_pay_index = pay_index
+        return current_pay_index
 
     def list_paid(self):
         # show the status of all paid bolt11 invoice
