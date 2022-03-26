@@ -17,20 +17,20 @@ ln_wallet = Blueprint('ln_wallet', __name__, template_folder='templates')
 limiter.limit("100/minute")(ln_wallet)
 bitcoin_explorer = app.config["BITCOIN_EXPLORER"]
 
-@app.route('/')
+@ln_wallet.route('/')
 @roles_accepted(Role.ROLE_ADMIN)
-def index():
+def ln_index():
     rpc = LnRpc()
-    return render_template('ln.html', funds_dict=rpc.list_funds())
+    return render_template('lightning/index.html', funds_dict=rpc.list_funds())
 
-@app.route('/getinfo')
+@ln_wallet.route('/getinfo')
 @roles_accepted(Role.ROLE_ADMIN)
 def lightningd_getinfo():
     """ Returns template with info about lightningd"""
     rpc = LnRpc()
     return render_template('lightning/lightningd_getinfo.html', info=rpc.get_info())
 
-@app.route('/send_bitcoin')
+@ln_wallet.route('/send_bitcoin')
 @roles_accepted(Role.ROLE_ADMIN)
 def send_bitcoin():
     """ Returns template for sending BTC """
@@ -41,7 +41,7 @@ def send_bitcoin():
         bitcoin_explorer=bitcoin_explorer,
         onchain=onchain)
 
-@app.route('/new_address')
+@ln_wallet.route('/new_address')
 @roles_accepted(Role.ROLE_ADMIN)
 def new_address_ep():
     """ Returns template showing a new address created by our HD wallet """
@@ -49,7 +49,7 @@ def new_address_ep():
     address = rpc.new_address()
     return render_template("lightning/new_address.html", address=address)
 
-@app.route('/list_txs')
+@ln_wallet.route('/list_txs')
 @roles_accepted(Role.ROLE_ADMIN)
 def list_txs():
     """ Returns template of on-chain txs """
@@ -68,13 +68,13 @@ def list_txs():
         transactions=sorted_txs,
         bitcoin_explorer=bitcoin_explorer)
 
-@app.route('/ln_invoice', methods=['GET'])
+@ln_wallet.route('/ln_invoice', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
 def ln_invoice():
     """ Returns template for creating lightning invoices """
     return render_template("lightning/ln_invoice.html")
 
-@app.route('/create_invoice/<int:amount>/<string:message>/')
+@ln_wallet.route('/create_invoice/<int:amount>/<string:message>/')
 @roles_accepted(Role.ROLE_ADMIN)
 def create_invoice(amount, message):
     """ Returns template showing a created invoice from the inputs """
@@ -86,7 +86,7 @@ def create_invoice(amount, message):
         bolt11=bolt11,
         qrcode_svg=qrcode_svg)
 
-@app.route('/list_peers', methods=['GET', 'POST'])
+@ln_wallet.route('/list_peers', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def list_peers():
     """ Returns a template listing all connected LN peers """
@@ -130,18 +130,18 @@ def list_peers():
         peers[i]["can_receive"] = int(peers[i]["can_receive"])
     return render_template("lightning/list_peers.html", peers=peers)
 
-@app.route('/send_node')
+@ln_wallet.route('/send_node')
 @roles_accepted(Role.ROLE_ADMIN)
 def send_node():
     return render_template("lightning/send_node.html")
 
-@app.route('/list_forwards')
+@ln_wallet.route('/list_forwards')
 @roles_accepted(Role.ROLE_ADMIN)
 def list_forwards():
     rpc = LnRpc()
     return rpc.list_forwards()
 
-@app.route('/withdraw', methods=['GET', 'POST'])
+@ln_wallet.route('/withdraw', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def withdraw():
     rpc = LnRpc()
@@ -152,13 +152,13 @@ def withdraw():
         tx_result = "error"
     return tx_result
 
-@app.route('/pay_invoice', methods=['GET'])
+@ln_wallet.route('/pay_invoice', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
 def pay_invoice():
     """ Returns template for paying LN invoices """
     return render_template("lightning/pay_invoice.html")
 
-@app.route('/pay/<string:bolt11>')
+@ln_wallet.route('/pay/<string:bolt11>')
 @roles_accepted(Role.ROLE_ADMIN)
 def ln_pay(bolt11):
     """ Returns template showing a paid LN invoice """
@@ -169,14 +169,14 @@ def ln_pay(bolt11):
     except BaseException: # pylint: disable=broad-except
         return redirect(url_for("pay_error"))
 
-@app.route('/pay_error')
+@ln_wallet.route('/pay_error')
 @roles_accepted(Role.ROLE_ADMIN)
 def pay_error():
     """ Returns template for a generic pay error """
     return render_template("lightning/pay_error.html")
 
 
-@app.route('/invoices', methods=['GET'])
+@ln_wallet.route('/invoices', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
 def invoices():
     """ Returns template listing all LN paid invoices """
@@ -184,7 +184,7 @@ def invoices():
     paid_invoices = rpc.list_paid()
     return render_template("lightning/invoices.html", paid_invoices=paid_invoices)
 
-@app.route('/decode_pay/<bolt11>', strict_slashes=False)
+@ln_wallet.route('/decode_pay/<bolt11>', strict_slashes=False)
 @roles_accepted(Role.ROLE_ADMIN)
 def decode_pay(bolt11=None):
     if bolt11 is None:
@@ -197,13 +197,13 @@ def decode_pay(bolt11=None):
     return "Something went wrong"
 
 
-@app.route('/channel_opener', methods=['GET'])
+@ln_wallet.route('/channel_opener', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
 def channel_opener():
     """ Returns template for opening LN channels """
     return render_template("lightning/channel_opener.html")
 
-@app.route('/open_channel/<string:node_pubkey>/<int:amount>', methods=['GET'])
+@ln_wallet.route('/open_channel/<string:node_pubkey>/<int:amount>', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
 def open_channel(node_pubkey, amount):
     """ Opens a LN channel """
@@ -218,7 +218,7 @@ def open_channel(node_pubkey, amount):
         flash(Markup(e.args[0]), 'danger')
     return render_template("lightning/channel_opener.html")
 
-@app.route('/create_psbt')
+@ln_wallet.route('/create_psbt')
 @roles_accepted(Role.ROLE_ADMIN)
 def create_psbt():
     """ Returns template for creating a PSBT """
@@ -229,7 +229,7 @@ def create_psbt():
         bitcoin_explorer=bitcoin_explorer,
         onchain=onchain)
 
-@app.route('/psbt', methods=['GET', 'POST'])
+@ln_wallet.route('/psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def psbt():
     rpc = LnRpc()
@@ -240,7 +240,7 @@ def psbt():
         tx_result = str(e)
     return tx_result
 
-@app.route('/send_psbt', methods=['GET', 'POST'])
+@ln_wallet.route('/send_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def send_psbt():
     rpc = LnRpc()
@@ -251,12 +251,12 @@ def send_psbt():
         tx_result = str(e)
     return tx_result
 
-@app.route('/sign')
+@ln_wallet.route('/sign')
 @roles_accepted(Role.ROLE_ADMIN)
 def sign():
     return render_template('lightning/sign.html', bitcoin_explorer=bitcoin_explorer)
 
-@app.route('/sign_psbt', methods=['GET', 'POST'])
+@ln_wallet.route('/sign_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def sign_psbt():
     rpc = LnRpc()
@@ -267,7 +267,7 @@ def sign_psbt():
         tx_result = str(e)
     return tx_result
 
-@app.route('/broadcast')
+@ln_wallet.route('/broadcast')
 @roles_accepted(Role.ROLE_ADMIN)
 def broadcast():
     return render_template('lightning/broadcast.html', bitcoin_explorer=bitcoin_explorer)
