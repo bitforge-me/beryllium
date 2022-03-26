@@ -18,6 +18,7 @@ from models import User, Role, Topic, PushNotificationLocation, BrokerOrder, Cry
 import email_utils
 from fcm import FCM
 from web_utils import bad_request, get_json_params, get_json_params_optional
+from utils import qrcode_svg_create
 import broker
 import depwith
 from api_endpoint import api
@@ -34,7 +35,7 @@ import kyc_core
 import fiatdb_core
 import coordinator
 from ln import LnRpc
-from utils import qrcode_svg_create
+import wallet
 
 USER_BALANCE_SHOW = 'show balance'
 USER_BALANCE_CREDIT = 'credit'
@@ -658,6 +659,7 @@ class WebGreenlet():
         self.port = port
         self.runloop_greenlet = None
         self.process_periodic_events_greenlet = None
+        self.ln_invoice_greenlet = None
         self.exception_func = exception_func
 
     def start(self):
@@ -680,14 +682,44 @@ class WebGreenlet():
                     deposits_and_orders_timer_last += 300
                 gevent.sleep(5)
 
+        def process_ln_invoices_loop():
+            gevent.sleep(10, False) # HACK: wait for the webserver to start
+            lastpay_index = 0
+            while True:
+                try:
+                    if lastpay_index == 0:
+                        lastpay_index = LnRpc().lastpay_index()
+                    pay, err = wallet.any_deposit_completed(lastpay_index)
+                    if err:
+                        logger.debug('wait_any_invoice failed: "%s"', err)
+                        gevent.sleep(2, False) # probably timeout so we wait a short time before polling again
+                    else:
+                        logger.info('wait_any_invoice: %s', pay)
+                        if pay['status'] == 'paid':
+                            label = pay['label']
+                            payment_hash = pay['payment_hash']
+                            bolt11 = pay['bolt11']
+                            lastpay_index = pay['pay_index']
+                            deposit = CryptoDeposit.from_wallet_reference(db.session, bolt11)
+                            if not deposit:
+                                logger.error('Unable to find matching CryptoDeposit for bolt11 reference: %s', bolt11)
+                                continue
+                            email = deposit.user.email
+                            websocket.ln_invoice_paid_event(label, payment_hash, bolt11, email)
+                except ConnectionError as e:
+                    gevent.sleep(5, False)
+                    logger.error('wait_any_invoice error: %s', e)
+
         def start_greenlets():
             logger.info("starting WebGreenlet runloop...")
             self.runloop_greenlet.start()
             self.process_periodic_events_greenlet.start()
+            self.ln_invoice_greenlet.start()
 
-        # create greenlet
+        # create greenlets
         self.runloop_greenlet = gevent.Greenlet(runloop)
         self.process_periodic_events_greenlet = gevent.Greenlet(process_periodic_events_loop)
+        self.ln_invoice_greenlet = gevent.Greenlet(process_ln_invoices_loop)
         if self.exception_func:
             self.runloop_greenlet.link_exception(self.exception_func)
         # start greenlets
@@ -696,7 +728,8 @@ class WebGreenlet():
     def stop(self):
         self.runloop_greenlet.kill()
         self.process_periodic_events_greenlet.kill()
-        gevent.joinall([self.runloop_greenlet, self.process_periodic_events_greenlet])
+        self.ln_invoice_greenlet.kill()
+        gevent.joinall([self.runloop_greenlet, self.process_periodic_events_greenlet, self.ln_invoice_greenlet])
 
 def run():
     # setup logging
