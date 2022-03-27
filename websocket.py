@@ -163,8 +163,10 @@ class EventsNamespace(Namespace):
             except: # pylint: disable=bare-except
                 emit("info", "invalid json", namespace=NS)
                 return
+        logger.info("ln_invoice: %s", data)
         # join room for invoice label
         label = data["label"]
+        logger.info("join room for invoice: %s", label)
         join_room(f"ln-{label}")
         emit("info", f"joined room for invoice label ({label})", namespace=NS)
 
