@@ -22,7 +22,7 @@
 {% block scripts %}
 
 <script type="text/javascript" charset="utf-8">
-  var socket = io.of("/events");
+  var socket = io('/orders');
   socket.on('connect', function() {
     console.log("connected");
     // subscribe to invoice events
