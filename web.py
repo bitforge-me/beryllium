@@ -411,10 +411,9 @@ class WebGreenlet():
                             bolt11 = pay['bolt11']
                             lastpay_index = pay['pay_index']
                             deposit = CryptoDeposit.from_wallet_reference(db.session, bolt11)
-                            if not deposit:
-                                logger.error('Unable to find matching CryptoDeposit for bolt11 reference: %s', bolt11)
-                                continue
-                            email = deposit.user.email
+                            email = None
+                            if deposit:
+                                email = deposit.user.email
                             websocket.ln_invoice_paid_event(label, payment_hash, bolt11, email)
                 except ConnectionError as e:
                     gevent.sleep(5, False)

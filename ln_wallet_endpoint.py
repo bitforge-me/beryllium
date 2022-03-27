@@ -1,8 +1,7 @@
 # pylint: disable=unbalanced-tuple-unpacking
 
 import logging
-import time
-import random
+import secrets
 
 from flask import Blueprint, render_template, request, flash, Markup, url_for, redirect
 from flask_security import roles_accepted
@@ -79,11 +78,13 @@ def ln_invoice():
 def create_invoice(amount, message):
     """ Returns template showing a created invoice from the inputs """
     rpc = LnRpc()
-    bolt11 = rpc.invoice(int(amount * 1000), "lbl{}".format(random.random()), message)["bolt11"] # pylint: disable=consider-using-f-string
+    label = f"lbl-{secrets.token_urlsafe(8)}"
+    bolt11 = rpc.invoice(int(amount * 1000), label, message)["bolt11"] # pylint: disable=consider-using-f-string
     qrcode_svg = qrcode_svg_create(bolt11, 10)
     return render_template(
         "lightning/create_invoice.html",
         bolt11=bolt11,
+        label=label,
         qrcode_svg=qrcode_svg)
 
 @ln_wallet.route('/list_peers', methods=['GET', 'POST'])

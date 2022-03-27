@@ -1,0 +1,9 @@
+{% extends "lightning/layout.html" %}
+
+{% block header %}
+<!-- Socket.IO JS -->
+<script src="{{ url_for('static',filename='assets/lightning/socket.io.js') }}"></script>
+<!-- Swal2 JS/CSS -->
+<script src="{{ url_for('static',filename='assets/lightning/sweetalert2.all.min.js') }}"></script>
+<script src="{{ url_for('static',filename='assets/lightning/sweetalert2.min.css') }}"></script>
+{% endblock %}

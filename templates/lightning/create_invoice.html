@@ -1,4 +1,4 @@
-{% extends "layout.html" %}
+{% extends "lightning/layout.html" %}
 
 {% block title %}Invoice Generated!{% endblock %}
 
@@ -17,6 +17,37 @@
 <a class="button submit" onclick="copyInvoice()">
   <button type="button" class="btn btn-primary btn-lg mt-3">Copy Invoice ID</button>
 </a>
+{% endblock %}
+
+{% block scripts}
+
+<script type="text/javascript" charset="utf-8">
+  var socket = io();
+  socket.on('connect', function() {
+    console.log("connected");
+    // subscribe to invoice events
+    socket.emit('ln_invoice', '{"label": "{{ label }}"}');
+  });
+  socket.on('info', function(msg) {
+    console.log(msg);
+  });
+  socket.on('ln_invoice_paid', function(msg) {
+    console.log('invoice paid');
+    var bolt11 = msg['bolt11'];
+    console.log(bolt11);
+    var shortenedBolt11 = bolt11.slice(0,15) + '.....' + bolt11.slice(-15);
+    Swal.fire({
+      title: 'Invoice Paid',
+      text: `${shortenedBolt11}`,
+      icon: 'success',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Confirm'
+    });
+
+});
+</script>
 {% endblock %}
 
 {% block footer %}
