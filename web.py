@@ -7,10 +7,9 @@ import decimal
 import logging
 import math
 import time
-import random
 
 import gevent
-from flask import render_template, request, flash, jsonify, Response, redirect, url_for, Markup
+from flask import render_template, request, flash, jsonify, Response
 from flask_security import roles_accepted
 
 from app_core import app, db, socketio
@@ -25,6 +24,7 @@ from reward_endpoint import reward
 from reporting_endpoint import reporting
 from payments_endpoint import payments
 from kyc_endpoint import kyc
+from ln_wallet_endpoint import ln_wallet
 import websocket
 # pylint: disable=unused-import
 import admin
@@ -34,7 +34,7 @@ import kyc_core
 import fiatdb_core
 import coordinator
 from ln import LnRpc
-from utils import qrcode_svg_create
+import wallet
 
 USER_BALANCE_SHOW = 'show balance'
 USER_BALANCE_CREDIT = 'credit'
@@ -54,6 +54,7 @@ app.register_blueprint(reward, url_prefix='/reward')
 app.register_blueprint(reporting, url_prefix='/reporting')
 app.register_blueprint(payments, url_prefix='/payments')
 app.register_blueprint(kyc, url_prefix='/kyc')
+app.register_blueprint(ln_wallet, url_prefix='/ln_wallet')
 
 def process_email_alerts():
     with app.app_context():
@@ -357,296 +358,6 @@ def user_order():
 def config():
     return render_template('config.html')
 
-@app.route('/ln', methods=['GET', 'POST'])
-@roles_accepted(Role.ROLE_ADMIN)
-def ln_ep():
-    rpc = LnRpc()
-    return render_template('ln.html', funds_dict=rpc.list_funds())
-
-@app.route('/ln/getinfo')
-@roles_accepted(Role.ROLE_ADMIN)
-def lightningd_getinfo_ep():
-    rpc = LnRpc()
-    # pylint: disable=pointless-string-statement
-    """ Returns template with info about lightningd"""
-    return render_template('lightning/lightningd_getinfo.html', info=rpc.get_info())
-
-@app.route('/ln/send_bitcoin')
-@roles_accepted(Role.ROLE_ADMIN)
-def send_bitcoin():
-    # pylint: disable=pointless-string-statement
-    """ Returns template for sending BTC """
-    rpc = LnRpc()
-    onchain = int(rpc.list_funds()["sats_onchain"]) / 100000000
-    return render_template(
-        'lightning/send_bitcoin.html',
-        bitcoin_explorer=app.config["BITCOIN_EXPLORER"],
-        onchain=onchain)
-
-@app.route('/ln/new_address')
-@roles_accepted(Role.ROLE_ADMIN)
-def new_address_ep():
-    # pylint: disable=pointless-string-statement
-    """ Returns template showing a new address created by our HD wallet """
-    rpc = LnRpc()
-    address = rpc.new_address()
-    return render_template("lightning/new_address.html", address=address)
-
-@app.route('/ln/list_txs')
-@roles_accepted(Role.ROLE_ADMIN)
-def list_txs():
-    # pylint: disable=pointless-string-statement
-    """ Returns template of on-chain txs """
-    rpc = LnRpc()
-    transactions = rpc.list_txs()
-    sorted_txs = sorted(
-        transactions["transactions"],
-        key=lambda d: d["blockheight"],
-        reverse=True)
-    for tx in transactions["transactions"]:
-        for output in tx["outputs"]:
-            output["sats"] = int(output["msat"] / 1000)
-            output.update({"sats": str(output["sats"]) + " satoshi"})
-    return render_template(
-        "lightning/list_transactions.html",
-        transactions=sorted_txs,
-        bitcoin_explorer=app.config["BITCOIN_EXPLORER"])
-
-@app.route('/ln/ln_invoice', methods=['GET'])
-@roles_accepted(Role.ROLE_ADMIN)
-def ln_invoice():
-    # pylint: disable=pointless-string-statement
-    """ Returns template for creating lightning invoices """
-    return render_template("lightning/ln_invoice.html")
-
-@app.route('/ln/create_invoice/<int:amount>/<string:message>/')
-@roles_accepted(Role.ROLE_ADMIN)
-def create_invoice(amount, message):
-    # pylint: disable=pointless-string-statement
-    """ Returns template showing a created invoice from the inputs """
-    rpc = LnRpc()
-    bolt11 = rpc.invoice(int(amount * 1000), "lbl{}".format(random.random()), message)["bolt11"] # pylint: disable=consider-using-f-string
-    qrcode_svg = qrcode_svg_create(bolt11, 10)
-    return render_template(
-        "lightning/create_invoice.html",
-        bolt11=bolt11,
-        qrcode_svg=qrcode_svg)
-
-@app.route('/ln/list_peers', methods=['GET', 'POST'])
-@roles_accepted(Role.ROLE_ADMIN)
-def list_peers():
-    # pylint: disable=pointless-string-statement
-    """ Returns a template listing all connected LN peers """
-    rpc = LnRpc()
-    if request.method == 'POST':
-        oscid = request.form["oscid"]
-        iscid = request.form["iscid"]
-        sats = request.form["amount"]
-        amount = str(int(sats) * 1000) + str('msat')
-        try:
-            rpc = LnRpc()
-            # pylint: disable=no-member
-            # pylint: disable=unused-variable
-            result = rpc.rebalance_individual_channel(oscid, iscid, amount)
-            flash(Markup(f'successfully move funds from: {oscid} to: {iscid} with the amount: {sats}sats'),'success')
-        except Exception as e: # pylint: disable=broad-except
-            flash(Markup(e.args[0]), 'danger')
-    peers = rpc.list_peers()["peers"]
-    # pylint: disable=consider-using-enumerate
-    for i in range(len(peers)):
-        peers[i]["sats_total"] = 0
-        peers[i]["can_send"] = 0
-        peers[i]["can_receive"] = 0
-        peers[i]["scid"] = ""
-        # I'm assuming there will only be one channel for each node, but I'm
-        # using an array in case there's more
-        peers[i]["channel_states"] = []
-        for channel in peers[i]["channels"]:
-            if channel["state"] == 'CHANNELD_NORMAL':
-                peers[i]["sats_total"] += int(channel["msatoshi_total"]) / 1000
-                peers[i]["can_send"] += int(channel["msatoshi_to_us"]) / 1000
-                peers[i]["can_receive"] += int(
-                    channel["out_msatoshi_fulfilled"]) / 1000
-                for scid in channel["short_channel_id"]:
-                    peers[i]["scid"] += scid
-                peers[i]["channel_states"].append(channel["state"])
-
-        # round as a last step, for accuracy
-        peers[i]["sats_total"] = int(peers[i]["sats_total"])
-        peers[i]["can_send"] = int(peers[i]["can_send"])
-        peers[i]["can_receive"] = int(peers[i]["can_receive"])
-    return render_template("lightning/list_peers.html", peers=peers)
-
-@app.route('/ln/send_node')
-@roles_accepted(Role.ROLE_ADMIN)
-def send_node():
-    return render_template("lightning/send_node.html")
-
-@app.route('/ln/list_forwards')
-@roles_accepted(Role.ROLE_ADMIN)
-def list_forwards():
-    rpc = LnRpc()
-    return rpc.list_forwards()
-
-@app.route('/ln/withdraw', methods=['GET', 'POST'])
-@roles_accepted(Role.ROLE_ADMIN)
-def withdraw():
-    rpc = LnRpc()
-    outputs_dict = request.json["address_amount"]
-    try:
-        tx_result = rpc.multi_withdraw(outputs_dict)
-    except BaseException: # pylint: disable=broad-except
-        tx_result = "error"
-    return tx_result
-
-@app.route('/ln/pay_invoice', methods=['GET'])
-@roles_accepted(Role.ROLE_ADMIN)
-def pay_invoice():
-    # pylint: disable=pointless-string-statement
-    """ Returns template for paying LN invoices """
-    return render_template("lightning/pay_invoice.html")
-
-@app.route('/ln/pay/<string:bolt11>')
-@roles_accepted(Role.ROLE_ADMIN)
-def ln_pay(bolt11):
-    # pylint: disable=pointless-string-statement
-    """ Returns template showing a paid LN invoice """
-    rpc = LnRpc()
-    try:
-        invoice_result = rpc.send_invoice(bolt11)
-        return render_template("lightning/pay.html", invoice_result=invoice_result)
-    except BaseException: # pylint: disable=broad-except
-        return redirect(url_for("pay_error"))
-
-@app.route('/ln/pay_error')
-@roles_accepted(Role.ROLE_ADMIN)
-def pay_error():
-    # pylint: disable=pointless-string-statement
-    """ Returns template for a generic pay error """
-    return render_template("lightning/pay_error.html")
-
-
-@app.route('/ln/invoices', methods=['GET'])
-@roles_accepted(Role.ROLE_ADMIN)
-def invoices():
-    # pylint: disable=pointless-string-statement
-    """ Returns template listing all LN paid invoices """
-    rpc = LnRpc()
-    paid_invoices = rpc.list_paid()
-    return render_template("lightning/invoices.html", paid_invoices=paid_invoices)
-
-#@app.route('/ln/decode_pay', strict_slashes=False)
-@app.route('/ln/decode_pay/<bolt11>', strict_slashes=False)
-@roles_accepted(Role.ROLE_ADMIN)
-def decode_pay(bolt11=None):
-    if bolt11 is None:
-        return "Please enter a non-empty bolt11 string"
-    try:
-        rpc = LnRpc()
-        return rpc.decode_pay(str(bolt11))
-    except Exception as e: # pylint: disable=broad-except
-        return str(e)
-    return "Something went wrong"
-
-
-@app.route('/ln/channel_opener', methods=['GET'])
-@roles_accepted(Role.ROLE_ADMIN)
-def channel_opener():
-    # pylint: disable=pointless-string-statement
-    """ Returns template for opening LN channels """
-    return render_template("lightning/channel_opener.html")
-
-@app.route('/ln/open_channel/<string:node_pubkey>/<int:amount>', methods=['GET'])
-@roles_accepted(Role.ROLE_ADMIN)
-def open_channel(node_pubkey, amount):
-    # pylint: disable=pointless-string-statement
-    """ Opens a LN channel """
-    rpc = LnRpc()
-    try:
-        rpc.connect_node(node_pubkey)
-        node_id = node_pubkey.split("@")
-        # pylint: disable=unused-variable
-        result = rpc.fund_channel(node_id[0], amount)
-        flash(Markup(f'successfully added node id: {node_id[0]} with the amount: {amount}'), 'success')
-    except Exception as e: # pylint: disable=broad-except
-        flash(Markup(e.args[0]), 'danger')
-    return render_template("lightning/channel_opener.html")
-
-@app.route('/ln/create_psbt')
-@roles_accepted(Role.ROLE_ADMIN)
-def create_psbt():
-    # pylint: disable=pointless-string-statement
-    """ Returns template for creating a PSBT """
-    rpc = LnRpc()
-    onchain = int(rpc.list_funds()["sats_onchain"]) / 100000000
-    return render_template(
-        'lightning/create_psbt.html',
-        bitcoin_explorer=app.config["BITCOIN_EXPLORER"],
-        onchain=onchain)
-
-@app.route('/ln/psbt', methods=['GET', 'POST'])
-@roles_accepted(Role.ROLE_ADMIN)
-def psbt():
-    rpc = LnRpc()
-    outputs_dict = request.json["address_amount"]
-    try:
-        tx_result = rpc.prepare_psbt(outputs_dict)
-    except Exception as e: # pylint: disable=broad-except
-        tx_result = str(e)
-    return tx_result
-
-@app.route('/ln/send_psbt', methods=['GET', 'POST'])
-@roles_accepted(Role.ROLE_ADMIN)
-def send_psbt():
-    rpc = LnRpc()
-    outputs_dict = request.json["signed_psbt"]
-    try:
-        tx_result = rpc.send_psbt(outputs_dict)
-    except Exception as e: # pylint: disable=broad-except
-        tx_result = str(e)
-    return tx_result
-
-@app.route('/ln/sign')
-@roles_accepted(Role.ROLE_ADMIN)
-def sign():
-    return render_template('lightning/sign.html', bitcoin_explorer=app.config["BITCOIN_EXPLORER"])
-
-@app.route('/ln/sign_psbt', methods=['GET', 'POST'])
-@roles_accepted(Role.ROLE_ADMIN)
-def sign_psbt():
-    rpc = LnRpc()
-    outputs_dict = request.json["unsigned_psbt"]
-    try:
-        tx_result = rpc.sign_psbt(outputs_dict)
-    except Exception as e: # pylint: disable=broad-except
-        tx_result = str(e)
-    return tx_result
-
-@app.route('/ln/broadcast')
-@roles_accepted(Role.ROLE_ADMIN)
-def broadcast():
-    return render_template('lightning/broadcast.html', bitcoin_explorer=app.config["BITCOIN_EXPLORER"])
-
-#
-#socket-io notifications
-#
-
-@socketio.on('connect')
-def test_connect(auth):
-    print("Client connected")
-
-@socketio.on('disconnect')
-def test_disconnect():
-    print('Client disconnected')
-
-@socketio.on('waitany')
-def wait_any_invoice():
-    print('client called recieveany')
-    rpc = LnRpc()
-    # pylint: disable=no-member
-    res = rpc.wait_any()
-    emit('invoice', {'data': res})# pylint: disable=undefined-variable
-
 #
 # gevent class
 #
@@ -658,6 +369,7 @@ class WebGreenlet():
         self.port = port
         self.runloop_greenlet = None
         self.process_periodic_events_greenlet = None
+        self.ln_invoice_greenlet = None
         self.exception_func = exception_func
 
     def start(self):
@@ -680,14 +392,44 @@ class WebGreenlet():
                     deposits_and_orders_timer_last += 300
                 gevent.sleep(5)
 
+        def process_ln_invoices_loop():
+            gevent.sleep(10, False) # HACK: wait for the webserver to start
+            lastpay_index = 0
+            while True:
+                try:
+                    if lastpay_index == 0:
+                        lastpay_index = LnRpc().lastpay_index()
+                    pay, err = wallet.any_deposit_completed(lastpay_index)
+                    if err:
+                        logger.debug('wait_any_invoice failed: "%s"', err)
+                        gevent.sleep(2, False) # probably timeout so we wait a short time before polling again
+                    else:
+                        logger.info('wait_any_invoice: %s', pay)
+                        if pay['status'] == 'paid':
+                            label = pay['label']
+                            payment_hash = pay['payment_hash']
+                            bolt11 = pay['bolt11']
+                            lastpay_index = pay['pay_index']
+                            deposit = CryptoDeposit.from_wallet_reference(db.session, bolt11)
+                            if not deposit:
+                                logger.error('Unable to find matching CryptoDeposit for bolt11 reference: %s', bolt11)
+                                continue
+                            email = deposit.user.email
+                            websocket.ln_invoice_paid_event(label, payment_hash, bolt11, email)
+                except ConnectionError as e:
+                    gevent.sleep(5, False)
+                    logger.error('wait_any_invoice error: %s', e)
+
         def start_greenlets():
             logger.info("starting WebGreenlet runloop...")
             self.runloop_greenlet.start()
             self.process_periodic_events_greenlet.start()
+            self.ln_invoice_greenlet.start()
 
-        # create greenlet
+        # create greenlets
         self.runloop_greenlet = gevent.Greenlet(runloop)
         self.process_periodic_events_greenlet = gevent.Greenlet(process_periodic_events_loop)
+        self.ln_invoice_greenlet = gevent.Greenlet(process_ln_invoices_loop)
         if self.exception_func:
             self.runloop_greenlet.link_exception(self.exception_func)
         # start greenlets
@@ -696,7 +438,8 @@ class WebGreenlet():
     def stop(self):
         self.runloop_greenlet.kill()
         self.process_periodic_events_greenlet.kill()
-        gevent.joinall([self.runloop_greenlet, self.process_periodic_events_greenlet])
+        self.ln_invoice_greenlet.kill()
+        gevent.joinall([self.runloop_greenlet, self.process_periodic_events_greenlet, self.ln_invoice_greenlet])
 
 def run():
     # setup logging

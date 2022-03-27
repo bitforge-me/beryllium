@@ -9,7 +9,7 @@ import logging
 from flask import url_for
 from flask_security import UserMixin, RoleMixin
 from marshmallow import Schema, fields
-from sqlalchemy import and_, exists
+from sqlalchemy import and_
 
 from app_core import db
 from utils import generate_key
@@ -526,37 +526,52 @@ class CryptoDepositSchema(Schema):
     token = fields.String()
     date = fields.DateTime()
     asset = fields.String()
+    l2_network = fields.String()
     amount = fields.Integer()
     amount_dec = fields.Method('get_amount_dec')
+    recipient = fields.Method('get_recipient')
     txid = fields.String()
     confirmed = fields.Boolean()
 
     def get_amount_dec(self, obj):
         return str(assets.asset_int_to_dec(obj.asset, obj.amount))
 
-class CryptoDeposit(db.Model, FromUserMixin):
+    def get_recipient(self, obj):
+        if obj.crypto_address:
+            return obj.crypto_address.address
+        if obj.wallet_reference:
+            return obj.wallet_reference
+        return None
+
+class CryptoDeposit(db.Model, FromUserMixin, OfAssetMixin):
     id = db.Column(db.Integer, primary_key=True)
     token = db.Column(db.String(255), unique=True, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     user = db.relationship('User', backref=db.backref('crypto_deposits', lazy='dynamic'))
-    crypto_address_id = db.Column(db.Integer, db.ForeignKey('crypto_address.id'), nullable=False)
+    crypto_address_id = db.Column(db.Integer, db.ForeignKey('crypto_address.id'))
     crypto_address = db.relationship('CryptoAddress', backref=db.backref('crypto_deposits', lazy='dynamic'))
     date = db.Column(db.DateTime(), nullable=False)
     asset = db.Column(db.String, nullable=False)
+    l2_network = db.Column(db.String)
     amount = db.Column(db.BigInteger, nullable=False)
-    exchange_reference = db.Column(db.String, nullable=False)
-    txid = db.Column(db.String(255), unique=True, nullable=False)
+    exchange_reference = db.Column(db.String)
+    wallet_reference = db.Column(db.String)
+    txid = db.Column(db.String(255), unique=True)
     confirmed = db.Column(db.Boolean, nullable=False)
+    expired = db.Column(db.Boolean, nullable=False)
 
-    def __init__(self, user, asset, amount, exchange_reference, txid, confirmed):
+    def __init__(self, user, asset, l2_network, amount, exchange_reference, wallet_reference, txid, confirmed, expired):
         self.token = generate_key()
         self.user = user
         self.date = datetime.now()
         self.asset = asset
+        self.l2_network = l2_network
         self.amount = amount
         self.exchange_reference = exchange_reference
+        self.wallet_reference = wallet_reference
         self.txid = txid
         self.confirmed = confirmed
+        self.expired = expired
 
     def to_json(self):
         ref_schema = CryptoDepositSchema()
@@ -567,9 +582,12 @@ class CryptoDeposit(db.Model, FromUserMixin):
         return session.query(cls).filter(cls.txid == txid).first()
 
     @classmethod
-    def not_in_broker_orders(cls, session, asset, amount):
-        session.query(cls).filter(cls.asset == asset).filter(cls.amount == amount) \
-            .filter(~exists().where(BrokerOrder.crypto_deposit_id == cls.id)).all()
+    def of_wallet(cls, session, confirmed, expired):
+        return session.query(cls).filter(cls.wallet_reference is not None).filter(cls.confirmed == confirmed).filter(cls.expired == expired).all()
+
+    @classmethod
+    def from_wallet_reference(cls, session, wallet_reference):
+        return session.query(cls).filter(cls.wallet_reference == wallet_reference).first()
 
 class WindcavePaymentRequestSchema(Schema):
     date = fields.DateTime()

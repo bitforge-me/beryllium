@@ -39,12 +39,12 @@ class LnRpc():
         # create a LN invoice
         return self.instance.invoice(_sat_to_msat(sats), label, msg)
 
+    def invoice_status(self, bolt11: str) -> bool:
+        return self.instance.listinvoices(invstring=bolt11)
+
     def pay(self, bolt11: str) -> Optional[dict]:
         # pay a bolt11 invoice
-        invoice_result = self.instance.pay(bolt11)
-        if not invoice_result:
-            return None
-        return invoice_result
+        return self.instance.pay(bolt11)
 
     def pay_status(self, bolt11: str) -> list:
         # show the status of a specific paid bolt11 invoice
@@ -53,6 +53,17 @@ class LnRpc():
     def pay_status_from_hash(self, payment_hash: str) -> list:
         # show the status of a specific payment hash
         return self.instance.listpays(payment_hash=payment_hash)
+
+    def lastpay_index(self):
+        result = self.instance.listinvoices()
+        invoices = result['invoices']
+        current_pay_index = 0
+        for invoice in invoices:
+            if invoice['status'] == 'paid':
+                pay_index = invoice['pay_index']
+                if pay_index > current_pay_index:
+                    current_pay_index = pay_index
+        return current_pay_index
 
     def list_paid(self):
         # show the status of all paid bolt11 invoice
@@ -78,10 +89,8 @@ class LnRpc():
         result['amount_sat'] = sats
         return result
 
-    def wait_any(self):
-        invoice_list = self.list_paid()
-        last_index = len(invoice_list)
-        return self.instance.waitanyinvoice(lastpay_index=last_index)
+    def wait_any_invoice(self, lastpay_index=0, timeout=None):
+        return self.instance.waitanyinvoice(lastpay_index=lastpay_index, timeout=timeout)
 
     def list_channels(self):
         return self.instance.listchannels()
@@ -107,9 +116,13 @@ class LnRpc():
         funds_dict = self.instance.listfunds()
         msats_largest_channel = 0
         msats_channels = 0
+        msats_largest_channel_theirs = 0
+        msats_channels_theirs = 0
         msats_onchain = 0
         sats_largest_channel = 0
         sats_channels = 0
+        sats_largest_channel_theirs = 0
+        sats_channels_theirs = 0
         sats_onchain = 0
         # Only shows after the very first transaction otherwise errors.
         for chan in funds_dict["channels"]:
@@ -117,13 +130,19 @@ class LnRpc():
             if msats_channel > msats_largest_channel:
                 msats_largest_channel = msats_channel
             msats_channels += msats_channel
+            msats_channel_theirs = chan["amount_msat"].millisatoshis - chan["our_amount_msat"].millisatoshis
+            if msats_channel_theirs > msats_largest_channel_theirs:
+                msats_largest_channel_theirs = msats_channel_theirs
+            msats_channels_theirs += msats_channel_theirs
         sats_largest_channel = _msat_to_sat(msats_largest_channel)
         sats_channels = _msat_to_sat(msats_channels)
+        sats_largest_channel_theirs = _msat_to_sat(msats_largest_channel_theirs)
+        sats_channels_theirs = _msat_to_sat(msats_channels_theirs)
         for output in funds_dict["outputs"]:
             if output["status"] == "confirmed":
                 msats_onchain += output["amount_msat"].millisatoshis
         sats_onchain += _msat_to_sat(msats_onchain)
-        return dict(msats_largest_channel=msats_largest_channel, msats_channels=msats_channels, msats_onchain=msats_onchain, sats_largest_channel=sats_largest_channel, sats_channels=sats_channels, sats_onchain=sats_onchain)
+        return dict(msats_largest_channel=msats_largest_channel, msats_channels=msats_channels, msats_largest_channel_theirs=msats_largest_channel_theirs, msats_channels_theirs=msats_channel_theirs, msats_onchain=msats_onchain, sats_largest_channel=sats_largest_channel, sats_channels=sats_channels, sats_channels_theirs=sats_channels_theirs, sats_largest_channel_theirs=sats_largest_channel_theirs, sats_onchain=sats_onchain)
 
     #def open_channel(self, node_id, sats):
     #    return self.instance.fundchannel_start(node_id, _sat_to_msat(sats))
