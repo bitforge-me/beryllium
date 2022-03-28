@@ -4,123 +4,118 @@
 <br/>
 <h2>BALANCES</h2>
 <div class='some-page-wrapper'>
-	<div class='row'>
-	    <div class='dashboard'>
-		<p>on-chain balance<p>
-		<p><center>{{ funds_dict.sats_onchain }} sats</center></p>
-	    </div>
-	    <div class='dashboard'>
-		<p>ln-channel balance<p>
-		<p><center>{{ funds_dict.sats_channels }} sats</center></p>
-	    </div>
-	</div>
+    <div class='row'>
+        <div class='dashboard'>
+        <p>on-chain balance<p>
+        <p><center>{{ funds_dict.sats_onchain }} sats</center></p>
+        </div>
+        <div class='dashboard'>
+        <p>ln-channel balance<p>
+        <p><center>{{ funds_dict.sats_channels }} sats</center></p>
+        </div>
+    </div>
 </div>
 <h2>DIAGNOSTIC</h2>
 <div class='some-page-wrapper'>
-	<div class='row'>
-	    <a href="getinfo">
-		<div class='dashboard_links'>
-		    <p>Lightningd Getinfo<p>
-		</div>
-	    </a>
-	</div>
+    <div class='row'>
+        <a href="getinfo">
+        <div class='dashboard_links'>
+            <p>Lightningd Getinfo<p>
+        </div>
+        </a>
+    </div>
 </div>
 <h2>BTC</h2>
 <div class='some-page-wrapper'>
-	<div class='row'>
-	    <a href="send_bitcoin">
-		<div class='dashboard_links'>
-		    <p>Send_Bitcoin<p>
-		</div>
-	    </a>
-	    <a href="new_address">
-		<div class='dashboard_links'>
-		    <p>Generate New Address<p>
-		</div>
-	    </a>
-	    <a href="list_txs">
-		<div class='dashboard_links'>
-		    <p>Transaction History<p>
-		</div>
-	    </a>
-	    <a href="create_psbt">
-		<div class='dashboard_links'>
-		    <p>Create PSBT<p>
-		</div>
-	    </a>
-	    <a href="sign_psbt">
-		<div class='dashboard_links'>
-		    <p>Sign PSBT<p>
-		</div>
-	    </a>
-	    <a href="broadcast_psbt">
-		<div class='dashboard_links'>
-		    <p>Broadcast PSBT<p>
-		</div>
-	    </a>
-	</div>
+    <div class='row'>
+        <a href="send_bitcoin">
+        <div class='dashboard_links'>
+            <p>Send_Bitcoin<p>
+        </div>
+        </a>
+        <a href="new_address">
+        <div class='dashboard_links'>
+            <p>Generate New Address<p>
+        </div>
+        </a>
+        <a href="list_txs">
+        <div class='dashboard_links'>
+            <p>Transaction History<p>
+        </div>
+        </a>
+        <a href="create_psbt">
+        <div class='dashboard_links'>
+            <p>Create PSBT<p>
+        </div>
+        </a>
+        <a href="sign_psbt">
+        <div class='dashboard_links'>
+            <p>Sign PSBT<p>
+        </div>
+        </a>
+        <a href="broadcast_psbt">
+        <div class='dashboard_links'>
+            <p>Broadcast PSBT<p>
+        </div>
+        </a>
+    </div>
 </div>
 <h2>LIGHTNING</h2>
 <div class='some-page-wrapper'>
-	<div class='row'>
-	    <a href="invoice">
-		<div class='dashboard_links'>
-		    <p>Create Invoice<p>
-		</div>
-	    </a>
-	    <a href="pay_invoice">
-		<div class='dashboard_links'>
-		    <p>Pay Invoice<p>
-		</div>
-	    </a>
-	    <a href="invoices">
-		<div class='dashboard_links'>
-		    <p>Invoice History<p>
-		</div>
-	    </a>
-	    <a href="channel_opener">
-		<div class='dashboard_links'>
-		    <p>Open Channel<p>
-		</div>
-	    </a>
-	    <a href="list_peers">
-		<div class='dashboard_links'>
-		    <p>List Peers<p>
-		</div>
-	    </a>
-	    <a href="send_node">
-		<div class='dashboard_links'>
-		    <p>Send Node<p>
-		</div>
-	    </a>
-	    <a href="list_forwards">
-		<div class='dashboard_links'>
-		    <p>List Forwards<p>
-		</div>
-	    </a>
-	</div>
+    <div class='row'>
+        <a href="invoice">
+        <div class='dashboard_links'>
+            <p>Create Invoice<p>
+        </div>
+        </a>
+        <a href="pay_invoice">
+        <div class='dashboard_links'>
+            <p>Pay Invoice<p>
+        </div>
+        </a>
+        <a href="invoices">
+        <div class='dashboard_links'>
+            <p>Invoice History<p>
+        </div>
+        </a>
+        <a href="channel_opener">
+        <div class='dashboard_links'>
+            <p>Open Channel<p>
+        </div>
+        </a>
+        <a href="list_peers">
+        <div class='dashboard_links'>
+            <p>List Peers<p>
+        </div>
+        </a>
+        <a href="list_forwards">
+        <div class='dashboard_links'>
+            <p>List Forwards<p>
+        </div>
+        </a>
+    </div>
 </div>
 <!--
 <div class="d-flex flex-column align-items-center">
     <h2>PSBT-RELATED</h2>
     <div class='some-page-wrapper'>
-	<div class='custom_row'>
-	    <a href="/create_psbt">
-		<div class='dashboard_links'>
-		    <p>Create PSBT</p>
-		</div>
-	    </a>
-	    <a href="/sign">
-		<div class='dashboard_links'>
-		    <p>Sign PSBT</p>
-		</div>
-	    </a>
-	    <a href="/broadcast">
-		<div class='dashboard_links'>
-		    <p>Broadcast PSBT</p>
-		</div>
-	    </a>
-	</div>
+    <div class='custom_row'>
+        <a href="/create_psbt">
+        <div class='dashboard_links'>
+            <p>Create PSBT</p>
+        </div>
+        </a>
+        <a href="/sign">
+        <div class='dashboard_links'>
+            <p>Sign PSBT</p>
+        </div>
+        </a>
+        <a href="/broadcast">
+        <div class='dashboard_links'>
+            <p>Broadcast PSBT</p>
+        </div>
+        </a>
+    </div>
     </div>
 </div>
 -->

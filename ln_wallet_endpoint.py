@@ -127,11 +127,6 @@ def list_peers():
         peers[i]["can_receive"] = int(peers[i]["can_receive"])
     return render_template("lightning/list_peers.html", peers=peers)
 
-@ln_wallet.route('/send_node')
-@roles_accepted(Role.ROLE_ADMIN)
-def send_node():
-    return render_template("lightning/send_node.html")
-
 @ln_wallet.route('/list_forwards')
 @roles_accepted(Role.ROLE_ADMIN)
 def list_forwards():
