@@ -7,7 +7,7 @@
 <script src="{{ url_for('static',filename='assets/lightning/qrcode.min.js') }}"></script>
 <script>
     const openChannel = function() {
-        var openChannelUrl = `/ln/open_channel/${document.querySelector('#nodeid').value}/${document.querySelector('#amount').value}`;
+        var openChannelUrl = `/ln_wallet/open_channel/${document.querySelector('#nodeid').value}/${document.querySelector('#amount').value}`;
         window.location = openChannelUrl;
     }
 </script>
