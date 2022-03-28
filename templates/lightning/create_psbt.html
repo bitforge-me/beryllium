@@ -114,8 +114,8 @@
         });
 
         // load initial values
-        var addrs = {{ addrs }};
-        var amounts = {{ amounts }};
+        var addrs = {{ addrs | safe }};
+        var amounts = {{ amounts | safe }};
         for (var i = 0; i < addrs.length; i++) {
             if (i == 0) {
                 $('#address').val(addrs[i]);
