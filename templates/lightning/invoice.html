@@ -30,8 +30,7 @@
 {% block scripts %}
 <script>
     function socketOpen(label) {
-        var url = `wss://${location.host}/orders`;
-        var socket = io(url, {transports: ['websocket']});
+        var socket = io('/events', {transports: ['websocket']});
         console.log('socket.io protocol:', socket.protocol);
         socket.on('connect', function() {
             console.log('connected');
