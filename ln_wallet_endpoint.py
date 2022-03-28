@@ -229,7 +229,8 @@ def create_psbt():
             outputs.append({addr: f'{amount}btc'})
         logger.info('preparing psbt with outputs: %s', outputs)
         try:
-            psbt = rpc.prepare_psbt(outputs)
+            res = rpc.prepare_psbt(outputs)
+            psbt = res['psbt']
             flash(f'PSBT created: {psbt}')
         except Exception as e: # pylint: disable=broad-except
             flash(f'Failed to create PSBT: {e}')
@@ -245,7 +246,8 @@ def sign_psbt():
         psbt = request.form["psbt"]
         try:
             rpc = LnRpc()
-            signed_psbt = rpc.sign_psbt(psbt)
+            res = rpc.sign_psbt(psbt)
+            signed_psbt = res['signed_psbt']
             flash(f'Sign successful, Signed PSBT: {signed_psbt}')
         except Exception as e: # pylint: disable=broad-except
             flash(f'Sign failed: {e}', 'danger')
@@ -258,7 +260,8 @@ def broadcast():
         psbt = request.form["psbt"]
         try:
             rpc = LnRpc()
-            txid = rpc.send_psbt(psbt)
+            res = rpc.send_psbt(psbt)
+            txid = res['txid']
             flash(f'Broadcast successful, TXID: {txid}')
         except Exception as e: # pylint: disable=broad-except
             flash(f'Broadcast failed: {e}', 'danger')

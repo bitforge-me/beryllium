@@ -38,7 +38,7 @@
 
     $(document).ready(function() {
         $('#form-submit').click(function() {
-            var signedPsbt = $('#psbt').value;
+            var signedPsbt = $('#psbt').val();
             confirm('#form', signedPsbt);
             return false;
         });
