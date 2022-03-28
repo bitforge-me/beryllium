@@ -215,56 +215,50 @@ def open_channel(node_pubkey, amount):
         flash(Markup(e.args[0]), 'danger')
     return render_template("lightning/channel_opener.html")
 
-@ln_wallet.route('/create_psbt')
+@ln_wallet.route('/create_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def create_psbt():
     """ Returns template for creating a PSBT """
     rpc = LnRpc()
     onchain = int(rpc.list_funds()["sats_onchain"]) / 100000000
+    if request.method == 'POST':
+        addrs = request.form.getlist('address')
+        amounts = request.form.getlist('amount')
+        outputs = []
+        for addr, amount in zip(addrs, amounts):
+            outputs.append({addr, f'{amount}sat'})
+        try:
+            psbt = rpc.prepare_psbt(outputs)
+            flash(f'PSBT created: {psbt}')
+        except Exception as e: # pylint: disable=broad-except
+            flash(f'Failed to create PSBT: {e}')
     return render_template(
         'lightning/create_psbt.html',
         bitcoin_explorer=bitcoin_explorer,
         onchain=onchain)
 
-@ln_wallet.route('/psbt', methods=['GET', 'POST'])
-@roles_accepted(Role.ROLE_ADMIN)
-def psbt():
-    rpc = LnRpc()
-    outputs_dict = request.json["address_amount"]
-    try:
-        tx_result = rpc.prepare_psbt(outputs_dict)
-    except Exception as e: # pylint: disable=broad-except
-        tx_result = str(e)
-    return tx_result
-
-@ln_wallet.route('/send_psbt', methods=['GET', 'POST'])
-@roles_accepted(Role.ROLE_ADMIN)
-def send_psbt():
-    rpc = LnRpc()
-    outputs_dict = request.json["signed_psbt"]
-    try:
-        tx_result = rpc.send_psbt(outputs_dict)
-    except Exception as e: # pylint: disable=broad-except
-        tx_result = str(e)
-    return tx_result
-
-@ln_wallet.route('/sign')
-@roles_accepted(Role.ROLE_ADMIN)
-def sign():
-    return render_template('lightning/sign.html', bitcoin_explorer=bitcoin_explorer)
-
 @ln_wallet.route('/sign_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def sign_psbt():
-    rpc = LnRpc()
-    outputs_dict = request.json["unsigned_psbt"]
-    try:
-        tx_result = rpc.sign_psbt(outputs_dict)
-    except Exception as e: # pylint: disable=broad-except
-        tx_result = str(e)
-    return tx_result
+    if request.method == 'POST':
+        psbt = request.form["psbt"]
+        try:
+            rpc = LnRpc()
+            signed_psbt = rpc.sign_psbt(psbt)
+            flash(f'Sign successful, Signed PSBT: {signed_psbt}')
+        except Exception as e: # pylint: disable=broad-except
+            flash(f'Sign failed: {e}', 'danger')
+    return render_template('lightning/sign_psbt.html')
 
-@ln_wallet.route('/broadcast')
+@ln_wallet.route('/broadcast_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def broadcast():
-    return render_template('lightning/broadcast.html', bitcoin_explorer=bitcoin_explorer)
+    if request.method == 'POST':
+        psbt = request.form["psbt"]
+        try:
+            rpc = LnRpc()
+            txid = rpc.send_psbt(psbt)
+            flash(f'Broadcast successful, TXID: {txid}')
+        except Exception as e: # pylint: disable=broad-except
+            flash(f'Broadcast failed: {e}', 'danger')
+    return render_template('lightning/broadcast_psbt.html')

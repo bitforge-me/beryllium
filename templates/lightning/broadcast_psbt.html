@@ -1,0 +1,51 @@
+{% extends "lightning/layout.html" %}
+{% block title %}Create Invoice{% endblock %}
+{% block content %}
+<h2>Broadcast PSBT</h2>
+<p>Broadcast a signed PSBT.</p>
+<form id="form" method="POST">
+    <div class="form-group">
+        <label for="psbt" class="form-label mt-4">Signed PSBT</label>
+        <textarea class="form-control" aria-required=true placeholder="Paste signed PSBT here." name="psbt" id="psbt" rows="3" required></textarea>
+    </div>
+    <button id="form-submit" type="button" class="btn btn-primary">Submit</button>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static',filename='assets/lightning/psbt-amount-browserified.js') }}"></script>
+<script>
+    function confirm(form_class, signedPsbt) {
+        bootbox.confirm({
+            title: 'Confirm Broadcast',
+            message: `TODO: we should show all outputs!!!. Total BTC before fees: ₿${getUnsignedPSBTAmount.getUnsignedPSBTAmount(signedPsbt)}. Do you want to broadcast?`,
+            buttons: {
+                confirm: {
+                    label: 'Yes',
+                    className: 'btn-success'
+                },
+                cancel: {
+                    label: 'No',
+                    className: 'btn-danger'
+                }
+            },
+            callback: function (result) {
+                if (result)
+                    $(form_class).submit();
+            }
+        });
+    }
+
+    $(document).ready(function() {
+        $('#form-submit').click(function() {
+            var signedPsbt = $('#psbt').value;
+            confirm('#form', signedPsbt);
+            return false;
+        });
+    });
+</script>
+{% endblock %}
+
+{% block footer %}
+{{ super() }}
+{% endblock %}
