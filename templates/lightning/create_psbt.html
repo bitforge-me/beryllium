@@ -19,6 +19,8 @@
             </div>
         </div>
     </div>
+    <br/>
+    <br/>
     <button id="form-add-output" type="button" class="btn btn-primary btn-sm">Add Output</button>
     <br/>
     <br/>
@@ -64,13 +66,13 @@
 
     $(document).ready(function() {
         $('#max').click(function() {
-            var ele = $('#max').prev();
+            var ele = $('#max').parent().prev();
             console.log(ele);
             ele.value = "{{ onchain }}";
         });
 
         $('#form-add-output').click(function() {
-            document.querySelector("#payment-fields").insertAdjacentHTML("afterend",
+            document.querySelector(".payment-fields").insertAdjacentHTML("afterend",
                 `
                 <div class="payment-fields">
                     <div class="form-group">
