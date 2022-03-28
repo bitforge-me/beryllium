@@ -1,12 +1,20 @@
 {% extends "lightning/layout.html" %}
-{% block title %}Create PSBT{% endblock %}
+{% block title %}Create PSBT/Withdrawal{% endblock %}
 {% block head %}
 {{ super() }}
 {% endblock %}
 {% block content %}
-<h2>Create PSBT</h2>
+<h2>Create PSBT/Withdrawal</h2>
 <form id="form" method="POST">
     <div class="payment-fields">
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="mode" id="psbt" value="psbt" {% if mode == 'psbt' %}checked{% endif %}>
+            <label class="form-check-label" for="psbt">Create PSBT</label>
+          </div>
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="mode" id="withdraw" value="withdraw" {% if mode == 'withdraw' %}checked{% endif %}>
+            <label class="form-check-label" for="withdraw">Create Withdrawal</label>
+        </div>
         <div class="form-group">
             <label for="address" class="form-label">Recipient Address</label>
             <input type="text" id="address" name="address" class="payment form-control" placeholder="Recipient Address" required>
