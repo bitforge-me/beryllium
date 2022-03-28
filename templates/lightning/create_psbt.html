@@ -7,20 +7,20 @@
 <h2>Create PSBT</h2>
 <form id="form" method="POST">
     <div class="input-group mb-3" id="payment-fields">
-        <div class="input-group-prepend">
-            <span class="input-group-text">Recipient Address</span>
+        <div class="form-group">
+            <label for="address" class="form-label mt-4">Recipient Address</label>
+            <input type="text" id="address" name="address" class="form-control" placeholder="Recipient Address" required>
         </div>
-        <input type="text" size=64 name="address" class="input-element" id="inputBitcoinAddress1" class="form-control" placeholder="Recipient Address">&nbsp&nbsp&nbsp&nbsp
-        <div class="input-group-prepend">
-            <span class="input-group-text">Amount</span>
+        <div class="form-group">
+            <label for="amount" class="form-label mt-4">Amount</label>
+            <input type="text" id="amount" name="amount" class="form-control" placeholder="Amount" required>
         </div>
-        <input type="text" size=64 name="amount" class="input-element" id="inputBitcoinAmount1" class="form-control" placeholder="Amount">
-        <button type="button" class="max-btn btn btn-primary">Max</button>
+        <button type="button" class="max-btn btn btn-primary btn-sm">Max</button>
     </div>
     <button id="form-add-output" type="button" class="btn btn-primary btn-sm">Add Output</button>
     <br/>
     <br/>
-    <button id="form-submit" type="button" class="btn btn-primary btn-lg">Submit</button>
+    <button id="form-submit" type="button" class="btn btn-primary">Submit</button>
 </form>
 {% endblock %}
 
@@ -48,7 +48,9 @@
     }
 
     function remove() {
-        $(this).closest('#payment-fields').remove();
+        var ele = $(this).closest('#payment-fields');
+        console.log(ele);
+        ele.remove();
     }
 
     $(document).ready(function() {
@@ -61,15 +63,15 @@
             document.querySelector("#payment-fields").insertAdjacentHTML("afterend",
                 `
                 <div class="input-group mb-3" id="payment-fields">
-                    <div class="input-group-prepend">
-                        <span class="input-group-text">Recipient Address</span>
+                    <div class="form-group">
+                        <label for="address" class="form-label mt-4">Recipient Address</label>
+                        <input type="text" id="address" name="address" class="form-control" placeholder="Recipient Address" required>
                     </div>
-                    <input type="text" size=64 name="address" class="input-element" id="inputBitcoinAddress1" class="form-control" placeholder="Recipient Address">&nbsp&nbsp&nbsp&nbsp
-                    <div class="input-group-prepend">
-                        <span class="input-group-text">Amount</span>
+                    <div class="form-group">
+                        <label for="amount" class="form-label mt-4">Amount</label>
+                        <input type="text" id="amount" name="amount" class="form-control" placeholder="Amount" required>
                     </div>
-                    <input type="text" size=64 name="amount" class="input-element" id="inputBitcoinAmount1" class="form-control" placeholder="Amount">
-                    <button type="button" class="remove-btn btn btn-danger" onclick='remove()'>Remove</button>
+                    <button type="button" class="btn btn-danger btn-sm" onclick='remove()'>Remove</button>
                 </div>
             `);
             return false;
