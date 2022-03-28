@@ -2,13 +2,14 @@
 {% block title %}Create Invoice{% endblock %}
 {% block content %}
 {% if bolt11 %}
-<h2> Invoice Generated! </h2>
+<h2>Invoice Created</h2>
 {{ qrcode_svg | safe }}
 <div class="form-group">
-  <label for="readonlytextarea" class="form-label mt-4">Invoice ID</label>
+  <label for="readonlytextarea" class="form-label mt-4">Invoice Data</label>
   <textarea class="form-control" id="readonlytextarea" rows="3" placeholder="{{ bolt11 }}" readonly></textarea>
 </div>
-<button id="copy-invoice" type="button" class="btn btn-primary btn-lg mt-3">Copy Invoice</button>
+<button id="copy-invoice" type="button" class="btn btn-primary">Copy Invoice</button>
+<br/>
 {% endif %}
 
 <h2>Create Invoice</h2>
@@ -72,7 +73,7 @@
     }
 
     $(document).ready(function() {
-        var label = '{{ label }}';
+        var label = '{{ label if label }}';
         if (label.length > 0)
             socketOpen(label);
 
