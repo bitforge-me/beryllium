@@ -192,6 +192,26 @@
 .dashboard:hover {
   background-color:#e6ebff;
 }
+
+.dashboard_links {
+  background-color: white;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #add3e6;
+  border-radius: 10px;
+  height: 100px;
+  width: 180px;
+  margin: 5px;
+  text-align: center;
+  padding: 30px;
+  font-size: 100%;
+  font-weight: bold;
+}
+
+.dashboard_links:hover {
+  background-color:#e6ebff;
+}
+
 /* USER BALANCE*/
 .title-column {
   background-color: white;

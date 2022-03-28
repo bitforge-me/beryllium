@@ -24,6 +24,7 @@ from reward_endpoint import reward
 from reporting_endpoint import reporting
 from payments_endpoint import payments
 from kyc_endpoint import kyc
+from ln_wallet_endpoint import ln_wallet
 import websocket
 # pylint: disable=unused-import
 import admin
@@ -53,6 +54,7 @@ app.register_blueprint(reward, url_prefix='/reward')
 app.register_blueprint(reporting, url_prefix='/reporting')
 app.register_blueprint(payments, url_prefix='/payments')
 app.register_blueprint(kyc, url_prefix='/kyc')
+app.register_blueprint(ln_wallet, url_prefix='/ln_wallet')
 
 def process_email_alerts():
     with app.app_context():
@@ -351,12 +353,6 @@ def user_order():
             flash(f'canceled and refunded order {token}')
     return return_response()
 
-@app.route('/ln', methods=['GET', 'POST'])
-@roles_accepted(Role.ROLE_ADMIN)
-def ln_ep():
-    rpc = LnRpc()
-    return render_template('ln.html', info=rpc.get_info())
-
 @app.route('/config', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
 def config():
@@ -415,10 +411,9 @@ class WebGreenlet():
                             bolt11 = pay['bolt11']
                             lastpay_index = pay['pay_index']
                             deposit = CryptoDeposit.from_wallet_reference(db.session, bolt11)
-                            if not deposit:
-                                logger.error('Unable to find matching CryptoDeposit for bolt11 reference: %s', bolt11)
-                                continue
-                            email = deposit.user.email
+                            email = None
+                            if deposit:
+                                email = deposit.user.email
                             websocket.ln_invoice_paid_event(label, payment_hash, bolt11, email)
                 except ConnectionError as e:
                     gevent.sleep(5, False)

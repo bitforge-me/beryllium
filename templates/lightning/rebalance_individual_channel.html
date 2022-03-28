@@ -1,0 +1,28 @@
+{% extends "lightning/layout.html" %}
+{% block title %}Rebalance Individual Channel{% endblock %}
+{% block content %}
+<br>
+<h2>Rebalance Individual Channel</h2>
+<p>Circular payment. Short Channel ID can be found in list peers page.</p>
+<br>
+<form id="rebalance-channel-form" method="POST">
+    <div class="input-group mb-3" id="payment-fields">
+        <div class="input-group-prepend">
+            <span class="input-group-text">Outgoing SCID</span>
+        </div>
+        <input type="text" size=32 name="oscid" class="input-element" id="oscid" class="form-control" placeholder="Outgoing Short Channel ID">&nbsp&nbsp&nbsp&nbsp
+        <div class="input-group-prepend">
+    	    <span class="input-group-text">Incoming SCID</span>
+        </div>
+            <input type="text" size=32 name="iscid" class="input-element" id="iscid" class="form-control" placeholder="Incoming Short Channel ID">&nbsp&nbsp&nbsp&nbsp
+        <div class="input-group-prepend">
+    	    <span class="input-group-text">Amount (sats)</span>
+        </div>
+            <input type="text" size=64 name="amount" class="input-element" id="amount" class="form-control" placeholder="amount in sats">
+    </div>
+    <button id="rebalance-channel-form-submit" type="submit" class="btn btn-primary">Rebalance Channel</button>
+</form>
+{% endblock %}
+{% block footer %}
+{{ super() }}
+{% endblock %}

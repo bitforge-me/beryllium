@@ -1,0 +1,20 @@
+{% extends "lightning/layout.html" %}
+{% block title %}Lightningd GetInfo{% endblock %}
+{% block content %}
+<br/>
+<div>
+    <h2>Lightning Node Information</h2>
+    <br/>
+        <table class="table table-hover">
+        {% for key in info %}
+            <tr>
+                <th scope="row">{{ key }}: </th>
+    	        <td> {{ info[key] }}</td>
+    	    </tr>
+        {% endfor %}
+        </table>
+</div>
+{% endblock %}
+{% block footer %}
+    {{ super() }}
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "lightning/layout.html" %}
+{% block title %}Closed Channel{% endblock %}
+{% block content %}
+<!--
+<script>
+  const redirect = function() {
+    window.location = '/new_pay_invoice';
+  }
+</script>
+-->
+<br>
+<h2>Closed Channel</h2>
+<p></p>
+<!--
+<section>
+  <div class="redirection" id="redirection">
+    <a class="button submit" onclick="redirect()">
+      <button type="button" class="btn btn-primary btn-lg">Try Again</button>
+    </a>
+  </div>
+</section>
+-->
+<a style="margin-top: 50px;" class="tx-id" href="{{ bitcoin_explorer }}/tx/{{ close_tx.txid  }}">Tx Id: {{ close_tx.txid }} </a>
+<p style="margin-top: 50px;" class="tx-type">Type of Tx: {{ close_tx.type }} </p>
+{% endblock %}
+{% block footer %}
+  {{ super() }}
+{% endblock %}

@@ -167,6 +167,12 @@ class LnRpc():
     def prepare_psbt(self, outputs):
         return self.instance.txprepare(outputs)
 
+    def send_invoice(self, bolt11):
+        # pay a bolt11 invoice
+        invoice_result = self.instance.pay(bolt11)
+        invoice_result["sats_sent"] = _msat_to_sat(invoice_result["msatoshi_sent"])
+        return invoice_result
+
     def sign_psbt(self, unsigned_psbt):
         return self.instance.signpsbt(unsigned_psbt)
 
