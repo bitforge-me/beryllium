@@ -47,11 +47,11 @@
         });
     }
 
-    $(document).ready(function() {
-        $('.remove-btn').click(function () {
-            $(this).closest('#payment-fields').remove();
-        });
+    function remove() {
+        $(this).closest('#payment-fields').remove();
+    }
 
+    $(document).ready(function() {
         $('.max-btn').click(function () {
             var test = $(this).closest('#payment-fields');
             test[0]["children"][3].value = "{{ onchain }}";
@@ -69,9 +69,7 @@
                         <span class="input-group-text">Amount</span>
                     </div>
                     <input type="text" size=64 name="amount" class="input-element" id="inputBitcoinAmount1" class="form-control" placeholder="Amount">
-                    <button type="button" class="max-btn btn btn-primary">Max</button>
-                    &nbsp;
-                    <button type="button" class="remove-btn btn btn-danger">Remove</button>
+                    <button type="button" class="remove-btn btn btn-danger" onclick='remove()'>Remove</button>
                 </div>
             `);
             return false;
