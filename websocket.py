@@ -156,17 +156,9 @@ class EventsNamespace(Namespace):
             emit("info", f"failed authentication ({api_key}): {reason}", namespace=NS)
             logger.info("failed authentication (%s): %s", api_key, reason)
 
-    def on_ln_invoice(self, data: Union[dict, str]):
-        if not isinstance(data, dict):
-            try:
-                data = json.loads(data)
-            except: # pylint: disable=bare-except
-                emit("info", "invalid json", namespace=NS)
-                return
-        logger.info("ln_invoice: %s", data)
+    def on_ln_invoice(self, label: str):
+        logger.info("ln_invoice: %s", label)
         # join room for invoice label
-        label = data["label"]
-        logger.info("join room for invoice: %s", label)
         join_room(f"ln-{label}")
         emit("info", f"joined room for invoice label ({label})", namespace=NS)
 

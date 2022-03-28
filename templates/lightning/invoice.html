@@ -28,14 +28,13 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static',filename='assets/lightning/qrcode.min.js') }}"></script>
 <script>
     function socketOpen(label) {
         var socket = io('/orders');
         socket.on('connect', function() {
             console.log("connected");
             // subscribe to invoice events
-            socket.emit('ln_invoice', `{"label": "${label}"}`);
+            socket.emit('ln_invoice', label, (response) => console.log('sent invoice label'));
         });
         socket.on('info', function(msg) {
             console.log(msg);
