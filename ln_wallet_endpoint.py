@@ -1,8 +1,7 @@
 # pylint: disable=unbalanced-tuple-unpacking
 
 import logging
-import time
-import random
+import secrets
 
 from flask import Blueprint, render_template, request, flash, Markup, url_for, redirect
 from flask_security import roles_accepted
@@ -68,23 +67,21 @@ def list_txs():
         transactions=sorted_txs,
         bitcoin_explorer=bitcoin_explorer)
 
-@ln_wallet.route('/ln_invoice', methods=['GET'])
+@ln_wallet.route('/invoice', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def ln_invoice():
-    """ Returns template for creating lightning invoices """
-    return render_template("lightning/ln_invoice.html")
-
-@ln_wallet.route('/create_invoice/<int:amount>/<string:message>/')
-@roles_accepted(Role.ROLE_ADMIN)
-def create_invoice(amount, message):
-    """ Returns template showing a created invoice from the inputs """
-    rpc = LnRpc()
-    bolt11 = rpc.invoice(int(amount * 1000), "lbl{}".format(random.random()), message)["bolt11"] # pylint: disable=consider-using-f-string
-    qrcode_svg = qrcode_svg_create(bolt11, 10)
-    return render_template(
-        "lightning/create_invoice.html",
-        bolt11=bolt11,
-        qrcode_svg=qrcode_svg)
+    """Create a lightning invoice"""
+    label = None
+    bolt11 = None
+    qrcode_svg = None
+    if request.method == 'POST':
+        amount = request.form['amount']
+        message = request.form['message']
+        label = f"lbl-{secrets.token_urlsafe(8)}"
+        rpc = LnRpc()
+        bolt11 = rpc.invoice(int(amount), label, message)['bolt11']
+        qrcode_svg = qrcode_svg_create(bolt11, 10)
+    return render_template("lightning/invoice.html", bolt11=bolt11, label=label, qrcode_svg=qrcode_svg)
 
 @ln_wallet.route('/list_peers', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
