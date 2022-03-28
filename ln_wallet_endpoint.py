@@ -227,6 +227,7 @@ def create_psbt():
         outputs = []
         for addr, amount in zip(addrs, amounts):
             outputs.append({addr, f'{amount}sat'})
+        logger.info('preparing psbt with outputs: %s', outputs)
         try:
             psbt = rpc.prepare_psbt(outputs)
             flash(f'PSBT created: {psbt}')
