@@ -36,7 +36,7 @@ def new_address_ep():
     """ Returns template showing a new address created by our HD wallet """
     rpc = LnRpc()
     address = rpc.new_address()
-    qrcode_svg = qrcode_svg_create(address['bech32'], 4)
+    qrcode_svg = qrcode_svg_create(address['bech32'], 10)
     return render_template("lightning/new_address.html", address=address, qrcode_svg=qrcode_svg)
 
 @ln_wallet.route('/list_txs')
