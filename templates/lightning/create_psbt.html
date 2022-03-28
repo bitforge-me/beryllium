@@ -121,8 +121,10 @@
             var action = '!ERR!';
             if (mode == 'psbt')
                 action = 'PSBT';
-            if (mode == 'withdrawal')
-                action = 'Withdrawal Transaction'
+            else if (mode == 'withdraw')
+                action = 'Withdrawal Transaction';
+            else
+                return;
             confirm('#form', outputs, totalBtc, action);
             return false;
         });
