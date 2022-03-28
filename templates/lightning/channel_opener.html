@@ -6,7 +6,7 @@
 {% block content %}
 <script>
     const openChannel = function() {
-        var openChannelUrl = `/ln/open_channel/${document.querySelector('#nodeid').value}/${document.querySelector('#amount').value}`;
+        var openChannelUrl = `/ln_wallet/open_channel/${document.querySelector('#nodeid').value}/${document.querySelector('#amount').value}`;
         window.location = openChannelUrl;
     }
 </script>
