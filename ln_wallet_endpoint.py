@@ -268,3 +268,10 @@ def sign_psbt():
 @roles_accepted(Role.ROLE_ADMIN)
 def broadcast():
     return render_template('lightning/broadcast.html', bitcoin_explorer=bitcoin_explorer)
+
+@ln_wallet.route('/close/<string:peer_id>')
+@roles_accepted(Role.ROLE_ADMIN)
+def close(peer_id):
+    rpc = LnRpc()
+    close_tx = rpc.close_channel(peer_id)
+    return render_template('lightning/close.html', close_tx=close_tx, bitcoin_explorer=app.config["BITCOIN_EXPLORER"])
