@@ -1,128 +1,150 @@
 {% extends "lightning/layout.html" %}
-{% block title %}Create PSBT{% endblock %}
+{% block title %}Create PSBT/Withdrawal{% endblock %}
 {% block head %}
 {{ super() }}
 {% endblock %}
 {% block content %}
-<script src="{{ url_for('static',filename='assets/lightning/qrcode.min.js') }}"></script>
-<script src="{{ url_for('static',filename='assets/lightning/sweetalert2.all.min.js') }}"></script>
-<script src="{{ url_for('static',filename='assets/lightning/sweetalert2.min.css') }}"></script>
-<script src="//ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-<script>
-	const expand = function() {
-		document.querySelector("#payment-fields").insertAdjacentHTML(
-		"afterend",
-                `
-                <div class="input-group mb-3" id="payment-fields">
-                    <div class="input-group-prepend">
-                        <span class="input-group-text">Recipient Address</span>
-                    </div>
-                    <input type="text" size=64 name="address" class="input-element" id="inputBitcoinAddress1" class="form-control" placeholder="Recipient Address">&nbsp&nbsp&nbsp&nbsp
-                    <div class="input-group-prepend">
-                        <span class="input-group-text">Amount</span>
-                    </div>
-		    <input type="text" size=64 name="amount" class="input-element" id="inputBitcoinAmount1" class="form-control" placeholder="Amount">
-		    <button id="maxRow" type="button" class="btn btn-primary">Max</button>
-		    &nbsp;
-		    <button id="removeRow" type="button" class="btn btn-danger">Remove</button>
-                </div>
-		`);
-	}
-	const multiWithdraw = function() {
-		var requestLoad = [];
-		var paymentFields = document.getElementsByClassName("input-element");
-		var totalBtc = 0;
-		for(var i = 0; i < paymentFields.length; i+=2) {
-			var outputObj = {
-				[`${paymentFields[i].value}`] : `${paymentFields[i+1].value}btc`
-			};
-			requestLoad.push(outputObj);
-			totalBtc += parseFloat(paymentFields[i+1].value);
-		}
-		totalBtc = Math.round(totalBtc * 100000000) / 100000000;
-		Swal.fire({
-			title: 'Confirm Transaction',
-			text: `Total: ₿${totalBtc}`,
-			icon: 'warning',
-			showCancelButton: true,
-			confirmButtonColor: '#3085d6',
-			cancelButtonColor: '#d33',
-			confirmButtonText: 'Confirm'
-		}).then((result) => {
-			if (result.isConfirmed) {
-				var requestLoadString = JSON.stringify({"address_amount" : requestLoad});
-				fetch('/ln/psbt', {
-					method: 'POST',
-					headers: {
-					  'Content-Type': 'application/json',
-					},
-					body: requestLoadString,
-				})
-				.then(response => response.text())
-				.then(data => {
-					if (data !== "error") {
-						console.log('Success:', data);
-						var convertedData = JSON.parse(data);
-						navigator.clipboard.writeText(convertedData["psbt"]);
-						Swal.fire({
-							icon: 'success',
-							title: 'Copied PSBT to clipboard',
-						})
-                                                .then(function(){
-							location.reload();
-						})
-					} else {
-						Swal.fire({
-							icon: 'error',
-							title: 'Transaction Failed!',
-							text: 'Check you entered a correct address & amount'
-						})
-                                                .then(function(){
-							location.reload();
-						})
-					}
-				});
-			}
-		});
-	}
-</script>
-<script type="text/javascript">
-    //remove row?
-    $(document).on('click', '#removeRow', function () {
-        $(this).closest('#payment-fields').remove();
-    });
-    $(document).on('click', '#maxRow', function () {
-	console.log("test clicked");
-        var test = $(this).closest('#payment-fields');
-	    test[0]["children"][3].value = "{{ onchain }}";
-    });
-</script>
-<br/>
-<h2>Send Bitcoin</h2>
-<section>
-<div class="input-group mb-3" id="payment-fields">
-    <div class="input-group-prepend">
-        <span class="input-group-text">Recipient Address</span>
+<h2>Create PSBT/Withdrawal</h2>
+<form id="form" method="POST">
+    <div class="payment-fields">
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="mode" id="psbt" value="psbt" {% if mode == 'psbt' %}checked{% endif %}>
+            <label class="form-check-label" for="psbt">Create PSBT</label>
+          </div>
+        <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="mode" id="withdraw" value="withdraw" {% if mode == 'withdraw' %}checked{% endif %}>
+            <label class="form-check-label" for="withdraw">Create Withdrawal</label>
+        </div>
+        <div class="form-group">
+            <label for="address" class="form-label">Recipient Address</label>
+            <input type="text" id="address" name="address" class="payment form-control" placeholder="Recipient Address" required>
+        </div>
+        <label for="amount" class="form-label">Amount</label>
+        <div class="input-group">
+            <input type="text" id="amount" name="amount" class="payment form-control" placeholder="Amount" required>
+            <div class="input-group-append">
+                <button type="button" id="max" class="btn btn-sm">Max</button>
+            </div>
+        </div>
     </div>
-    <input type="text" size=64 name="address" class="input-element" id="inputBitcoinAddress1" class="form-control" placeholder="Recipient Address">&nbsp&nbsp&nbsp&nbsp
-    <div class="input-group-prepend">
-        <span class="input-group-text">Amount</span>
-    </div>
-    <input type="text" size=64 name="amount" class="input-element" id="inputBitcoinAmount1" class="form-control" placeholder="Amount">
-    <button id="maxRow" type="button" class="btn btn-primary">Max</button>
-</div>
-</section>
-<div name="add_Output" id="add_Output">
-  <a class="button submit" onclick="expand()">
-    <button type="button" class="btn btn-primary btn-sm">Add Output</button>
-  </a>
-</div><br>
-<div name="submit_Bitcoin" id="submit_Bitcoin">
-  <a class="button submit" onclick="multiWithdraw()">
-    <button type="button" class="btn btn-primary btn-lg">Create PSBT</button>
-  </a>
-</div>
+    <button id="form-remove-output" type="button" class="btn btn-danger btn-sm">Remove</button>
+    <br/>
+    <br/>
+    <button id="form-add-output" type="button" class="btn btn-primary btn-sm">Add Output</button>
+    <br/>
+    <br/>
+    <button id="form-submit" type="button" class="btn btn-primary">Submit</button>
+</form>
 {% endblock %}
+
+{% block scripts %}
+<script>
+    function confirm(form_class, outputs, totalBtc, action) {
+        if (!document.querySelector(form_class).reportValidity()) {
+            return;
+        }
+        if (isNaN(totalBtc) || totalBtc <= 0) {
+            bootbox.alert({message: 'Invalid amount'});
+            return;
+        }
+        bootbox.confirm({
+            title: `Confirm Create ${action}`,
+            message: `TODO: show all outputs here!!! Total: ${totalBtc} btc. Do you want to create the ${action}?`,
+            buttons: {
+                confirm: {
+                    label: 'Yes',
+                    className: 'btn-success'
+                },
+                cancel: {
+                    label: 'No',
+                    className: 'btn-danger'
+                }
+            },
+            callback: function (result) {
+                if (result)
+                    $(form_class).submit();
+            }
+        });
+    }
+
+    function addOutput(addr, amount) {
+        document.querySelector(".payment-fields").insertAdjacentHTML("afterend",
+            `
+            <div class="payment-fields">
+                <hr>
+                <div class="form-group">
+                    <label for="address" class="form-label">Recipient Address</label>
+                    <input type="text" id="address" name="address" class="payment form-control" placeholder="Recipient Address" value="${addr}" required>
+                </div>
+                <div class="form-group">
+                    <label for="amount" class="form-label">Amount</label>
+                    <input type="text" id="amount" name="amount" class="payment form-control" placeholder="Amount" value="${amount}" required>
+                </div>
+            </div>
+        `);
+        $('#form-remove-output').show();
+    }
+
+    $(document).ready(function() {
+        $('#max').click(function() {
+            var ele = $('#max').parent().prev();
+            console.log(ele);
+            ele.val('{{ onchain }}');
+        });
+
+        $('#form-remove-output').hide();
+        $('#form-remove-output').click(function() {
+            var ele = $('.payment-fields').last();
+            console.log(ele);
+            ele.remove();
+            if ($('.payment-fields').length == 1)
+                $('#form-remove-output').hide();
+            return false
+        });
+
+        $('#form-add-output').click(function() {
+            addOutput('', '');
+            return false;
+        });
+
+        $('#form-submit').click(function() {
+            var outputs = [];
+            var paymentFields = document.getElementsByClassName('payment');
+            var totalBtc = 0;
+            for (var i = 0; i < paymentFields.length; i += 2) {
+                var output = {sats: paymentFields[i].value, btc: paymentFields[i + 1].value};
+                outputs.push(output);
+                totalBtc += parseFloat(output.btc);
+            }
+            totalBtc = Math.round(totalBtc * 100000000) / 100000000;
+            const mode = document.querySelector('input[name="mode"]:checked').value;
+            var action = '!ERR!';
+            if (mode == 'psbt')
+                action = 'PSBT';
+            else if (mode == 'withdraw')
+                action = 'Withdrawal Transaction';
+            else
+                return;
+            confirm('#form', outputs, totalBtc, action);
+            return false;
+        });
+
+        // load initial values
+        var addrs = {{ addrs | safe }};
+        var amounts = {{ amounts | safe }};
+        for (var i = 0; i < addrs.length; i++) {
+            if (i == 0) {
+                $('#address').val(addrs[i]);
+                $('#amount').val(amounts[i]);
+            } else {
+                addOutput(addrs[i], amounts[i]);
+            }
+        }
+
+    });
+</script>
+{% endblock %}
+
 {% block footer %}
 {{ super() }}
 {% endblock %}

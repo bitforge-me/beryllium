@@ -7,6 +7,7 @@ from flask import Blueprint, render_template, request, flash, Markup, url_for, r
 from flask_security import roles_accepted
 
 from utils import qrcode_svg_create
+from web_utils import bad_request
 from app_core import app, limiter
 from models import Role
 from ln import LnRpc
@@ -29,24 +30,14 @@ def lightningd_getinfo():
     rpc = LnRpc()
     return render_template('lightning/lightningd_getinfo.html', info=rpc.get_info())
 
-@ln_wallet.route('/send_bitcoin')
-@roles_accepted(Role.ROLE_ADMIN)
-def send_bitcoin():
-    """ Returns template for sending BTC """
-    rpc = LnRpc()
-    onchain = int(rpc.list_funds()["sats_onchain"]) / 100000000
-    return render_template(
-        'lightning/send_bitcoin.html',
-        bitcoin_explorer=bitcoin_explorer,
-        onchain=onchain)
-
 @ln_wallet.route('/new_address')
 @roles_accepted(Role.ROLE_ADMIN)
 def new_address_ep():
     """ Returns template showing a new address created by our HD wallet """
     rpc = LnRpc()
     address = rpc.new_address()
-    return render_template("lightning/new_address.html", address=address)
+    qrcode_svg = qrcode_svg_create(address['bech32'], 10)
+    return render_template("lightning/new_address.html", address=address, qrcode_svg=qrcode_svg)
 
 @ln_wallet.route('/list_txs')
 @roles_accepted(Role.ROLE_ADMIN)
@@ -127,51 +118,25 @@ def list_peers():
         peers[i]["can_receive"] = int(peers[i]["can_receive"])
     return render_template("lightning/list_peers.html", peers=peers)
 
-@ln_wallet.route('/send_node')
-@roles_accepted(Role.ROLE_ADMIN)
-def send_node():
-    return render_template("lightning/send_node.html")
-
 @ln_wallet.route('/list_forwards')
 @roles_accepted(Role.ROLE_ADMIN)
 def list_forwards():
     rpc = LnRpc()
     return rpc.list_forwards()
 
-@ln_wallet.route('/withdraw', methods=['GET', 'POST'])
-@roles_accepted(Role.ROLE_ADMIN)
-def withdraw():
-    rpc = LnRpc()
-    outputs_dict = request.json["address_amount"]
-    try:
-        tx_result = rpc.multi_withdraw(outputs_dict)
-    except BaseException: # pylint: disable=broad-except
-        tx_result = "error"
-    return tx_result
-
-@ln_wallet.route('/pay_invoice', methods=['GET'])
+@ln_wallet.route('/pay_invoice', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def pay_invoice():
-    """ Returns template for paying LN invoices """
-    return render_template("lightning/pay_invoice.html")
-
-@ln_wallet.route('/pay/<string:bolt11>')
-@roles_accepted(Role.ROLE_ADMIN)
-def ln_pay(bolt11):
-    """ Returns template showing a paid LN invoice """
-    rpc = LnRpc()
-    try:
-        invoice_result = rpc.send_invoice(bolt11)
-        return render_template("lightning/pay.html", invoice_result=invoice_result)
-    except BaseException: # pylint: disable=broad-except
-        return redirect(url_for("pay_error"))
-
-@ln_wallet.route('/pay_error')
-@roles_accepted(Role.ROLE_ADMIN)
-def pay_error():
-    """ Returns template for a generic pay error """
-    return render_template("lightning/pay_error.html")
-
+    """Returns template for paying LN invoices"""
+    invoice = ''
+    if request.method == 'POST':
+        invoice = request.form['invoice']
+        try:
+            result = LnRpc().send_invoice(invoice)
+            flash(f'Invoice paid: {result}')
+        except Exception as e: # pylint: disable=broad-except
+            flash(f'Error paying invoice: {e}', 'danger')
+    return render_template("lightning/pay_invoice.html", invoice=invoice)
 
 @ln_wallet.route('/invoices', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
@@ -190,9 +155,7 @@ def decode_pay(bolt11=None):
         rpc = LnRpc()
         return rpc.decode_pay(str(bolt11))
     except Exception as e: # pylint: disable=broad-except
-        return str(e)
-    return "Something went wrong"
-
+        return bad_request(str(e))
 
 @ln_wallet.route('/channel_opener', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
@@ -215,59 +178,69 @@ def open_channel(node_pubkey, amount):
         flash(Markup(e.args[0]), 'danger')
     return render_template("lightning/channel_opener.html")
 
-@ln_wallet.route('/create_psbt')
+@ln_wallet.route('/create_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def create_psbt():
     """ Returns template for creating a PSBT """
     rpc = LnRpc()
     onchain = int(rpc.list_funds()["sats_onchain"]) / 100000000
+    addrs = []
+    amounts = []
+    mode = 'psbt'
+    if request.method == 'POST':
+        addrs = request.form.getlist('address')
+        amounts = request.form.getlist('amount')
+        mode = request.form['mode']
+        outputs = []
+        for addr, amount in zip(addrs, amounts):
+            outputs.append({addr: f'{amount}btc'})
+        if mode == 'psbt':
+            logger.info('preparing psbt with outputs: %s', outputs)
+            try:
+                res = rpc.prepare_psbt(outputs)
+                psbt = res['psbt']
+                flash(f'PSBT created: {psbt}')
+            except Exception as e: # pylint: disable=broad-except
+                flash(f'Failed to create PSBT: {e}', 'danger')
+        elif mode == 'withdraw':
+            try:
+                res = rpc.multi_withdraw(outputs)
+                txid = res['txid']
+                flash(f'Withdrawal transaction created: {txid}')
+            except Exception as e: # pylint: disable=broad-except
+                flash(f'Failed to create withdrawal transaction: {e}', 'danger')
+        else:
+            flash(f'Unknown mode: {mode}', 'danger')
     return render_template(
-        'lightning/create_psbt.html',
-        bitcoin_explorer=bitcoin_explorer,
-        onchain=onchain)
-
-@ln_wallet.route('/psbt', methods=['GET', 'POST'])
-@roles_accepted(Role.ROLE_ADMIN)
-def psbt():
-    rpc = LnRpc()
-    outputs_dict = request.json["address_amount"]
-    try:
-        tx_result = rpc.prepare_psbt(outputs_dict)
-    except Exception as e: # pylint: disable=broad-except
-        tx_result = str(e)
-    return tx_result
-
-@ln_wallet.route('/send_psbt', methods=['GET', 'POST'])
-@roles_accepted(Role.ROLE_ADMIN)
-def send_psbt():
-    rpc = LnRpc()
-    outputs_dict = request.json["signed_psbt"]
-    try:
-        tx_result = rpc.send_psbt(outputs_dict)
-    except Exception as e: # pylint: disable=broad-except
-        tx_result = str(e)
-    return tx_result
-
-@ln_wallet.route('/sign')
-@roles_accepted(Role.ROLE_ADMIN)
-def sign():
-    return render_template('lightning/sign.html', bitcoin_explorer=bitcoin_explorer)
+        'lightning/create_psbt.html', onchain=onchain, addrs=addrs, amounts=amounts, mode=mode)
 
 @ln_wallet.route('/sign_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def sign_psbt():
-    rpc = LnRpc()
-    outputs_dict = request.json["unsigned_psbt"]
-    try:
-        tx_result = rpc.sign_psbt(outputs_dict)
-    except Exception as e: # pylint: disable=broad-except
-        tx_result = str(e)
-    return tx_result
+    if request.method == 'POST':
+        psbt = request.form["psbt"]
+        try:
+            rpc = LnRpc()
+            res = rpc.sign_psbt(psbt)
+            signed_psbt = res['signed_psbt']
+            flash(f'Sign successful, Signed PSBT: {signed_psbt}')
+        except Exception as e: # pylint: disable=broad-except
+            flash(f'Sign failed: {e}', 'danger')
+    return render_template('lightning/sign_psbt.html')
 
-@ln_wallet.route('/broadcast')
+@ln_wallet.route('/broadcast_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def broadcast():
-    return render_template('lightning/broadcast.html', bitcoin_explorer=bitcoin_explorer)
+    if request.method == 'POST':
+        psbt = request.form["psbt"]
+        try:
+            rpc = LnRpc()
+            res = rpc.send_psbt(psbt)
+            txid = res['txid']
+            flash(f'Broadcast successful, TXID: {txid}')
+        except Exception as e: # pylint: disable=broad-except
+            flash(f'Broadcast failed: {e}', 'danger')
+    return render_template('lightning/broadcast_psbt.html')
 
 @ln_wallet.route('/close/<string:peer_id>')
 @roles_accepted(Role.ROLE_ADMIN)
