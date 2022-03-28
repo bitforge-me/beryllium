@@ -39,7 +39,7 @@
 
 {% block scripts %}
 <script>
-    function confirm(form_class, outputs, totalBtc) {
+    function confirm(form_class, outputs, totalBtc, action) {
         if (!document.querySelector(form_class).reportValidity()) {
             return;
         }
@@ -48,8 +48,8 @@
             return;
         }
         bootbox.confirm({
-            title: 'Confirm Create PSBT',
-            message: `Total: ${totalBtc} btc. Do you want to create the PSBT?`,
+            title: `Confirm Create ${action}`,
+            message: `TODO: show all outputs here!!! Total: ${totalBtc} btc. Do you want to create the ${action}?`,
             buttons: {
                 confirm: {
                     label: 'Yes',
@@ -117,7 +117,13 @@
                 totalBtc += parseFloat(output.btc);
             }
             totalBtc = Math.round(totalBtc * 100000000) / 100000000;
-            confirm('#form', outputs, totalBtc);
+            const mode = document.querySelector('input[name="mode"]:checked').value;
+            var action = '!ERR!';
+            if (mode == 'psbt')
+                action = 'PSBT';
+            if (mode == 'withdrawal')
+                action = 'Withdrawal Transaction'
+            confirm('#form', outputs, totalBtc, action);
             return false;
         });
 
