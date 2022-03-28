@@ -8,10 +8,10 @@
 <form id="form" method="POST">
     <div class="payment-fields">
         <div class="form-group">
-            <label for="address" class="form-label mt-4">Recipient Address</label>
+            <label for="address" class="form-label">Recipient Address</label>
             <input type="text" id="address" name="address" class="form-control" placeholder="Recipient Address" required>
         </div>
-        <label for="amount" class="form-label mt-4">Amount</label>
+        <label for="amount" class="form-label">Amount</label>
         <div class="input-group">
             <input type="text" id="amount" name="amount" class="form-control" placeholder="Amount" required>
             <div class="input-group-append">
@@ -19,6 +19,9 @@
             </div>
         </div>
     </div>
+    <br/>
+    <br/>
+    <button id="from-remove-output" type="button" class="btn btn-danger btn-sm">Remove</button>
     <br/>
     <br/>
     <button id="form-add-output" type="button" class="btn btn-primary btn-sm">Add Output</button>
@@ -58,34 +61,39 @@
         });
     }
 
-    function remove() {
-        var ele = $('.payment-fields').last();
-        console.log(ele);
-        ele.remove();
-    }
-
     $(document).ready(function() {
         $('#max').click(function() {
             var ele = $('#max').parent().prev();
             console.log(ele);
-            ele.value = "{{ onchain }}";
+            ele.val('{{ onchain }}');
+        });
+
+        $('#form-remove-output').hide();
+        $('#form-remove-output').click(function() {
+            var ele = $('.payment-fields').last();
+            console.log(ele);
+            ele.remove();
+            if ($('.payment-fields').length == 1)
+                $('#form-remove-output').hide();
+            return false
         });
 
         $('#form-add-output').click(function() {
             document.querySelector(".payment-fields").insertAdjacentHTML("afterend",
                 `
+                <hr>
                 <div class="payment-fields">
                     <div class="form-group">
-                        <label for="address" class="form-label mt-4">Recipient Address</label>
+                        <label for="address" class="form-label">Recipient Address</label>
                         <input type="text" id="address" name="address" class="form-control" placeholder="Recipient Address" required>
                     </div>
                     <div class="form-group">
-                        <label for="amount" class="form-label mt-4">Amount</label>
+                        <label for="amount" class="form-label">Amount</label>
                         <input type="text" id="amount" name="amount" class="form-control" placeholder="Amount" required>
                     </div>
-                    <button type="button" class="btn btn-danger btn-sm" onclick='remove()'>Remove</button>
                 </div>
             `);
+            $('#form-remove-output').show();
             return false;
         });
 
