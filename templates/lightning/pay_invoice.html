@@ -25,6 +25,9 @@
     }
 
     async function confirm(form_class, amount) {
+        if (!document.querySelector(form_class).reportValidity()) {
+            return;
+        }
         var invoice = document.querySelector('#invoice').value;
         var data = await decodeInvoice(invoice);
         if (data == null)

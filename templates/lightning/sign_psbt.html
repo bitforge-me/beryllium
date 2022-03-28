@@ -16,6 +16,9 @@
 <script src="{{ url_for('static',filename='assets/lightning/psbt-amount-browserified.js') }}"></script>
 <script>
     function confirm(form_class, psbt) {
+        if (!document.querySelector(form_class).reportValidity()) {
+            return;
+        }
         bootbox.confirm({
             title: 'Confirm Sign',
             message: `TODO: we should show all outputs!!! Use the 'decode_pay' endpoint. Total BTC before fees: ₿${getUnsignedPSBTAmount.getUnsignedPSBTAmount(psbt)}. Do you want to sign?`,

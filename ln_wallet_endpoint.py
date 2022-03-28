@@ -219,7 +219,7 @@ def create_psbt():
             psbt = res['psbt']
             flash(f'PSBT created: {psbt}')
         except Exception as e: # pylint: disable=broad-except
-            flash(f'Failed to create PSBT: {e}')
+            flash(f'Failed to create PSBT: {e}', 'danger')
     return render_template(
         'lightning/create_psbt.html', onchain=onchain, addrs=addrs, amounts=amounts)
 
