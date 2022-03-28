@@ -9,11 +9,11 @@
     <div class="payment-fields">
         <div class="form-group">
             <label for="address" class="form-label">Recipient Address</label>
-            <input type="text" id="address" name="address" class="form-control" placeholder="Recipient Address" required>
+            <input type="text" id="address" name="address" class="payment form-control" placeholder="Recipient Address" required>
         </div>
         <label for="amount" class="form-label">Amount</label>
         <div class="input-group">
-            <input type="text" id="amount" name="amount" class="form-control" placeholder="Amount" required>
+            <input type="text" id="amount" name="amount" class="payment form-control" placeholder="Amount" required>
             <div class="input-group-append">
                 <button type="button" id="max" class="btn btn-sm">Max</button>
             </div>
@@ -83,11 +83,11 @@
                 <div class="payment-fields">
                     <div class="form-group">
                         <label for="address" class="form-label">Recipient Address</label>
-                        <input type="text" id="address" name="address" class="form-control" placeholder="Recipient Address" required>
+                        <input type="text" id="address" name="address" class="payment form-control" placeholder="Recipient Address" required>
                     </div>
                     <div class="form-group">
                         <label for="amount" class="form-label">Amount</label>
-                        <input type="text" id="amount" name="amount" class="form-control" placeholder="Amount" required>
+                        <input type="text" id="amount" name="amount" class="payment form-control" placeholder="Amount" required>
                     </div>
                 </div>
             `);
@@ -97,7 +97,7 @@
 
         $('#form-submit').click(function() {
             var outputs = [];
-            var paymentFields = document.getElementsByClassName("input-element");
+            var paymentFields = document.getElementsByClassName('payment');
             var totalBtc = 0;
             for (var i = 0; i < paymentFields.length; i += 2) {
                 var output = {sats: paymentFields[i].value, btc: paymentFields[i + 1].value};
