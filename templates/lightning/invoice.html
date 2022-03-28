@@ -34,10 +34,14 @@
         socket.on('connect', function() {
             console.log("connected");
             // subscribe to invoice events
-            socket.emit('ln_invoice', label, (response) => console.log('sent invoice label'));
+            if (label.length > 0)
+                socket.emit('ln_invoice', label, (response) => console.log(`sent invoice label: ${label}`));
         });
         socket.on('info', function(msg) {
-            console.log(msg);
+            console.log(`info: ${msg}`);
+        });
+        socket.on('version', function(msg) {
+            console.log(`version: ${msg}`);
         });
         socket.on('ln_invoice_paid', function(msg) {
             console.log('invoice paid');
@@ -73,8 +77,7 @@
 
     $(document).ready(function() {
         var label = '{{ label if label }}';
-        if (label.length > 0)
-            socketOpen(label);
+        socketOpen(label);
 
         $('#copy-invoice').click(function() {
             navigator.clipboard.writeText("{{ bolt11 }}");
