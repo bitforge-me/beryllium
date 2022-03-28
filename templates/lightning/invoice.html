@@ -30,7 +30,8 @@
 {% block scripts %}
 <script>
     function socketOpen(label) {
-        var socket = io('/orders');
+        console.log('socket.io protocol:', io.protocol);
+        var socket = io('/orders', {transports: ['websocket']});
         socket.on('connect', function() {
             console.log("connected");
             // subscribe to invoice events
