@@ -30,10 +30,11 @@
 {% block scripts %}
 <script>
     function socketOpen(label) {
-        console.log('socket.io protocol:', io.protocol);
-        var socket = io('/orders', {transports: ['websocket']});
+        var url = `wss://${Location.host}/orders`;
+        var socket = io(url, {transports: ['websocket']});
+        console.log('socket.io protocol:', socket.protocol);
         socket.on('connect', function() {
-            console.log("connected");
+            console.log('connected');
             // subscribe to invoice events
             if (label.length > 0)
                 socket.emit('ln_invoice', label, (response) => console.log(`sent invoice label: ${label}`));
