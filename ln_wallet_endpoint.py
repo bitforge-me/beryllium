@@ -7,6 +7,7 @@ from flask import Blueprint, render_template, request, flash, Markup, url_for, r
 from flask_security import roles_accepted
 
 from utils import qrcode_svg_create
+from web_utils import bad_request
 from app_core import app, limiter
 from models import Role
 from ln import LnRpc
@@ -144,29 +145,19 @@ def withdraw():
         tx_result = "error"
     return tx_result
 
-@ln_wallet.route('/pay_invoice', methods=['GET'])
+@ln_wallet.route('/pay_invoice', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def pay_invoice():
-    """ Returns template for paying LN invoices """
-    return render_template("lightning/pay_invoice.html")
-
-@ln_wallet.route('/pay/<string:bolt11>')
-@roles_accepted(Role.ROLE_ADMIN)
-def ln_pay(bolt11):
-    """ Returns template showing a paid LN invoice """
-    rpc = LnRpc()
-    try:
-        invoice_result = rpc.send_invoice(bolt11)
-        return render_template("lightning/pay.html", invoice_result=invoice_result)
-    except BaseException: # pylint: disable=broad-except
-        return redirect(url_for("pay_error"))
-
-@ln_wallet.route('/pay_error')
-@roles_accepted(Role.ROLE_ADMIN)
-def pay_error():
-    """ Returns template for a generic pay error """
-    return render_template("lightning/pay_error.html")
-
+    """Returns template for paying LN invoices"""
+    invoice = ''
+    if request.method == 'POST':
+        invoice = request.form['invoice']
+        try:
+            result = LnRpc().send_invoice(invoice)
+            flash(f'Invoice paid: {result}')
+        except Exception as e: # pylint: disable=broad-except
+            flash(f'Error paying invoice: {e}', 'danger')
+    return render_template("lightning/pay_invoice.html", invoice=invoice)
 
 @ln_wallet.route('/invoices', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
@@ -185,9 +176,7 @@ def decode_pay(bolt11=None):
         rpc = LnRpc()
         return rpc.decode_pay(str(bolt11))
     except Exception as e: # pylint: disable=broad-except
-        return str(e)
-    return "Something went wrong"
-
+        return bad_request(str(e))
 
 @ln_wallet.route('/channel_opener', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)

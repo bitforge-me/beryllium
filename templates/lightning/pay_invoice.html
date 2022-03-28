@@ -1,49 +1,64 @@
 {% extends "lightning/layout.html" %}
 {% block title %}Pay Invoice{% endblock %}
 {% block content %}
-<script src="{{ url_for('static',filename='assets/lightning/qrcode.min.js') }}"></script>
-<script src="{{ url_for('static',filename='assets/lightning/sweetalert2.all.min.js') }}"></script>
-<script src="{{ url_for('static',filename='assets/css/sweetalert2.min.css') }}"></script>
-<script>
-    const sendInvoice = function() {
-        var bolt11String = document.querySelector('#name').value;
-        fetch(`/ln/decode_pay/${bolt11String}`)
-            .then(res => res.json())
-            .then(
-                function(data) {
-                    Swal.fire({
-                        title: 'Confirm Payment',
-			    text: `Amount: ${data.amount_sat}sats, Description: ${data.description}`,
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonColor: '#3085d6',
-                        cancelButtonColor: '#d33',
-                        confirmButtonText: 'Confirm'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            var invoiceUrl = `/ln/pay/${bolt11String}`;
-                            window.location = invoiceUrl;
-                        }
-                    });
-                }
-        )
-    }
-</script>
-<br>
 <h2>Pay Invoice</h2>
-<p>Phasellus convallis elit id ullamcorper pulvinar. Duis aliquam turpis mauris, eu ultricies erat malesuada quis. Aliquam dapibus, lacus eget hendrerit bibendum, urna est aliquam sem, sit amet imperdiet est velit quis lorem.</p>
-<section>
-<div class="form-group">
-  <label class="col-form-label mt-4" for="bolt11-input">Invoice Id</label>
-  <input type="text" class="form-control" aria-required=true placeholder="Enter invoice id here." name="bolt11-input" id="name" required>
-</div>
-<div class="send_Invoice" id="send_Invoice">
-  <a class="button submit" onclick="sendInvoice()">
-    <button type="button" class="btn btn-primary btn-lg mt-3">Pay Invoice</button>
-  </a>
-</div>
-</section>
+<p>Pay lightning invoice.</p>
+<form method="POST">
+    <div class="form-group">
+    <label class="col-form-label mt-4" for="invoice">Invoice</label>
+    <input type="text" class="form-control" aria-required=true placeholder="Enter invoice data here." name="invoice" id="invoice" value="{{ invoice }}" required>
+    </div>
+    <button type="button" class="btn btn-primary">Submit</button>
+</form>
 {% endblock %}
+
+{% block scripts %}
+<script>
+    async function decodeInvoice(invoice) {
+        const response = await fetch(`decode_pay/${invoice}`);
+        if (!response.ok) {
+            bootbox.alert({message: `An error has occured decoding the invoice: ${response.status}`});
+            return null;
+        }
+        const data = await response.json();
+        return data;
+    }
+
+    function confirm(form_class, amount) {
+        var invoice = document.querySelector('#invoice').value;
+        var data = decodeInvoice(invoice);
+        if (data == null)
+            return;
+
+        bootbox.confirm({
+            message: `Are you sure you want to pay the invoice? - Amount: ${data.amount_sat} sats, Description: ${data.description}`,
+            buttons: {
+                confirm: {
+                    label: 'Yes',
+                    className: 'btn-success'
+                },
+                cancel: {
+                    label: 'No',
+                    className: 'btn-danger'
+                }
+            },
+            callback: function (result) {
+                if (result)
+                    $(form_class).submit();
+            }
+        });
+    }
+
+    $(document).ready(function() {
+        $('#form-submit').click(function() {
+            var amount = $('#amount').val();
+            confirm('#form', amount);
+            return false;
+        });
+    });
+</script>
+{% endblock %}
+
 {% block footer %}
 {{ super() }}
 {% endblock %}
