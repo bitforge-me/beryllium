@@ -241,3 +241,10 @@ def broadcast():
         except Exception as e: # pylint: disable=broad-except
             flash(f'Broadcast failed: {e}', 'danger')
     return render_template('lightning/broadcast_psbt.html')
+
+@ln_wallet.route('/close/<string:peer_id>')
+@roles_accepted(Role.ROLE_ADMIN)
+def close(peer_id):
+    rpc = LnRpc()
+    close_tx = rpc.close_channel(peer_id)
+    return render_template('lightning/close.html', close_tx=close_tx, bitcoin_explorer=app.config["BITCOIN_EXPLORER"])
