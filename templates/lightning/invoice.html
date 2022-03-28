@@ -10,6 +10,8 @@
 </div>
 <button id="copy-invoice" type="button" class="btn btn-primary">Copy Invoice</button>
 <br/>
+<br/>
+<br/>
 {% endif %}
 
 <h2>Create Invoice</h2>
@@ -45,7 +47,8 @@
             console.log(`version: ${msg}`);
         });
         socket.on('ln_invoice_paid', function(msg) {
-            console.log('invoice paid');
+            console.log('invoice paid:', msg);
+            msg = JSON.parse(msg);
             var bolt11 = msg['bolt11'];
             console.log(bolt11);
             var shortenedBolt11 = bolt11.slice(0,15) + '.....' + bolt11.slice(-15);
