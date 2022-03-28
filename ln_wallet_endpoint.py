@@ -189,7 +189,7 @@ def create_psbt():
     if request.method == 'POST':
         addrs = request.form.getlist('address')
         amounts = request.form.getlist('amount')
-        mode = request.form('mode')
+        mode = request.form['mode']
         outputs = []
         for addr, amount in zip(addrs, amounts):
             outputs.append({addr: f'{amount}btc'})
