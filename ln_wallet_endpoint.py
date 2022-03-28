@@ -226,7 +226,7 @@ def create_psbt():
         amounts = request.form.getlist('amount')
         outputs = []
         for addr, amount in zip(addrs, amounts):
-            outputs.append({addr, f'{amount}btc'})
+            outputs.append({addr: f'{amount}btc'})
         logger.info('preparing psbt with outputs: %s', outputs)
         try:
             psbt = rpc.prepare_psbt(outputs)
