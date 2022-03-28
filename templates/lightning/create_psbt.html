@@ -6,7 +6,7 @@
 {% block content %}
 <h2>Create PSBT</h2>
 <form id="form" method="POST">
-    <div class="input-group mb-3" id="payment-fields">
+    <div id="payment-fields">
         <div class="form-group">
             <label for="address" class="form-label mt-4">Recipient Address</label>
             <input type="text" id="address" name="address" class="form-control" placeholder="Recipient Address" required>
@@ -27,6 +27,15 @@
 {% block scripts %}
 <script>
     function confirm(form_class, outputs, totalBtc) {
+        var form = $(form_class);
+        if (!form.checkValidity()) {
+            form.requestSubmit();
+            return;
+        }
+        if (isNaN(totalBtc) || totalBtc <= 0) {
+            bootbox.alert({message: 'Invalid amount'});
+            return;
+        }
         bootbox.confirm({
             title: 'Confirm Create PSBT',
             message: `Total: ${totalBtc} btc. Do you want to create the PSBT?`,
@@ -42,7 +51,7 @@
             },
             callback: function (result) {
                 if (result)
-                    $(form_class).submit();
+                    form.submit();
             }
         });
     }
@@ -55,14 +64,15 @@
 
     $(document).ready(function() {
         $('.max-btn').click(function () {
-            var test = $(this).closest('#payment-fields');
-            test[0]["children"][3].value = "{{ onchain }}";
+            var ele = $(this).closest('#amount');
+            console.log(ele);
+            ele.value = "{{ onchain }}";
         });
 
         $('#form-add-output').click(function() {
             document.querySelector("#payment-fields").insertAdjacentHTML("afterend",
                 `
-                <div class="input-group mb-3" id="payment-fields">
+                <div id="payment-fields">
                     <div class="form-group">
                         <label for="address" class="form-label mt-4">Recipient Address</label>
                         <input type="text" id="address" name="address" class="form-control" placeholder="Recipient Address" required>
