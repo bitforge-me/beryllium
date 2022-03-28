@@ -92,12 +92,12 @@ def list_peers():
         oscid = request.form["oscid"]
         iscid = request.form["iscid"]
         sats = request.form["amount"]
-        amount = str(int(sats) * 1000) + str('msat')
+        amount = str(int(sats))
         try:
             rpc = LnRpc()
             # pylint: disable=no-member
             # pylint: disable=unused-variable
-            result = rpc.rebalance_individual_channel(oscid, iscid, amount)
+            result = rpc.rebalance_channel(oscid, iscid, amount)
             flash(Markup(f'successfully move funds from: {oscid} to: {iscid} with the amount: {sats}sats'),'success')
         except Exception as e: # pylint: disable=broad-except
             flash(Markup(e.args[0]), 'danger')
