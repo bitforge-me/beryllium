@@ -221,6 +221,8 @@ def create_psbt():
     """ Returns template for creating a PSBT """
     rpc = LnRpc()
     onchain = int(rpc.list_funds()["sats_onchain"]) / 100000000
+    addrs = []
+    amounts = []
     if request.method == 'POST':
         addrs = request.form.getlist('address')
         amounts = request.form.getlist('amount')
@@ -235,9 +237,7 @@ def create_psbt():
         except Exception as e: # pylint: disable=broad-except
             flash(f'Failed to create PSBT: {e}')
     return render_template(
-        'lightning/create_psbt.html',
-        bitcoin_explorer=bitcoin_explorer,
-        onchain=onchain)
+        'lightning/create_psbt.html', onchain=onchain, addrs=addrs, amounts=amounts)
 
 @ln_wallet.route('/sign_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)

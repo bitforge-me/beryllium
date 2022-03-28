@@ -59,6 +59,24 @@
         });
     }
 
+    function addOutput(addr, amount) {
+        document.querySelector(".payment-fields").insertAdjacentHTML("afterend",
+            `
+            <div class="payment-fields">
+                <hr>
+                <div class="form-group">
+                    <label for="address" class="form-label">Recipient Address</label>
+                    <input type="text" id="address" name="address" class="payment form-control" placeholder="Recipient Address" value="${addr}" required>
+                </div>
+                <div class="form-group">
+                    <label for="amount" class="form-label">Amount</label>
+                    <input type="text" id="amount" name="amount" class="payment form-control" placeholder="Amount" value="${amount}" required>
+                </div>
+            </div>
+        `);
+        $('#form-remove-output').show();
+    }
+
     $(document).ready(function() {
         $('#max').click(function() {
             var ele = $('#max').parent().prev();
@@ -77,21 +95,7 @@
         });
 
         $('#form-add-output').click(function() {
-            document.querySelector(".payment-fields").insertAdjacentHTML("afterend",
-                `
-                <hr>
-                <div class="payment-fields">
-                    <div class="form-group">
-                        <label for="address" class="form-label">Recipient Address</label>
-                        <input type="text" id="address" name="address" class="payment form-control" placeholder="Recipient Address" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="amount" class="form-label">Amount</label>
-                        <input type="text" id="amount" name="amount" class="payment form-control" placeholder="Amount" required>
-                    </div>
-                </div>
-            `);
-            $('#form-remove-output').show();
+            addOutput('', '');
             return false;
         });
 
@@ -108,6 +112,19 @@
             confirm('#form', outputs, totalBtc);
             return false;
         });
+
+        // load initial values
+        var addrs = {{ addrs }};
+        var amounts = {{ amounts }};
+        for (var i = 0; i < addrs.length; i++) {
+            if (i == 0) {
+                $('#address').val(addrs[i]);
+                $('#amount').val(amounts[i]);
+            } else {
+                addOutput(addrs[i], amounts[i]);
+            }
+        }
+
     });
 </script>
 {% endblock %}
