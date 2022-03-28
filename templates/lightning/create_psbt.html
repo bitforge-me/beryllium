@@ -5,49 +5,30 @@
 {% endblock %}
 {% block content %}
 <h2>Create PSBT</h2>
-<section>
-<div class="input-group mb-3" id="payment-fields">
-    <div class="input-group-prepend">
-        <span class="input-group-text">Recipient Address</span>
+<form id="form" method="POST">
+    <div class="input-group mb-3" id="payment-fields">
+        <div class="input-group-prepend">
+            <span class="input-group-text">Recipient Address</span>
+        </div>
+        <input type="text" size=64 name="address" class="input-element" id="inputBitcoinAddress1" class="form-control" placeholder="Recipient Address">&nbsp&nbsp&nbsp&nbsp
+        <div class="input-group-prepend">
+            <span class="input-group-text">Amount</span>
+        </div>
+        <input type="text" size=64 name="amount" class="input-element" id="inputBitcoinAmount1" class="form-control" placeholder="Amount">
+        <button type="button" class="max-btn btn btn-primary">Max</button>
     </div>
-    <input type="text" size=64 name="address" class="input-element" id="inputBitcoinAddress1" class="form-control" placeholder="Recipient Address">&nbsp&nbsp&nbsp&nbsp
-    <div class="input-group-prepend">
-        <span class="input-group-text">Amount</span>
-    </div>
-    <input type="text" size=64 name="amount" class="input-element" id="inputBitcoinAmount1" class="form-control" placeholder="Amount">
-    <button id="maxRow" type="button" class="btn btn-primary">Max</button>
-</div>
-</section>
-<button id="form-add-output" type="button" class="btn btn-primary btn-sm">Add Output</button>
-<br/>
-<button id="form-submit" type="button" class="btn btn-primary btn-lg">Submit</button>
+    <button id="form-add-output" type="button" class="btn btn-primary btn-sm">Add Output</button>
+    <br/>
+    <br/>
+    <button id="form-submit" type="button" class="btn btn-primary btn-lg">Submit</button>
+</form>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    function expand() {
-        document.querySelector("#payment-fields").insertAdjacentHTML(
-        "afterend",
-                `
-            <div class="input-group mb-3" id="payment-fields">
-                <div class="input-group-prepend">
-                    <span class="input-group-text">Recipient Address</span>
-                </div>
-                <input type="text" size=64 name="address" class="input-element" id="inputBitcoinAddress1" class="form-control" placeholder="Recipient Address">&nbsp&nbsp&nbsp&nbsp
-                <div class="input-group-prepend">
-                    <span class="input-group-text">Amount</span>
-                </div>
-            <input type="text" size=64 name="amount" class="input-element" id="inputBitcoinAmount1" class="form-control" placeholder="Amount">
-            <button id="maxRow" type="button" class="btn btn-primary">Max</button>
-            &nbsp;
-            <button id="removeRow" type="button" class="btn btn-danger">Remove</button>
-                </div>
-        `);
-    }
-
     function confirm(form_class, outputs, totalBtc) {
         bootbox.confirm({
-            title: 'Confirm Transaction',
+            title: 'Confirm Create PSBT',
             message: `Total: ${totalBtc} btc. Do you want to create the PSBT?`,
             buttons: {
                 confirm: {
@@ -67,17 +48,32 @@
     }
 
     $(document).ready(function() {
-        $('#removeRow').click(function () {
+        $('.remove-btn').click(function () {
             $(this).closest('#payment-fields').remove();
         });
 
-        $('#maxRow').click(function () {
+        $('.max-btn').click(function () {
             var test = $(this).closest('#payment-fields');
             test[0]["children"][3].value = "{{ onchain }}";
         });
 
         $('#form-add-output').click(function() {
-            expand();
+            document.querySelector("#payment-fields").insertAdjacentHTML("afterend",
+                `
+                <div class="input-group mb-3" id="payment-fields">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text">Recipient Address</span>
+                    </div>
+                    <input type="text" size=64 name="address" class="input-element" id="inputBitcoinAddress1" class="form-control" placeholder="Recipient Address">&nbsp&nbsp&nbsp&nbsp
+                    <div class="input-group-prepend">
+                        <span class="input-group-text">Amount</span>
+                    </div>
+                    <input type="text" size=64 name="amount" class="input-element" id="inputBitcoinAmount1" class="form-control" placeholder="Amount">
+                    <button type="button" class="max-btn btn btn-primary">Max</button>
+                    &nbsp;
+                    <button type="button" class="remove-btn btn btn-danger">Remove</button>
+                </div>
+            `);
             return false;
         });
 
