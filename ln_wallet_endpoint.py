@@ -243,11 +243,12 @@ def broadcast():
             flash(f'Broadcast failed: {e}', 'danger')
     return render_template('lightning/broadcast_psbt.html')
 
-@ln_wallet.route('/decode_psbt/<psbt>', strict_slashes=False)
+@ln_wallet.route('/decode_psbt')
 @roles_accepted(Role.ROLE_ADMIN)
-def decode_psbt(psbt=None):
+def decode_psbt():
+    psbt = request.args['psbt']
     if not psbt:
-        return bad_request('please enter a non-empty psbt string')
+        return bad_request('empty psbt string')
     try:
         psbt = PartiallySignedTransaction.from_base64_or_binary(psbt)
         logger.info('psbt inputs: %s', psbt.inputs)
