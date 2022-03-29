@@ -1,5 +1,5 @@
 async function decodePsbt(psbt) {
-    const response = await fetch(`decode_psbt/${psbt}`);
+    const response = await fetch('decode_psbt?' + new URLSearchParams({psbt: psbt}));
     if (!response.ok) {
         bootbox.alert({message: `An error has occured decoding the psbt: ${response.status}`});
         return null;
