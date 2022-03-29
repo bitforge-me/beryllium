@@ -1,6 +1,18 @@
 {% extends "lightning/layout.html" %}
 {% block title %}Create Invoice{% endblock %}
 {% block content %}
+{% if signed_psbt %}
+<h2>PSBT Signed</h2>
+<div class="form-group">
+    <label for="psbt" class="form-label mt-4">PSBT Data</label>
+    <textarea class="form-control" id="psbt" rows="3" placeholder="{{ signed_psbt }}" readonly></textarea>
+</div>
+<button id="copy-psbt" type="button" class="btn btn-primary">Copy PSBT</button>
+<br/>
+<br/>
+<br/>
+{% endif %}
+
 <h2>Sign PSBT</h2>
 <p>Sign a PSBT.</p>
 <form id="form" method="POST">
@@ -45,6 +57,10 @@
     }
 
     $(document).ready(function() {
+        $('#copy-psbt').click(function() {
+            navigator.clipboard.writeText("{{ signed_psbt }}");
+        });
+
         $('#form-submit').click(function() {
             var psbt = $('#psbt').val();
             confirm('#form', psbt);

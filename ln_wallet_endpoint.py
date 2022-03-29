@@ -220,16 +220,17 @@ def create_psbt():
 @ln_wallet.route('/sign_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def sign_psbt():
+    signed_psbt = None
     if request.method == 'POST':
         psbt = request.form["psbt"]
         try:
             rpc = LnRpc()
             res = rpc.sign_psbt(psbt)
             signed_psbt = res['signed_psbt']
-            flash(f'Sign successful, Signed PSBT: {signed_psbt}', 'success')
+            flash(f'Sign successful', 'success')
         except Exception as e: # pylint: disable=broad-except
             flash(f'Sign failed: {e}', 'danger')
-    return render_template('lightning/sign_psbt.html')
+    return render_template('lightning/sign_psbt.html', signed_psbt=signed_psbt)
 
 @ln_wallet.route('/broadcast_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)

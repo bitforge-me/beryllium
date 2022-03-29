@@ -21,8 +21,8 @@ function formatOutputs(fee, outputs) {
     var html = '<ul>';
     for (var i = 0; i < outputs.length; i++) {
         const output = outputs[i];
-        html = html + `<li>Address: ${output[0]}, Amount: ${output[1]} BTC<\\li>`;
+        html = html + `<li>Address: ${output[0]}, Amount: ${output[1]} BTC</li>`;
     }
-    html = html + `<li>Fee Amount: ${fee} BTC<\\li>`;
+    html = html + `<li>Fee Amount: ${fee} BTC</li>`;
     return html;
 }
