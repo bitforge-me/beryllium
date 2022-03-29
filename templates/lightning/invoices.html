@@ -1,5 +1,5 @@
 {% extends "lightning/layout.html" %}
-{% block title %}Invoice History{% endblock %}
+{% block title %}Invoice History(Paid only){% endblock %}
 {% block content %}
 <br>
 <div>
@@ -16,7 +16,7 @@
 	{% for paid_invoice in paid_invoices %}
             <tr class="table-secondary">
 		<td>{{paid_invoice.date}}</td>
-                <td>{{paid_invoice.amount_msat}}</td>
+                <td>{{paid_invoice.amount_sats}}</td>
                 <td>{{paid_invoice.status}}</td>
             </tr>
 	{% endfor %}
