@@ -5,6 +5,7 @@ import secrets
 
 from flask import Blueprint, render_template, request, flash, Markup, url_for, redirect
 from flask_security import roles_accepted
+from bitcointx import select_chain_params
 from bitcointx.core.psbt import PartiallySignedTransaction
 
 from utils import qrcode_svg_create
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 ln_wallet = Blueprint('ln_wallet', __name__, template_folder='templates')
 limiter.limit("100/minute")(ln_wallet)
 bitcoin_explorer = app.config["BITCOIN_EXPLORER"]
+TESTNET = app.config['TESTNET']
 
 @ln_wallet.route('/')
 @roles_accepted(Role.ROLE_ADMIN)
@@ -250,6 +252,10 @@ def decode_psbt():
     if not psbt:
         return bad_request('empty psbt string')
     try:
+        if TESTNET:
+            select_chain_params('bitcoin/testnet')
+        else:
+            select_chain_params('bitcoin')
         psbt = PartiallySignedTransaction.from_base64_or_binary(psbt)
         logger.info('psbt inputs: %s', psbt.inputs)
         logger.info('psbt outputs: %s', psbt.outputs)

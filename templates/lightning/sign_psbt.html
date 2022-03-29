@@ -30,6 +30,8 @@
         }
         const amount = 'NYI!!';
         var data = await decodePsbt(psbt);
+        if (data == null)
+            return;
         bootbox.confirm({
             title: 'Confirm Sign',
             message: `TODO: we should show all outputs!!! Total BTC before fees: ${amount} btc. Do you want to sign?`,
