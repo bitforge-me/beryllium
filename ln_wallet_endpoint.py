@@ -16,7 +16,7 @@ from ln import LnRpc
 logger = logging.getLogger(__name__)
 ln_wallet = Blueprint('ln_wallet', __name__, template_folder='templates')
 limiter.limit("100/minute")(ln_wallet)
-bitcoin_explorer = app.config["BITCOIN_EXPLORER"]
+BITCOIN_EXPLORER = app.config["BITCOIN_EXPLORER"]
 TESTNET = app.config['TESTNET']
 
 @ln_wallet.route('/')
@@ -58,7 +58,7 @@ def list_txs():
     return render_template(
         "lightning/list_transactions.html",
         transactions=sorted_txs,
-        bitcoin_explorer=bitcoin_explorer)
+        bitcoin_explorer=BITCOIN_EXPLORER)
 
 @ln_wallet.route('/invoice', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
@@ -253,8 +253,8 @@ def decode_psbt():
     if not psbt:
         return bad_request('empty psbt string')
     try:
-        # TODO: get service url from environment
-        connection = Proxy(service_url='http://rpcuser:rpcpass@bitcoind:18332')
+        service_url = app.config['BITCOIND_RPC_URL']
+        connection = Proxy(service_url=service_url)
         psbt_json = connection._call('decodepsbt', psbt)
         logger.info('psbt json: %s', psbt_json)
         return jsonify(psbt_json)
@@ -266,4 +266,4 @@ def decode_psbt():
 def close(peer_id):
     rpc = LnRpc()
     close_tx = rpc.close_channel(peer_id)
-    return render_template('lightning/close.html', close_tx=close_tx, bitcoin_explorer=app.config["BITCOIN_EXPLORER"])
+    return render_template('lightning/close.html', close_tx=close_tx, bitcoin_explorer=BITCOIN_EXPLORER)
