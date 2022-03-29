@@ -251,9 +251,8 @@ def decode_psbt():
     if not psbt:
         return bad_request('empty psbt string')
     try:
-        bitcoin_conf = '/etc/bitcoin/bitcoin.conf'
-        logger.info(open(bitcoin_conf, 'r').read())
-        connection = Proxy(btc_conf_file=bitcoin_conf)
+        # TODO: get service url from environment
+        connection = Proxy(service_url='http://rpcuser:rpcpass@bitcoind:18332')
         psbt_json = connection._call('decodepsbt', psbt)
         logger.info('psbt json: %s', psbt_json)
         return jsonify(psbt_json)

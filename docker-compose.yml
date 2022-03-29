@@ -12,6 +12,7 @@ services:
     container_name: beryllium_app
     restart: unless-stopped
     environment:
+      #TODO: bitcoind service url
       DATABASE_URL: postgresql://beryllium:beryllium@db:5432/beryllium
       SERVER_NAME: ${SERVER_NAME:?SERVER_NAME unset}
       ADMIN_EMAIL: ${ADMIN_EMAIL:?ADMIN_EMAIL unset}
@@ -41,10 +42,8 @@ services:
       REGISTRATION_DISABLE: ${REGISTRATION_DISABLE}
     volumes:
       - "clightning_bitcoin_datadir:/etc/lightning"
-      - "bitcoin_datadir:/etc/bitcoin"
     links:
       - clightning_bitcoin
-      - bitcoind
       - db
     expose:
       - "5000"
