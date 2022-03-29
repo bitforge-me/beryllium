@@ -13,6 +13,7 @@ services:
     container_name: beryllium_app
     restart: unless-stopped
     environment:
+      TESTNET: ${TESTNET}
       BITCOIND_RPC_URL: http://rpcuser:rpcpass@bitcoind:18332
       DATABASE_URL: postgresql://beryllium:beryllium@db:5432/beryllium
       SERVER_NAME: ${SERVER_NAME:?SERVER_NAME unset}
