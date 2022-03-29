@@ -144,11 +144,9 @@ class LnRpc():
         sats_onchain += _msat_to_sat(msats_onchain)
         return dict(msats_largest_channel=msats_largest_channel, msats_channels=msats_channels, msats_largest_channel_theirs=msats_largest_channel_theirs, msats_channels_theirs=msats_channel_theirs, msats_onchain=msats_onchain, sats_largest_channel=sats_largest_channel, sats_channels=sats_channels, sats_channels_theirs=sats_channels_theirs, sats_largest_channel_theirs=sats_largest_channel_theirs, sats_onchain=sats_onchain)
 
-    #def open_channel(self, node_id, sats):
-    #    return self.instance.fundchannel_start(node_id, _sat_to_msat(sats))
-
     def fund_channel(self, node_id, sats):
-        return self.instance.fundchannel(node_id, _sat_to_msat(sats))
+        # the amount used is in sats according to documentation
+        return self.instance.fundchannel(node_id, sats)
 
     def close_channel(self, peer_id):
         return self.instance.close(peer_id)
