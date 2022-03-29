@@ -248,3 +248,20 @@ def close(peer_id):
     rpc = LnRpc()
     close_tx = rpc.close_channel(peer_id)
     return render_template('lightning/close.html', close_tx=close_tx, bitcoin_explorer=app.config["BITCOIN_EXPLORER"])
+
+@ln_wallet.route('/testing', methods=['GET', 'POST'])
+@roles_accepted(Role.ROLE_ADMIN)
+def testing():
+    if request.method == 'POST':
+        amount = request.form["amount"]
+        nodeid = request.form["nodeid"]
+        try:
+            rpc = LnRpc()
+            rpc.connect_node(nodeid)
+            node_id = nodeid.split("@")
+            # pylint: disable=unused-variable
+            result = rpc.fund_channel(node_id[0], amount)
+            flash(Markup(f'successfully added node id: {node_id[0]} with the amount: {amount}'), 'success')
+        except Exception as e: # pylint: disable=broad-except
+            flash(Markup(e.args[0]), 'danger')
+    return render_template('lightning/testing.html')
