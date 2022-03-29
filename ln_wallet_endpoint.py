@@ -3,10 +3,9 @@
 import logging
 import secrets
 
-from flask import Blueprint, render_template, request, flash, Markup, url_for, redirect
+from flask import Blueprint, render_template, request, flash, Markup, jsonify
 from flask_security import roles_accepted
-from bitcointx import select_chain_params
-from bitcointx.core.psbt import PartiallySignedTransaction
+from bitcoin.rpc import Proxy
 
 from utils import qrcode_svg_create
 from web_utils import bad_request
@@ -252,14 +251,10 @@ def decode_psbt():
     if not psbt:
         return bad_request('empty psbt string')
     try:
-        if TESTNET:
-            select_chain_params('bitcoin/testnet')
-        else:
-            select_chain_params('bitcoin')
-        psbt = PartiallySignedTransaction.from_base64_or_binary(psbt)
-        logger.info('psbt inputs: %s', psbt.inputs)
-        logger.info('psbt outputs: %s', psbt.outputs)
-        return str(psbt)
+        connection = Proxy(btc_conf_file='/etc/bitcoin/bitcoin.conf')
+        psbt_json = connection._call('decodepsbt', psbt)
+        logger.info('psbt json: %s', psbt_json)
+        return jsonify(psbt_json)
     except Exception as e: # pylint: disable=broad-except
         return bad_request(str(e))
 

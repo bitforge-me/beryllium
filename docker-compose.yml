@@ -41,8 +41,10 @@ services:
       REGISTRATION_DISABLE: ${REGISTRATION_DISABLE}
     volumes:
       - "clightning_bitcoin_datadir:/etc/lightning"
+      - "bitcoin_datadir:/etc/bitcoin"
     links:
       - clightning_bitcoin
+      - bitcoind
       - db
     expose:
       - "5000"
