@@ -83,7 +83,7 @@ class LnRpc():
                             "amount_sats": amount_sats})
         return results
 
-    def decode_pay(self, bolt11: str) -> Optional[dict]:
+    def decode_bolt11(self, bolt11: str) -> Optional[dict]:
         result = self.instance.decodepay(bolt11)
         sats = _msat_to_sat(result["amount_msat"].millisatoshis)
         result['amount_sat'] = sats

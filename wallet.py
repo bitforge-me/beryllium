@@ -36,7 +36,7 @@ def withdrawal_create(asset: str, l2_network: Optional[str], amount_dec: Decimal
     assert withdrawals_supported(asset, l2_network)
     rpc = LnRpc()
     try:
-        result = rpc.decode_pay(recipient)
+        result = rpc.decode_bolt11(recipient)
         amount_sat = assets.asset_dec_to_int(asset, amount_dec)
         if amount_sat != result['amount_sat']:
             logger.error('ln pay amount does not match: %d, %d', amount_sat, result['amount_sat'])

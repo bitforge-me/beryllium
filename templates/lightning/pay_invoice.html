@@ -15,7 +15,7 @@
 {% block scripts %}
 <script>
     async function decodeInvoice(invoice) {
-        const response = await fetch(`decode_pay/${invoice}`);
+        const response = await fetch(`decode_bolt11/${invoice}`);
         if (!response.ok) {
             bootbox.alert({message: `An error has occured decoding the invoice: ${response.status}`});
             return null;

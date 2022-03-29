@@ -145,7 +145,7 @@ def asset_is_fiat(asset: str) -> bool:
 def asset_recipient_extract_amount(asset: str, l2_network: Optional[str], recipient: str) -> Dec:
     if asset == BTC.symbol and l2_network == BTCLN.symbol:
         rpc = LnRpc()
-        result = rpc.decode_pay(recipient)
+        result = rpc.decode_bolt11(recipient)
         if not result:
             return Dec(0)
         return asset_int_to_dec(asset, result['amount_sat'])

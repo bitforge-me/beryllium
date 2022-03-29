@@ -13,15 +13,26 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static',filename='assets/lightning/psbt-amount-browserified.js') }}"></script>
 <script>
-    function confirm(form_class, signedPsbt) {
+    async function decodePsbt(psbt) {
+        const response = await fetch(`decode_psbt/${psbt}`);
+        if (!response.ok) {
+            bootbox.alert({message: `An error has occured decoding the psbt: ${response.status}`});
+            return null;
+        }
+        const data = await response.json();
+        return data;
+    }
+
+    async function confirm(form_class, signedPsbt) {
         if (!document.querySelector(form_class).reportValidity()) {
             return;
         }
+        const amount = 'NYI!!';
+        var data = await decodePsbt(signedPsbt);
         bootbox.confirm({
             title: 'Confirm Broadcast',
-            message: `TODO: we should show all outputs!!! Use the 'decode_pay' endpoint. Total BTC before fees: ₿${getUnsignedPSBTAmount.getUnsignedPSBTAmount(signedPsbt)}. Do you want to broadcast?`,
+            message: `TODO: we should show all outputs!!! Total BTC before fees: ${amount} btc. Do you want to broadcast?`,
             buttons: {
                 confirm: {
                     label: 'Yes',

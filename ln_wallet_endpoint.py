@@ -5,6 +5,7 @@ import secrets
 
 from flask import Blueprint, render_template, request, flash, Markup, url_for, redirect
 from flask_security import roles_accepted
+from bitcointx.core.psbt import PartiallySignedTransaction
 
 from utils import qrcode_svg_create
 from web_utils import bad_request
@@ -146,14 +147,14 @@ def invoices():
     paid_invoices = rpc.list_paid()
     return render_template("lightning/invoices.html", paid_invoices=paid_invoices)
 
-@ln_wallet.route('/decode_pay/<bolt11>', strict_slashes=False)
+@ln_wallet.route('/decode_bolt11/<bolt11>', strict_slashes=False)
 @roles_accepted(Role.ROLE_ADMIN)
-def decode_pay(bolt11=None):
-    if bolt11 is None:
-        return "Please enter a non-empty bolt11 string"
+def decode_bolt11(bolt11=None):
+    if not bolt11:
+        return bad_request('please enter a non-empty bolt11 string')
     try:
         rpc = LnRpc()
-        return rpc.decode_pay(str(bolt11))
+        return rpc.decode_bolt11(str(bolt11))
     except Exception as e: # pylint: disable=broad-except
         return bad_request(str(e))
 
@@ -241,6 +242,19 @@ def broadcast():
         except Exception as e: # pylint: disable=broad-except
             flash(f'Broadcast failed: {e}', 'danger')
     return render_template('lightning/broadcast_psbt.html')
+
+@ln_wallet.route('/decode_psbt/<psbt>', strict_slashes=False)
+@roles_accepted(Role.ROLE_ADMIN)
+def decode_psbt(psbt=None):
+    if not psbt:
+        return bad_request('please enter a non-empty psbt string')
+    try:
+        psbt = PartiallySignedTransaction.from_base64_or_binary(psbt)
+        logger.info('psbt inputs: %s', psbt.inputs)
+        logger.info('psbt outputs: %s', psbt.outputs)
+        return str(psbt)
+    except Exception as e: # pylint: disable=broad-except
+        return bad_request(str(e))
 
 @ln_wallet.route('/close/<string:peer_id>')
 @roles_accepted(Role.ROLE_ADMIN)
