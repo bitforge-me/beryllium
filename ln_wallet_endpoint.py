@@ -189,6 +189,7 @@ def create_psbt():
     addrs = []
     amounts = []
     mode = 'psbt'
+    psbt = None
     if request.method == 'POST':
         addrs = request.form.getlist('address')
         amounts = request.form.getlist('amount')
@@ -201,20 +202,20 @@ def create_psbt():
             try:
                 res = rpc.prepare_psbt(outputs)
                 psbt = res['psbt']
-                flash(f'PSBT created: {psbt}')
+                flash(f'PSBT created', 'success')
             except Exception as e: # pylint: disable=broad-except
                 flash(f'Failed to create PSBT: {e}', 'danger')
         elif mode == 'withdraw':
             try:
                 res = rpc.multi_withdraw(outputs)
                 txid = res['txid']
-                flash(f'Withdrawal transaction created: {txid}')
+                flash(f'Withdrawal transaction created: {txid}', 'success')
             except Exception as e: # pylint: disable=broad-except
                 flash(f'Failed to create withdrawal transaction: {e}', 'danger')
         else:
             flash(f'Unknown mode: {mode}', 'danger')
     return render_template(
-        'lightning/create_psbt.html', onchain=onchain, addrs=addrs, amounts=amounts, mode=mode)
+        'lightning/create_psbt.html', onchain=onchain, addrs=addrs, amounts=amounts, mode=mode, psbt=psbt)
 
 @ln_wallet.route('/sign_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
@@ -225,7 +226,7 @@ def sign_psbt():
             rpc = LnRpc()
             res = rpc.sign_psbt(psbt)
             signed_psbt = res['signed_psbt']
-            flash(f'Sign successful, Signed PSBT: {signed_psbt}')
+            flash(f'Sign successful, Signed PSBT: {signed_psbt}', 'success')
         except Exception as e: # pylint: disable=broad-except
             flash(f'Sign failed: {e}', 'danger')
     return render_template('lightning/sign_psbt.html')
@@ -239,7 +240,7 @@ def broadcast():
             rpc = LnRpc()
             res = rpc.send_psbt(psbt)
             txid = res['txid']
-            flash(f'Broadcast successful, TXID: {txid}')
+            flash(f'Broadcast successful, TXID: {txid}', 'success')
         except Exception as e: # pylint: disable=broad-except
             flash(f'Broadcast failed: {e}', 'danger')
     return render_template('lightning/broadcast_psbt.html')

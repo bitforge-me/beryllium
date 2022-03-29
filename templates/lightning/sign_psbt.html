@@ -13,28 +13,20 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static',filename='assets/lightning/utils.js') }}"></script>
 <script>
-    async function decodePsbt(psbt) {
-        const response = await fetch('decode_psbt?' + new URLSearchParams({psbt: psbt}));
-        if (!response.ok) {
-            bootbox.alert({message: `An error has occured decoding the psbt: ${response.status}`});
-            return null;
-        }
-        const data = await response.json();
-        return data;
-    }
-
     async function confirm(form_class, psbt) {
         if (!document.querySelector(form_class).reportValidity()) {
             return;
         }
-        const amount = 'NYI!!';
         var data = await decodePsbt(psbt);
         if (data == null)
             return;
+        var message = 'Do you want to sign?<br/>';
+        message = message + formatOutputs(data.fee, data.outputs);
         bootbox.confirm({
             title: 'Confirm Sign',
-            message: `TODO: we should show all outputs!!! Total BTC before fees: ${amount} btc. Do you want to sign?`,
+            message: message,
             buttons: {
                 confirm: {
                     label: 'Yes',
