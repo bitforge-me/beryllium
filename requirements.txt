@@ -30,5 +30,5 @@ cryptography==36.0.2
 debugpy==1.6.0
 pyotp==2.6.0
 zxcvbn==4.4.28
-pyln-client==0.10.2
+pyln-client==0.10.1
 pytz==2022.1
