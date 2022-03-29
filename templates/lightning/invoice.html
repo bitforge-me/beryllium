@@ -5,8 +5,8 @@
 <h2>Invoice Created</h2>
 {{ qrcode_svg | safe }}
 <div class="form-group">
-  <label for="readonlytextarea" class="form-label mt-4">Invoice Data</label>
-  <textarea class="form-control" id="readonlytextarea" rows="3" placeholder="{{ bolt11 }}" readonly></textarea>
+    <label for="readonlytextarea" class="form-label mt-4">Invoice Data</label>
+    <textarea class="form-control" id="readonlytextarea" rows="3" placeholder="{{ bolt11 }}" readonly></textarea>
 </div>
 <button id="copy-invoice" type="button" class="btn btn-primary">Copy Invoice</button>
 <br/>

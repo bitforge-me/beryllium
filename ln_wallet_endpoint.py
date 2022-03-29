@@ -3,8 +3,9 @@
 import logging
 import secrets
 
-from flask import Blueprint, render_template, request, flash, Markup, url_for, redirect
+from flask import Blueprint, render_template, request, flash, Markup, jsonify
 from flask_security import roles_accepted
+from bitcoin.rpc import Proxy
 
 from utils import qrcode_svg_create
 from web_utils import bad_request
@@ -15,7 +16,8 @@ from ln import LnRpc
 logger = logging.getLogger(__name__)
 ln_wallet = Blueprint('ln_wallet', __name__, template_folder='templates')
 limiter.limit("100/minute")(ln_wallet)
-bitcoin_explorer = app.config["BITCOIN_EXPLORER"]
+BITCOIN_EXPLORER = app.config["BITCOIN_EXPLORER"]
+TESTNET = app.config['TESTNET']
 
 @ln_wallet.route('/')
 @roles_accepted(Role.ROLE_ADMIN)
@@ -56,7 +58,7 @@ def list_txs():
     return render_template(
         "lightning/list_transactions.html",
         transactions=sorted_txs,
-        bitcoin_explorer=bitcoin_explorer)
+        bitcoin_explorer=BITCOIN_EXPLORER)
 
 @ln_wallet.route('/invoice', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
@@ -146,14 +148,14 @@ def invoices():
     paid_invoices = rpc.list_paid()
     return render_template("lightning/invoices.html", paid_invoices=paid_invoices)
 
-@ln_wallet.route('/decode_pay/<bolt11>', strict_slashes=False)
+@ln_wallet.route('/decode_bolt11/<bolt11>', strict_slashes=False)
 @roles_accepted(Role.ROLE_ADMIN)
-def decode_pay(bolt11=None):
-    if bolt11 is None:
-        return "Please enter a non-empty bolt11 string"
+def decode_bolt11(bolt11=None):
+    if not bolt11:
+        return bad_request('please enter a non-empty bolt11 string')
     try:
         rpc = LnRpc()
-        return rpc.decode_pay(str(bolt11))
+        return rpc.decode_bolt11(str(bolt11))
     except Exception as e: # pylint: disable=broad-except
         return bad_request(str(e))
 
@@ -187,6 +189,7 @@ def create_psbt():
     addrs = []
     amounts = []
     mode = 'psbt'
+    psbt = None
     if request.method == 'POST':
         addrs = request.form.getlist('address')
         amounts = request.form.getlist('amount')
@@ -199,34 +202,35 @@ def create_psbt():
             try:
                 res = rpc.prepare_psbt(outputs)
                 psbt = res['psbt']
-                flash(f'PSBT created: {psbt}')
+                flash(f'PSBT created', 'success')
             except Exception as e: # pylint: disable=broad-except
                 flash(f'Failed to create PSBT: {e}', 'danger')
         elif mode == 'withdraw':
             try:
                 res = rpc.multi_withdraw(outputs)
                 txid = res['txid']
-                flash(f'Withdrawal transaction created: {txid}')
+                flash(f'Withdrawal transaction created: {txid}', 'success')
             except Exception as e: # pylint: disable=broad-except
                 flash(f'Failed to create withdrawal transaction: {e}', 'danger')
         else:
             flash(f'Unknown mode: {mode}', 'danger')
     return render_template(
-        'lightning/create_psbt.html', onchain=onchain, addrs=addrs, amounts=amounts, mode=mode)
+        'lightning/create_psbt.html', onchain=onchain, addrs=addrs, amounts=amounts, mode=mode, psbt=psbt)
 
 @ln_wallet.route('/sign_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def sign_psbt():
+    signed_psbt = None
     if request.method == 'POST':
         psbt = request.form["psbt"]
         try:
             rpc = LnRpc()
             res = rpc.sign_psbt(psbt)
             signed_psbt = res['signed_psbt']
-            flash(f'Sign successful, Signed PSBT: {signed_psbt}')
+            flash(f'Sign successful', 'success')
         except Exception as e: # pylint: disable=broad-except
             flash(f'Sign failed: {e}', 'danger')
-    return render_template('lightning/sign_psbt.html')
+    return render_template('lightning/sign_psbt.html', signed_psbt=signed_psbt)
 
 @ln_wallet.route('/broadcast_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
@@ -237,14 +241,29 @@ def broadcast():
             rpc = LnRpc()
             res = rpc.send_psbt(psbt)
             txid = res['txid']
-            flash(f'Broadcast successful, TXID: {txid}')
+            flash(f'Broadcast successful, TXID: {txid}', 'success')
         except Exception as e: # pylint: disable=broad-except
             flash(f'Broadcast failed: {e}', 'danger')
     return render_template('lightning/broadcast_psbt.html')
+
+@ln_wallet.route('/decode_psbt')
+@roles_accepted(Role.ROLE_ADMIN)
+def decode_psbt():
+    psbt = request.args['psbt']
+    if not psbt:
+        return bad_request('empty psbt string')
+    try:
+        service_url = app.config['BITCOIND_RPC_URL']
+        connection = Proxy(service_url=service_url)
+        psbt_json = connection._call('decodepsbt', psbt)
+        logger.info('psbt json: %s', psbt_json)
+        return jsonify(psbt_json)
+    except Exception as e: # pylint: disable=broad-except
+        return bad_request(str(e))
 
 @ln_wallet.route('/close/<string:peer_id>')
 @roles_accepted(Role.ROLE_ADMIN)
 def close(peer_id):
     rpc = LnRpc()
     close_tx = rpc.close_channel(peer_id)
-    return render_template('lightning/close.html', close_tx=close_tx, bitcoin_explorer=app.config["BITCOIN_EXPLORER"])
+    return render_template('lightning/close.html', close_tx=close_tx, bitcoin_explorer=BITCOIN_EXPLORER)

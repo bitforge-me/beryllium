@@ -125,10 +125,15 @@ if os.getenv("MIN_AVAILABLE_NZD_BALANCE"):
 else:
     app.config["MIN_AVAILABLE_NZD_BALANCE"] = decimal.Decimal(2000)
 
-if os.getenv("BITCOIN_EXPLORER"):
-    app.config["BITCOIN_EXPLORER"] = os.getenv("BITCOIN_EXPLORER")
+if os.getenv("BITCOIND_RPC_URL"):
+    app.config["BITCOIND_RPC_URL"] = os.getenv("BITCOIND_RPC_URL")
 else:
-    app.config["BITCOIN_EXPLORER"] = "https://testnet.bitcoinexplorer.org"
+    app.config["BITCOIND_RPC_URL"] = ""
+
+if app.config["TESTNET"]:
+    app.config["BITCOIN_EXPLORER"] = "https://blockstream.info/testnet/"
+else:
+    app.config["BITCOIN_EXPLORER"] = "https://blockstream.info/"
 
 def set_vital_setting(env_name, setting_name=None, acceptable_values=None, custom_handler=None):
     # pylint: disable=global-statement

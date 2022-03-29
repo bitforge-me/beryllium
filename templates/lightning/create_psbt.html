@@ -4,6 +4,18 @@
 {{ super() }}
 {% endblock %}
 {% block content %}
+{% if psbt %}
+<h2>PSBT Created</h2>
+<div class="form-group">
+    <label for="created_psbt" class="form-label mt-4">PSBT Data</label>
+    <textarea class="form-control" id="created_psbt" rows="3" placeholder="{{ psbt }}" readonly></textarea>
+</div>
+<button id="copy-psbt" type="button" class="btn btn-primary">Copy PSBT</button>
+<br/>
+<br/>
+<br/>
+{% endif %}
+
 <h2>Create PSBT/Withdrawal</h2>
 <form id="form" method="POST">
     <div class="payment-fields">
@@ -49,7 +61,7 @@
         }
         bootbox.confirm({
             title: `Confirm Create ${action}`,
-            message: `TODO: show all outputs here!!! Total: ${totalBtc} btc. Do you want to create the ${action}?`,
+            message: `Total: ${totalBtc} BTC. Do you want to create the ${action}?`,
             buttons: {
                 confirm: {
                     label: 'Yes',
@@ -86,6 +98,10 @@
     }
 
     $(document).ready(function() {
+        $('#copy-psbt').click(function() {
+            navigator.clipboard.writeText("{{ psbt }}");
+        });
+
         $('#max').click(function() {
             var ele = $('#max').parent().prev();
             console.log(ele);
