@@ -157,27 +157,6 @@ def decode_pay(bolt11=None):
     except Exception as e: # pylint: disable=broad-except
         return bad_request(str(e))
 
-@ln_wallet.route('/channel_opener', methods=['GET'])
-@roles_accepted(Role.ROLE_ADMIN)
-def channel_opener():
-    """ Returns template for opening LN channels """
-    return render_template("lightning/channel_opener.html")
-
-@ln_wallet.route('/open_channel/<string:node_pubkey>/<int:amount>', methods=['GET'])
-@roles_accepted(Role.ROLE_ADMIN)
-def open_channel(node_pubkey, amount):
-    """ Opens a LN channel """
-    rpc = LnRpc()
-    try:
-        rpc.connect_node(node_pubkey)
-        node_id = node_pubkey.split("@")
-        # pylint: disable=unused-variable
-        result = rpc.fund_channel(node_id[0], amount)
-        flash(Markup(f'successfully added node id: {node_id[0]} with the amount: {amount}'), 'success')
-    except Exception as e: # pylint: disable=broad-except
-        flash(Markup(e.args[0]), 'danger')
-    return render_template("lightning/channel_opener.html")
-
 @ln_wallet.route('/create_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def create_psbt():
@@ -249,7 +228,7 @@ def close(peer_id):
     close_tx = rpc.close_channel(peer_id)
     return render_template('lightning/close.html', close_tx=close_tx, bitcoin_explorer=app.config["BITCOIN_EXPLORER"])
 
-@ln_wallet.route('/testing', methods=['GET', 'POST'])
+@ln_wallet.route('/channel_opener', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def testing():
     if request.method == 'POST':
@@ -264,4 +243,10 @@ def testing():
             flash(Markup(f'successfully added node id: {node_id[0]} with the amount: {amount}'), 'success')
         except Exception as e: # pylint: disable=broad-except
             flash(Markup(e.args[0]), 'danger')
-    return render_template('lightning/testing.html')
+    return render_template('lightning/channel_opener.html')
+
+#@ln_wallet.route('/testing')
+#@roles_accepted(Role.ROLE_ADMIN)
+#def testing_index():
+#    rpc = LnRpc()
+#    return render_template('lightning/testing_index.html', funds_dict=rpc.list_funds())

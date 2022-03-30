@@ -4,31 +4,58 @@
 {{ super() }}
 {% endblock %}
 {% block content %}
-<script>
-    const openChannel = function() {
-        var openChannelUrl = `/ln_wallet/open_channel/${document.querySelector('#nodeid').value}/${document.querySelector('#amount').value}`;
-        window.location = openChannelUrl;
-    }
-</script>
-<br>
 <h2>Open a Lightning Network Channel</h2>
-<p>Phasellus convallis elit id ullamcorper pulvinar. Duis aliquam turpis mauris, eu ultricies erat malesuada quis. Aliquam dapibus, lacus eget hendrerit bibendum, urna est aliquam sem, sit amet imperdiet est velit quis lorem.</p>
-<section>
+<p>Open a channel with a lighting node, entering the Node ID in this format: pubkey@address:port</p>
+<form id="form" method="POST">
     <div class="form-group">
         <label class="col-form-label mt-4" for="amount">Amount</label>
-        <input type="text" class="form-control" placeholder="Enter amount in satoshi" name="amount" id="amount">
+        <input type="text" class="form-control" placeholder="Enter amount in satoshi" name="amount" id="amount" required>
     </div>
     <div class="form-group">
         <label class="col-form-label mt-4" for="nodeid">Node ID</label>
-        <input type="text" class="form-control" placeholder="Enter Node ID" name="nodeid" id="nodeid">
+        <input type="text" class="form-control" placeholder="Enter Node ID" name="nodeid" id="nodeid" required>
     </div>
-    <div class="open_Channel" id="open_Channel">
-        <a class="button submit" onclick="openChannel()">
-	    <button type="button" class="btn btn-primary btn-lg mt-3">Open Channel</button>
-	</a>
-	</div>
-</section>
+    <button id="form-submit" type="button" class="btn btn-primary">Submit</button>
+</form>
 {% endblock %}
+
+{% block scripts %}
+<script>
+    function confirm(form_class, amount, nodeid) {
+        if (!document.querySelector(form_class).reportValidity()) {
+            return;
+        }
+        bootbox.confirm({
+            title: 'Opening Channel',
+	    message: `Confirm the creation of channel ${nodeid} with the amount of ${amount} sats`,
+            buttons: {
+                confirm: {
+                    label: 'Yes',
+                    className: 'btn-success'
+                },
+                cancel: {
+                    label: 'No',
+                    className: 'btn-danger'
+                }
+            },
+            callback: function (result) {
+                if (result)
+                    $(form_class).submit();
+            }
+        });
+    }
+
+    $(document).ready(function() {
+        $('#form-submit').click(function() {
+            var amount = $('#amount').val();
+            var nodeid = $('#nodeid').val();
+            confirm('#form', amount);
+            return false;
+        });
+    });
+</script>
+{% endblock %}
+
 {% block footer %}
 {{ super() }}
 {% endblock %}
