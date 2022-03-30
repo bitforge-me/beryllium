@@ -14,7 +14,8 @@ services:
     restart: unless-stopped
     environment:
       TESTNET: ${TESTNET}
-      BITCOIND_RPC_URL: http://rpcuser:rpcpass@bitcoind:18332
+      BITCOIN_DATADIR: /etc/bitcoin
+      BITCOIN_RPCCONNECT: bitcoind
       DATABASE_URL: postgresql://beryllium:beryllium@db:5432/beryllium
       SERVER_NAME: ${SERVER_NAME:?SERVER_NAME unset}
       ADMIN_EMAIL: ${ADMIN_EMAIL:?ADMIN_EMAIL unset}
@@ -44,6 +45,7 @@ services:
       REGISTRATION_DISABLE: ${REGISTRATION_DISABLE}
     volumes:
       - "clightning_bitcoin_datadir:/etc/lightning"
+      - "bitcoin_datadir:/etc/bitcoin"
     links:
       - clightning_bitcoin
       - db
@@ -81,11 +83,12 @@ services:
         whitelist=0.0.0.0/0
         rpcuser=rpcuser
         rpcpassword=rpcpass
+        rpcport=18332
         rpcbind=0.0.0.0:18332
         rpcallowip=0.0.0.0/0
         settings=false
     ports:
-      - "0.0.0.0:18333:18333"
+      - "0.0.0.0:${BITCOIN_P2P_PORT:?BITCOIN_P2P_PORT not set}:${BITCOIN_P2P_PORT}"
       - "0.0.0.0:18332:18332"
     volumes:
       - "bitcoin_datadir:/data"

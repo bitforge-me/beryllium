@@ -2,6 +2,7 @@
 
 import logging
 import secrets
+import os
 
 from flask import Blueprint, render_template, request, flash, Markup, jsonify
 from flask_security import roles_accepted
@@ -246,6 +247,21 @@ def broadcast():
             flash(f'Broadcast failed: {e}', 'danger')
     return render_template('lightning/broadcast_psbt.html')
 
+def _build_bitcoin_rpc_url(bitcoin_datadir, bitcoin_host):
+    btc_conf_file = os.path.join(bitcoin_datadir, 'bitcoin.conf')
+    conf = {'rpcuser': ""}
+    with open(btc_conf_file, 'r', encoding='utf-8') as fd:
+        for line in fd.readlines():
+            if '#' in line:
+                line = line[:line.index('#')]
+            if '=' not in line:
+                continue
+            k, v = line.split('=', 1)
+            conf[k.strip()] = v.strip()
+    authpair = f"{conf['rpcuser']}:{conf['rpcpassword']}"
+    service_url = f"http://{authpair}@{bitcoin_host}:{conf['rpcport']}"
+    return service_url
+
 @ln_wallet.route('/decode_psbt')
 @roles_accepted(Role.ROLE_ADMIN)
 def decode_psbt():
@@ -253,7 +269,7 @@ def decode_psbt():
     if not psbt:
         return bad_request('empty psbt string')
     try:
-        service_url = app.config['BITCOIND_RPC_URL']
+        service_url = _build_bitcoin_rpc_url(app.config['BITCOIN_DATADIR'], app.config['BITCOIN_RPCCONNECT'])
         connection = Proxy(service_url=service_url)
         psbt_json = connection._call('decodepsbt', psbt) # pylint: disable=protected-access
         logger.info('psbt json: %s', psbt_json)
