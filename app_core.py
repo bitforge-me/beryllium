@@ -125,11 +125,6 @@ if os.getenv("MIN_AVAILABLE_NZD_BALANCE"):
 else:
     app.config["MIN_AVAILABLE_NZD_BALANCE"] = decimal.Decimal(2000)
 
-if os.getenv("BITCOIND_RPC_URL"):
-    app.config["BITCOIND_RPC_URL"] = os.getenv("BITCOIND_RPC_URL")
-else:
-    app.config["BITCOIND_RPC_URL"] = ""
-
 if app.config["TESTNET"]:
     app.config["BITCOIN_EXPLORER"] = "https://blockstream.info/testnet/"
 else:
@@ -174,6 +169,8 @@ set_vital_setting("APLYID_WEBHOOK_BEARER_TOKEN")
 set_vital_setting("B2_ACCOUNT_ID")
 set_vital_setting("B2_APPLICATION_KEY")
 set_vital_setting("KYC_BUCKET")
+set_vital_setting("BITCOIN_DATADIR")
+set_vital_setting("BITCOIN_RPCCONNECT")
 
 db = SQLAlchemy(app)
 mail = MailSendGrid(app)
