@@ -284,9 +284,3 @@ def testing():
         except Exception as e: # pylint: disable=broad-except
             flash(Markup(e.args[0]), 'danger')
     return render_template('lightning/channel_opener.html')
-
-#@ln_wallet.route('/testing')
-#@roles_accepted(Role.ROLE_ADMIN)
-#def testing_index():
-#    rpc = LnRpc()
-#    return render_template('lightning/testing_index.html', funds_dict=rpc.list_funds())
