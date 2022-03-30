@@ -1,6 +1,21 @@
 {% extends "lightning/layout.html" %}
 {% block title %}Create Invoice{% endblock %}
 {% block content %}
+<<<<<<< HEAD
+=======
+{% if signed_psbt %}
+<h2>PSBT Signed</h2>
+<div class="form-group">
+    <label for="signed_psbt" class="form-label mt-4">PSBT Data</label>
+    <textarea class="form-control" id="signed_psbt" rows="3" placeholder="{{ signed_psbt }}" readonly></textarea>
+</div>
+<button id="copy-psbt" type="button" class="btn btn-primary">Copy PSBT</button>
+<br/>
+<br/>
+<br/>
+{% endif %}
+
+>>>>>>> 8bd808bb2d3dbb6580a6efabe4ad840631587e91
 <h2>Sign PSBT</h2>
 <p>Sign a PSBT.</p>
 <form id="form" method="POST">
@@ -13,6 +28,7 @@
 {% endblock %}
 
 {% block scripts %}
+<<<<<<< HEAD
 <script src="{{ url_for('static',filename='assets/lightning/psbt-amount-browserified.js') }}"></script>
 <script>
     function confirm(form_class, psbt) {
@@ -22,6 +38,22 @@
         bootbox.confirm({
             title: 'Confirm Sign',
             message: `TODO: we should show all outputs!!! Use the 'decode_pay' endpoint. Total BTC before fees: ₿${getUnsignedPSBTAmount.getUnsignedPSBTAmount(psbt)}. Do you want to sign?`,
+=======
+<script src="{{ url_for('static',filename='assets/lightning/utils.js') }}"></script>
+<script>
+    async function confirm(form_class, psbt) {
+        if (!document.querySelector(form_class).reportValidity()) {
+            return;
+        }
+        var data = await decodePsbt(psbt);
+        if (data == null)
+            return;
+        var message = 'Do you want to sign?<br/>';
+        message = message + formatOutputs(data.fee, data.outputs);
+        bootbox.confirm({
+            title: 'Confirm Sign',
+            message: message,
+>>>>>>> 8bd808bb2d3dbb6580a6efabe4ad840631587e91
             buttons: {
                 confirm: {
                     label: 'Yes',
@@ -40,6 +72,13 @@
     }
 
     $(document).ready(function() {
+<<<<<<< HEAD
+=======
+        $('#copy-psbt').click(function() {
+            navigator.clipboard.writeText("{{ signed_psbt }}");
+        });
+
+>>>>>>> 8bd808bb2d3dbb6580a6efabe4ad840631587e91
         $('#form-submit').click(function() {
             var psbt = $('#psbt').val();
             confirm('#form', psbt);
