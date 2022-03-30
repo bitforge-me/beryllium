@@ -202,7 +202,7 @@ def create_psbt():
             try:
                 res = rpc.prepare_psbt(outputs)
                 psbt = res['psbt']
-                flash(f'PSBT created', 'success')
+                flash('PSBT created', 'success')
             except Exception as e: # pylint: disable=broad-except
                 flash(f'Failed to create PSBT: {e}', 'danger')
         elif mode == 'withdraw':
@@ -227,7 +227,7 @@ def sign_psbt():
             rpc = LnRpc()
             res = rpc.sign_psbt(psbt)
             signed_psbt = res['signed_psbt']
-            flash(f'Sign successful', 'success')
+            flash('Sign successful', 'success')
         except Exception as e: # pylint: disable=broad-except
             flash(f'Sign failed: {e}', 'danger')
     return render_template('lightning/sign_psbt.html', signed_psbt=signed_psbt)
@@ -255,7 +255,7 @@ def decode_psbt():
     try:
         service_url = app.config['BITCOIND_RPC_URL']
         connection = Proxy(service_url=service_url)
-        psbt_json = connection._call('decodepsbt', psbt)
+        psbt_json = connection._call('decodepsbt', psbt) # pylint: disable=protected-access
         logger.info('psbt json: %s', psbt_json)
         return jsonify(psbt_json)
     except Exception as e: # pylint: disable=broad-except

@@ -1,3 +1,4 @@
+pylint --version
 pylint `ls -R|grep .py$|xargs` \
     --disable=fixme,line-too-long,unused-argument,missing-module-docstring,missing-function-docstring,missing-class-docstring,no-self-use \
     --variable-rgx="[a-z_][a-z0-9_]{0,30}$" \
