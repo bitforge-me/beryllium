@@ -7,6 +7,8 @@ services:
     environment:
       POSTGRES_USER: beryllium
       POSTGRES_PASSWORD: beryllium
+    volumes:
+      - pgdata:/var/lib/postgresql/data
 
   app:
     image: beryllium_app
@@ -132,7 +134,12 @@ services:
       - "9737"
 
 volumes:
+  pgdata:
   bitcoin_datadir:
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: '${BITCOIN_DATA_DEVICE:?BITCOIN_DATA_DEVICE not set}'
   bitcoin_wallet_datadir:
   clightning_bitcoin_datadir:
   clightning_bitcoin_spark:
