@@ -126,14 +126,15 @@ class LnRpc():
         sats_onchain = 0
         # Only shows after the very first transaction otherwise errors.
         for chan in funds_dict["channels"]:
-            msats_channel = chan["our_amount_msat"].millisatoshis
-            if msats_channel > msats_largest_channel:
-                msats_largest_channel = msats_channel
-            msats_channels += msats_channel
-            msats_channel_theirs = chan["amount_msat"].millisatoshis - chan["our_amount_msat"].millisatoshis
-            if msats_channel_theirs > msats_largest_channel_theirs:
-                msats_largest_channel_theirs = msats_channel_theirs
-            msats_channels_theirs += msats_channel_theirs
+            if chan["state"] == "CHANNELD_NORMAL":
+                msats_channel = chan["our_amount_msat"].millisatoshis
+                if msats_channel > msats_largest_channel:
+                    msats_largest_channel = msats_channel
+                msats_channels += msats_channel
+                msats_channel_theirs = chan["amount_msat"].millisatoshis - chan["our_amount_msat"].millisatoshis
+                if msats_channel_theirs > msats_largest_channel_theirs:
+                    msats_largest_channel_theirs = msats_channel_theirs
+                msats_channels_theirs += msats_channel_theirs
         sats_largest_channel = _msat_to_sat(msats_largest_channel)
         sats_channels = _msat_to_sat(msats_channels)
         sats_largest_channel_theirs = _msat_to_sat(msats_largest_channel_theirs)
@@ -148,7 +149,7 @@ class LnRpc():
     #    return self.instance.fundchannel_start(node_id, _sat_to_msat(sats))
 
     def fund_channel(self, node_id, sats):
-        return self.instance.fundchannel(node_id, _sat_to_msat(sats))
+        return self.instance.fundchannel(node_id, sats)
 
     def close_channel(self, peer_id):
         return self.instance.close(peer_id)

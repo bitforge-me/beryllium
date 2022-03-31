@@ -60,6 +60,9 @@
     }
 
     function confirm(form_class, amount) {
+        if (!document.querySelector(form_class).reportValidity()) {
+            return;
+        }
         bootbox.confirm({
             message: `Are you sure you want to create an invoice for ${amount} sats?`,
             buttons: {
