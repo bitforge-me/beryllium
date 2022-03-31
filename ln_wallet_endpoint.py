@@ -170,8 +170,7 @@ def channel_opener():
             rpc = LnRpc()
             rpc.connect_node(nodeid)
             node_id = nodeid.split("@")
-            # pylint: disable=unused-variable
-            result = rpc.fund_channel(node_id[0], amount)
+            rpc.fund_channel(node_id[0], amount)
             flash(Markup(f'successfully added node id: {node_id[0]} with the amount: {amount}'), 'success')
         except Exception as e: # pylint: disable=broad-except
             flash(Markup(e.args[0]), 'danger')
