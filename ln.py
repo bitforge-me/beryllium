@@ -149,7 +149,7 @@ class LnRpc():
     #    return self.instance.fundchannel_start(node_id, _sat_to_msat(sats))
 
     def fund_channel(self, node_id, sats):
-        return self.instance.fundchannel(node_id, _sat_to_msat(sats))
+        return self.instance.fundchannel(node_id, sats)
 
     def close_channel(self, peer_id):
         return self.instance.close(peer_id)
