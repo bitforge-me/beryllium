@@ -16,7 +16,7 @@
 	{% for paid_invoice in paid_invoices %}
             <tr class="table-secondary">
 		<td>{{paid_invoice.date}}</td>
-                <td>{{paid_invoice.amount_msat}}</td>
+                <td>{{paid_invoice.amount_sats}}</td>
                 <td>{{paid_invoice.status}}</td>
             </tr>
 	{% endfor %}
