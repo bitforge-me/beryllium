@@ -33,7 +33,7 @@ import assets
 import kyc_core
 import fiatdb_core
 import coordinator
-from ln import LnRpc
+from ln import LnRpc, _msat_to_sat
 import wallet
 
 USER_BALANCE_SHOW = 'show balance'
@@ -372,53 +372,56 @@ class WebGreenlet():
         self.ln_invoice_greenlet = None
         self.exception_func = exception_func
 
+    def _runloop(self):
+        logger.info("WebGreenlet runloop started")
+        logger.info("WebGreenlet webserver starting (addr: %s, port: %d)", self.addr, self.port)
+        socketio.run(app, host=self.addr, port=self.port)
+
+    def _process_periodic_events_loop(self):
+        current = int(time.time())
+        email_alerts_timer_last = current
+        deposits_and_orders_timer_last = current
+        while True:
+            current = time.time()
+            if current - email_alerts_timer_last > 1800:
+                gevent.spawn(process_email_alerts)
+                email_alerts_timer_last += 1800
+            if current - deposits_and_orders_timer_last > 300:
+                gevent.spawn(process_deposits_and_broker_orders)
+                deposits_and_orders_timer_last += 300
+            gevent.sleep(5)
+
+    def _process_ln_invoices_loop(self):
+        gevent.sleep(10, False) # HACK: wait for the webserver to start
+        lastpay_index = 0
+        while True:
+            try:
+                if lastpay_index == 0:
+                    lastpay_index = LnRpc().lastpay_index()
+                pay, err = wallet.any_deposit_completed(lastpay_index)
+                if err:
+                    logger.debug('wait_any_invoice failed: "%s"', err)
+                    gevent.sleep(2, False) # probably timeout so we wait a short time before polling again
+                else:
+                    logger.info('wait_any_invoice: %s', pay)
+                    if pay['status'] == 'paid':
+                        label = pay['label']
+                        payment_hash = pay['payment_hash']
+                        bolt11 = pay['bolt11']
+                        lastpay_index = pay['pay_index']
+                        description = pay['description']
+                        amount_msat = pay['amount_msat']
+                        amount = _msat_to_sat(amount_msat)
+                        deposit = CryptoDeposit.from_wallet_reference(db.session, bolt11)
+                        email = None
+                        if deposit:
+                            email = deposit.user.email
+                        websocket.ln_invoice_paid_event(label, payment_hash, bolt11, email, description, amount)
+            except ConnectionError as e:
+                gevent.sleep(5, False)
+                logger.error('wait_any_invoice error: %s', e)
+
     def start(self):
-        def runloop():
-            logger.info("WebGreenlet runloop started")
-            logger.info("WebGreenlet webserver starting (addr: %s, port: %d)", self.addr, self.port)
-            socketio.run(app, host=self.addr, port=self.port)
-
-        def process_periodic_events_loop():
-            current = int(time.time())
-            email_alerts_timer_last = current
-            deposits_and_orders_timer_last = current
-            while True:
-                current = time.time()
-                if current - email_alerts_timer_last > 1800:
-                    gevent.spawn(process_email_alerts)
-                    email_alerts_timer_last += 1800
-                if current - deposits_and_orders_timer_last > 300:
-                    gevent.spawn(process_deposits_and_broker_orders)
-                    deposits_and_orders_timer_last += 300
-                gevent.sleep(5)
-
-        def process_ln_invoices_loop():
-            gevent.sleep(10, False) # HACK: wait for the webserver to start
-            lastpay_index = 0
-            while True:
-                try:
-                    if lastpay_index == 0:
-                        lastpay_index = LnRpc().lastpay_index()
-                    pay, err = wallet.any_deposit_completed(lastpay_index)
-                    if err:
-                        logger.debug('wait_any_invoice failed: "%s"', err)
-                        gevent.sleep(2, False) # probably timeout so we wait a short time before polling again
-                    else:
-                        logger.info('wait_any_invoice: %s', pay)
-                        if pay['status'] == 'paid':
-                            label = pay['label']
-                            payment_hash = pay['payment_hash']
-                            bolt11 = pay['bolt11']
-                            lastpay_index = pay['pay_index']
-                            deposit = CryptoDeposit.from_wallet_reference(db.session, bolt11)
-                            email = None
-                            if deposit:
-                                email = deposit.user.email
-                            websocket.ln_invoice_paid_event(label, payment_hash, bolt11, email)
-                except ConnectionError as e:
-                    gevent.sleep(5, False)
-                    logger.error('wait_any_invoice error: %s', e)
-
         def start_greenlets():
             logger.info("starting WebGreenlet runloop...")
             self.runloop_greenlet.start()
@@ -426,9 +429,9 @@ class WebGreenlet():
             self.ln_invoice_greenlet.start()
 
         # create greenlets
-        self.runloop_greenlet = gevent.Greenlet(runloop)
-        self.process_periodic_events_greenlet = gevent.Greenlet(process_periodic_events_loop)
-        self.ln_invoice_greenlet = gevent.Greenlet(process_ln_invoices_loop)
+        self.runloop_greenlet = gevent.Greenlet(self._runloop)
+        self.process_periodic_events_greenlet = gevent.Greenlet(self._process_periodic_events_loop)
+        self.ln_invoice_greenlet = gevent.Greenlet(self._process_ln_invoices_loop)
         if self.exception_func:
             self.runloop_greenlet.link_exception(self.exception_func)
         # start greenlets
