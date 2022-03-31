@@ -136,7 +136,7 @@ def pay_invoice():
         invoice = request.form['invoice']
         try:
             result = LnRpc().send_invoice(invoice)
-            flash(f'Invoice paid: {result}')
+            flash(f'Invoice paid: {result}', 'success')
         except Exception as e: # pylint: disable=broad-except
             flash(f'Error paying invoice: {e}', 'danger')
     return render_template("lightning/pay_invoice.html", invoice=invoice)
