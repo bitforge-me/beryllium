@@ -160,27 +160,44 @@ def decode_bolt11(bolt11=None):
     except Exception as e: # pylint: disable=broad-except
         return bad_request(str(e))
 
-@ln_wallet.route('/channel_opener', methods=['GET'])
+@ln_wallet.route('/channel_opener', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def channel_opener():
-    """ Returns template for opening LN channels """
-    return render_template("lightning/channel_opener.html")
+    if request.method == 'POST':
+        amount = request.form["amount"]
+        nodeid = request.form["nodeid"]
+        try:
+            rpc = LnRpc()
+            rpc.connect_node(nodeid)
+            node_id = nodeid.split("@")
+            # pylint: disable=unused-variable
+            result = rpc.fund_channel(node_id[0], amount)
+            flash(Markup(f'successfully added node id: {node_id[0]} with the amount: {amount}'), 'success')
+        except Exception as e: # pylint: disable=broad-except
+            flash(Markup(e.args[0]), 'danger')
+    return render_template('lightning/channel_opener.html')
 
-@ln_wallet.route('/open_channel/<string:node_pubkey>/<int:amount>', methods=['GET'])
-@roles_accepted(Role.ROLE_ADMIN)
-def open_channel(node_pubkey, amount):
-    """ Opens a LN channel """
-    rpc = LnRpc()
-    try:
-        rpc.connect_node(node_pubkey)
-        node_id = node_pubkey.split("@")
-        # pylint: disable=unused-variable
-        result = rpc.fund_channel(node_id[0], amount)
-        flash(Markup(f'successfully added node id: {node_id[0]} with the amount: {amount}'), 'success')
-    except Exception as e: # pylint: disable=broad-except
-        flash(Markup(e.args[0]), 'danger')
-    return render_template("lightning/channel_opener.html")
-
+#@ln_wallet.route('/channel_opener', methods=['GET'])
+#@roles_accepted(Role.ROLE_ADMIN)
+#def channel_opener():
+#    """ Returns template for opening LN channels """
+#    return render_template("lightning/channel_opener.html")
+#
+#@ln_wallet.route('/open_channel/<string:node_pubkey>/<int:amount>', methods=['GET'])
+#@roles_accepted(Role.ROLE_ADMIN)
+#def open_channel(node_pubkey, amount):
+#    """ Opens a LN channel """
+#    rpc = LnRpc()
+#    try:
+#        rpc.connect_node(node_pubkey)
+#        node_id = node_pubkey.split("@")
+#        # pylint: disable=unused-variable
+#        result = rpc.fund_channel(node_id[0], amount)
+#        flash(Markup(f'successfully added node id: {node_id[0]} with the amount: {amount}'), 'success')
+#    except Exception as e: # pylint: disable=broad-except
+#        flash(Markup(e.args[0]), 'danger')
+#    return render_template("lightning/channel_opener.html")
+#
 @ln_wallet.route('/create_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def create_psbt():
