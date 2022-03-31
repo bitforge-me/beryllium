@@ -77,9 +77,9 @@ def ln_invoice():
         qrcode_svg = qrcode_svg_create(bolt11, 10)
     return render_template("lightning/invoice.html", bolt11=bolt11, label=label, qrcode_svg=qrcode_svg)
 
-@ln_wallet.route('/list_peers', methods=['GET', 'POST'])
+@ln_wallet.route('/rebalance_channel', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
-def list_peers():
+def rebalance_channel():
     """ Returns a template listing all connected LN peers """
     rpc = LnRpc()
     if request.method == 'POST':
@@ -119,7 +119,7 @@ def list_peers():
         peers[i]["sats_total"] = int(peers[i]["sats_total"])
         peers[i]["can_send"] = int(peers[i]["can_send"])
         peers[i]["can_receive"] = int(peers[i]["can_receive"])
-    return render_template("lightning/list_peers.html", peers=peers)
+    return render_template("lightning/rebalance_channel.html", peers=peers)
 
 @ln_wallet.route('/list_forwards')
 @roles_accepted(Role.ROLE_ADMIN)
@@ -271,10 +271,3 @@ def decode_psbt():
         return jsonify(psbt_json)
     except Exception as e: # pylint: disable=broad-except
         return bad_request(str(e))
-
-@ln_wallet.route('/close/<string:peer_id>')
-@roles_accepted(Role.ROLE_ADMIN)
-def close(peer_id):
-    rpc = LnRpc()
-    close_tx = rpc.close_channel(peer_id)
-    return render_template('lightning/close.html', close_tx=close_tx, bitcoin_explorer=BITCOIN_EXPLORER)
