@@ -410,13 +410,13 @@ class WebGreenlet():
                         bolt11 = pay['bolt11']
                         lastpay_index = pay['pay_index']
                         description = pay['description']
-                        amount_msat = pay['amount_msat']
-                        amount = _msat_to_sat(amount_msat)
+                        msat = pay['msatoshi']
+                        sat = _msat_to_sat(msat)
                         deposit = CryptoDeposit.from_wallet_reference(db.session, bolt11)
                         email = None
                         if deposit:
                             email = deposit.user.email
-                        websocket.ln_invoice_paid_event(label, payment_hash, bolt11, email, description, amount)
+                        websocket.ln_invoice_paid_event(label, payment_hash, bolt11, email, description, sat)
             except ConnectionError as e:
                 gevent.sleep(5, False)
                 logger.error('wait_any_invoice error: %s', e)
