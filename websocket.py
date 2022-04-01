@@ -115,7 +115,7 @@ def ln_invoice_paid_event(label: str, payment_hash: str, bolt11: str, email: Opt
     socketio.emit('ln_invoice_paid', data, json=True, room=f'ln-{label}', namespace=NS)
     if email:
         socketio.emit('ln_invoice_paid', data, json=True, room=email, namespace=NS)
-    logger.info('ln_invoice_paid: %s, %s', label, email)
+    logger.info('ln_invoice_paid: %s, %s, %s, %s', label, email, description, amount_sat)
 
 class EventsNamespace(Namespace):
 
