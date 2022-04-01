@@ -110,12 +110,12 @@ def fiat_withdrawal_new_event(fiat_withdrawal: FiatWithdrawal):
     socketio.emit('fiat_withdrawal_new', data, json=True, room=fiat_withdrawal.user.email, namespace=NS)
     logger.info('fiat_withdrawal_new: %s', fiat_withdrawal.token)
 
-def ln_invoice_paid_event(label: str, payment_hash: str, bolt11: str, email: Optional[str]):
-    data = json.dumps(dict(label=label, payment_hash=payment_hash, bolt11=bolt11))
+def ln_invoice_paid_event(label: str, payment_hash: str, bolt11: str, email: Optional[str], description: str, amount_sat: int):
+    data = json.dumps(dict(label=label, payment_hash=payment_hash, bolt11=bolt11, description=description, amount_sat=amount_sat))
     socketio.emit('ln_invoice_paid', data, json=True, room=f'ln-{label}', namespace=NS)
     if email:
         socketio.emit('ln_invoice_paid', data, json=True, room=email, namespace=NS)
-    logger.info('ln_invoice_paid: %s, %s', label, email)
+    logger.info('ln_invoice_paid: %s, %s, %s, %s', label, email, description, amount_sat)
 
 class EventsNamespace(Namespace):
 
