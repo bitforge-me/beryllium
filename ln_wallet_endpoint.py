@@ -271,3 +271,10 @@ def decode_psbt():
         return jsonify(psbt_json)
     except Exception as e: # pylint: disable=broad-except
         return bad_request(str(e))
+
+@ln_wallet.route('/close/<string:peer_id>')
+@roles_accepted(Role.ROLE_ADMIN)
+def close(peer_id):
+    rpc = LnRpc()
+    close_tx = rpc.close_channel(peer_id)
+    return render_template('lightning/close.html', close_tx=close_tx, bitcoin_explorer=BITCOIN_EXPLORER)
