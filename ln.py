@@ -154,9 +154,9 @@ class LnRpc():
     def close_channel(self, peer_id):
         return self.instance.close(peer_id)
 
-    def new_address(self):
+    def new_address(self, address_type):
         # return a bech32 address
-        return self.instance.newaddr(addresstype='bech32')
+        return self.instance.newaddr(addresstype=address_type)
 
     def list_txs(self):
         return self.instance.listtransactions()
