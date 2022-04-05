@@ -131,8 +131,8 @@ class LnRpc():
                 paid_at = invoice["paid_at"]
                 paid_date = datetime.datetime.fromtimestamp(paid_at, pytz.timezone('Pacific/Auckland'))
                 payment_preimage = invoice["payment_preimage"]
-            results.append({"paid_date": paid_date, "description": description, "status": status, "amount_msat": amount_msat, "amount_sats": amount_sats})
-        return results 
+            results.append({"paid_date": paid_date, "description": description, "status": status, "amount_msat": amount_msat, "amount_sats": amount_sats, "pay_index": pay_index, "amount_received_msat": amount_received_msat, "payment_preimage": payment_preimage, "bolt11": bolt11, "expires_at": expires_at, "payment_hash": payment_hash, "label": label})
+        return results
 
     #
     # Onchain
