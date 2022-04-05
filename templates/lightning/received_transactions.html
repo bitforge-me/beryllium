@@ -9,9 +9,9 @@
 	<thead>
         <tr>
             <th scope="col">Paid Date</th>
-            <th scope="col">description</th>
-            <th scope="col">status</th>
-            <th scope="col">amount_sats</th>
+            <th scope="col">Description</th>
+            <th scope="col">Amount(sats)</th>
+            <th scope="col">Status</th>
         </tr>
 	</thead>
 	<tbody>
@@ -19,8 +19,8 @@
             <tr class="table-secondary">
                 <td>{{received_tx.paid_date}}</td>
                 <td>{{received_tx.description}}</td>
-                <td>{{received_tx.status}}</td>
                 <td>{{received_tx.amount_sats}}</td>
+                <td>{{received_tx.status}}</td>
 	    </tr>
 	    {% endfor %}
 	</tbody>
