@@ -108,6 +108,32 @@ class LnRpc():
     def list_forwards(self):
         return self.instance.listforwards()
 
+    def list_invoices(self):
+        results = []
+        result_invoices = self.instance.listinvoices()
+        for invoice in result_invoices["invoices"]:
+            label = invoice["label"]
+            description = invoice["description"]
+            payment_hash = invoice["payment_hash"]
+            expires_at = invoice["expires_at"]
+            amount_msat = invoice["amount_msat"]
+            amount_sats = _msat_to_sat(amount_msat)
+            bolt11 = invoice["bolt11"]
+            pay_index = None
+            amount_received_msat = None
+            paid_at = None
+            paid_date = None
+            payment_preimage = None
+            status = invoice["status"]
+            if status == 'paid':
+                pay_index = invoice["pay_index"]
+                amount_received_msat = invoice["amount_received_msat"]
+                paid_at = invoice["paid_at"]
+                paid_date = datetime.datetime.fromtimestamp(paid_at, pytz.timezone('Pacific/Auckland'))
+                payment_preimage = invoice["payment_preimage"]
+            results.append({"paid_date": paid_date, "description": description, "status": status, "amount_msat": amount_msat, "amount_sats": amount_sats})
+        return results 
+
     #
     # Onchain
     #

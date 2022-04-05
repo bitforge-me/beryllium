@@ -152,6 +152,14 @@ def invoices():
     paid_invoices = rpc.list_paid()
     return render_template("lightning/invoices.html", paid_invoices=paid_invoices)
 
+@ln_wallet.route('/list_received_transactions', methods=['GET'])
+@roles_accepted(Role.ROLE_ADMIN)
+def list_received_transactions():
+    """ Returns received transactions """
+    rpc = LnRpc()
+    received_txs = rpc.list_invoices()
+    return render_template("lightning/received_transactions.html", received_txs=received_txs)
+
 @ln_wallet.route('/decode_bolt11/<bolt11>', strict_slashes=False)
 @roles_accepted(Role.ROLE_ADMIN)
 def decode_bolt11(bolt11=None):
