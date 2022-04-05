@@ -20,6 +20,9 @@
 		<td>
 		{% for output in tx.outputs %}
 			<a href="{{ bitcoin_explorer }}tx/{{ tx.hash }}">{{ output.sats }},<a>
+			{% if loop.last %}
+				<a href="{{ bitcoin_explorer }}tx/{{ tx.hash }}">{{ output.sats }}</a>
+			{% endif %}
 		{% endfor %}
 		</td>
 		</tr>
