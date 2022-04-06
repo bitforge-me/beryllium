@@ -29,13 +29,13 @@ Generate a new bitcoin address by selecting "BECH32" or "P2SH-SEGWIT"
 <div class='some-page-wrapper'>
     <div class='row'>
         <div>
-<form id="bech32_address" method="POST" action="/ln_wallet/new_address/bech32">
+<form id="bech32_address" method="POST" action="/ln_wallet/new_address">
     <input type="hidden" id="address_type" name="address_type" value="bech32">
     <button id="bech32_address-submit" type="submit" class="btn btn-primary">BECH32</button>
 </form>
         </div>&nbsp&nbsp&nbsp&nbsp
         <div>
-<form id="p2sh_address" method="POST" action="/ln_wallet/new_address/p2sh-segwit">
+<form id="p2sh_address" method="POST" action="/ln_wallet/new_address">
 	<input type="hidden" id="address_type" name="address_type" value="p2sh-segwit">
     <button id="p2sh_address-submit" type="submit" class="btn btn-primary">P2SH-SEGWIT</button>
 </form>

@@ -33,13 +33,14 @@ def lightningd_getinfo():
     rpc = LnRpc()
     return render_template('lightning/lightningd_getinfo.html', info=rpc.get_info())
 
-@ln_wallet.route('/new_address/<address_type>', methods=['GET', 'POST'])
+@ln_wallet.route('/new_address', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
-def new_address_ep(address_type):
+def new_address_ep():
     """ Returns template showing a new address created by our HD wallet """
     address = None
     qrcode_svg = None
     if request.method == 'POST':
+        address_type = request.form.get('address_type')
         rpc = LnRpc()
         address = rpc.new_address(address_type)
         qrcode_svg = qrcode_svg_create(address[address_type], 10)
