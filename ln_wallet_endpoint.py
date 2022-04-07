@@ -33,13 +33,17 @@ def lightningd_getinfo():
     rpc = LnRpc()
     return render_template('lightning/lightningd_getinfo.html', info=rpc.get_info())
 
-@ln_wallet.route('/new_address')
+@ln_wallet.route('/new_address', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def new_address_ep():
     """ Returns template showing a new address created by our HD wallet """
-    rpc = LnRpc()
-    address = rpc.new_address()
-    qrcode_svg = qrcode_svg_create(address['bech32'], 10)
+    address = None
+    qrcode_svg = None
+    if request.method == 'POST':
+        address_type = request.form.get('address_type')
+        rpc = LnRpc()
+        address = rpc.new_address(address_type)
+        qrcode_svg = qrcode_svg_create(address[address_type], 10)
     return render_template("lightning/new_address.html", address=address, qrcode_svg=qrcode_svg)
 
 @ln_wallet.route('/list_txs')
@@ -77,9 +81,9 @@ def ln_invoice():
         qrcode_svg = qrcode_svg_create(bolt11, 10)
     return render_template("lightning/invoice.html", bolt11=bolt11, label=label, qrcode_svg=qrcode_svg)
 
-@ln_wallet.route('/list_peers', methods=['GET', 'POST'])
+@ln_wallet.route('/rebalance_channel', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
-def list_peers():
+def rebalance_channel():
     """ Returns a template listing all connected LN peers """
     rpc = LnRpc()
     if request.method == 'POST':
@@ -119,7 +123,7 @@ def list_peers():
         peers[i]["sats_total"] = int(peers[i]["sats_total"])
         peers[i]["can_send"] = int(peers[i]["can_send"])
         peers[i]["can_receive"] = int(peers[i]["can_receive"])
-    return render_template("lightning/list_peers.html", peers=peers)
+    return render_template("lightning/rebalance_channel.html", peers=peers)
 
 @ln_wallet.route('/list_forwards')
 @roles_accepted(Role.ROLE_ADMIN)
@@ -148,6 +152,14 @@ def invoices():
     rpc = LnRpc()
     paid_invoices = rpc.list_paid()
     return render_template("lightning/invoices.html", paid_invoices=paid_invoices)
+
+@ln_wallet.route('/list_received_transactions', methods=['GET'])
+@roles_accepted(Role.ROLE_ADMIN)
+def list_received_transactions():
+    """ Returns received transactions """
+    rpc = LnRpc()
+    received_txs = rpc.list_invoices()
+    return render_template("lightning/received_transactions.html", received_txs=received_txs)
 
 @ln_wallet.route('/decode_bolt11/<bolt11>', strict_slashes=False)
 @roles_accepted(Role.ROLE_ADMIN)
