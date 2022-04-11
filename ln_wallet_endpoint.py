@@ -285,6 +285,7 @@ def _build_bitcoin_rpc_url(bitcoin_datadir, bitcoin_host):
 @roles_accepted(Role.ROLE_ADMIN)
 def decode_psbt():
     psbt = request.args['psbt']
+    n
     if not psbt:
         return bad_request('empty psbt string')
     try:
@@ -295,4 +296,3 @@ def decode_psbt():
         return jsonify(psbt_json)
     except Exception as e: # pylint: disable=broad-except
         return bad_request(str(e))
-
