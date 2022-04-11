@@ -1,26 +1,31 @@
 {% extends "lightning/layout.html" %}
-{% block title %}Peers{% endblock %}
+{% block title %}Rebalance Channel{% endblock %}
 {% block content %}
 <div>
     <br> 
-    <h2>Peers</h2>
+    <h2>Rebalance Channel</h2>
+    <p>Rebalance Channels by sending satoshis from one channel into another channel.</p>
     <form id="rebalance-channel-form" method="POST">
-    <div class="input-group mb-3" id="payment-fields">
-        <div class="input-group-prepend">
-            <span class="input-group-text">Outgoing SCID</span>
-        </div>
-        <input type="text" size=32 name="oscid" class="input-element" id="oscid" class="form-control" placeholder="Outgoing Short Channel ID" required>&nbsp&nbsp&nbsp&nbsp
-        <div class="input-group-prepend">
-            <span class="input-group-text">Incoming SCID</span>
-        </div>
-            <input type="text" size=32 name="iscid" class="input-element" id="iscid" class="form-control" placeholder="Incoming Short Channel ID" required>&nbsp&nbsp&nbsp&nbsp
-        <div class="input-group-prepend">
-            <span class="input-group-text">Amount (sats)</span>
-        </div>
-            <input type="text" size=64 name="amount" class="input-element" id="amount" class="form-control" placeholder="amount in sats" required>
-    </div>
-    <button id="rebalance-channel-form-submit" type="submit" class="btn btn-primary">Rebalance Channel</button>
-</form>
+      <input type="hidden" name="form-name" value="rebalance_channel_form">
+      <div class="input-group mb-3" id="payment-fields">
+          <div class="input-group-prepend">
+              <span class="input-group-text">Outgoing SCID</span>
+          </div>
+          <input type="text" size=32 name="oscid" class="input-element" id="oscid" class="form-control" placeholder="Outgoing Short Channel ID" required>&nbsp&nbsp&nbsp&nbsp
+          <div class="input-group-prepend">
+              <span class="input-group-text">Incoming SCID</span>
+          </div>
+              <input type="text" size=32 name="iscid" class="input-element" id="iscid" class="form-control" placeholder="Incoming Short Channel ID" required>&nbsp&nbsp&nbsp&nbsp
+          <div class="input-group-prepend">
+              <span class="input-group-text">Amount (sats)</span>
+          </div>
+              <input type="text" size=64 name="amount" class="input-element" id="amount" class="form-control" placeholder="amount in sats" required>
+      </div>
+      <button id="rebalance-channel-form-submit" type="submit" class="btn btn-primary">Rebalance Channel</button>
+    </form>
+    <br/>
+    <h2>Lightning Network Channels</h2>
+    <p>List of channels and their Short Channel ID(SCID)</p>
     <table class="table table-hover mt-2">
       <thead>
         <tr>
@@ -65,11 +70,13 @@
 			<td><p> {{ peer.can_send }}ș </p></td>
 			<td><p> {{ peer.can_receive }}ș </p></td>
 			<td><p> {{ peer.channel_states }} </p></td>
-			<td>
-			  <a href='/ln_wallet/close/{{peer.id}}'>
-                            <button type="button" class="btn btn-primary">Close</button>
-		          </a>
-		        </td>
+                        <td>
+                        <form id="close_channel_form" method="POST">
+                          <input type="hidden" name="form-name" value="close_channel_form">
+                          <input type="hidden" id="peer_id" name="peer_id" value={{ peer.id }}>
+			  <button id="close_channel-submit" type="submit" class="btn btn-primary">Close</button>
+                        </form>
+			</td>
 		`);
 		tableBody.appendChild(tableRow);
 	{% endfor %}

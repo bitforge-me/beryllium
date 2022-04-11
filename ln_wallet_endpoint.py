@@ -87,18 +87,30 @@ def rebalance_channel():
     """ Returns a template listing all connected LN peers """
     rpc = LnRpc()
     if request.method == 'POST':
-        oscid = request.form["oscid"]
-        iscid = request.form["iscid"]
-        sats = request.form["amount"]
-        amount = str(int(sats))
-        try:
-            rpc = LnRpc()
-            # pylint: disable=no-member
-            # pylint: disable=unused-variable
-            result = rpc.rebalance_channel(oscid, iscid, amount)
-            flash(Markup(f'successfully move funds from: {oscid} to: {iscid} with the amount: {sats}sats'),'success')
-        except Exception as e: # pylint: disable=broad-except
-            flash(Markup(e.args[0]), 'danger')
+        form_name = request.form["form-name"]
+        if form_name == 'rebalance_channel_form':
+            oscid = request.form["oscid"]
+            iscid = request.form["iscid"]
+            sats = request.form["amount"]
+            amount = str(int(sats))
+            try:
+                rpc = LnRpc()
+                # pylint: disable=no-member
+                # pylint: disable=unused-variable
+                result = rpc.rebalance_channel(oscid, iscid, amount)
+                flash(Markup(f'successfully move funds from: {oscid} to: {iscid} with the amount: {sats}sats'),'success')
+            except Exception as e: # pylint: disable=broad-except
+                flash(Markup(e.args[0]), 'danger')
+        elif form_name == 'close_channel_form':
+            peer_id = request.form["peer_id"]
+            try:
+                rpc = LnRpc()
+                # pylint: disable=no-member
+                # pylint: disable=unused-variable
+                close_tx = rpc.close_channel(peer_id)
+                flash(Markup(f'successfully close channel {peer_id}'), 'success')
+            except Exception as e: # pylint: disable=broad-except
+                flash(Markup(e.args[0]), 'danger')
     peers = rpc.list_peers()["peers"]
     # pylint: disable=consider-using-enumerate
     for i in range(len(peers)):
@@ -284,9 +296,3 @@ def decode_psbt():
     except Exception as e: # pylint: disable=broad-except
         return bad_request(str(e))
 
-@ln_wallet.route('/close/<string:peer_id>')
-@roles_accepted(Role.ROLE_ADMIN)
-def close(peer_id):
-    rpc = LnRpc()
-    close_tx = rpc.close_channel(peer_id)
-    return render_template('lightning/close.html', close_tx=close_tx, bitcoin_explorer=BITCOIN_EXPLORER)
