@@ -23,7 +23,8 @@
 		<a href="{{ bitcoin_explorer }}tx/{{ tx.hash }}">{{ output.sats }}{% if not loop.last %},{% endif %}<a>
 		{% endfor %}
 		</td>
-		</tr>
+		</tr>a
+		{{ tx }}
         {% endfor %}
 	</tbody>
     </table>

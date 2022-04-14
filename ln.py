@@ -128,10 +128,43 @@ class LnRpc():
             if status == 'paid':
                 pay_index = invoice["pay_index"]
                 amount_received_msat = invoice["amount_received_msat"]
+                amount_received_sats = _msat_to_sat(invoice["amount_received_msat"])
                 paid_at = invoice["paid_at"]
                 paid_date = datetime.datetime.fromtimestamp(paid_at, pytz.timezone('Pacific/Auckland'))
                 payment_preimage = invoice["payment_preimage"]
-            results.append({"paid_date": paid_date, "description": description, "status": status, "amount_msat": amount_msat, "amount_sats": amount_sats, "pay_index": pay_index, "amount_received_msat": amount_received_msat, "payment_preimage": payment_preimage, "bolt11": bolt11, "expires_at": expires_at, "payment_hash": payment_hash, "label": label})
+                results.append({"paid_date": paid_date, "description": description, "status": status, "amount_msat": amount_msat, "amount_sats": amount_sats, "pay_index": pay_index, "amount_received_msat": amount_received_msat, "amount_received_sats": amount_received_sats,"payment_preimage": payment_preimage, "bolt11": bolt11, "expires_at": expires_at, "payment_hash": payment_hash, "label": label})
+        return results
+
+    def list_sendpays(self):
+        results = []
+        result_sendpays = self.instance.listsendpays()
+        for sendpay in result_sendpays["payments"]:
+            id = sendpay["id"]
+            payment_hash = sendpay["payment_hash"]
+            status = sendpay["status"]
+            created_at = sendpay["created_at"]
+            amount_sent_msat = sendpay["amount_sent_msat"]
+            amount_sent_sats = _msat_to_sat(amount_sent_msat)
+            amount_msat = sendpay["amount_msat"]
+            amount_sats = _msat_to_sat(amount_msat)
+            destination = sendpay["destination"]
+            label = ""
+            if label:
+                label = sendpay["label"]
+            bolt11 = None
+            if bolt11:
+                bolt11 = sendpay["bolt11"]
+            payment_preimage = None
+            send_at = None
+            send_date = None
+            if status == "complete":
+                paid_at = sendpay["created_at"]
+                paid_date = datetime.datetime.fromtimestamp(paid_at, pytz.timezone('Pacific/Auckland'))
+                payment_preimage = sendpay["payment_hash"]
+            elif status == "failed":
+                paid_at = sendpay["created_at"]
+                paid_date = datetime.datetime.fromtimestamp(paid_at, pytz.timezone('Pacific/Auckland'))
+            results.append({"paid_date": paid_date, "status": status, "amount_msat": amount_msat, "amount_sats": amount_sats, "amount_sent_msat": amount_sent_msat, "amount_sent_sats": amount_sent_sats, "destination": destination, "label": label, "bolt11": bolt11, "payment_preimage": payment_preimage, "bolt11": bolt11, "payment_hash": payment_hash, "label": label})
         return results
 
     #

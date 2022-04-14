@@ -3,6 +3,7 @@
 import logging
 import secrets
 import os
+import operator
 
 from flask import Blueprint, render_template, request, flash, Markup, jsonify
 from flask_security import roles_accepted
@@ -172,6 +173,26 @@ def list_received_transactions():
     rpc = LnRpc()
     received_txs = rpc.list_invoices()
     return render_template("lightning/received_transactions.html", received_txs=received_txs)
+
+@ln_wallet.route('/test_list_received_transactions', methods=['GET'])
+@roles_accepted(Role.ROLE_ADMIN)
+def test_list_received_transactions():
+    """ Returns received transactions """
+    dict_txs = []
+    unsorted_list_dict = []
+    sorted_list_dict = []
+    rpc = LnRpc()
+    received_txs = rpc.list_invoices()
+    send_txs = rpc.list_sendpays()
+    dict_txs.append(received_txs)
+    dict_txs.append(send_txs)
+    for unsorted_dict in dict_txs[0]:
+        unsorted_list_dict.append(unsorted_dict)
+    for unsorted_dict in dict_txs[1]:
+        unsorted_list_dict.append(unsorted_dict)
+    for sort in sorted(unsorted_list_dict, key=operator.itemgetter("paid_date"), reverse=True):
+        sorted_list_dict.append(sort)
+    return render_template("lightning/test_received_transactions.html", sorted_list_dict=sorted_list_dict)
 
 @ln_wallet.route('/decode_bolt11/<bolt11>', strict_slashes=False)
 @roles_accepted(Role.ROLE_ADMIN)
