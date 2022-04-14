@@ -1,6 +1,8 @@
 {% extends "lightning/layout.html" %}
 {% block title %}Create Invoice{% endblock %}
 {% block content %}
+{{ super() }}
+<br/>
 <h2>Broadcast PSBT</h2>
 <p>Broadcast a signed PSBT.</p>
 <form id="form" method="POST">
