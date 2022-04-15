@@ -184,6 +184,7 @@ def test_list_received_transactions():
     rpc = LnRpc()
     received_txs = rpc.list_invoices()
     send_txs = rpc.list_sendpays()
+    funds_dict=rpc.list_funds()
     dict_txs.append(received_txs)
     dict_txs.append(send_txs)
     for unsorted_dict in dict_txs[0]:
@@ -192,7 +193,7 @@ def test_list_received_transactions():
         unsorted_list_dict.append(unsorted_dict)
     for sort in sorted(unsorted_list_dict, key=operator.itemgetter("paid_date"), reverse=True):
         sorted_list_dict.append(sort)
-    return render_template("lightning/test_received_transactions.html", sorted_list_dict=sorted_list_dict)
+    return render_template("lightning/test_received_transactions.html", funds_dict=funds_dict, sorted_list_dict=sorted_list_dict)
 
 @ln_wallet.route('/decode_bolt11/<bolt11>', strict_slashes=False)
 @roles_accepted(Role.ROLE_ADMIN)
@@ -219,7 +220,9 @@ def channel_opener():
             flash(Markup(f'successfully added node id: {node_id[0]} with the amount: {amount}'), 'success')
         except Exception as e: # pylint: disable=broad-except
             flash(Markup(e.args[0]), 'danger')
-    return render_template('lightning/channel_opener.html')
+    rpc = LnRpc()
+    funds_dict=rpc.list_funds()
+    return render_template('lightning/channel_opener.html', funds_dict=funds_dict)
 
 @ln_wallet.route('/create_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)

@@ -154,17 +154,19 @@ class LnRpc():
             bolt11 = None
             if bolt11:
                 bolt11 = sendpay["bolt11"]
+            groupid = None
+            if groupid:
+                groupid = sendpay["groupid"]
             payment_preimage = None
             send_at = None
             send_date = None
+            fees_sats = None
             if status == "complete":
                 paid_at = sendpay["created_at"]
                 paid_date = datetime.datetime.fromtimestamp(paid_at, pytz.timezone('Pacific/Auckland'))
                 payment_preimage = sendpay["payment_hash"]
-            elif status == "failed":
-                paid_at = sendpay["created_at"]
-                paid_date = datetime.datetime.fromtimestamp(paid_at, pytz.timezone('Pacific/Auckland'))
-            results.append({"paid_date": paid_date, "status": status, "amount_msat": amount_msat, "amount_sats": amount_sats, "amount_sent_msat": amount_sent_msat, "amount_sent_sats": amount_sent_sats, "destination": destination, "label": label, "bolt11": bolt11, "payment_preimage": payment_preimage, "bolt11": bolt11, "payment_hash": payment_hash, "label": label})
+                fees_sats = amount_sent_sats - amount_sats
+                results.append({"paid_date": paid_date, "status": status, "amount_msat": amount_msat, "amount_sats": amount_sats, "amount_sent_msat": amount_sent_msat, "amount_sent_sats": amount_sent_sats, "destination": destination, "label": label, "bolt11": bolt11, "payment_preimage": payment_preimage, "bolt11": bolt11, "payment_hash": payment_hash, "label": label, "groupid": groupid, "fees_sats": fees_sats })
         return results
 
     #
