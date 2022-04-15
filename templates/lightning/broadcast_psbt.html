@@ -3,6 +3,7 @@
 {% block content %}
 {{ super() }}
 <br/>
+<div class="alert alert-dismissible alert-info">
 <h2>Broadcast PSBT</h2>
 <p>Broadcast a signed PSBT.</p>
 <form id="form" method="POST">
@@ -12,6 +13,19 @@
     </div>
     <button id="form-submit" type="button" class="btn btn-primary">Submit</button>
 </form>
+</div>
+<!--
+<br/>
+<h2>Broadcast PSBT</h2>
+<p>Broadcast a signed PSBT.</p>
+<form id="form" method="POST">
+    <div class="form-group">
+        <label for="psbt" class="form-label mt-4">Signed PSBT</label>
+        <textarea class="form-control" aria-required=true placeholder="Paste signed PSBT here." name="psbt" id="psbt" rows="3" required></textarea>
+    </div>
+    <button id="form-submit" type="button" class="btn btn-primary">Submit</button>
+</form>
+-->
 {% endblock %}
 
 {% block scripts %}

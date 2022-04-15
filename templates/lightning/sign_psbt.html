@@ -3,6 +3,7 @@
 {% block content %}
 {{ super() }}
 <br/>
+<div class="alert alert-dismissible alert-info">
 {% if signed_psbt %}
 <h2>PSBT Signed</h2>
 <div class="form-group">
@@ -24,6 +25,31 @@
     </div>
     <button id="form-submit" type="button" class="btn btn-primary">Submit</button>
 </form>
+</div>
+<!--
+<br/>
+{% if signed_psbt %}
+<h2>PSBT Signed</h2>
+<div class="form-group">
+    <label for="signed_psbt" class="form-label mt-4">PSBT Data</label>
+    <textarea class="form-control" id="signed_psbt" rows="3" placeholder="{{ signed_psbt }}" readonly></textarea>
+</div>
+<button id="copy-psbt" type="button" class="btn btn-primary">Copy PSBT</button>
+<br/>
+<br/>
+<br/>
+{% endif %}
+
+<h2>Sign PSBT</h2>
+<p>Sign a PSBT.</p>
+<form id="form" method="POST">
+    <div class="form-group">
+        <label for="message" class="form-label mt-4">Unsigned PSBT</label>
+        <textarea class="form-control" aria-required=true placeholder="Paste unsigned PSBT here." name="psbt" id="psbt" rows="3" required></textarea>
+    </div>
+    <button id="form-submit" type="button" class="btn btn-primary">Submit</button>
+</form>
+-->
 {% endblock %}
 
 {% block scripts %}

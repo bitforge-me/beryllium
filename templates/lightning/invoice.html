@@ -3,6 +3,7 @@
 {% block content %}
 {{ super() }}
 <br/>
+<div class="alert alert-dismissible alert-info">
 {% if bolt11 %}
 <h2>Invoice Created</h2>
 {{ qrcode_svg | safe }}
@@ -29,6 +30,7 @@
   </div>
   <button id="form-submit" type="submit" class="btn btn-primary">Submit</button>
 </form>
+</div>
 {% endblock %}
 
 {% block scripts %}
