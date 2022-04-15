@@ -9,6 +9,8 @@
 <div class="alert alert-dismissible alert-success">
     <strong>on-chain balance:</strong> {{ funds_dict.sats_onchain }} sats
 </div>
+
+<div class="alert alert-dismissible alert-info">
 <h2>Open a Lightning Network Channel</h2>
 <p>Open a channel with a lighting node, entering the Node ID in this format: pubkey@address:port</p>
 <form id="form" method="POST">
@@ -22,6 +24,22 @@
     </div>
     <button id="form-submit" type="button" class="btn btn-primary">Submit</button>
 </form>
+</div>
+<!--
+<h2>Open a Lightning Network Channel</h2>
+<p>Open a channel with a lighting node, entering the Node ID in this format: pubkey@address:port</p>
+<form id="form" method="POST">
+    <div class="form-group">
+        <label class="col-form-label mt-4" for="amount">Amount</label>
+        <input type="text" class="form-control" placeholder="Enter amount in satoshi" name="amount" id="amount" required>
+    </div>
+    <div class="form-group">
+        <label class="col-form-label mt-4" for="nodeid">Node ID</label>
+        <input type="text" class="form-control" placeholder="Enter Node ID" name="nodeid" id="nodeid" required>
+    </div>
+    <button id="form-submit" type="button" class="btn btn-primary">Submit</button>
+</form>
+-->
 {% endblock %}
 {% block scripts %}
 <script>
