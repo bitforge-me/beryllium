@@ -80,7 +80,7 @@ def ln_invoice():
         rpc = LnRpc()
         bolt11 = rpc.invoice(int(amount), label, message)['bolt11']
         qrcode_svg = qrcode_svg_create(bolt11, 10)
-    return render_template("lightning/invoice.html", bolt11=bolt11, label=label, qrcode_svg=qrcode_svg)
+    return render_template("lightning/invoice.html", bolt11=bolt11, label=label, qrcode_svg=qrcode_svg, funds_dict=LnRpc().list_funds())
 
 @ln_wallet.route('/rebalance_channel', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
@@ -156,7 +156,7 @@ def pay_invoice():
             flash(f'Invoice paid: {result}', 'success')
         except Exception as e: # pylint: disable=broad-except
             flash(f'Error paying invoice: {e}', 'danger')
-    return render_template("lightning/pay_invoice.html", invoice=invoice)
+    return render_template("lightning/pay_invoice.html", invoice=invoice, funds_dict=LnRpc().list_funds())
 
 @ln_wallet.route('/invoices', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
@@ -193,7 +193,8 @@ def test_list_received_transactions():
         unsorted_list_dict.append(unsorted_dict)
     for sort in sorted(unsorted_list_dict, key=operator.itemgetter("paid_date"), reverse=True):
         sorted_list_dict.append(sort)
-    return render_template("lightning/test_received_transactions.html", funds_dict=funds_dict, sorted_list_dict=sorted_list_dict)
+    record_no = str(len(sorted_list_dict))
+    return render_template("lightning/test_received_transactions.html", funds_dict=funds_dict, sorted_list_dict=sorted_list_dict, record_no=record_no)
 
 @ln_wallet.route('/decode_bolt11/<bolt11>', strict_slashes=False)
 @roles_accepted(Role.ROLE_ADMIN)
@@ -264,6 +265,8 @@ def create_psbt():
 @ln_wallet.route('/sign_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def sign_psbt():
+    rpc = LnRpc()
+    onchain = int(rpc.list_funds()["sats_onchain"]) / 100000000
     signed_psbt = None
     if request.method == 'POST':
         psbt = request.form["psbt"]
@@ -274,11 +277,13 @@ def sign_psbt():
             flash('Sign successful', 'success')
         except Exception as e: # pylint: disable=broad-except
             flash(f'Sign failed: {e}', 'danger')
-    return render_template('lightning/sign_psbt.html', signed_psbt=signed_psbt)
+    return render_template('lightning/sign_psbt.html', signed_psbt=signed_psbt, onchain=onchain)
 
 @ln_wallet.route('/broadcast_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def broadcast():
+    rpc = LnRpc()
+    onchain = int(rpc.list_funds()["sats_onchain"]) / 100000000
     if request.method == 'POST':
         psbt = request.form["psbt"]
         try:
@@ -288,7 +293,7 @@ def broadcast():
             flash(f'Broadcast successful, TXID: {txid}', 'success')
         except Exception as e: # pylint: disable=broad-except
             flash(f'Broadcast failed: {e}', 'danger')
-    return render_template('lightning/broadcast_psbt.html')
+    return render_template('lightning/broadcast_psbt.html', onchain=onchain)
 
 def _build_bitcoin_rpc_url(bitcoin_datadir, bitcoin_host):
     btc_conf_file = os.path.join(bitcoin_datadir, 'bitcoin.conf')
