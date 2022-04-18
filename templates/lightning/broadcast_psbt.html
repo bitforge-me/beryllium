@@ -3,6 +3,9 @@
 {% block content %}
 {{ super() }}
 <br/>
+<div class="alert alert-dismissible alert-success">
+    <strong>on-chain balance:</strong> {{ onchain }} BTC
+</div>
 <div class="alert alert-dismissible alert-info">
 <h2>Broadcast PSBT</h2>
 <p>Broadcast a signed PSBT.</p>
