@@ -3,6 +3,9 @@
 {% block content %}
 {{ super() }}
 <br/>
+<div class="alert alert-dismissible alert-success">
+    <strong>ln-channel balance:</strong> {{ funds_dict.sats_channels }} sats
+</div>
 <div class="alert alert-dismissible alert-info">
 <h2>Pay Invoice</h2>
 <p>Pay lightning invoice.</p>
