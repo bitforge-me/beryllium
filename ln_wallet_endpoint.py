@@ -174,9 +174,9 @@ def list_received_transactions():
     received_txs = rpc.list_invoices()
     return render_template("lightning/received_transactions.html", received_txs=received_txs)
 
-@ln_wallet.route('/test_list_received_transactions', methods=['GET'])
+@ln_wallet.route('/lightning_transactions', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
-def test_list_received_transactions():
+def lightning_transactions():
     """ Returns received transactions """
     dict_txs = []
     unsorted_list_dict = []
@@ -194,7 +194,7 @@ def test_list_received_transactions():
     for sort in sorted(unsorted_list_dict, key=operator.itemgetter("paid_date"), reverse=True):
         sorted_list_dict.append(sort)
     record_no = str(len(sorted_list_dict))
-    return render_template("lightning/test_received_transactions.html", funds_dict=funds_dict, sorted_list_dict=sorted_list_dict, record_no=record_no)
+    return render_template("lightning/lightning_transactions.html", funds_dict=funds_dict, sorted_list_dict=sorted_list_dict, record_no=record_no)
 
 @ln_wallet.route('/decode_bolt11/<bolt11>', strict_slashes=False)
 @roles_accepted(Role.ROLE_ADMIN)
@@ -231,6 +231,7 @@ def create_psbt():
     """ Returns template for creating a PSBT """
     rpc = LnRpc()
     onchain = int(rpc.list_funds()["sats_onchain"]) / 100000000
+    onchain_sats = int(rpc.list_funds()["sats_onchain"])
     addrs = []
     amounts = []
     mode = 'psbt'
@@ -260,7 +261,45 @@ def create_psbt():
         else:
             flash(f'Unknown mode: {mode}', 'danger')
     return render_template(
-        'lightning/create_psbt.html', onchain=onchain, addrs=addrs, amounts=amounts, mode=mode, psbt=psbt)
+        'lightning/create_psbt.html', onchain=onchain, addrs=addrs, amounts=amounts, mode=mode, psbt=psbt, onchain_sats=onchain_sats)
+
+@ln_wallet.route('/test_create_psbt', methods=['GET', 'POST'])
+@roles_accepted(Role.ROLE_ADMIN)
+def test_create_psbt():
+    """ Returns template for creating a PSBT """
+    rpc = LnRpc()
+    onchain = int(rpc.list_funds()["sats_onchain"]) / 100000000
+    onchain_sats = int(rpc.list_funds()["sats_onchain"])
+    addrs = []
+    amounts = []
+    mode = 'psbt'
+    psbt = None
+    if request.method == 'POST':
+        addrs = request.form.getlist('address')
+        amounts = request.form.getlist('amount')
+        mode = request.form['mode']
+        outputs = []
+        for addr, amount in zip(addrs, amounts):
+            outputs.append({addr: f'{amount}btc'})
+        if mode == 'psbt':
+            logger.info('preparing psbt with outputs: %s', outputs)
+            try:
+                res = rpc.prepare_psbt(outputs)
+                psbt = res['psbt']
+                flash('PSBT created', 'success')
+            except Exception as e: # pylint: disable=broad-except
+                flash(f'Failed to create PSBT: {e}', 'danger')
+        elif mode == 'withdraw':
+            try:
+                res = rpc.multi_withdraw(outputs)
+                txid = res['txid']
+                flash(f'Withdrawal transaction created: {txid}', 'success')
+            except Exception as e: # pylint: disable=broad-except
+                flash(f'Failed to create withdrawal transaction: {e}', 'danger')
+        else:
+            flash(f'Unknown mode: {mode}', 'danger')
+    return render_template(
+        'lightning/test_create_psbt.html', onchain=onchain, addrs=addrs, amounts=amounts, mode=mode, psbt=psbt, onchain_sats=onchain_sats)
 
 @ln_wallet.route('/sign_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
