@@ -7,7 +7,7 @@
 {{ super() }}
 <br/>
 <div class="alert alert-dismissible alert-success">
-    <strong>on-chain balance:</strong> {{ onchain }} BTC
+	<strong>on-chain balance:</strong> {{ onchain }}BTC
 </div>
 <div class="alert alert-dismissible alert-info">
 {% if psbt %}
@@ -28,7 +28,7 @@
         <div class="form-check form-check-inline">
             <input class="form-check-input" type="radio" name="mode" id="psbt" value="psbt" {% if mode == 'psbt' %}checked{% endif %}>
             <label class="form-check-label" for="psbt">Create PSBT</label>
-          </div>
+        </div>
         <div class="form-check form-check-inline">
             <input class="form-check-input" type="radio" name="mode" id="withdraw" value="withdraw" {% if mode == 'withdraw' %}checked{% endif %}>
             <label class="form-check-label" for="withdraw">Create Withdrawal</label>
@@ -54,52 +54,6 @@
     <button id="form-submit" type="button" class="btn btn-primary">Submit</button>
 </form>
 </div>
-<!--
-<br/>
-{% if psbt %}
-<h2>PSBT Created</h2>
-<div class="form-group">
-    <label for="created_psbt" class="form-label mt-4">PSBT Data</label>
-    <textarea class="form-control" id="created_psbt" rows="3" placeholder="{{ psbt }}" readonly></textarea>
-</div>
-<button id="copy-psbt" type="button" class="btn btn-primary">Copy PSBT</button>
-<br/>
-<br/>
-<br/>
-{% endif %}
-
-<h2>Create PSBT/Withdrawal</h2>
-<form id="form" method="POST">
-    <div class="payment-fields">
-        <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="mode" id="psbt" value="psbt" {% if mode == 'psbt' %}checked{% endif %}>
-            <label class="form-check-label" for="psbt">Create PSBT</label>
-          </div>
-        <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="mode" id="withdraw" value="withdraw" {% if mode == 'withdraw' %}checked{% endif %}>
-            <label class="form-check-label" for="withdraw">Create Withdrawal</label>
-        </div>
-        <div class="form-group">
-            <label for="address" class="form-label">Recipient Address</label>
-            <input type="text" id="address" name="address" class="payment form-control" placeholder="Recipient Address" required>
-        </div>
-        <label for="amount" class="form-label">Amount</label>
-        <div class="input-group">
-            <input type="text" id="amount" name="amount" class="payment form-control" placeholder="Amount" required>
-            <div class="input-group-append">
-                <button type="button" id="max" class="btn btn-sm">Max</button>
-            </div>
-        </div>
-    </div>
-    <button id="form-remove-output" type="button" class="btn btn-danger btn-sm">Remove</button>
-    <br/>
-    <br/>
-    <button id="form-add-output" type="button" class="btn btn-primary btn-sm">Add Output</button>
-    <br/>
-    <br/>
-    <button id="form-submit" type="button" class="btn btn-primary">Submit</button>
-</form>
--->
 {% endblock %}
 
 {% block scripts %}
@@ -114,7 +68,7 @@
         }
         bootbox.confirm({
             title: `Confirm Create ${action}`,
-            message: `Total: ${totalBtc} BTC. Do you want to create the ${action}?`,
+		message: `Total: ${totalBtc} BTC. Do you want to create the ${action}?`,
             buttons: {
                 confirm: {
                     label: 'Yes',
