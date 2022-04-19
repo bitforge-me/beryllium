@@ -69,6 +69,10 @@
         if (!document.querySelector(form_class).reportValidity()) {
             return;
         }
+        if (isNaN(amount) || amount <= 0) {
+            bootbox.alert({message: 'Invalid amount'});
+            return;
+        }
         bootbox.confirm({
             message: `Are you sure you want to create an invoice for ${amount} sats?`,
             buttons: {
