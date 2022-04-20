@@ -119,7 +119,6 @@ class LnRpc():
             amount_msat = 0
             if amount_msat:
                 amount_msat = invoice["amount_msat"]
-            #amount_msat = invoice["amount_msat"]
             amount_sats = _msat_to_sat(amount_msat)
             bolt11 = invoice["bolt11"]
             pay_index = None
