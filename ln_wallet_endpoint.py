@@ -240,9 +240,10 @@ def create_psbt():
         addrs = request.form.getlist('address')
         amounts = request.form.getlist('amount')
         mode = request.form['mode']
+        unit = request.form['unit']
         outputs = []
         for addr, amount in zip(addrs, amounts):
-            outputs.append({addr: f'{amount}btc'})
+            outputs.append({addr: f'{amount}{unit}'})
         if mode == 'psbt':
             logger.info('preparing psbt with outputs: %s', outputs)
             try:
@@ -252,6 +253,7 @@ def create_psbt():
             except Exception as e: # pylint: disable=broad-except
                 flash(f'Failed to create PSBT: {e}', 'danger')
         elif mode == 'withdraw':
+            logger.info('preparing withdrawal with outputs: %s', outputs)
             try:
                 res = rpc.multi_withdraw(outputs)
                 txid = res['txid']
@@ -262,44 +264,6 @@ def create_psbt():
             flash(f'Unknown mode: {mode}', 'danger')
     return render_template(
         'lightning/create_psbt.html', onchain=onchain, addrs=addrs, amounts=amounts, mode=mode, psbt=psbt, onchain_sats=onchain_sats)
-
-@ln_wallet.route('/test_create_psbt', methods=['GET', 'POST'])
-@roles_accepted(Role.ROLE_ADMIN)
-def test_create_psbt():
-    """ Returns template for creating a PSBT """
-    rpc = LnRpc()
-    onchain = int(rpc.list_funds()["sats_onchain"]) / 100000000
-    onchain_sats = int(rpc.list_funds()["sats_onchain"])
-    addrs = []
-    amounts = []
-    mode = 'psbt'
-    psbt = None
-    if request.method == 'POST':
-        addrs = request.form.getlist('address')
-        amounts = request.form.getlist('amount')
-        mode = request.form['mode']
-        outputs = []
-        for addr, amount in zip(addrs, amounts):
-            outputs.append({addr: f'{amount}btc'})
-        if mode == 'psbt':
-            logger.info('preparing psbt with outputs: %s', outputs)
-            try:
-                res = rpc.prepare_psbt(outputs)
-                psbt = res['psbt']
-                flash('PSBT created', 'success')
-            except Exception as e: # pylint: disable=broad-except
-                flash(f'Failed to create PSBT: {e}', 'danger')
-        elif mode == 'withdraw':
-            try:
-                res = rpc.multi_withdraw(outputs)
-                txid = res['txid']
-                flash(f'Withdrawal transaction created: {txid}', 'success')
-            except Exception as e: # pylint: disable=broad-except
-                flash(f'Failed to create withdrawal transaction: {e}', 'danger')
-        else:
-            flash(f'Unknown mode: {mode}', 'danger')
-    return render_template(
-        'lightning/test_create_psbt.html', onchain=onchain, addrs=addrs, amounts=amounts, mode=mode, psbt=psbt, onchain_sats=onchain_sats)
 
 @ln_wallet.route('/sign_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
