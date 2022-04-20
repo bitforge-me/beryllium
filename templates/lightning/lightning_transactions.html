@@ -11,26 +11,26 @@
 These are the transactions recorded by the wallet.
 <br>
 <p align="right">{{ record_no }} transactions recorded</p>
-    {% for sorted_dict_tx in sorted_list_dict %}
+    {% for tx in sorted_txs %}
         <div class="alert alert-dismissible alert-info">
-            <button class={% if sorted_dict_tx.amount_sent_sats is defined %}"btn btn-danger disabled"{% elif sorted_dict_tx.amount_received_sats is defined %}"btn btn-success disabled"{% endif %} type="button" data-toggle="collapse" data-target="#collapseExample{{loop.index}}" aria-expanded="false" aria-controls="collapseExample">
-                {{sorted_dict_tx.paid_date}}
+            <button class={% if tx.amount_sent_sats is defined %}"btn btn-danger disabled"{% elif tx.amount_received_sats is defined %}"btn btn-success disabled"{% endif %} type="button" data-toggle="collapse" data-target="#collapseExample{{loop.index}}" aria-expanded="false" aria-controls="collapseExample">
+                {{tx.paid_date}}
             </button>
-	    <b>{% if sorted_dict_tx.amount_sent_sats is defined %}-{{sorted_dict_tx.amount_sent_sats}}{% elif sorted_dict_tx.amount_received_sats is defined %}+{{sorted_dict_tx.amount_received_sats}}{% endif %} sats</b>
+	    <b>{% if tx.amount_sent_sats is defined %}-{{tx.amount_sent_sats}}{% elif tx.amount_received_sats is defined %}+{{tx.amount_received_sats}}{% endif %} SAT{% if tx.amount_sent_sats is defined%}(fees included){% endif %}</b>
             <div class="collapse" id="collapseExample{{loop.index}}">
                 <div class="card card-body">
-                    {% if sorted_dict_tx.amount_sent_sats is defined %}
-                        <b>Amount:</b> {{sorted_dict_tx.amount_sent_sats}} sats<br>
-                        <b>Destination:</b> {{sorted_dict_tx.destination}}<br>
-                    {% elif sorted_dict_tx.amount_received_sats is defined %}
-                        <b>Amount:</b> {{sorted_dict_tx.amount_received_sats}} sats<br>
-                        {% if sorted_dict_tx.description is defined %}
-                            <b>Description:</b> {{sorted_dict_tx.description}}<br> 
+                    {% if tx.amount_sent_sats is defined %}
+                        <b>Amount:</b> {{tx.amount_sent_sats}} SAT<br>
+                        <b>Destination:</b> {{tx.destination}}<br>
+                    {% elif tx.amount_received_sats is defined %}
+                        <b>Amount:</b> {{tx.amount_received_sats}} SAT<br>
+                        {% if tx.description is defined %}
+                            <b>Description:</b> {{tx.description}}<br> 
                         {% endif %}
-			<b>Label:</b> {{sorted_dict_tx.label}}<br>
+			<b>Label:</b> {{tx.label}}<br>
                     {% endif %}
-		    <b>Payment hash:</b> {{sorted_dict_tx.payment_hash}}<br>
-		    <b>Status:</b> {{sorted_dict_tx.status}}
+		    <b>Payment hash:</b> {{tx.payment_hash}}<br>
+		    <b>Status:</b> {{tx.status}}
                 </div>
             </div>
         </div>

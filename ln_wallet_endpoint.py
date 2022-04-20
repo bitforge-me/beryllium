@@ -3,7 +3,6 @@
 import logging
 import secrets
 import os
-import operator
 
 from flask import Blueprint, render_template, request, flash, Markup, jsonify
 from flask_security import roles_accepted
@@ -164,7 +163,6 @@ def lightning_transactions():
     """ Returns received transactions """
     dict_txs = []
     unsorted_list_dict = []
-    sorted_list_dict = []
     rpc = LnRpc()
     received_txs = rpc.list_invoices()
     send_txs = rpc.list_sendpays()
@@ -175,10 +173,9 @@ def lightning_transactions():
         unsorted_list_dict.append(unsorted_dict)
     for unsorted_dict in dict_txs[1]:
         unsorted_list_dict.append(unsorted_dict)
-    for sort in sorted(unsorted_list_dict, key=operator.itemgetter("paid_date"), reverse=True):
-        sorted_list_dict.append(sort)
-    record_no = str(len(sorted_list_dict))
-    return render_template("lightning/lightning_transactions.html", funds_dict=funds_dict, sorted_list_dict=sorted_list_dict, record_no=record_no)
+    sorted_txs = sorted(unsorted_list_dict, key=lambda d: d["paid_date"], reverse=True)
+    record_no = str(len(sorted_txs))
+    return render_template("lightning/lightning_transactions.html", funds_dict=funds_dict, sorted_txs=sorted_txs, record_no=record_no)
 
 @ln_wallet.route('/decode_bolt11/<bolt11>', strict_slashes=False)
 @roles_accepted(Role.ROLE_ADMIN)
