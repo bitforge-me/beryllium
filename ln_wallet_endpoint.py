@@ -270,6 +270,7 @@ def create_psbt():
 def sign_psbt():
     rpc = LnRpc()
     onchain = int(rpc.list_funds()["sats_onchain"]) / 100000000
+    onchain_sats = int(rpc.list_funds()["sats_onchain"])
     signed_psbt = None
     if request.method == 'POST':
         psbt = request.form["psbt"]
@@ -280,13 +281,14 @@ def sign_psbt():
             flash('Sign successful', 'success')
         except Exception as e: # pylint: disable=broad-except
             flash(f'Sign failed: {e}', 'danger')
-    return render_template('lightning/sign_psbt.html', signed_psbt=signed_psbt, onchain=onchain)
+    return render_template('lightning/sign_psbt.html', signed_psbt=signed_psbt, onchain=onchain, onchain_sats=onchain_sats)
 
 @ln_wallet.route('/broadcast_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def broadcast():
     rpc = LnRpc()
     onchain = int(rpc.list_funds()["sats_onchain"]) / 100000000
+    onchain_sats = int(rpc.list_funds()["sats_onchain"])
     if request.method == 'POST':
         psbt = request.form["psbt"]
         try:
@@ -296,7 +298,7 @@ def broadcast():
             flash(f'Broadcast successful, TXID: {txid}', 'success')
         except Exception as e: # pylint: disable=broad-except
             flash(f'Broadcast failed: {e}', 'danger')
-    return render_template('lightning/broadcast_psbt.html', onchain=onchain)
+    return render_template('lightning/broadcast_psbt.html', onchain=onchain, onchain_sats=onchain_sats)
 
 def _build_bitcoin_rpc_url(bitcoin_datadir, bitcoin_host):
     btc_conf_file = os.path.join(bitcoin_datadir, 'bitcoin.conf')
