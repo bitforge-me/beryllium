@@ -8,11 +8,11 @@
     <div class='row'>
         <div class='dashboard'>
         <p>on-chain balance<p>
-        <p><center>{{ funds_dict.sats_onchain }} sats</center></p>
+	<p><center>{{ funds_dict.sats_onchain }} <strong>SAT</strong></center></p>
         </div>
         <div class='dashboard'>
         <p>ln-channel balance<p>
-        <p><center>{{ funds_dict.sats_channels }} sats</center></p>
+	<p><center>{{ funds_dict.sats_channels }} <strong>SAT</strong></center></p>
         </div>
     </div>
 </div>
@@ -69,14 +69,9 @@
             <p>Pay Invoice<p>
         </div>
         </a>
-        <a href="invoices">
+        <a href="lightning_transactions">
         <div class='dashboard_links'>
-            <p>Invoice History<p>
-        </div>
-        </a>
-        <a href="list_received_transactions">
-        <div class='dashboard_links'>
-            <p>Received Transactions<p>
+            <p>Lightning Transactions<p>
         </div>
         </a>
         <a href="channel_opener">
