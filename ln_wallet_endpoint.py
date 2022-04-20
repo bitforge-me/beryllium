@@ -158,22 +158,6 @@ def pay_invoice():
             flash(f'Error paying invoice: {e}', 'danger')
     return render_template("lightning/pay_invoice.html", invoice=invoice, funds_dict=LnRpc().list_funds())
 
-@ln_wallet.route('/invoices', methods=['GET'])
-@roles_accepted(Role.ROLE_ADMIN)
-def invoices():
-    """ Returns template listing all LN paid invoices """
-    rpc = LnRpc()
-    paid_invoices = rpc.list_paid()
-    return render_template("lightning/invoices.html", paid_invoices=paid_invoices)
-
-@ln_wallet.route('/list_received_transactions', methods=['GET'])
-@roles_accepted(Role.ROLE_ADMIN)
-def list_received_transactions():
-    """ Returns received transactions """
-    rpc = LnRpc()
-    received_txs = rpc.list_invoices()
-    return render_template("lightning/received_transactions.html", received_txs=received_txs)
-
 @ln_wallet.route('/lightning_transactions', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
 def lightning_transactions():

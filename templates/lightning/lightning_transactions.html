@@ -1,0 +1,41 @@
+{% extends "lightning/layout.html" %}
+{% block title %}Lightning Transaction History{% endblock %}
+{% block content %}
+{{ super() }}
+<br/>
+<div class="alert alert-dismissible alert-success">
+    <strong>ln-channel balance:</strong> {{ funds_dict.sats_channels }} <strong>SAT</strong>
+</div>
+<br>
+<h2>Lightning Transaction History</h2>
+These are the transactions recorded by the wallet.
+<br>
+<p align="right">{{ record_no }} transactions recorded</p>
+    {% for sorted_dict_tx in sorted_list_dict %}
+        <div class="alert alert-dismissible alert-info">
+            <button class={% if sorted_dict_tx.amount_sent_sats is defined %}"btn btn-danger disabled"{% elif sorted_dict_tx.amount_received_sats is defined %}"btn btn-success disabled"{% endif %} type="button" data-toggle="collapse" data-target="#collapseExample{{loop.index}}" aria-expanded="false" aria-controls="collapseExample">
+                {{sorted_dict_tx.paid_date}}
+            </button>
+	    <b>{% if sorted_dict_tx.amount_sent_sats is defined %}-{{sorted_dict_tx.amount_sent_sats}}{% elif sorted_dict_tx.amount_received_sats is defined %}+{{sorted_dict_tx.amount_received_sats}}{% endif %} sats</b>
+            <div class="collapse" id="collapseExample{{loop.index}}">
+                <div class="card card-body">
+                    {% if sorted_dict_tx.amount_sent_sats is defined %}
+                        <b>Amount:</b> {{sorted_dict_tx.amount_sent_sats}} sats<br>
+                        <b>Destination:</b> {{sorted_dict_tx.destination}}<br>
+                    {% elif sorted_dict_tx.amount_received_sats is defined %}
+                        <b>Amount:</b> {{sorted_dict_tx.amount_received_sats}} sats<br>
+                        {% if sorted_dict_tx.description is defined %}
+                            <b>Description:</b> {{sorted_dict_tx.description}}<br> 
+                        {% endif %}
+			<b>Label:</b> {{sorted_dict_tx.label}}<br>
+                    {% endif %}
+		    <b>Payment hash:</b> {{sorted_dict_tx.payment_hash}}<br>
+		    <b>Status:</b> {{sorted_dict_tx.status}}
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+{% endblock %}
+{% block footer %}
+  {{ super() }}
+{% endblock %}
