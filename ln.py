@@ -141,7 +141,6 @@ class LnRpc():
         results = []
         result_sendpays = self.instance.listsendpays()
         for sendpay in result_sendpays["payments"]:
-            #id = sendpay["id"]
             payment_hash = sendpay["payment_hash"]
             status = sendpay["status"]
             created_at = sendpay["created_at"]
@@ -160,8 +159,6 @@ class LnRpc():
             if groupid:
                 groupid = sendpay["groupid"]
             payment_preimage = None
-            #send_at = None
-            #send_date = None
             fees_sats = None
             if status == "complete":
                 paid_at = created_at
