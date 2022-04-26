@@ -52,14 +52,17 @@ def list_txs():
     """ Returns template of on-chain txs """
     rpc = LnRpc()
     transactions = rpc.list_txs()
-    sorted_txs = sorted(
-        transactions["transactions"],
-        key=lambda d: d["blockheight"],
-        reverse=True)
     for tx in transactions["transactions"]:
         for output in tx["outputs"]:
             output["sats"] = int(output["msat"] / 1000)
             output.update({"sats": str(output["sats"]) + " satoshi"})
+            for address in rpc.list_addrs()["addresses"]:
+                if output["scriptPubKey"] == address["p2sh_redeemscript"]:
+                    output["ours"] = True
+    sorted_txs = sorted(
+        transactions["transactions"],
+        key=lambda d: d["blockheight"],
+        reverse=True)
     return render_template(
         "lightning/list_transactions.html",
         transactions=sorted_txs,
@@ -295,3 +298,9 @@ def decode_psbt():
         return jsonify(psbt_json)
     except Exception as e: # pylint: disable=broad-except
         return bad_request(str(e))
+
+@ln_wallet.route('/list_addrs')
+@roles_accepted(Role.ROLE_ADMIN)
+def list_addrs():
+    rpc = LnRpc()
+    return rpc.list_addrs()

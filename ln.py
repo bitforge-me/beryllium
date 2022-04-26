@@ -205,3 +205,6 @@ class LnRpc():
 
     def send_psbt(self, signed_psbt):
         return self.instance.sendpsbt(signed_psbt)
+
+    def list_addrs(self):
+        return self.instance.call('dev-listaddrs')
