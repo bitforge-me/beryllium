@@ -12,7 +12,7 @@ from utils import qrcode_svg_create
 from web_utils import bad_request
 from app_core import app, limiter
 from models import Role
-from ln import LnRpc
+from ln import LnRpc, _msat_to_sat
 
 logger = logging.getLogger(__name__)
 ln_wallet = Blueprint('ln_wallet', __name__, template_folder='templates')
@@ -52,7 +52,6 @@ def list_txs():
     """ Returns template of on-chain txs """
     rpc = LnRpc()
     transactions = rpc.list_txs()
-    logger.info('txs: %s', transactions)
     sorted_txs = sorted(
         transactions["transactions"],
         key=lambda d: d["blockheight"],
@@ -124,17 +123,12 @@ def channel_management():
         peers[i]["channel_states"] = []
         for channel in peers[i]["channels"]:
             if channel["state"] == 'CHANNELD_NORMAL':
-                peers[i]["sats_total"] += int(channel["msatoshi_total"]) / 1000
-                peers[i]["can_send"] += int(channel["spendable_msatoshi"]) / 1000
-                peers[i]["can_receive"] += int(channel["receivable_msatoshi"]) / 1000
+                peers[i]["sats_total"] += _msat_to_sat(channel["msatoshi_total"])
+                peers[i]["can_send"] += _msat_to_sat(channel["spendable_msatoshi"])
+                peers[i]["can_receive"] += _msat_to_sat(channel["receivable_msatoshi"])
                 for scid in channel["short_channel_id"]:
                     peers[i]["scid"] += scid
                 peers[i]["channel_states"].append(channel["state"])
-
-        # round as a last step, for accuracy
-        peers[i]["sats_total"] = int(peers[i]["sats_total"])
-        peers[i]["can_send"] = int(peers[i]["can_send"])
-        peers[i]["can_receive"] = int(peers[i]["can_receive"])
     return render_template("lightning/channel_management.html", peers=peers)
 
 @ln_wallet.route('/list_forwards')
@@ -166,14 +160,15 @@ def lightning_transactions():
     rpc = LnRpc()
     received_txs = rpc.list_invoices()
     send_txs = rpc.list_sendpays()
-    funds_dict=rpc.list_funds()
+    funds_dict = rpc.list_funds()
     dict_txs.append(received_txs)
     dict_txs.append(send_txs)
     for unsorted_dict in dict_txs[0]:
         unsorted_list_dict.append(unsorted_dict)
     for unsorted_dict in dict_txs[1]:
         unsorted_list_dict.append(unsorted_dict)
-    sorted_txs = sorted(unsorted_list_dict, key=lambda d: d["paid_date"], reverse=True)
+    sorted_txs = sorted(unsorted_list_dict, key=lambda d: d["paid_at"], reverse=True)
+    #sorted_txs = sorted(unsorted_list_dict, key=lambda d: d["paid_date"], reverse=True)
     record_no = str(len(sorted_txs))
     return render_template("lightning/lightning_transactions.html", funds_dict=funds_dict, sorted_txs=sorted_txs, record_no=record_no)
 
@@ -211,8 +206,8 @@ def channel_opener():
 def create_psbt():
     """ Returns template for creating a PSBT """
     rpc = LnRpc()
-    onchain = int(rpc.list_funds()["sats_onchain"]) / 100000000
     onchain_sats = int(rpc.list_funds()["sats_onchain"])
+    onchain = onchain_sats / 100000000
     addrs = []
     amounts = []
     mode = 'psbt'
@@ -250,8 +245,8 @@ def create_psbt():
 @roles_accepted(Role.ROLE_ADMIN)
 def sign_psbt():
     rpc = LnRpc()
-    onchain = int(rpc.list_funds()["sats_onchain"]) / 100000000
     onchain_sats = int(rpc.list_funds()["sats_onchain"])
+    onchain = onchain_sats / 100000000
     signed_psbt = None
     if request.method == 'POST':
         psbt = request.form["psbt"]

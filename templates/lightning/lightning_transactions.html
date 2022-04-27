@@ -16,7 +16,7 @@ These are the transactions recorded by the wallet.
             <button class={% if tx.amount_sent_sats is defined %}"btn btn-danger disabled"{% elif tx.amount_received_sats is defined %}"btn btn-success disabled"{% endif %} type="button" data-toggle="collapse" data-target="#collapseExample{{loop.index}}" aria-expanded="false" aria-controls="collapseExample">
                 {{tx.paid_date}}
             </button>
-	    <b>{% if tx.amount_sent_sats is defined %}-{{tx.amount_sent_sats}}{% elif tx.amount_received_sats is defined %}+{{tx.amount_received_sats}}{% endif %} SAT{% if tx.amount_sent_sats is defined%}(fees included){% endif %}</b>
+            <b>{% if tx.amount_sent_sats is defined %}-{{tx.amount_sent_sats}}{% elif tx.amount_received_sats is defined %}+{{tx.amount_received_sats}}{% endif %} SAT{% if tx.amount_sent_sats is defined%}(fees included){% endif %}</b>
             <div class="collapse" id="collapseExample{{loop.index}}">
                 <div class="card card-body">
                     {% if tx.amount_sent_sats is defined %}
@@ -27,10 +27,10 @@ These are the transactions recorded by the wallet.
                         {% if tx.description is defined %}
                             <b>Description:</b> {{tx.description}}<br> 
                         {% endif %}
-			<b>Label:</b> {{tx.label}}<br>
+                        <b>Label:</b> {{tx.label}}<br>
                     {% endif %}
-		    <b>Payment hash:</b> {{tx.payment_hash}}<br>
-		    <b>Status:</b> {{tx.status}}
+                    <b>Payment hash:</b> {{tx.payment_hash}}<br>
+                    <b>Status:</b> {{tx.status}}
                 </div>
             </div>
         </div>

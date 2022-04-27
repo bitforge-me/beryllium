@@ -116,10 +116,6 @@ class LnRpc():
             description = invoice["description"]
             payment_hash = invoice["payment_hash"]
             expires_at = invoice["expires_at"]
-            amount_msat = 0
-            if amount_msat:
-                amount_msat = invoice["amount_msat"]
-            amount_sats = _msat_to_sat(amount_msat)
             bolt11 = invoice["bolt11"]
             pay_index = None
             amount_received_msat = None
@@ -128,13 +124,16 @@ class LnRpc():
             payment_preimage = None
             status = invoice["status"]
             if status == 'paid':
+                amount_msat = invoice["amount_msat"]
+                amount_sats = _msat_to_sat(amount_msat)
                 pay_index = invoice["pay_index"]
                 amount_received_msat = invoice["amount_received_msat"]
-                amount_received_sats = _msat_to_sat(invoice["amount_received_msat"])
+                amount_received_sats = _msat_to_sat(amount_received_msat)
                 paid_at = invoice["paid_at"]
+                #paid_date = datetime.datetime.fromtimestamp(paid_at)
                 paid_date = datetime.datetime.fromtimestamp(paid_at, pytz.timezone('Pacific/Auckland'))
                 payment_preimage = invoice["payment_preimage"]
-                results.append({"paid_date": paid_date, "description": description, "status": status, "amount_msat": amount_msat, "amount_sats": amount_sats, "pay_index": pay_index, "amount_received_msat": amount_received_msat, "amount_received_sats": amount_received_sats,"payment_preimage": payment_preimage, "bolt11": bolt11, "expires_at": expires_at, "payment_hash": payment_hash, "label": label})
+                results.append({"paid_at": paid_at, "paid_date": paid_date, "description": description, "status": status, "amount_msat": amount_msat, "amount_sats": amount_sats, "pay_index": pay_index, "amount_received_msat": amount_received_msat, "amount_received_sats": amount_received_sats,"payment_preimage": payment_preimage, "bolt11": bolt11, "expires_at": expires_at, "payment_hash": payment_hash, "label": label})
         return results
 
     def list_sendpays(self):
@@ -163,9 +162,10 @@ class LnRpc():
             if status == "complete":
                 paid_at = created_at
                 paid_date = datetime.datetime.fromtimestamp(paid_at, pytz.timezone('Pacific/Auckland'))
+                #paid_date = datetime.datetime.fromtimestamp(paid_at)
                 payment_preimage = sendpay["payment_hash"]
                 fees_sats = amount_sent_sats - amount_sats
-                results.append({"paid_date": paid_date, "status": status, "amount_msat": amount_msat, "amount_sats": amount_sats, "amount_sent_msat": amount_sent_msat, "amount_sent_sats": amount_sent_sats, "destination": destination, "label": label, "bolt11": bolt11, "payment_preimage": payment_preimage, "payment_hash": payment_hash, "groupid": groupid, "fees_sats": fees_sats})
+                results.append({"paid_at": paid_at, "paid_date": paid_date, "status": status, "amount_msat": amount_msat, "amount_sats": amount_sats, "amount_sent_msat": amount_sent_msat, "amount_sent_sats": amount_sent_sats, "destination": destination, "label": label, "bolt11": bolt11, "payment_preimage": payment_preimage, "payment_hash": payment_hash, "groupid": groupid, "fees_sats": fees_sats})
         return results
 
     #

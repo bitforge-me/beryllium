@@ -53,7 +53,7 @@
         <div class="input-group">
             <input type="text" id="amount" name="amount" class="payment form-control" placeholder="Amount" required>
             <div class="input-group-append">
-		<button class="btn btn-outline-secondary" type="button" id="max">Max</button>
+                <button class="btn btn-outline-secondary" type="button" id="max">Max</button>
             </div>
         </div>
     </div>
@@ -80,7 +80,7 @@
         }
         bootbox.confirm({
             title: `Confirm Create ${action}`,
-		message: `Total: ${totalBtc}${unit}. Do you want to create the ${action}?`,
+            message: `Total: ${totalBtc}${unit}. Do you want to create the ${action}?`,
             buttons: {
                 confirm: {
                     label: 'Yes',
@@ -125,12 +125,12 @@
             var ele = $('#max').parent().prev();
             console.log(ele);
             const unit = document.querySelector('input[name="unit"]:checked').value;
-            if (unit == 'btc')
+            if(unit == 'btc')
                 return ele.val('{{ onchain }}');
-            else if (unit == 'sat')
-		return ele.val('{{ onchain_sats }}');
+            else if(unit == 'sat')
+                return ele.val('{{ onchain_sats }}');
             else
-		return
+                return
         });
 
         $('#form-remove-output').hide();
