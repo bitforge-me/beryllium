@@ -304,3 +304,32 @@ def decode_psbt():
 def list_addrs():
     rpc = LnRpc()
     return rpc.list_addrs()
+
+@ln_wallet.route('/address/<bech32_address>', strict_slashes=False)
+@roles_accepted(Role.ROLE_ADMIN)
+def address_history(bech32_address):
+    rpc = LnRpc()
+    address_list = rpc.list_addrs()
+    redeem_script = ""
+    address_txs = []
+    for address in address_list["addresses"]:
+        if address["bech32"] == bech32_address:
+           redeem_script = address["p2sh_redeemscript"] 
+           break
+    if redeem_script == "":
+        return "Enter a used address"
+    else:
+        transactions = rpc.list_txs()
+        for tx in transactions["transactions"]:
+            for output in tx["outputs"]:
+                output["sats"] = int(output["msat"] / 1000)
+                output.update({"sats": str(output["sats"]) + " satoshi"})
+                if output["scriptPubKey"] == redeem_script:
+                    output["ours"] = True
+                    address_txs.append(tx)
+
+        sorted_txs = sorted(
+            address_txs,
+            key=lambda d: d["blockheight"],
+            reverse=True)
+    return str(sorted_txs)
