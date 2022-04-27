@@ -31,7 +31,7 @@
     <li class="channel">
       <header>
         <span class="capacity">{{channel.total_sats}}</span>
-        <span class="state">{% if channle.peer.connected %}active{% else %}offline{% endif %}</span>
+        <span class="state">{% if channel.peer.connected %}active{% else %}offline{% endif %}</span>
       </header>
       <div class="channel-bar">
         <div class="progress-bar bg-warning" role="progressbar" title="Our reserve: {{ channel.our_reserve_sats }} sats" style="width: {{ channel.our_reserve_sats / channel.total_sats * 100 }}%;"></div>
@@ -57,22 +57,6 @@
     </li>
     {% endfor %}
     </ul>
-
-    <table class="table table-hover mt-2">
-      <thead>
-        <tr>
-          <th scope="col">Icon</th>
-          <th scope="col">Node ID</th>
-          <th scope="col">Connected</th>
-          <th scope="col">SCID</th>
-          <th scope="col">Total (sats)</th>
-          <th scope="col">Can send (sats)</th>
-          <th scope="col">Can receive (sats)</th>
-          <th scope="col">Channel State(s)</th>
-          <th scope="col">Close Channel</th>
-        </tr>
-      </thead>
-    </table>
 </div>
 {% endblock %}
 
