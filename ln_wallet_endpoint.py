@@ -130,6 +130,8 @@ def rebalance_channel():
             channel['spendable_sats'] = _msat_to_sat(spendable)
             channel['peer'] = peer
 
+            channels.append(channel)
+
     return render_template("lightning/rebalance_channel.html", channels=channels)
 
 @ln_wallet.route('/list_forwards')
