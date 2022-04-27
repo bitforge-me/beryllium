@@ -52,6 +52,7 @@ def list_txs():
     """ Returns template of on-chain txs """
     rpc = LnRpc()
     transactions = rpc.list_txs()
+    logger.info('txs: %s', transactions)
     sorted_txs = sorted(
         transactions["transactions"],
         key=lambda d: d["blockheight"],
@@ -121,12 +122,12 @@ def channel_management():
         # I'm assuming there will only be one channel for each node, but I'm
         # using an array in case there's more
         peers[i]["channel_states"] = []
+        can_send_total = 0
         for channel in peers[i]["channels"]:
             if channel["state"] == 'CHANNELD_NORMAL':
                 peers[i]["sats_total"] += int(channel["msatoshi_total"]) / 1000
-                peers[i]["can_send"] += int(channel["msatoshi_to_us"]) / 1000
-                peers[i]["can_receive"] += int(
-                    channel["out_msatoshi_fulfilled"]) / 1000
+                peers[i]["can_send"] += int(channel["spendable_msatoshi"]) / 1000
+                peers[i]["can_receive"] += int(channel["receivable_msatoshi"]) / 1000
                 for scid in channel["short_channel_id"]:
                     peers[i]["scid"] += scid
                 peers[i]["channel_states"].append(channel["state"])
