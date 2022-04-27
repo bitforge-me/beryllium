@@ -263,8 +263,8 @@ def sign_psbt():
 @roles_accepted(Role.ROLE_ADMIN)
 def broadcast():
     rpc = LnRpc()
-    onchain = int(rpc.list_funds()["sats_onchain"]) / 100000000
     onchain_sats = int(rpc.list_funds()["sats_onchain"])
+    onchain = onchain_sats / 100000000
     if request.method == 'POST':
         psbt = request.form["psbt"]
         try:
