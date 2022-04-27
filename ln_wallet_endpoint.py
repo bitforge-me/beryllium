@@ -120,13 +120,13 @@ def rebalance_channel():
             theirs = total - ours
             our_reserve = channel['our_channel_reserve_satoshis']
             their_reserve = channel['their_channel_reserve_satoshis']
-            recievable = theirs - our_reserve
+            receivable = theirs - our_reserve
             spendable = ours - their_reserve
 
             channel['total_sats'] = _msat_to_sat(total)
             channel['our_reserve_sats'] = _msat_to_sat(our_reserve)
             channel['their_reserve_sats'] = _msat_to_sat(their_reserve)
-            channel['recievable_sats'] = _msat_to_sat(recievable)
+            channel['receivable_sats'] = _msat_to_sat(receivable)
             channel['spendable_sats'] = _msat_to_sat(spendable)
             channel['peer'] = peer
 
