@@ -25,7 +25,39 @@
     </form>
     <br/>
     <h2>Lightning Network Channels</h2>
-    <p>List of channels and their Short Channel ID(SCID)</p>
+    
+    <ul class="channels">
+    {% for channel in channels %}
+    <li class="channel">
+      <header>
+        <span class="capacity">{{channel.total_sats}}</span>
+        <span class="state">{% if channle.peer.connected %}active{% else %}offline{% endif %}</span>
+      </header>
+      <div class="channel-bar">
+        <div class="progress-bar bg-warning" role="progressbar" title="Our reserve: {{ channel.our_reserve_sats }} sats" style="width: {{ channel.our_reserve_sats / channel.total_sats * 100 }}%;"></div>
+        <div class="progress-bar bg-success" role="progressbar" title="Spendable: {{ channel.spendable_sats }}" style="width: {{ channel.spendable_sats / channel.total_sats * 100 }}%;"></div>
+        <div class="progress-bar bg-info" role="progressbar" title="Receivable: {{ channel.receivable_sats }}" style="width: {{ channel.receivable_sats / channel.total_sats * 100 }}%;"></div>
+        <div class="progress-bar bg-warning" role="progressbar" title="Their reserve: {{ channel.their_reserve_sats }}" style="width: {{ channel.their_reserve_sats / channel.total_sats * 100 }}%;"></div>
+      </div>
+      <ul class="list-unstyled my-3">
+        <li><strong>Channel ID:</strong> {{ channel.short_channel_id }}</li>
+        <li><strong>Status:</strong> {{ channel.state }}</li>
+        <li><strong>Spendable:</strong> {{ channel.spendable_sats }} sats</li>
+        <li><strong>Receivable:</strong> {{ channel.receivable_sats }} sats</li>
+        <li><strong>Age:</strong> n/a</li>
+        <li><strong>Peer:</strong> <small class="break-all">{{ channel.peer.id }}</small></li>
+        <li>
+          <form id="close_channel_form" method="POST">
+            <input type="hidden" name="form-name" value="close_channel_form">
+            <input type="hidden" id="peer_id" name="peer_id" value={{ channel.peer.id }}>
+            <button id="close_channel_submit" type="submit" class="btn btn-primary">Close channel</button>
+          </form>
+        </li>
+      </ul>
+    </li>
+    {% endfor %}
+    </ul>
+
     <table class="table table-hover mt-2">
       <thead>
         <tr>
@@ -42,47 +74,5 @@
       </thead>
     </table>
 </div>
-<script src="{{ url_for('static',filename='assets/lightning/blockies.min.js') }}"></script>
-<script>
-	var table = document.querySelector(".table");
-	var tableBody = document.createElement("tbody");
-	{% for peer in peers %}
-		var nodeId = "{{ peer.id }}";
-		var tableRow = document.createElement("tr");
-		var tableCell = document.createElement("td");
-		var icon = blockies.create({ // All options are optional
-			seed: '{{ peer.id }}', // seed used to generate icon data, default: random
-			size: 17, // width/height of the icon in blocks, default: 8
-			scale: 3, // width/height of each block in pixels, default: 4
-		});
-		var shortId = nodeId.slice(0,4) + "..." + nodeId.slice(-4);
-		tableCell.appendChild(icon);
-		tableRow.appendChild(tableCell);
-		tableRow.insertAdjacentHTML('beforeend', `
-			<td><a href="https://1ml.com/testnet/node/{{ peer.id }}"> ${shortId} </a></td>
-                        {% if peer.connected is defined and peer.connected == True %}
-		          <td><button type="button" class="btn btn-success">{{ peer.connected }}</button></td>
-		        {% else %}
-		          <td><button type="button" class="btn btn-danger">{{ peer.connected }}</button></td>
-		        {% endif %}
-			<td><p> {{ peer.scid }} </p></td>
-			<td><p> {{ peer.sats_total }}ș </p></td>
-			<td><p> {{ peer.can_send }}ș </p></td>
-			<td><p> {{ peer.can_receive }}ș </p></td>
-			<td><p> {{ peer.channel_states }} </p></td>
-                        <td>
-                        <form id="close_channel_form" method="POST">
-                          <input type="hidden" name="form-name" value="close_channel_form">
-                          <input type="hidden" id="peer_id" name="peer_id" value={{ peer.id }}>
-			  <button id="close_channel-submit" type="submit" class="btn btn-primary">Close</button>
-                        </form>
-			</td>
-		`);
-		tableBody.appendChild(tableRow);
-	{% endfor %}
-	table.appendChild(tableBody);
-</script>
 {% endblock %}
-{% block footer %}
-{{ super() }}
-{% endblock %}
+
