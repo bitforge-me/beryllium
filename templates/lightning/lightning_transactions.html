@@ -2,6 +2,7 @@
 {% block title %}Lightning Transaction History{% endblock %}
 {% block content %}
 {{ super() }}
+<button onclick="location.href='/ln_wallet'" type="button" class="btn btn-primary">Lightning Home</button>
 <br/>
 <div class="alert alert-dismissible alert-success">
     <strong>ln-channel balance:</strong> {{ funds_dict.sats_channels }} <strong>SAT</strong>
