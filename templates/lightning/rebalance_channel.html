@@ -75,7 +75,7 @@
 
 {% block scripts %}
 <script>
-    function confirm_close(form, channelId, channelShortId) {
+    function confirm_close(form, channelShortId) {
         bootbox.confirm({
             title: `Confirm Close Channel`,
             message: `Do you want to close the channel ${channelShortId}?`,
