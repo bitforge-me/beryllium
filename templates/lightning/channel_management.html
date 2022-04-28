@@ -93,40 +93,6 @@
 	table.appendChild(tableBody);
 </script>
 {% endblock %}
-{% block scripts %}
-#<script>
-#    function confirm(form_class, peer_id) {
-#        if (!document.querySelector(form_class).reportValidity()) {
-#            return;
-#        }
-#        bootbox.confirm({
-#	    message: `Confirm the closure of channel ${peer_id}`,
-#            buttons: {
-#                confirm: {
-#                    label: 'Yes',
-#                    className: 'btn-success'
-#                },
-#                cancel: {
-#                    label: 'No',
-#                    className: 'btn-danger'
-#                }
-#            },
-#            callback: function (result) {
-#                if (result)
-#                    $(form_class).submit();
-#            }
-#        });
-#    }
-#
-#    $(document).ready(function() {
-#        $('#close_channel-submit').click(function() {
-#            var peer_id = $('#peer_id').val();
-#            confirm('#close_channel_form', peer_id);
-#            return false;
-#        });
-#    });
-#</script>
-{% endblock %}
 {% block footer %}
 {{ super() }}
 {% endblock %}
