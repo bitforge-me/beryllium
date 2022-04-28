@@ -87,41 +87,41 @@ def rebalance_channel():
     """ Returns a template listing all connected LN peers """
     rpc = LnRpc()
     if request.method == 'POST':
-        form_name = request.form["form-name"]
+        form_name = request.form['form-name']
         if form_name == 'rebalance_channel_form':
-            oscid = request.form["oscid"]
-            iscid = request.form["iscid"]
-            sats = request.form["amount"]
+            oscid = request.form['oscid']
+            iscid = request.form['iscid']
+            sats = request.form['amount']
             amount = str(int(sats))
             try:
-                rpc = LnRpc()
-                # pylint: disable=no-member
-                # pylint: disable=unused-variable
-                result = rpc.rebalance_channel(oscid, iscid, amount)
-                flash(Markup(f'successfully move funds from: {oscid} to: {iscid} with the amount: {sats}sats'),'success')
+                LnRpc().rebalance_channel(oscid, iscid, amount)
+                flash(Markup(f'successfully move funds from: {oscid} to: {iscid} with the amount: {sats} sats'),'success')
             except Exception as e: # pylint: disable=broad-except
                 flash(Markup(e.args[0]), 'danger')
         elif form_name == 'close_channel_form':
-            peer_id = request.form["peer_id"]
+            peer_id = request.form['peer_id']
             try:
-                rpc = LnRpc()
-                # pylint: disable=no-member
-                # pylint: disable=unused-variable
-                close_tx = rpc.close_channel(peer_id)
+                LnRpc().close_channel(peer_id)
                 flash(Markup(f'successfully close channel {peer_id}'), 'success')
             except Exception as e: # pylint: disable=broad-except
                 flash(Markup(e.args[0]), 'danger')
-    peers = rpc.list_peers()["peers"]
+    peers = rpc.list_peers()['peers']
     channels = []
+    total_receivable = 0
+    total_spendable = 0
     for peer in peers:
-        for channel in peer["channels"]:
-            total = channel["msatoshi_total"]
-            ours = channel["msatoshi_to_us"]
+        for channel in peer['channels']:
+            total = channel['msatoshi_total']
+            ours = channel['msatoshi_to_us']
             theirs = total - ours
             our_reserve = channel['our_channel_reserve_satoshis']
             their_reserve = channel['their_channel_reserve_satoshis']
             receivable = theirs - our_reserve
             spendable = ours - their_reserve
+
+            if peer['connected'] and channel['state'] == 'CHANNELD_NORMAL':
+                total_receivable += receivable
+                total_spendable += spendable
 
             channel['total_sats'] = _msat_to_sat(total)
             channel['our_reserve_sats'] = our_reserve
@@ -132,7 +132,7 @@ def rebalance_channel():
 
             channels.append(channel)
 
-    return render_template("lightning/rebalance_channel.html", channels=channels)
+    return render_template('lightning/rebalance_channel.html', channels=channels, total_spendable_sats=_msat_to_sat(total_spendable), total_receivable_sats=_msat_to_sat(total_receivable))
 
 @ln_wallet.route('/list_forwards')
 @roles_accepted(Role.ROLE_ADMIN)

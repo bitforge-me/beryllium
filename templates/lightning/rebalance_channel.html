@@ -24,8 +24,22 @@
       <button id="rebalance-channel-form-submit" type="submit" class="btn btn-primary">Rebalance Channel</button>
     </form>
     <br/>
-    <h2>Lightning Network Channels</h2>
-    
+    <h2>Total Liquidity</h2>
+    <div class="channel">
+      <header class="d-flex justify-content-between mb-2">
+        <span class="capacity">{{total_spendable_sats + total_receivable_sats}}</span>
+        <span class="state"></span>
+      </header>
+      <div class="channel-bar">
+        <div class="progress-bar bg-success" role="progressbar" title="Spendable: {{ total_spendable_sats }}" style="width: {{ total_spendable_sats / (total_spendable_sats + total_receivable_sats) * 100 }}%;"></div>
+        <div class="progress-bar bg-info" role="progressbar" title="Receivable: {{ total_receivable_sats }}" style="width: {{ total_receivable_sats / (total_spendable_sats + total_receivable_sats) * 100 }}%;"></div>
+      </div>
+      <ul class="list-unstyled my-3">
+        <li><strong>Spendable:</strong> {{ total_spendable_sats }} sats</li>
+        <li><strong>Receivable:</strong> {{ total_receivable_sats }} sats</li>
+      </ul>
+    </div>
+    <h2>Channels</h2>
     <ul class="channels">
     {% for channel in channels %}
     <li class="channel">
