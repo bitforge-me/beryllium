@@ -124,8 +124,8 @@ def rebalance_channel():
             spendable = ours - their_reserve
 
             channel['total_sats'] = _msat_to_sat(total)
-            channel['our_reserve_sats'] = _msat_to_sat(our_reserve)
-            channel['their_reserve_sats'] = _msat_to_sat(their_reserve)
+            channel['our_reserve_sats'] = our_reserve
+            channel['their_reserve_sats'] = their_reserve
             channel['receivable_sats'] = _msat_to_sat(receivable)
             channel['spendable_sats'] = _msat_to_sat(spendable)
             channel['peer'] = peer

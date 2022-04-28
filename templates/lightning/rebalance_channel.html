@@ -29,7 +29,7 @@
     <ul class="channels">
     {% for channel in channels %}
     <li class="channel">
-      <header>
+      <header class="d-flex justify-content-between mb-2">
         <span class="capacity">{{channel.total_sats}}</span>
         <span class="state">{% if channel.peer.connected %}active{% else %}offline{% endif %}</span>
       </header>
@@ -50,7 +50,7 @@
           <form id="close_channel_form" method="POST">
             <input type="hidden" name="form-name" value="close_channel_form">
             <input type="hidden" id="peer_id" name="peer_id" value={{ channel.peer.id }}>
-            <button id="close_channel_submit" type="submit" class="btn btn-primary">Close channel</button>
+            <button id="close_channel_submit" type="submit" class="btn-sm btn-secondary">Close channel</button>
           </form>
         </li>
       </ul>
