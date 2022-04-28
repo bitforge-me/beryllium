@@ -177,8 +177,8 @@ class LnRpc():
     def fund_channel(self, node_id, sats):
         return self.instance.fundchannel(node_id, sats)
 
-    def close_channel(self, peer_id):
-        return self.instance.close(peer_id)
+    def close_channel(self, channel_id):
+        return self.instance.close(channel_id)
 
     def new_address(self, address_type):
         # return a bech32 address
