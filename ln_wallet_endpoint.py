@@ -168,7 +168,6 @@ def lightning_transactions():
     for unsorted_dict in dict_txs[1]:
         unsorted_list_dict.append(unsorted_dict)
     sorted_txs = sorted(unsorted_list_dict, key=lambda d: d["paid_at"], reverse=True)
-    #sorted_txs = sorted(unsorted_list_dict, key=lambda d: d["paid_date"], reverse=True)
     record_no = str(len(sorted_txs))
     return render_template("lightning/lightning_transactions.html", funds_dict=funds_dict, sorted_txs=sorted_txs, record_no=record_no)
 
@@ -197,9 +196,7 @@ def channel_opener():
             flash(Markup(f'successfully added node id: {node_id[0]} with the amount: {amount}'), 'success')
         except Exception as e: # pylint: disable=broad-except
             flash(Markup(e.args[0]), 'danger')
-    rpc = LnRpc()
-    funds_dict=rpc.list_funds()
-    return render_template('lightning/channel_opener.html', funds_dict=funds_dict)
+    return render_template('lightning/channel_opener.html', funds_dict=LnRpc().list_funds())
 
 @ln_wallet.route('/create_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
