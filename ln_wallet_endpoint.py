@@ -95,14 +95,14 @@ def rebalance_channel():
             amount = str(int(sats))
             try:
                 LnRpc().rebalance_channel(oscid, iscid, amount)
-                flash(Markup(f'successfully move funds from: {oscid} to: {iscid} with the amount: {sats} sats'),'success')
+                flash(Markup(f'successfully moved {sats} sats from {oscid} to {iscid}'),'success')
             except Exception as e: # pylint: disable=broad-except
                 flash(Markup(e.args[0]), 'danger')
         elif form_name == 'close_channel_form':
-            peer_id = request.form['peer_id']
+            channel_id = request.form['channel_id']
             try:
-                LnRpc().close_channel(peer_id)
-                flash(Markup(f'successfully close channel {peer_id}'), 'success')
+                LnRpc().close_channel(channel_id)
+                flash(Markup(f'successfully closed channel {channel_id}'), 'success')
             except Exception as e: # pylint: disable=broad-except
                 flash(Markup(e.args[0]), 'danger')
     peers = rpc.list_peers()['peers']

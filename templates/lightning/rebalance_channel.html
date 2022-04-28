@@ -3,25 +3,23 @@
 {% block content %}
 <div>
     <br> 
-    <h2>Rebalance Channel</h2>
-    <p>Rebalance Channels by sending satoshis from one channel into another channel.</p>
+    <h2>Rebalance Channels</h2>
+    <p>Rebalance channels by sending satoshis from one channel into another channel.</p>
     <form id="rebalance-channel-form" method="POST">
       <input type="hidden" name="form-name" value="rebalance_channel_form">
-      <div class="input-group mb-3" id="payment-fields">
-          <div class="input-group-prepend">
-              <span class="input-group-text">Outgoing SCID</span>
-          </div>
-          <input type="text" size=32 name="oscid" class="input-element" id="oscid" class="form-control" placeholder="Outgoing Short Channel ID" required>&nbsp&nbsp&nbsp&nbsp
-          <div class="input-group-prepend">
-              <span class="input-group-text">Incoming SCID</span>
-          </div>
-              <input type="text" size=32 name="iscid" class="input-element" id="iscid" class="form-control" placeholder="Incoming Short Channel ID" required>&nbsp&nbsp&nbsp&nbsp
-          <div class="input-group-prepend">
-              <span class="input-group-text">Amount (sats)</span>
-          </div>
-              <input type="text" size=64 name="amount" class="input-element" id="amount" class="form-control" placeholder="amount in sats" required>
+      <div class="form-group">
+        <label for="oscid">From channel</label>
+        <input type="text" name="oscid" class="form-control" id="oscid" placeholder="Channel ID" required>
       </div>
-      <button id="rebalance-channel-form-submit" type="submit" class="btn btn-primary">Rebalance Channel</button>
+      <div class="form-group">
+        <label for="iscid">To channel</label>
+        <input type="text" name="iscid" class="form-control" id="iscid" placeholder="Channel ID" required>
+      </div>
+      <div class="form-group">
+        <label for="iscid">Amount (sats)</label>
+        <input type="number" name="amount" id="amount" class="form-control" required>
+      </div>
+      <button id="rebalance-channel-submit" type="submit" class="btn btn-primary">Rebalance channels</button>
     </form>
     <br/>
     <h2>Total Liquidity</h2>
@@ -61,10 +59,11 @@
         <li><strong>Age:</strong> n/a</li>
         <li><strong>Peer:</strong> <small class="break-all">{{ channel.peer.id }}</small></li>
         <li>
-          <form id="close_channel_form" method="POST">
+          <form id="close-channel-form-{{loop.index}}" method="POST">
             <input type="hidden" name="form-name" value="close_channel_form">
-            <input type="hidden" id="peer_id" name="peer_id" value={{ channel.peer.id }}>
-            <button id="close_channel_submit" type="submit" class="btn-sm btn-secondary">Close channel</button>
+            <input type="hidden" id="channel_id" name="channel_id" value={{ channel.id }}>
+            <input type="hidden" id="channel_short_id" name="channel_short_id" value={{ channel.short_channel_id }}>
+            <button type="submit" class="close-channel-submit btn-sm btn-secondary">Close channel</button>
           </form>
         </li>
       </ul>
@@ -74,3 +73,75 @@
 </div>
 {% endblock %}
 
+{% block scripts %}
+<script>
+    function confirm_close(form, channelId, channelShortId) {
+        bootbox.confirm({
+            title: `Confirm Close Channel`,
+            message: `Do you want to close the channel ${channelShortId}?`,
+            buttons: {
+                confirm: {
+                    label: 'Yes',
+                    className: 'btn-success'
+                },
+                cancel: {
+                    label: 'No',
+                    className: 'btn-danger'
+                }
+            },
+            callback: function (result) {
+                if (result)
+                    form.submit();
+            }
+        });
+    }
+
+    function confirm_rebalance(form_class, oscid, iscid, amount) {
+        if (!document.querySelector(form_class).reportValidity()) {
+            return;
+        }
+        if (isNaN(amount) || amount <= 0) {
+            bootbox.alert({message: 'Invalid amount'});
+            return;
+        }
+        bootbox.confirm({
+            title: `Confirm Rebalance Channels`,
+            message: `Moving ${amount} sats from ${oscid} to ${iscid}. Do you want to continue?`,
+            buttons: {
+                confirm: {
+                    label: 'Yes',
+                    className: 'btn-success'
+                },
+                cancel: {
+                    label: 'No',
+                    className: 'btn-danger'
+                }
+            },
+            callback: function (result) {
+                if (result)
+                    $(form_class).submit();
+            }
+        });
+    }
+
+    $(document).ready(function() {
+
+        $('.close-channel-submit').click(function() {
+            var channelShortId = $(this).prev().val();
+            var form = $(this).parent();
+            confirm_close(form, channelShortId);
+            return false;
+        });
+
+        $('#rebalance-channel-submit').click(function() {
+            var oscid = $('#oscid').val();
+            var iscid = $('#iscid').val();
+            var amount = $('#amount').val();
+            var form = $(this).parent();
+            confirm_rebalance('#rebalance-channel-form', oscid, iscid, amount);
+            return false;
+        });
+
+    });
+</script>
+{% endblock %}
