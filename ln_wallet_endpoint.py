@@ -91,11 +91,10 @@ def rebalance_channel():
         if form_name == 'rebalance_channel_form':
             oscid = request.form['oscid']
             iscid = request.form['iscid']
-            sats = request.form['amount']
-            amount = str(int(sats))
+            amount = request.form['amount']
             try:
                 LnRpc().rebalance_channel(oscid, iscid, amount)
-                flash(Markup(f'successfully moved {sats} sats from {oscid} to {iscid}'),'success')
+                flash(Markup(f'successfully moved {amount} sats from {oscid} to {iscid}'),'success')
             except Exception as e: # pylint: disable=broad-except
                 flash(Markup(e.args[0]), 'danger')
         elif form_name == 'close_channel_form':
