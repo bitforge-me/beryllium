@@ -11,6 +11,8 @@ def _msat_to_sat(msats):
 def _sat_to_msat(sats):
     return int(sats) * 1000
 
+server_timezone = os.environ['SERVER_TIMEZONE']
+
 # pylint: disable=too-many-public-methods
 class LnRpc():
     def __init__(self):
@@ -71,8 +73,7 @@ class LnRpc():
         pays = self.instance.listpays()
         for pay in pays["pays"]:
             created_at = pay["created_at"]
-            date = datetime.datetime.fromtimestamp(
-                created_at, pytz.timezone('Pacific/Auckland'))
+            date = datetime.datetime.fromtimestamp(created_at, pytz.timezone(server_timezone))
             status = pay["status"]
             amount_msat = pay["amount_sent_msat"].millisatoshis
             amount_sats = _msat_to_sat(amount_msat)
@@ -130,8 +131,7 @@ class LnRpc():
                 amount_received_msat = invoice["amount_received_msat"]
                 amount_received_sats = _msat_to_sat(amount_received_msat)
                 paid_at = invoice["paid_at"]
-                #paid_date = datetime.datetime.fromtimestamp(paid_at)
-                paid_date = datetime.datetime.fromtimestamp(paid_at, pytz.timezone('Pacific/Auckland'))
+                paid_date = datetime.datetime.fromtimestamp(paid_at, pytz.timezone(server_timezone))
                 payment_preimage = invoice["payment_preimage"]
                 results.append({"paid_at": paid_at, "paid_date": paid_date, "description": description, "status": status, "amount_msat": amount_msat, "amount_sats": amount_sats, "pay_index": pay_index, "amount_received_msat": amount_received_msat, "amount_received_sats": amount_received_sats,"payment_preimage": payment_preimage, "bolt11": bolt11, "expires_at": expires_at, "payment_hash": payment_hash, "label": label})
         return results
@@ -161,8 +161,7 @@ class LnRpc():
             fees_sats = None
             if status == "complete":
                 paid_at = created_at
-                paid_date = datetime.datetime.fromtimestamp(paid_at, pytz.timezone('Pacific/Auckland'))
-                #paid_date = datetime.datetime.fromtimestamp(paid_at)
+                paid_date = datetime.datetime.fromtimestamp(paid_at, pytz.timezone(server_timezone))
                 payment_preimage = sendpay["payment_hash"]
                 fees_sats = amount_sent_sats - amount_sats
                 results.append({"paid_at": paid_at, "paid_date": paid_date, "status": status, "amount_msat": amount_msat, "amount_sats": amount_sats, "amount_sent_msat": amount_sent_msat, "amount_sent_sats": amount_sent_sats, "destination": destination, "label": label, "bolt11": bolt11, "payment_preimage": payment_preimage, "payment_hash": payment_hash, "groupid": groupid, "fees_sats": fees_sats})
