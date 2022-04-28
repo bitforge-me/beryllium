@@ -4,8 +4,10 @@
 
 {% block content %}
 {{ super() }}
-<button onclick="location.href='/ln_wallet'" type="button" class="btn btn-primary">Lightning Home</button>
 <br/>
+<a class="btn btn-primary" href="/ln_wallet"><i class="glyphicon glyphicon-chevron-left"></i>Lightning Home</a>&nbsp
+<br>
+<br>
 <div class="alert alert-dismissible alert-info">
     <h2>New Bitcoin Address</h2>
     Generate a new bitcoin address by selecting "BECH32" or "P2SH-SEGWIT"
