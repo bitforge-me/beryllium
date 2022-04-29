@@ -5,3 +5,10 @@
 <script src="{{ url_for('static',filename='assets/lightning/socket.io.js') }}"></script>
 {% endblock %}
 
+{% block navigation %}
+    {% if request.endpoint == "ln_wallet.ln_index" %}
+        <a class="btn btn-primary" href="/"><i class="glyphicon glyphicon-chevron-left"></i> Back</a>&nbsp
+    {% else %}
+        <a class="btn btn-primary" href="/ln_wallet"><i class="glyphicon glyphicon-chevron-left"></i>Lightning Home</a>&nbsp
+    {% endif %}
+{% endblock %}

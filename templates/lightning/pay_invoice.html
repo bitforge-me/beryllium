@@ -1,11 +1,11 @@
 {% extends "lightning/layout.html" %}
 {% block title %}Pay Invoice{% endblock %}
+{% block navigation %}
+{{ super() }}
+{% endblock %}
 {% block content %}
 {{ super() }}
 <br/>
-<a class="btn btn-primary" href="/ln_wallet"><i class="glyphicon glyphicon-chevron-left"></i>Lightning Home</a>&nbsp
-<br>
-<br>
 <div class="alert alert-dismissible alert-success">
     <strong>ln-channel balance:</strong> {{ funds_dict.sats_channels }} <strong>SAT</strong>
 </div>
