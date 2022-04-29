@@ -20,7 +20,7 @@
 		<td>
 		{% for output in tx.outputs %}
 		{% if output.ours %}
-		<span class="badge bg-primary">{{ output.sats }} {% if not loop.last %},{% endif %}</span>
+		<span class="badge bg-success">{{ output.sats }} {% if not loop.last %},{% endif %}</span>
 		{% else %}
 		<span class="badge bg-secondary">{{ output.sats }} {% if not loop.last %},{% endif %}</span>
 		{% endif %}

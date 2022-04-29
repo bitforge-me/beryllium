@@ -4,7 +4,7 @@ import logging
 import secrets
 import os
 
-from flask import Blueprint, render_template, request, flash, Markup, jsonify
+from flask import Blueprint, render_template, request, flash, Markup, jsonify, redirect
 from flask_security import roles_accepted
 from bitcoin.rpc import Proxy
 
@@ -305,9 +305,13 @@ def list_addrs():
     rpc = LnRpc()
     return rpc.list_addrs()
 
-@ln_wallet.route('/address/<bech32_address>', strict_slashes=False)
+@ln_wallet.route('/address', strict_slashes=False, methods=['GET', 'POST'])
+@ln_wallet.route('/address/<bech32_address>', strict_slashes=False, methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
-def address_history(bech32_address):
+def address_history(bech32_address=None):
+    if request.method == 'POST':
+        bech32_address = request.values.get('bech32-address')
+        return redirect('/ln_wallet/address/' + bech32_address)
     rpc = LnRpc()
     address_list = rpc.list_addrs()
     redeem_script = ""
@@ -332,4 +336,7 @@ def address_history(bech32_address):
             address_txs,
             key=lambda d: d["blockheight"],
             reverse=True)
-    return str(sorted_txs)
+        return render_template(
+            "lightning/address.html",
+            transactions=sorted_txs,
+            bitcoin_explorer=BITCOIN_EXPLORER)
