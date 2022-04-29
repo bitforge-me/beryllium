@@ -45,6 +45,7 @@ services:
       WINDCAVE_MOCK: ${WINDCAVE_MOCK}
       EXCHANGE_ACCOUNT_MOCK: ${EXCHANGE_ACCOUNT_MOCK}
       REGISTRATION_DISABLE: ${REGISTRATION_DISABLE}
+      TZ: ${TZ}
     volumes:
       - "clightning_bitcoin_datadir:/etc/lightning"
       - "bitcoin_datadir:/etc/bitcoin"

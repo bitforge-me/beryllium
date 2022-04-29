@@ -1,6 +1,12 @@
 {% extends "lightning/layout.html" %}
 {% block title %}Create Invoice{% endblock %}
 {% block content %}
+{{ super() }}
+<br/>
+<div class="alert alert-dismissible alert-success">
+    <strong>ln-channel balance:</strong> {{ funds_dict.sats_channels }} <strong>SAT</strong>
+</div>
+<div class="alert alert-dismissible alert-info">
 {% if bolt11 %}
 <h2>Invoice Created</h2>
 {{ qrcode_svg | safe }}
@@ -13,7 +19,6 @@
 <br/>
 <br/>
 {% endif %}
-
 <h2>Create Invoice</h2>
 <p>Create a lightning network invoice.</p>
 <form id="form" method="POST">
@@ -27,6 +32,7 @@
   </div>
   <button id="form-submit" type="submit" class="btn btn-primary">Submit</button>
 </form>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -61,6 +67,10 @@
 
     function confirm(form_class, amount) {
         if (!document.querySelector(form_class).reportValidity()) {
+            return;
+        }
+        if (isNaN(amount) || amount <= 0) {
+            bootbox.alert({message: 'Invalid amount'});
             return;
         }
         bootbox.confirm({

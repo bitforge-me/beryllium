@@ -1,6 +1,12 @@
 {% extends "lightning/layout.html" %}
 {% block title %}Create Invoice{% endblock %}
 {% block content %}
+{{ super() }}
+<br/>
+<div class="alert alert-dismissible alert-success">
+    <strong>on-chain balance:</strong> {{ onchain }} <strong>BTC</strong> <b>|</b> {{ onchain_sats }} <strong>SAT</strong>
+</div>
+<div class="alert alert-dismissible alert-info">
 {% if signed_psbt %}
 <h2>PSBT Signed</h2>
 <div class="form-group">
@@ -22,6 +28,7 @@
     </div>
     <button id="form-submit" type="button" class="btn btn-primary">Submit</button>
 </form>
+</div>
 {% endblock %}
 
 {% block scripts %}

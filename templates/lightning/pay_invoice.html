@@ -1,6 +1,12 @@
 {% extends "lightning/layout.html" %}
 {% block title %}Pay Invoice{% endblock %}
 {% block content %}
+{{ super() }}
+<br/>
+<div class="alert alert-dismissible alert-success">
+    <strong>ln-channel balance:</strong> {{ funds_dict.sats_channels }} <strong>SAT</strong>
+</div>
+<div class="alert alert-dismissible alert-info">
 <h2>Pay Invoice</h2>
 <p>Pay lightning invoice.</p>
 <form id="form" method="POST">
@@ -10,6 +16,7 @@
     </div>
     <button id="form-submit" type="button" class="btn btn-primary">Submit</button>
 </form>
+</div>
 {% endblock %}
 
 {% block scripts %}
