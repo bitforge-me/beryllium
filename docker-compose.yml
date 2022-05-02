@@ -117,23 +117,6 @@ services:
     links:
       - bitcoind
 
-  clightning_bitcoin_spark:
-    image: shesek/spark-wallet:0.2.9-standalone
-    container_name: clightning_bitcoin_spark
-    restart: unless-stopped
-    environment:
-      NETWORK: ${BITCOIN_NETWORK:?BITCOIN_NETWORK not set}
-      # SPARK_LOGIN format `<USER>:<PASS>`
-      # TODO - ensure only admin users can access spark
-      SPARK_OPT: --no-tls -C /data/.cookie --login ${SPARK_LOGIN:?SPARK_LOGIN not set}
-    volumes:
-      - "clightning_bitcoin_datadir:/etc/lightning"
-      - "clightning_bitcoin_spark:/data"
-    links:
-      - clightning_bitcoin
-    expose:
-      - "9737"
-
 volumes:
   pgdata:
   bitcoin_datadir:
@@ -147,4 +130,3 @@ volumes:
       type: 'none'
       o: 'bind'
       device: '${LN_DATA_DEVICE:?LN_DATA_DEVICE not set}'
-  clightning_bitcoin_spark:
