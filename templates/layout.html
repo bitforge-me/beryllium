@@ -23,11 +23,15 @@
       </a>
       <div class="collapse navbar-collapse" id="navbarNavDropdown">
         <ul class="navbar-nav">
-          <!--
-          <li class="nav-item active">
-    	    <a class="nav-link" href="/">Home<span class="sr-only">(current)</span></a>
-          </li>
-          -->
+          {% if request.blueprint == "ln_wallet" %}
+            {% if request.endpoint != "ln_wallet.ln_index" %}
+	      <a class={% if request.endpoint == "ln_wallet.ln_index" %}"btn btn-primary"{% else %}"btn btn-secondary"{% endif %}href="/ln_wallet"><i class="glyphicon glyphicon-chevron-left"></i>Lightning Home</a>&nbsp
+            {% endif %}
+          {% elif request.blueprint == "reporting" %}
+	  <a class={% if request.endpoint == "reporting.dashboard_general" %}"btn btn-primary" {% else %}"btn btn-secondary"{% endif %}href="dashboard_general"><i class="glyphicon glyphicon-chevron-left"></i>General</a>&nbsp
+	  <a class={% if request.endpoint == "reporting.dashboard_user" %}"btn btn-primary"{% else %}"btn btn-secondary"{% endif %}href="dashboard_user"><i class="glyphicon glyphicon-chevron-left"></i>Users</a>&nbsp
+	  <a class={% if request.endpoint == "reporting.dashboard_report_broker_user" %}"btn btn-primary" {% else %}"btn btn-secondary"{% endif %}href="dashboard_report_broker_order"><i class="glyphicon glyphicon-chevron-left"></i>Broker Orders</a>&nbsp
+          {% endif %}
         </ul>
       </div>
       {% if current_user.is_authenticated  %}
