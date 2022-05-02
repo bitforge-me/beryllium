@@ -61,12 +61,14 @@
         <li><strong>Age:</strong> n/a</li>
         <li><strong>Peer:</strong> <small class="break-all">{{ channel.peer.id }}</small></li>
         <li>
+        {% if channel.peer.connected %}
           <form id="close-channel-form-{{loop.index}}" method="POST">
             <input type="hidden" name="form-name" value="close_channel_form">
             <input type="hidden" id="channel_id" name="channel_id" value={{ channel.channel_id }}>
             <input type="hidden" id="channel_short_id" name="channel_short_id" value={{ channel.short_channel_id }}>
             <button type="submit" class="close-channel-submit btn-sm btn-secondary">Close channel</button>
           </form>
+        {% endif %}
         </li>
       </ul>
     </li>
