@@ -1,0 +1,58 @@
+{% extends "lightning/layout.html" %}
+{% block title %}Transaction List{% endblock %}
+{% block content %}
+<br>
+<div>
+<form class="form-inline" action="/ln_wallet/address" method="post">
+  <div class="form-group mx-sm-3 mb-2">
+    <label for="inputPassword2" class="sr-only">Address</label>
+    <input type="text" class="form-control" id="inputPassword2" placeholder="Address" name="bech32-address">
+  </div>
+  <button type="submit" class="btn btn-primary mb-2">Check Address</button>
+</form>
+    <h2 class="mt-3">BTC TRANSACTIONS</h2>
+    <table class="table table-hover">
+	<thead>
+        <tr>
+            <th scope="col">Blockheight</th>
+            <th scope="col">Transaction id</th>
+            <th scope="col">Inputs</th>
+            <th scope="col">Fee</th>
+            <th scope="col">Outputs</th>
+        </tr>
+	</thead>
+	<tbody>
+        {% for tx in transactions %}
+		<tr class="table-secondary">
+		<td><a href="{{ bitcoin_explorer }}block-height/{{ tx.blockheight }}">{{ tx.blockheight }}</a></td>
+		<td><a href="{{ bitcoin_explorer }}tx/{{ tx.hash }}">{{ tx.hash }}<a></td>
+		<td>
+		{% for input in tx.inputs %}
+		{% if input.ours %}
+		<span class="badge bg-primary">{{ input.sats }}</span>
+		{% else %}
+		<span class="badge bg-secondary">{{ input.sats }}</span>
+		{% endif %}
+		{% endfor %}
+		</td>
+		<td>
+		<span class="badge bg-secondary">{{ tx.fee_sats }}</span>
+		</td>
+		<td>
+		{% for output in tx.outputs %}
+		{% if output.ours %}
+		<span class="badge bg-primary">{{ output.sats }}</span>
+		{% else %}
+		<span class="badge bg-secondary">{{ output.sats }}</span>
+		{% endif %}
+		{% endfor %}
+		</td>
+		</tr>
+        {% endfor %}
+	</tbody>
+    </table>
+</div>
+{% endblock %}
+{% block footer %}
+  {{ super() }}
+{% endblock %}
