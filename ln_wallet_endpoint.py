@@ -3,10 +3,12 @@
 import logging
 import secrets
 import os
+import json
 
 from flask import Blueprint, render_template, request, flash, Markup, jsonify, redirect
 from flask_security import roles_accepted
 from bitcoin.rpc import Proxy
+from blockcypher import get_transaction_details
 
 from utils import qrcode_svg_create
 from web_utils import bad_request
@@ -64,9 +66,9 @@ def list_txs():
         key=lambda d: d["blockheight"],
         reverse=True)
     return render_template(
-        "lightning/list_transactions.html",
-        transactions=sorted_txs,
-        bitcoin_explorer=BITCOIN_EXPLORER)
+    "lightning/list_transactions.html",
+    transactions=sorted_txs,
+    bitcoin_explorer=BITCOIN_EXPLORER)
 
 @ln_wallet.route('/invoice', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
@@ -314,6 +316,8 @@ def address_history(bech32_address=None):
         return redirect('/ln_wallet/address/' + bech32_address)
     rpc = LnRpc()
     address_list = rpc.list_addrs()
+    service_url = _build_bitcoin_rpc_url(app.config['BITCOIN_DATADIR'], app.config['BITCOIN_RPCCONNECT'])
+    connection = Proxy(service_url=service_url)
     redeem_script = ""
     address_txs = []
     for address in address_list["addresses"]:
@@ -325,18 +329,32 @@ def address_history(bech32_address=None):
     else:
         transactions = rpc.list_txs()
         for tx in transactions["transactions"]:
+            is_ours = 0
             for output in tx["outputs"]:
                 output["sats"] = int(output["msat"] / 1000)
                 output.update({"sats": str(output["sats"]) + " satoshi"})
                 if output["scriptPubKey"] == redeem_script:
                     output["ours"] = True
-                    address_txs.append(tx)
+                    is_ours += 1
+            for tx_input in tx["inputs"]:
+                input_details = get_transaction_details(tx_input['txid'], 'btc-testnet')
+                block_hash = input_details['block_hash']
+                input_gettx = connection._call('getrawtransaction', tx_input['txid'], True, block_hash)
+                logger.info("RETURNED RESULT IS   *****  *****: " + str(input_gettx))
+                relevant_vout = input_gettx["vout"][int(tx_input['index'])]
+                tx_input["sats"] = str(int(float(relevant_vout["value"]) * 100000000)) + " satoshi"
+                if relevant_vout["scriptPubKey"]["hex"] == redeem_script:
+                    tx_input["ours"] = True
+                    is_ours += 1
+            if is_ours > 0:
+                address_txs.append(tx)
 
         sorted_txs = sorted(
             address_txs,
             key=lambda d: d["blockheight"],
             reverse=True)
         return render_template(
-            "lightning/address.html",
-            transactions=sorted_txs,
-            bitcoin_explorer=BITCOIN_EXPLORER)
+    "lightning/address.html",
+    transactions=sorted_txs,
+    bitcoin_explorer=BITCOIN_EXPLORER)
+
