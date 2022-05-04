@@ -61,7 +61,7 @@
         <li><strong>Age:</strong> n/a</li>
         <li><strong>Peer:</strong> <small class="break-all">{{ channel.peer.id }}</small></li>
         <li>
-        {% if channel.peer.connected %}
+        {% if channel.state == "CHANNELD_NORMAL" %}
           <form id="close-channel-form-{{loop.index}}" method="POST">
             <input type="hidden" name="form-name" value="close_channel_form">
             <input type="hidden" id="channel_id" name="channel_id" value={{ channel.channel_id }}>
