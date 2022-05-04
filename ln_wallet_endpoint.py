@@ -330,8 +330,12 @@ def address_history(bech32_address=None):
         transactions = rpc.list_txs()
         for tx in transactions["transactions"]:
             is_ours = 0
+            input_sum = 0
+            output_sum = 0
             for output in tx["outputs"]:
-                output["sats"] = int(output["msat"] / 1000)
+                output_sats = int(output["msat"] / 1000)
+                output_sum += output_sats
+                output["sats"] = output_sats
                 output.update({"sats": str(output["sats"]) + " satoshi"})
                 if output["scriptPubKey"] == redeem_script:
                     output["ours"] = True
@@ -342,11 +346,14 @@ def address_history(bech32_address=None):
                 input_gettx = connection._call('getrawtransaction', tx_input['txid'], True, block_hash)
                 logger.info("RETURNED RESULT IS   *****  *****: " + str(input_gettx))
                 relevant_vout = input_gettx["vout"][int(tx_input['index'])]
-                tx_input["sats"] = str(int(float(relevant_vout["value"]) * 100000000)) + " satoshi"
+                input_sats = int(float(relevant_vout["value"]) * 100000000)
+                input_sum += input_sats
+                tx_input["sats"] = str(input_sats) + " satoshi"
                 if relevant_vout["scriptPubKey"]["hex"] == redeem_script:
                     tx_input["ours"] = True
                     is_ours += 1
             if is_ours > 0:
+                tx["fee_sats"] = input_sum - output_sum
                 address_txs.append(tx)
 
         sorted_txs = sorted(
