@@ -9,6 +9,8 @@
         <tr>
             <th scope="col">Blockheight</th>
             <th scope="col">Transaction id</th>
+            <th scope="col">Inputs</th>
+            <th scope="col">Fee</th>
             <th scope="col">Outputs</th>
         </tr>
 	</thead>
@@ -18,11 +20,23 @@
 		<td><a href="{{ bitcoin_explorer }}block-height/{{ tx.blockheight }}">{{ tx.blockheight }}</a></td>
 		<td><a href="{{ bitcoin_explorer }}tx/{{ tx.hash }}">{{ tx.hash }}<a></td>
 		<td>
+		{% for input in tx.inputs %}
+		{% if input.ours %}
+		<span class="badge bg-primary">{{ input.sats }}</span>
+		{% else %}
+		<span class="badge bg-secondary">{{ input.sats }}</span>
+		{% endif %}
+		{% endfor %}
+		</td>
+		<td>
+		<span class="badge bg-secondary">{{ tx.fee_sats }}</span>
+		</td>
+		<td>
 		{% for output in tx.outputs %}
 		{% if output.ours %}
-		<span class="badge bg-success">{{ output.sats }} {% if not loop.last %},{% endif %}</span>
+		<span class="badge bg-primary">{{ output.sats }}</span>
 		{% else %}
-		<span class="badge bg-secondary">{{ output.sats }} {% if not loop.last %},{% endif %}</span>
+		<span class="badge bg-secondary">{{ output.sats }}</span>
 		{% endif %}
 		{% endfor %}
 		</td>
