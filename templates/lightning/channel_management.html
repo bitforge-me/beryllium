@@ -42,7 +42,7 @@
     <h2>Channels</h2>
     <ul class="channels">
     {% for channel in channels %}
-    <li class="channel">
+    <button type="button" class="btn btn-light btn-lg btn-block" data-toggle="collapse" href="#collapseExample{{loop.index}}" role="button" aria-expanded="false" aria-controls="collapseExample">
       <header class="d-flex justify-content-between mb-2">
         <span class="capacity">{{channel.total_sats}}</span>
         <span class="state">{% if channel.peer.connected %}active{% else %}offline{% endif %}</span>
@@ -53,25 +53,31 @@
         <div class="progress-bar bg-info" role="progressbar" title="Receivable: {{ channel.receivable_sats }}" style="width: {{ channel.receivable_sats / channel.total_sats * 100 }}%;"></div>
         <div class="progress-bar bg-warning" role="progressbar" title="Their reserve: {{ channel.their_reserve_sats }}" style="width: {{ channel.their_reserve_sats / channel.total_sats * 100 }}%;"></div>
       </div>
-      <ul class="list-unstyled my-3">
-        <li><strong>Channel ID:</strong> {{ channel.short_channel_id }}</li>
-        <li><strong>Status:</strong> {{ channel.state }}</li>
-        <li><strong>Spendable:</strong> {{ channel.spendable_sats }} sats</li>
-        <li><strong>Receivable:</strong> {{ channel.receivable_sats }} sats</li>
-        <li><strong>Age:</strong> n/a</li>
-        <li><strong>Peer:</strong> <small class="break-all">{{ channel.peer.id }}</small></li>
-        <li>
-        {% if channel.state == "CHANNELD_NORMAL" %}
-          <form id="close-channel-form-{{loop.index}}" method="POST">
-            <input type="hidden" name="form-name" value="close_channel_form">
-            <input type="hidden" id="channel_id" name="channel_id" value={{ channel.channel_id }}>
-            <input type="hidden" id="channel_short_id" name="channel_short_id" value={{ channel.short_channel_id }}>
-            <button type="submit" class="close-channel-submit btn-sm btn-secondary">Close channel</button>
-          </form>
-        {% endif %}
-        </li>
-      </ul>
-    </li>
+    </button>
+      <div class="collapse" id="collapseExample{{loop.index}}">
+        <div class="card card-body">
+          <ul class="list-unstyled my-3">
+            <li><strong>Channel ID:</strong> {{ channel.short_channel_id }}</li>
+            <li><strong>Status:</strong> {{ channel.state }}</li>
+            <li><strong>Spendable:</strong> {{ channel.spendable_sats }} sats</li>
+            <li><strong>Receivable:</strong> {{ channel.receivable_sats }} sats</li>
+            <li><strong>Age:</strong> n/a</li>
+            <li><strong>Peer:</strong> <small class="break-all">{{ channel.peer.id }}</small></li>
+            <li>
+            {% if channel.state == "CHANNELD_NORMAL" %}
+              <form id="close-channel-form-{{loop.index}}" method="POST">
+                <input type="hidden" name="form-name" value="close_channel_form">
+                <input type="hidden" id="channel_id" name="channel_id" value={{ channel.channel_id }}>
+                <input type="hidden" id="channel_short_id" name="channel_short_id" value={{ channel.short_channel_id }}>
+                <button type="submit" class="close-channel-submit btn-sm btn-secondary">Close channel</button>
+              </form>
+            {% endif %}
+            </li>
+          </ul>
+        </div>
+        <br>
+      </div>
+    <br>
     {% endfor %}
     </ul>
     </div>
