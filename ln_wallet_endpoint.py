@@ -22,6 +22,64 @@ limiter.limit("100/minute")(ln_wallet)
 BITCOIN_EXPLORER = app.config["BITCOIN_EXPLORER"]
 TESTNET = app.config['TESTNET']
 
+def tx_check(bech32=None):
+    rpc = LnRpc()
+    address_list = rpc.list_addrs()
+    service_url = _build_bitcoin_rpc_url(app.config['BITCOIN_DATADIR'], app.config['BITCOIN_RPCCONNECT'])
+    connection = Proxy(service_url=service_url)
+    redeem_script = ""
+    address_txs = []
+    transactions = rpc.list_txs()
+    if bech32 is not None:
+        for address in address_list["addresses"]:
+            if address["bech32"] == bech32:
+               redeem_script = address["p2sh_redeemscript"] 
+               break
+    for tx in transactions["transactions"]:
+        is_ours = 0
+        input_sum = 0
+        output_sum = 0
+        for output in tx["outputs"]:
+            output_sats = int(output["msat"] / 1000)
+            output_sum += output_sats
+            output["sats"] = output_sats
+            output.update({"sats": str(output["sats"]) + " satoshi"})
+            if bech32 is not None:
+                if output["scriptPubKey"] == redeem_script:
+                    output["ours"] = True
+                    is_ours += 1
+            else:
+                for address in rpc.list_addrs()["addresses"]:
+                    if output["scriptPubKey"] == address["p2sh_redeemscript"]:
+                        output["ours"] = True
+                        is_ours += 1
+        for tx_input in tx["inputs"]:
+            input_details = get_transaction_details(tx_input['txid'], 'btc-testnet')
+            block_hash = input_details['block_hash']
+            input_gettx = connection._call('getrawtransaction', tx_input['txid'], True, block_hash)
+            logger.info("RETURNED RESULT IS   *****  *****: " + str(input_gettx))
+            relevant_vout = input_gettx["vout"][int(tx_input['index'])]
+            input_sats = int(float(relevant_vout["value"]) * 100000000)
+            input_sum += input_sats
+            tx_input["sats"] = str(input_sats) + " satoshi"
+            if bech32 is not None:
+                if relevant_vout["scriptPubKey"]["hex"] == redeem_script:
+                    tx_input["ours"] = True
+                    is_ours += 1
+            else:
+                for address in rpc.list_addrs()["addresses"]:
+                    if relevant_vout["scriptPubKey"]["hex"] == address["p2sh_redeemscript"]:
+                        tx_input["ours"] = True
+            if is_ours > 0:
+                tx["fee_sats"] = input_sum - output_sum
+                address_txs.append(tx)
+
+    return sorted(
+        address_txs,
+        key=lambda d: d["blockheight"],
+        reverse=True)
+
+
 @ln_wallet.route('/')
 @roles_accepted(Role.ROLE_ADMIN)
 def ln_index():
@@ -52,41 +110,9 @@ def new_address_ep():
 @roles_accepted(Role.ROLE_ADMIN)
 def list_txs():
     """ Returns template of on-chain txs """
-    rpc = LnRpc()
-    transactions = rpc.list_txs()
-    service_url = _build_bitcoin_rpc_url(app.config['BITCOIN_DATADIR'], app.config['BITCOIN_RPCCONNECT'])
-    connection = Proxy(service_url=service_url)
-    for tx in transactions["transactions"]:
-        input_sum = 0
-        output_sum = 0
-        for output in tx["outputs"]:
-            output_sats = int(output["msat"] / 1000)
-            output_sum += output_sats
-            output["sats"] = output_sats
-            output.update({"sats": str(output["sats"]) + " satoshi"})
-            for address in rpc.list_addrs()["addresses"]:
-                if output["scriptPubKey"] == address["p2sh_redeemscript"]:
-                    output["ours"] = True
-        for tx_input in tx["inputs"]:
-            input_details = get_transaction_details(tx_input['txid'], 'btc-testnet')
-            block_hash = input_details['block_hash']
-            input_gettx = connection._call('getrawtransaction', tx_input['txid'], True, block_hash)
-            logger.info("RETURNED RESULT IS   *****  *****: " + str(input_gettx))
-            relevant_vout = input_gettx["vout"][int(tx_input['index'])]
-            input_sats = int(float(relevant_vout["value"]) * 100000000)
-            input_sum += input_sats
-            tx_input["sats"] = str(input_sats) + " satoshi"
-            for address in rpc.list_addrs()["addresses"]:
-                if relevant_vout["scriptPubKey"]["hex"] == address["p2sh_redeemscript"]:
-                    tx_input["ours"] = True
-        tx["fee_sats"] = input_sum - output_sum
-    sorted_txs = sorted(
-        transactions["transactions"],
-        key=lambda d: d["blockheight"],
-        reverse=True)
     return render_template(
     "lightning/list_transactions.html",
-    transactions=sorted_txs,
+    transactions= tx_check(),
     bitcoin_explorer=BITCOIN_EXPLORER)
 
 @ln_wallet.route('/invoice', methods=['GET', 'POST'])
@@ -333,53 +359,7 @@ def address_history(bech32_address=None):
     if request.method == 'POST':
         bech32_address = request.values.get('bech32-address')
         return redirect('/ln_wallet/address/' + bech32_address)
-    rpc = LnRpc()
-    address_list = rpc.list_addrs()
-    service_url = _build_bitcoin_rpc_url(app.config['BITCOIN_DATADIR'], app.config['BITCOIN_RPCCONNECT'])
-    connection = Proxy(service_url=service_url)
-    redeem_script = ""
-    address_txs = []
-    for address in address_list["addresses"]:
-        if address["bech32"] == bech32_address:
-           redeem_script = address["p2sh_redeemscript"] 
-           break
-    if redeem_script == "":
-        return "Enter a used address"
-    else:
-        transactions = rpc.list_txs()
-        for tx in transactions["transactions"]:
-            is_ours = 0
-            input_sum = 0
-            output_sum = 0
-            for output in tx["outputs"]:
-                output_sats = int(output["msat"] / 1000)
-                output_sum += output_sats
-                output["sats"] = output_sats
-                output.update({"sats": str(output["sats"]) + " satoshi"})
-                if output["scriptPubKey"] == redeem_script:
-                    output["ours"] = True
-                    is_ours += 1
-            for tx_input in tx["inputs"]:
-                input_details = get_transaction_details(tx_input['txid'], 'btc-testnet')
-                block_hash = input_details['block_hash']
-                input_gettx = connection._call('getrawtransaction', tx_input['txid'], True, block_hash)
-                logger.info("RETURNED RESULT IS   *****  *****: " + str(input_gettx))
-                relevant_vout = input_gettx["vout"][int(tx_input['index'])]
-                input_sats = int(float(relevant_vout["value"]) * 100000000)
-                input_sum += input_sats
-                tx_input["sats"] = str(input_sats) + " satoshi"
-                if relevant_vout["scriptPubKey"]["hex"] == redeem_script:
-                    tx_input["ours"] = True
-                    is_ours += 1
-            if is_ours > 0:
-                tx["fee_sats"] = input_sum - output_sum
-                address_txs.append(tx)
-
-        sorted_txs = sorted(
-            address_txs,
-            key=lambda d: d["blockheight"],
-            reverse=True)
-        return render_template(
-    "lightning/address.html",
-    transactions=sorted_txs,
-    bitcoin_explorer=BITCOIN_EXPLORER)
+    return render_template(
+"lightning/address.html",
+transactions=tx_check(bech32_address),
+bitcoin_explorer=BITCOIN_EXPLORER)
