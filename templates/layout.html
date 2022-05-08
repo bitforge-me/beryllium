@@ -64,6 +64,10 @@
     <br />
     {% endif %}
     {%- endwith %}
+    <div id="navigation" class="container-sm">
+    {% block navigation %}
+    {% endblock %}
+    </div>
     <div id="content" class="container-sm">
     {% block content %}
     {% endblock %}

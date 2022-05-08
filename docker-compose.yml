@@ -45,6 +45,7 @@ services:
       WINDCAVE_MOCK: ${WINDCAVE_MOCK}
       EXCHANGE_ACCOUNT_MOCK: ${EXCHANGE_ACCOUNT_MOCK}
       REGISTRATION_DISABLE: ${REGISTRATION_DISABLE}
+      TZ: ${TZ}
     volumes:
       - "clightning_bitcoin_datadir:/etc/lightning"
       - "bitcoin_datadir:/etc/bitcoin"
@@ -142,4 +143,8 @@ volumes:
       device: '${BITCOIN_DATA_DEVICE:?BITCOIN_DATA_DEVICE not set}'
   bitcoin_wallet_datadir:
   clightning_bitcoin_datadir:
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: '${LN_DATA_DEVICE:?LN_DATA_DEVICE not set}'
   clightning_bitcoin_spark:

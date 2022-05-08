@@ -1,50 +1,49 @@
 {% extends "lightning/layout.html" %}
-
 {% block title %}New Bitcoin Address{% endblock %}
-
 {% block content %}
-
-<h2>New Bitcoin Address</h2>
-Generate a new bitcoin address by selecting "BECH32" or "P2SH-SEGWIT"
-<br>
-{% if address is not none %}
-<div id="wrapper">
-    <section id="intro" class="wrapper style1 fullscreen fade-up">
-        <div class="inner">
-            {{ qrcode_svg | safe }}
-            
-        </div>
-        <div>
-            <h3 style="margin-top: 10px;">
-            {% if address.bech32 %}
-                address: {{ address["bech32"] }}
-            {% else %}
-                address: {{ address["p2sh-segwit"] }}
-            {% endif %}
-            </h3>
-        </div>
-    </section>
-</div>
-{% endif %}
-<div class='some-page-wrapper'>
-    <div class='row'>
-        <div>
-<form id="bech32_address" method="POST" action="/ln_wallet/new_address">
-    <input type="hidden" id="address_type" name="address_type" value="bech32">
-    <button id="bech32_address-submit" type="submit" class="btn btn-primary">BECH32</button>
-</form>
-        </div>&nbsp&nbsp&nbsp&nbsp
-        <div>
-<form id="p2sh_address" method="POST" action="/ln_wallet/new_address">
-	<input type="hidden" id="address_type" name="address_type" value="p2sh-segwit">
-    <button id="p2sh_address-submit" type="submit" class="btn btn-primary">P2SH-SEGWIT</button>
-</form>
+{{ super() }}
+<br/>
+<div class="alert alert-dismissible alert-info">
+    <h2>New Bitcoin Address</h2>
+    Generate a new bitcoin address by selecting "BECH32" or "P2SH-SEGWIT"
+    <br>
+    {% if address is not none %}
+    <div id="wrapper">
+        <section id="intro" class="wrapper style1 fullscreen fade-up">
+            <div class="inner">
+                {{ qrcode_svg | safe }}
+                
+            </div>
+            <div>
+                <h3 style="margin-top: 10px;">
+                {% if address.bech32 %}
+                    address: {{ address["bech32"] }}
+                {% else %}
+                    address: {{ address["p2sh-segwit"] }}
+                {% endif %}
+                </h3>
+            </div>
+        </section>
+    </div>
+    {% endif %}
+    <div class="alert alert-dismissible alert-info">
+        <div class='row'>
+            <div>
+    <form id="bech32_address" method="POST" action="/ln_wallet/new_address">
+        <input type="hidden" id="address_type" name="address_type" value="bech32">
+        <button id="bech32_address-submit" type="submit" class="btn btn-primary">BECH32</button>
+    </form>
+            </div>&nbsp&nbsp&nbsp&nbsp
+            <div>
+    <form id="p2sh_address" method="POST" action="/ln_wallet/new_address">
+    	<input type="hidden" id="address_type" name="address_type" value="p2sh-segwit">
+        <button id="p2sh_address-submit" type="submit" class="btn btn-primary">P2SH-SEGWIT</button>
+    </form>
+            </div>
         </div>
     </div>
 </div>
-
 {% endblock %}
-
 {% block footer %}
   {{ super() }}
 {% endblock %}

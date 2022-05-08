@@ -2,7 +2,6 @@ import os
 import datetime
 from typing import Optional
 
-import pytz
 from pyln.client import LightningRpc
 
 def _msat_to_sat(msats):
@@ -71,8 +70,7 @@ class LnRpc():
         pays = self.instance.listpays()
         for pay in pays["pays"]:
             created_at = pay["created_at"]
-            date = datetime.datetime.fromtimestamp(
-                created_at, pytz.timezone('Pacific/Auckland'))
+            date = datetime.datetime.fromtimestamp(created_at)
             status = pay["status"]
             amount_msat = pay["amount_sent_msat"].millisatoshis
             amount_sats = _msat_to_sat(amount_msat)
@@ -116,8 +114,6 @@ class LnRpc():
             description = invoice["description"]
             payment_hash = invoice["payment_hash"]
             expires_at = invoice["expires_at"]
-            amount_msat = invoice["amount_msat"]
-            amount_sats = _msat_to_sat(amount_msat)
             bolt11 = invoice["bolt11"]
             pay_index = None
             amount_received_msat = None
@@ -126,12 +122,46 @@ class LnRpc():
             payment_preimage = None
             status = invoice["status"]
             if status == 'paid':
+                amount_msat = invoice["amount_msat"]
+                amount_sats = _msat_to_sat(amount_msat)
                 pay_index = invoice["pay_index"]
                 amount_received_msat = invoice["amount_received_msat"]
+                amount_received_sats = _msat_to_sat(amount_received_msat)
                 paid_at = invoice["paid_at"]
-                paid_date = datetime.datetime.fromtimestamp(paid_at, pytz.timezone('Pacific/Auckland'))
+                paid_date = datetime.datetime.fromtimestamp(paid_at)
                 payment_preimage = invoice["payment_preimage"]
-            results.append({"paid_date": paid_date, "description": description, "status": status, "amount_msat": amount_msat, "amount_sats": amount_sats, "pay_index": pay_index, "amount_received_msat": amount_received_msat, "payment_preimage": payment_preimage, "bolt11": bolt11, "expires_at": expires_at, "payment_hash": payment_hash, "label": label})
+                results.append({"paid_at": paid_at, "paid_date": paid_date, "description": description, "status": status, "amount_msat": amount_msat, "amount_sats": amount_sats, "pay_index": pay_index, "amount_received_msat": amount_received_msat, "amount_received_sats": amount_received_sats,"payment_preimage": payment_preimage, "bolt11": bolt11, "expires_at": expires_at, "payment_hash": payment_hash, "label": label})
+        return results
+
+    def list_sendpays(self):
+        results = []
+        result_sendpays = self.instance.listsendpays()
+        for sendpay in result_sendpays["payments"]:
+            payment_hash = sendpay["payment_hash"]
+            status = sendpay["status"]
+            created_at = sendpay["created_at"]
+            amount_sent_msat = sendpay["amount_sent_msat"]
+            amount_sent_sats = _msat_to_sat(amount_sent_msat)
+            amount_msat = sendpay["amount_msat"]
+            amount_sats = _msat_to_sat(amount_msat)
+            destination = sendpay["destination"]
+            label = ""
+            if label:
+                label = sendpay["label"]
+            bolt11 = None
+            if bolt11:
+                bolt11 = sendpay["bolt11"]
+            groupid = None
+            if groupid:
+                groupid = sendpay["groupid"]
+            payment_preimage = None
+            fees_sats = None
+            if status == "complete":
+                paid_at = created_at
+                paid_date = datetime.datetime.fromtimestamp(paid_at)
+                payment_preimage = sendpay["payment_hash"]
+                fees_sats = amount_sent_sats - amount_sats
+                results.append({"paid_at": paid_at, "paid_date": paid_date, "status": status, "amount_msat": amount_msat, "amount_sats": amount_sats, "amount_sent_msat": amount_sent_msat, "amount_sent_sats": amount_sent_sats, "destination": destination, "label": label, "bolt11": bolt11, "payment_preimage": payment_preimage, "payment_hash": payment_hash, "groupid": groupid, "fees_sats": fees_sats})
         return results
 
     #
@@ -171,14 +201,11 @@ class LnRpc():
         sats_onchain += _msat_to_sat(msats_onchain)
         return dict(msats_largest_channel=msats_largest_channel, msats_channels=msats_channels, msats_largest_channel_theirs=msats_largest_channel_theirs, msats_channels_theirs=msats_channels_theirs, msats_onchain=msats_onchain, sats_largest_channel=sats_largest_channel, sats_channels=sats_channels, sats_channels_theirs=sats_channels_theirs, sats_largest_channel_theirs=sats_largest_channel_theirs, sats_onchain=sats_onchain)
 
-    #def open_channel(self, node_id, sats):
-    #    return self.instance.fundchannel_start(node_id, _sat_to_msat(sats))
-
     def fund_channel(self, node_id, sats):
         return self.instance.fundchannel(node_id, sats)
 
-    def close_channel(self, peer_id):
-        return self.instance.close(peer_id)
+    def close_channel(self, channel_id):
+        return self.instance.close(channel_id)
 
     def new_address(self, address_type):
         # return a bech32 address

@@ -4,6 +4,13 @@
 {{ super() }}
 {% endblock %}
 {% block content %}
+{{ super() }}
+<br/>
+<div class="alert alert-dismissible alert-success">
+    <strong>on-chain balance:</strong> {{ funds_dict.sats_onchain }} <strong>SAT</strong>
+</div>
+
+<div class="alert alert-dismissible alert-info">
 <h2>Open a Lightning Network Channel</h2>
 <p>Open a channel with a lighting node, entering the Node ID in this format: pubkey@address:port</p>
 <form id="form" method="POST">
@@ -17,6 +24,7 @@
     </div>
     <button id="form-submit" type="button" class="btn btn-primary">Submit</button>
 </form>
+</div>
 {% endblock %}
 {% block scripts %}
 <script>

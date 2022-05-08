@@ -4,6 +4,12 @@
 {{ super() }}
 {% endblock %}
 {% block content %}
+{{ super() }}
+<br/>
+<div class="alert alert-dismissible alert-success">
+	<strong>on-chain balance:</strong> {{ onchain }} <strong>BTC</strong> <b>|</b> {{ onchain_sats }} <strong>SAT</strong>
+</div>
+<div class="alert alert-dismissible alert-info">
 {% if psbt %}
 <h2>PSBT Created</h2>
 <div class="form-group">
@@ -22,11 +28,23 @@
         <div class="form-check form-check-inline">
             <input class="form-check-input" type="radio" name="mode" id="psbt" value="psbt" {% if mode == 'psbt' %}checked{% endif %}>
             <label class="form-check-label" for="psbt">Create PSBT</label>
-          </div>
+        </div>
         <div class="form-check form-check-inline">
             <input class="form-check-input" type="radio" name="mode" id="withdraw" value="withdraw" {% if mode == 'withdraw' %}checked{% endif %}>
             <label class="form-check-label" for="withdraw">Create Withdrawal</label>
         </div>
+	<br>
+        <div class="alert alert-dismissible alert-warning">
+        Unit: 
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="unit" id="btc" value="btc" {% if unit == 'btc' %}checked{% endif %} required>
+    	    <label class="form-check-label" for="btc"><strong>BTC</strong></label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="unit" id="sat" value="sat" checked>
+    	    <label class="form-check-label" for="sat"><strong>SAT</strong></label>
+            </div>
+	</div>
         <div class="form-group">
             <label for="address" class="form-label">Recipient Address</label>
             <input type="text" id="address" name="address" class="payment form-control" placeholder="Recipient Address" required>
@@ -35,7 +53,7 @@
         <div class="input-group">
             <input type="text" id="amount" name="amount" class="payment form-control" placeholder="Amount" required>
             <div class="input-group-append">
-                <button type="button" id="max" class="btn btn-sm">Max</button>
+                <button class="btn btn-outline-secondary" type="button" id="max">Max</button>
             </div>
         </div>
     </div>
@@ -47,11 +65,12 @@
     <br/>
     <button id="form-submit" type="button" class="btn btn-primary">Submit</button>
 </form>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    function confirm(form_class, outputs, totalBtc, action) {
+    function confirm(form_class, outputs, totalBtc, action, unit) {
         if (!document.querySelector(form_class).reportValidity()) {
             return;
         }
@@ -61,7 +80,7 @@
         }
         bootbox.confirm({
             title: `Confirm Create ${action}`,
-            message: `Total: ${totalBtc} BTC. Do you want to create the ${action}?`,
+            message: `Total: ${totalBtc}${unit}. Do you want to create the ${action}?`,
             buttons: {
                 confirm: {
                     label: 'Yes',
@@ -105,7 +124,13 @@
         $('#max').click(function() {
             var ele = $('#max').parent().prev();
             console.log(ele);
-            ele.val('{{ onchain }}');
+            const unit = document.querySelector('input[name="unit"]:checked').value;
+            if(unit == 'btc')
+                return ele.val('{{ onchain }}');
+            else if(unit == 'sat')
+                return ele.val('{{ onchain_sats }}');
+            else
+                return
         });
 
         $('#form-remove-output').hide();
@@ -134,6 +159,7 @@
             }
             totalBtc = Math.round(totalBtc * 100000000) / 100000000;
             const mode = document.querySelector('input[name="mode"]:checked').value;
+            const unit = document.querySelector('input[name="unit"]:checked').value;
             var action = '!ERR!';
             if (mode == 'psbt')
                 action = 'PSBT';
@@ -141,7 +167,7 @@
                 action = 'Withdrawal Transaction';
             else
                 return;
-            confirm('#form', outputs, totalBtc, action);
+            confirm('#form', outputs, totalBtc, action, unit);
             return false;
         });
 

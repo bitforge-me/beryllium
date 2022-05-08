@@ -14,7 +14,7 @@ from utils import qrcode_svg_create
 from web_utils import bad_request
 from app_core import app, limiter
 from models import Role
-from ln import LnRpc
+from ln import LnRpc, _msat_to_sat
 
 logger = logging.getLogger(__name__)
 ln_wallet = Blueprint('ln_wallet', __name__, template_folder='templates')
@@ -129,63 +129,59 @@ def ln_invoice():
         rpc = LnRpc()
         bolt11 = rpc.invoice(int(amount), label, message)['bolt11']
         qrcode_svg = qrcode_svg_create(bolt11, 10)
-    return render_template("lightning/invoice.html", bolt11=bolt11, label=label, qrcode_svg=qrcode_svg)
+    return render_template("lightning/invoice.html", bolt11=bolt11, label=label, qrcode_svg=qrcode_svg, funds_dict=LnRpc().list_funds())
 
-@ln_wallet.route('/rebalance_channel', methods=['GET', 'POST'])
+@ln_wallet.route('/channel_management', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
-def rebalance_channel():
+def channel_management():
     """ Returns a template listing all connected LN peers """
     rpc = LnRpc()
     if request.method == 'POST':
-        form_name = request.form["form-name"]
+        form_name = request.form['form-name']
         if form_name == 'rebalance_channel_form':
-            oscid = request.form["oscid"]
-            iscid = request.form["iscid"]
-            sats = request.form["amount"]
-            amount = str(int(sats))
+            oscid = request.form['oscid']
+            iscid = request.form['iscid']
+            amount = request.form['amount']
             try:
-                rpc = LnRpc()
-                # pylint: disable=no-member
-                # pylint: disable=unused-variable
-                result = rpc.rebalance_channel(oscid, iscid, amount)
-                flash(Markup(f'successfully move funds from: {oscid} to: {iscid} with the amount: {sats}sats'),'success')
+                LnRpc().rebalance_channel(oscid, iscid, amount)
+                flash(Markup(f'successfully moved {amount} sats from {oscid} to {iscid}'),'success')
             except Exception as e: # pylint: disable=broad-except
                 flash(Markup(e.args[0]), 'danger')
         elif form_name == 'close_channel_form':
-            peer_id = request.form["peer_id"]
+            channel_id = request.form['channel_id']
             try:
-                rpc = LnRpc()
-                # pylint: disable=no-member
-                # pylint: disable=unused-variable
-                close_tx = rpc.close_channel(peer_id)
-                flash(Markup(f'successfully close channel {peer_id}'), 'success')
+                LnRpc().close_channel(channel_id)
+                flash(Markup(f'successfully closed channel {channel_id}'), 'success')
             except Exception as e: # pylint: disable=broad-except
                 flash(Markup(e.args[0]), 'danger')
-    peers = rpc.list_peers()["peers"]
-    # pylint: disable=consider-using-enumerate
-    for i in range(len(peers)):
-        peers[i]["sats_total"] = 0
-        peers[i]["can_send"] = 0
-        peers[i]["can_receive"] = 0
-        peers[i]["scid"] = ""
-        # I'm assuming there will only be one channel for each node, but I'm
-        # using an array in case there's more
-        peers[i]["channel_states"] = []
-        for channel in peers[i]["channels"]:
-            if channel["state"] == 'CHANNELD_NORMAL':
-                peers[i]["sats_total"] += int(channel["msatoshi_total"]) / 1000
-                peers[i]["can_send"] += int(channel["msatoshi_to_us"]) / 1000
-                peers[i]["can_receive"] += int(
-                    channel["out_msatoshi_fulfilled"]) / 1000
-                for scid in channel["short_channel_id"]:
-                    peers[i]["scid"] += scid
-                peers[i]["channel_states"].append(channel["state"])
+    peers = rpc.list_peers()['peers']
+    channels = []
+    total_receivable = 0
+    total_spendable = 0
+    for peer in peers:
+        for channel in peer['channels']:
+            total = channel['msatoshi_total']
+            ours = channel['msatoshi_to_us']
+            theirs = total - ours
+            our_reserve = channel['our_channel_reserve_satoshis']
+            their_reserve = channel['their_channel_reserve_satoshis']
+            receivable = theirs - our_reserve
+            spendable = ours - their_reserve
 
-        # round as a last step, for accuracy
-        peers[i]["sats_total"] = int(peers[i]["sats_total"])
-        peers[i]["can_send"] = int(peers[i]["can_send"])
-        peers[i]["can_receive"] = int(peers[i]["can_receive"])
-    return render_template("lightning/rebalance_channel.html", peers=peers)
+            if peer['connected'] and channel['state'] == 'CHANNELD_NORMAL':
+                total_receivable += receivable
+                total_spendable += spendable
+
+            channel['total_sats'] = _msat_to_sat(total)
+            channel['our_reserve_sats'] = our_reserve
+            channel['their_reserve_sats'] = their_reserve
+            channel['receivable_sats'] = _msat_to_sat(receivable)
+            channel['spendable_sats'] = _msat_to_sat(spendable)
+            channel['peer'] = peer
+
+            channels.append(channel)
+
+    return render_template('lightning/channel_management.html', channels=channels, total_spendable_sats=_msat_to_sat(total_spendable), total_receivable_sats=_msat_to_sat(total_receivable))
 
 @ln_wallet.route('/list_forwards')
 @roles_accepted(Role.ROLE_ADMIN)
@@ -205,23 +201,27 @@ def pay_invoice():
             flash(f'Invoice paid: {result}', 'success')
         except Exception as e: # pylint: disable=broad-except
             flash(f'Error paying invoice: {e}', 'danger')
-    return render_template("lightning/pay_invoice.html", invoice=invoice)
+    return render_template("lightning/pay_invoice.html", invoice=invoice, funds_dict=LnRpc().list_funds())
 
-@ln_wallet.route('/invoices', methods=['GET'])
+@ln_wallet.route('/lightning_transactions', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
-def invoices():
-    """ Returns template listing all LN paid invoices """
-    rpc = LnRpc()
-    paid_invoices = rpc.list_paid()
-    return render_template("lightning/invoices.html", paid_invoices=paid_invoices)
-
-@ln_wallet.route('/list_received_transactions', methods=['GET'])
-@roles_accepted(Role.ROLE_ADMIN)
-def list_received_transactions():
+def lightning_transactions():
     """ Returns received transactions """
+    dict_txs = []
+    unsorted_list_dict = []
     rpc = LnRpc()
     received_txs = rpc.list_invoices()
-    return render_template("lightning/received_transactions.html", received_txs=received_txs)
+    send_txs = rpc.list_sendpays()
+    funds_dict = rpc.list_funds()
+    dict_txs.append(received_txs)
+    dict_txs.append(send_txs)
+    for unsorted_dict in dict_txs[0]:
+        unsorted_list_dict.append(unsorted_dict)
+    for unsorted_dict in dict_txs[1]:
+        unsorted_list_dict.append(unsorted_dict)
+    sorted_txs = sorted(unsorted_list_dict, key=lambda d: d["paid_at"], reverse=True)
+    record_no = str(len(sorted_txs))
+    return render_template("lightning/lightning_transactions.html", funds_dict=funds_dict, sorted_txs=sorted_txs, record_no=record_no)
 
 @ln_wallet.route('/decode_bolt11/<bolt11>', strict_slashes=False)
 @roles_accepted(Role.ROLE_ADMIN)
@@ -248,14 +248,15 @@ def channel_opener():
             flash(Markup(f'successfully added node id: {node_id[0]} with the amount: {amount}'), 'success')
         except Exception as e: # pylint: disable=broad-except
             flash(Markup(e.args[0]), 'danger')
-    return render_template('lightning/channel_opener.html')
+    return render_template('lightning/channel_opener.html', funds_dict=LnRpc().list_funds())
 
 @ln_wallet.route('/create_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def create_psbt():
     """ Returns template for creating a PSBT """
     rpc = LnRpc()
-    onchain = int(rpc.list_funds()["sats_onchain"]) / 100000000
+    onchain_sats = int(rpc.list_funds()["sats_onchain"])
+    onchain = onchain_sats / 100000000
     addrs = []
     amounts = []
     mode = 'psbt'
@@ -264,9 +265,10 @@ def create_psbt():
         addrs = request.form.getlist('address')
         amounts = request.form.getlist('amount')
         mode = request.form['mode']
+        unit = request.form['unit']
         outputs = []
         for addr, amount in zip(addrs, amounts):
-            outputs.append({addr: f'{amount}btc'})
+            outputs.append({addr: f'{amount}{unit}'})
         if mode == 'psbt':
             logger.info('preparing psbt with outputs: %s', outputs)
             try:
@@ -276,6 +278,7 @@ def create_psbt():
             except Exception as e: # pylint: disable=broad-except
                 flash(f'Failed to create PSBT: {e}', 'danger')
         elif mode == 'withdraw':
+            logger.info('preparing withdrawal with outputs: %s', outputs)
             try:
                 res = rpc.multi_withdraw(outputs)
                 txid = res['txid']
@@ -285,11 +288,14 @@ def create_psbt():
         else:
             flash(f'Unknown mode: {mode}', 'danger')
     return render_template(
-        'lightning/create_psbt.html', onchain=onchain, addrs=addrs, amounts=amounts, mode=mode, psbt=psbt)
+        'lightning/create_psbt.html', onchain=onchain, addrs=addrs, amounts=amounts, mode=mode, psbt=psbt, onchain_sats=onchain_sats)
 
 @ln_wallet.route('/sign_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def sign_psbt():
+    rpc = LnRpc()
+    onchain_sats = int(rpc.list_funds()["sats_onchain"])
+    onchain = onchain_sats / 100000000
     signed_psbt = None
     if request.method == 'POST':
         psbt = request.form["psbt"]
@@ -300,11 +306,14 @@ def sign_psbt():
             flash('Sign successful', 'success')
         except Exception as e: # pylint: disable=broad-except
             flash(f'Sign failed: {e}', 'danger')
-    return render_template('lightning/sign_psbt.html', signed_psbt=signed_psbt)
+    return render_template('lightning/sign_psbt.html', signed_psbt=signed_psbt, onchain=onchain, onchain_sats=onchain_sats)
 
 @ln_wallet.route('/broadcast_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def broadcast():
+    rpc = LnRpc()
+    onchain_sats = int(rpc.list_funds()["sats_onchain"])
+    onchain = onchain_sats / 100000000
     if request.method == 'POST':
         psbt = request.form["psbt"]
         try:
@@ -314,7 +323,7 @@ def broadcast():
             flash(f'Broadcast successful, TXID: {txid}', 'success')
         except Exception as e: # pylint: disable=broad-except
             flash(f'Broadcast failed: {e}', 'danger')
-    return render_template('lightning/broadcast_psbt.html')
+    return render_template('lightning/broadcast_psbt.html', onchain=onchain, onchain_sats=onchain_sats)
 
 def _build_bitcoin_rpc_url(bitcoin_datadir, bitcoin_host):
     btc_conf_file = os.path.join(bitcoin_datadir, 'bitcoin.conf')
