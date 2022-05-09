@@ -3,7 +3,6 @@
 import logging
 import secrets
 import os
-import json
 
 from flask import Blueprint, render_template, request, flash, Markup, jsonify, redirect
 from flask_security import roles_accepted
@@ -33,8 +32,8 @@ def tx_check(bech32=None):
     if bech32 is not None:
         for address in address_list["addresses"]:
             if address["bech32"] == bech32:
-               redeem_script = address["p2sh_redeemscript"] 
-               break
+                redeem_script = address["p2sh_redeemscript"]
+                break
     for tx in transactions["transactions"]:
         is_ours = 0
         input_sum = 0
