@@ -21,7 +21,7 @@ limiter.limit("100/minute")(ln_wallet)
 BITCOIN_EXPLORER = app.config["BITCOIN_EXPLORER"]
 TESTNET = app.config['TESTNET']
 
-def tx_check(bech32=None):
+def tx_check(addr=None):
     rpc = LnRpc()
     address_list = rpc.list_addrs()
     service_url = _build_bitcoin_rpc_url(app.config['BITCOIN_DATADIR'], app.config['BITCOIN_RPCCONNECT'])
@@ -29,9 +29,9 @@ def tx_check(bech32=None):
     redeem_script = ""
     address_txs = []
     transactions = rpc.list_txs()
-    if bech32 is not None:
+    if addr is not None:
         for address in address_list["addresses"]:
-            if address["bech32"] == bech32:
+            if address["bech32"] == addr or address["p2sh"] == addr:
                 redeem_script = address["p2sh_redeemscript"]
                 break
     for tx in transactions["transactions"]:
@@ -43,7 +43,7 @@ def tx_check(bech32=None):
             output_sum += output_sats
             output["sats"] = output_sats
             output.update({"sats": str(output["sats"]) + " satoshi"})
-            if bech32 is not None:
+            if addr is not None:
                 if output["scriptPubKey"] == redeem_script:
                     output["ours"] = True
                     is_ours += 1
@@ -60,7 +60,7 @@ def tx_check(bech32=None):
             input_sats = int(float(relevant_vout["value"]) * 100000000)
             input_sum += input_sats
             tx_input["sats"] = str(input_sats) + " satoshi"
-            if bech32 is not None:
+            if addr is not None:
                 if relevant_vout["scriptPubKey"]["hex"] == redeem_script:
                     tx_input["ours"] = True
                     is_ours += 1
