@@ -29,9 +29,9 @@
 		<td>
 		{% for input in tx.inputs %}
 		{% if input.ours %}
-		<span class="badge bg-primary">{{ input.sats }}</span>
+		<a class="link-dark" href="{{ bitcoin_explorer }}address/{{ input.address }}"><span class="badge bg-primary">{{ input.sats }}</span></a>
 		{% else %}
-		<span class="badge bg-secondary">{{ input.sats }}</span>
+		<a class="link-dark" href="{{ bitcoin_explorer }}address/{{ input.address }}"><span class="badge bg-secondary">{{ input.sats }}</span></a>
 		{% endif %}
 		{% endfor %}
 		</td>

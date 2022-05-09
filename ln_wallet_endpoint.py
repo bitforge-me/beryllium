@@ -57,6 +57,7 @@ def tx_check(addr=None):
             block_hash = input_details['block_hash']
             input_gettx = connection._call('getrawtransaction', tx_input['txid'], True, block_hash)
             relevant_vout = input_gettx["vout"][int(tx_input['index'])]
+            tx_input["address"] = relevant_vout["scriptPubKey"]["address"]
             input_sats = int(float(relevant_vout["value"]) * 100000000)
             input_sum += input_sats
             tx_input["sats"] = str(input_sats) + " satoshi"
