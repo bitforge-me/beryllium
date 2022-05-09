@@ -31,7 +31,7 @@ def tx_check(addr=None):
     transactions = rpc.list_txs()
     if addr is not None:
         for address in address_list["addresses"]:
-            if address["bech32"] == addr or address["p2sh"] == addr:
+            if addr in (address["bech32"], address["p2sh"]):
                 redeem_script = address["p2sh_redeemscript"]
                 break
     for tx in transactions["transactions"]:
