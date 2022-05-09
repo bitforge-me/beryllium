@@ -56,7 +56,6 @@ def tx_check(bech32=None):
             input_details = get_transaction_details(tx_input['txid'], 'btc-testnet')
             block_hash = input_details['block_hash']
             input_gettx = connection._call('getrawtransaction', tx_input['txid'], True, block_hash)
-            logger.info("RETURNED RESULT IS   *****  *****: " + str(input_gettx))
             relevant_vout = input_gettx["vout"][int(tx_input['index'])]
             input_sats = int(float(relevant_vout["value"]) * 100000000)
             input_sum += input_sats
