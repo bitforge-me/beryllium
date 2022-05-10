@@ -29,6 +29,9 @@ def tx_check(addr=None):
     redeem_script = ""
     address_txs = []
     transactions = rpc.list_txs()
+    network = 'btc'
+    if TESTNET:
+        network += "-testnet"
     if addr is not None:
         for address in address_list["addresses"]:
             if addr in (address["bech32"], address["p2sh"]):
@@ -39,7 +42,7 @@ def tx_check(addr=None):
         input_sum = 0
         output_sum = 0
         for output in tx["outputs"]:
-            output_sats = int(output["msat"] / 1000)
+            output_sats = _msat_to_sat(int(output["msat"]))
             output_sum += output_sats
             output["sats"] = output_sats
             output.update({"sats": str(output["sats"]) + " satoshi"})
@@ -53,7 +56,7 @@ def tx_check(addr=None):
                         output["ours"] = True
                         is_ours += 1
         for tx_input in tx["inputs"]:
-            input_details = get_transaction_details(tx_input['txid'], 'btc-testnet')
+            input_details = get_transaction_details(tx_input['txid'], network)
             block_hash = input_details['block_hash']
             input_gettx = connection._call('getrawtransaction', tx_input['txid'], True, block_hash)
             relevant_vout = input_gettx["vout"][int(tx_input['index'])]
@@ -360,14 +363,10 @@ def list_addrs():
     rpc = LnRpc()
     return rpc.list_addrs()
 
-@ln_wallet.route('/address', strict_slashes=False, methods=['GET', 'POST'])
-@ln_wallet.route('/address/<bech32_address>', strict_slashes=False, methods=['GET', 'POST'])
+@ln_wallet.route('/address', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
-def address_history(bech32_address=None):
+def address_history():
+    address = None 
     if request.method == 'POST':
-        bech32_address = request.values.get('bech32-address')
-        return redirect('/ln_wallet/address/' + bech32_address)
-    return render_template(
-"lightning/address.html",
-transactions=tx_check(bech32_address),
-bitcoin_explorer=BITCOIN_EXPLORER)
+        address = request.values.get('address')
+    return render_template("lightning/address.html", transactions=tx_check(address), bitcoin_explorer=BITCOIN_EXPLORER)
