@@ -81,6 +81,13 @@ def tx_check(addr=None):
         key=lambda d: d["blockheight"],
         reverse=True)
 
+@ln_wallet.before_request
+def before_request():
+    info = LnRpc().get_info()
+    if 'warning_bitcoind_sync' in info:
+        flash(info['warning_bitcoind_sync'], 'danger')
+    if 'warning_lightningd_sync' in info:
+        flash(info['warning_lightningd_sync'], 'danger')
 
 @ln_wallet.route('/')
 @roles_accepted(Role.ROLE_ADMIN)
