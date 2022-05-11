@@ -17,7 +17,7 @@
         </thead>
         <tbody>
         {% for tx in transactions %}
-		<tr class="table-secondary">
+	        <tr class="table-secondary">
 		<td><a href="{{ bitcoin_explorer }}block-height/{{ tx.blockheight }}">{{ tx.blockheight }}</a></td>
 		<td><a href="{{ bitcoin_explorer }}tx/{{ tx.hash }}">{{ tx.hash }}<a></td>
 		<td>

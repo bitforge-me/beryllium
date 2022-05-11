@@ -4,7 +4,7 @@ import logging
 import secrets
 import os
 
-from flask import Blueprint, render_template, request, flash, Markup, jsonify, redirect
+from flask import Blueprint, render_template, request, flash, Markup, jsonify
 from flask_security import roles_accepted
 from bitcoin.rpc import Proxy
 import requests
@@ -120,9 +120,9 @@ def new_address_ep():
 def list_txs():
     """ Returns template of on-chain txs """
     return render_template(
-    "lightning/list_transactions.html",
-    transactions= tx_check(),
-    bitcoin_explorer=BITCOIN_EXPLORER)
+        "lightning/list_transactions.html",
+        transactions= tx_check(),
+        bitcoin_explorer=BITCOIN_EXPLORER)
 
 @ln_wallet.route('/invoice', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
