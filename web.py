@@ -55,6 +55,7 @@ app.register_blueprint(reporting, url_prefix='/reporting')
 app.register_blueprint(payments, url_prefix='/payments')
 app.register_blueprint(kyc, url_prefix='/kyc')
 app.register_blueprint(ln_wallet, url_prefix='/ln_wallet')
+app.url_map.strict_slashes = False
 
 def process_email_alerts():
     with app.app_context():

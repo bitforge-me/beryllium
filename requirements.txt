@@ -32,4 +32,3 @@ pyotp==2.6.0
 zxcvbn==4.4.28
 pyln-client==0.10.1
 pytz==2022.1
-blockcypher==1.0.93

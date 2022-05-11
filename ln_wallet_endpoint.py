@@ -7,7 +7,7 @@ import os
 from flask import Blueprint, render_template, request, flash, Markup, jsonify, redirect
 from flask_security import roles_accepted
 from bitcoin.rpc import Proxy
-from blockcypher import get_transaction_details
+import requests
 
 from utils import qrcode_svg_create
 from web_utils import bad_request
@@ -29,9 +29,9 @@ def tx_check(addr=None):
     redeem_script = ""
     address_txs = []
     transactions = rpc.list_txs()
-    network = 'btc'
+    network = 'v1'
     if TESTNET:
-        network += "-testnet"
+        network = 'testnet/v1'
     if addr is not None:
         for address in address_list["addresses"]:
             if addr in (address["bech32"], address["p2sh"]):
@@ -56,8 +56,8 @@ def tx_check(addr=None):
                         output["ours"] = True
                         is_ours += 1
         for tx_input in tx["inputs"]:
-            input_details = get_transaction_details(tx_input['txid'], network)
-            block_hash = input_details['block_hash']
+            input_details = requests.get('https://api.bitaps.com/btc/{0}/blockchain/transaction/{1}'.format(network, tx_input['txid'])).json()
+            block_hash = input_details['data']['blockHash']
             input_gettx = connection._call('getrawtransaction', tx_input['txid'], True, block_hash)
             relevant_vout = input_gettx["vout"][int(tx_input['index'])]
             tx_input["address"] = relevant_vout["scriptPubKey"]["address"]
