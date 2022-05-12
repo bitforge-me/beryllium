@@ -167,9 +167,13 @@ def channel_management():
     channels = []
     total_receivable = 0
     total_spendable = 0
+    largest_channel_sats = 0
     for peer in peers:
         for channel in peer['channels']:
             total = channel['msatoshi_total']
+            total_sats = _msat_to_sat(total)
+            if total_sats > largest_channel_sats:
+                largest_channel_sats = total_sats
             ours = channel['msatoshi_to_us']
             theirs = total - ours
             our_reserve = channel['our_channel_reserve_satoshis']
@@ -181,7 +185,7 @@ def channel_management():
                 total_receivable += receivable
                 total_spendable += spendable
 
-            channel['total_sats'] = _msat_to_sat(total)
+            channel['total_sats'] = total
             channel['our_reserve_sats'] = our_reserve
             channel['their_reserve_sats'] = their_reserve
             channel['receivable_sats'] = _msat_to_sat(receivable)
@@ -190,7 +194,7 @@ def channel_management():
 
             channels.append(channel)
 
-    return render_template('lightning/channel_management.html', channels=channels, total_spendable_sats=_msat_to_sat(total_spendable), total_receivable_sats=_msat_to_sat(total_receivable))
+    return render_template('lightning/channel_management.html', channels=channels, total_spendable_sats=_msat_to_sat(total_spendable), total_receivable_sats=_msat_to_sat(total_receivable), largest_channel_sats=largest_channel_sats)
 
 @ln_wallet.route('/list_forwards')
 @roles_accepted(Role.ROLE_ADMIN)
