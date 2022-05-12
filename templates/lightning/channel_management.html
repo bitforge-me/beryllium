@@ -27,10 +27,12 @@
         <span class="capacity">{{total_spendable_sats + total_receivable_sats}}</span>
         <span class="state"></span>
       </header>
+      {% if total_spendable_sats + total_receivable_sats > 0 %}
       <div class="channel-bar">
         <div class="progress-bar bg-success" role="progressbar" title="Spendable: {{ total_spendable_sats }}" style="width: {{ total_spendable_sats / (total_spendable_sats + total_receivable_sats) * 100 }}%;"></div>
         <div class="progress-bar bg-info" role="progressbar" title="Receivable: {{ total_receivable_sats }}" style="width: {{ total_receivable_sats / (total_spendable_sats + total_receivable_sats) * 100 }}%;"></div>
       </div>
+      {% endif %}
       <ul class="list-unstyled my-3">
         <li><strong>Spendable:</strong> {{ total_spendable_sats }} sats</li>
         <li><strong>Receivable:</strong> {{ total_receivable_sats }} sats</li>
@@ -45,10 +47,11 @@
         <span class="state">{% if channel.peer.connected %}active{% else %}offline{% endif %}</span>
       </header>
       <div class="channel-bar">
-        <div class="progress-bar bg-warning" role="progressbar" title="Our reserve: {{ channel.our_reserve_sats }} sats" style="width: {{ channel.our_reserve_sats / channel.total_sats * 100 }}%;"></div>
-        <div class="progress-bar bg-success" role="progressbar" title="Spendable: {{ channel.spendable_sats }}" style="width: {{ channel.spendable_sats / channel.total_sats * 100 }}%;"></div>
-        <div class="progress-bar bg-info" role="progressbar" title="Receivable: {{ channel.receivable_sats }}" style="width: {{ channel.receivable_sats / channel.total_sats * 100 }}%;"></div>
-        <div class="progress-bar bg-warning" role="progressbar" title="Their reserve: {{ channel.their_reserve_sats }}" style="width: {{ channel.their_reserve_sats / channel.total_sats * 100 }}%;"></div>
+        {% set ratio = channel.total_sats / largest_channel_sats %}
+        <div class="progress-bar bg-warning" role="progressbar" title="Our reserve: {{ channel.our_reserve_sats }} sats" style="width: {{ channel.our_reserve_sats / channel.total_sats * 100 * ratio }}%;"></div>
+        <div class="progress-bar bg-success" role="progressbar" title="Spendable: {{ channel.spendable_sats }}" style="width: {{ channel.spendable_sats / channel.total_sats * 100 * ratio }}%;"></div>
+        <div class="progress-bar bg-info" role="progressbar" title="Receivable: {{ channel.receivable_sats }}" style="width: {{ channel.receivable_sats / channel.total_sats * 100 * ratio }}%;"></div>
+        <div class="progress-bar bg-warning" role="progressbar" title="Their reserve: {{ channel.their_reserve_sats }}" style="width: {{ channel.their_reserve_sats / channel.total_sats * 100 * ratio }}%;"></div>
       </div>
       <ul class="list-unstyled my-3">
         <li><strong>Channel ID:</strong> {{ channel.short_channel_id }}</li>
