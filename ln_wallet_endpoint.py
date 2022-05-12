@@ -2,39 +2,35 @@
 
 import logging
 import secrets
-import os
 
 from flask import Blueprint, render_template, request, flash, Markup, jsonify
 from flask_security import roles_accepted
-from bitcoin.rpc import Proxy
-import requests
 
 from utils import qrcode_svg_create
 from web_utils import bad_request
 from app_core import app, limiter
 from models import Role
 from ln import LnRpc, _msat_to_sat
+from wallet import bitcoind_rpc, btc_transactions_index, btc_input_transaction_get
 
 logger = logging.getLogger(__name__)
 ln_wallet = Blueprint('ln_wallet', __name__, template_folder='templates')
 limiter.limit("100/minute")(ln_wallet)
 BITCOIN_EXPLORER = app.config["BITCOIN_EXPLORER"]
-TESTNET = app.config['TESTNET']
 
 def tx_check(addr=None):
+    btc_transactions_index()
     rpc = LnRpc()
-    address_list = rpc.list_addrs()
-    service_url = _build_bitcoin_rpc_url(app.config['BITCOIN_DATADIR'], app.config['BITCOIN_RPCCONNECT'])
-    connection = Proxy(service_url=service_url)
     redeem_script = ""
     address_txs = []
+    addresses = rpc.list_addrs()['addresses']
     transactions = rpc.list_txs()
-    network = 'v1'
-    if TESTNET:
-        network = 'testnet/v1'
     if addr is not None:
-        for address in address_list["addresses"]:
-            if addr in (address["bech32"], address["p2sh"]):
+        for address in addresses:
+            if addr == address["bech32"]:
+                redeem_script = address["bech32_redeemscript"]
+                break
+            if addr == address["p2sh"]:
                 redeem_script = address["p2sh_redeemscript"]
                 break
     for tx in transactions["transactions"]:
@@ -51,31 +47,33 @@ def tx_check(addr=None):
                     output["ours"] = True
                     is_ours += 1
             else:
-                for address in rpc.list_addrs()["addresses"]:
-                    if output["scriptPubKey"] == address["p2sh_redeemscript"]:
+                for address in addresses:
+                    if output["scriptPubKey"] in (address["bech32_redeemscript"], address["p2sh_redeemscript"]):
                         output["ours"] = True
                         is_ours += 1
-        for tx_input in tx["inputs"]:
-            input_details = requests.get('https://api.bitaps.com/btc/{0}/blockchain/transaction/{1}'.format(network, tx_input['txid'])).json()
-            block_hash = input_details['data']['blockHash']
-            input_gettx = connection._call('getrawtransaction', tx_input['txid'], True, block_hash)
-            relevant_vout = input_gettx["vout"][int(tx_input['index'])]
-            tx_input["address"] = relevant_vout["scriptPubKey"]["address"]
+        for input in tx["inputs"]:
+            input_tx_hex = btc_input_transaction_get(input['txid'])
+            if not input_tx_hex:
+                logger.error('could not get input tx hex for %s', input['txid'])
+                continue
+            input_tx = bitcoind_rpc('decoderawtransaction', input_tx_hex)
+
+            relevant_vout = input_tx["vout"][int(input['index'])]
+            input["address"] = relevant_vout["scriptPubKey"]["address"]
             input_sats = int(float(relevant_vout["value"]) * 100000000)
             input_sum += input_sats
-            tx_input["sats"] = str(input_sats) + " satoshi"
+            input["sats"] = str(input_sats) + " satoshi"
             if addr is not None:
                 if relevant_vout["scriptPubKey"]["hex"] == redeem_script:
-                    tx_input["ours"] = True
+                    input["ours"] = True
                     is_ours += 1
             else:
-                for address in rpc.list_addrs()["addresses"]:
-                    if relevant_vout["scriptPubKey"]["hex"] == address["p2sh_redeemscript"]:
-                        tx_input["ours"] = True
+                for address in addresses:
+                    if relevant_vout["scriptPubKey"]["hex"] in (address["bech32_redeemscript"], address["p2sh_redeemscript"]):
+                        input["ours"] = True
             if is_ours > 0:
                 tx["fee_sats"] = input_sum - output_sum
                 address_txs.append(tx)
-
     return sorted(
         address_txs,
         key=lambda d: d["blockheight"],
@@ -338,21 +336,6 @@ def broadcast():
             flash(f'Broadcast failed: {e}', 'danger')
     return render_template('lightning/broadcast_psbt.html', onchain=onchain, onchain_sats=onchain_sats)
 
-def _build_bitcoin_rpc_url(bitcoin_datadir, bitcoin_host):
-    btc_conf_file = os.path.join(bitcoin_datadir, 'bitcoin.conf')
-    conf = {'rpcuser': ""}
-    with open(btc_conf_file, 'r', encoding='utf-8') as fd:
-        for line in fd.readlines():
-            if '#' in line:
-                line = line[:line.index('#')]
-            if '=' not in line:
-                continue
-            k, v = line.split('=', 1)
-            conf[k.strip()] = v.strip()
-    authpair = f"{conf['rpcuser']}:{conf['rpcpassword']}"
-    service_url = f"http://{authpair}@{bitcoin_host}:{conf['rpcport']}"
-    return service_url
-
 @ln_wallet.route('/decode_psbt')
 @roles_accepted(Role.ROLE_ADMIN)
 def decode_psbt():
@@ -360,9 +343,7 @@ def decode_psbt():
     if not psbt:
         return bad_request('empty psbt string')
     try:
-        service_url = _build_bitcoin_rpc_url(app.config['BITCOIN_DATADIR'], app.config['BITCOIN_RPCCONNECT'])
-        connection = Proxy(service_url=service_url)
-        psbt_json = connection._call('decodepsbt', psbt) # pylint: disable=protected-access
+        psbt_json = bitcoind_rpc('decodepsbt', psbt)
         logger.info('psbt json: %s', psbt_json)
         return jsonify(psbt_json)
     except Exception as e: # pylint: disable=broad-except
