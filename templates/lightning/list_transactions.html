@@ -6,7 +6,7 @@
 <div class="alert alert-dismissible alert-info">
     <h2>BTC TRANSACTIONS</h2>
     <table class="table table-striped table-hover">
-	<thead>
+  <thead>
         <tr>
             <th scope="col">Blockheight</th>
             <th scope="col">Transaction id</th>
@@ -17,31 +17,31 @@
         </thead>
         <tbody>
         {% for tx in transactions %}
-	        <tr class="table-secondary">
-		<td><a href="{{ bitcoin_explorer }}block-height/{{ tx.blockheight }}">{{ tx.blockheight }}</a></td>
-		<td><a href="{{ bitcoin_explorer }}tx/{{ tx.hash }}">{{ tx.hash }}<a></td>
-		<td>
-		{% for input in tx.inputs %}
-		{% if input.ours %}
-		<a class="link-dark" href="{{ bitcoin_explorer }}address/{{ input.address }}"><span class="badge bg-primary">{{ input.sats }}</span></a>
-		{% else %}
-		<a class="link-dark" href="{{ bitcoin_explorer }}address/{{ input.address }}"><span class="badge bg-secondary">{{ input.sats }}</span></a>
-		{% endif %}
-		{% endfor %}
-		</td>
-		<td>
-		<span class="badge bg-secondary">{{ tx.fee_sats }}</span>
-		</td>
-		<td>
-		{% for output in tx.outputs %}
-		{% if output.ours %}
-		<span class="badge bg-primary">{{ output.sats }}</span>
-		{% else %}
-		<span class="badge bg-secondary">{{ output.sats }}</span>
-		{% endif %}
-		{% endfor %}
-		</td>
-		</tr>
+          <tr class="table-secondary">
+          <td><a href="{{ bitcoin_explorer }}block-height/{{ tx.blockheight }}">{{ tx.blockheight }}</a></td>
+    <td><a href="{{ bitcoin_explorer }}tx/{{ tx.hash }}">{{ tx.hash }}<a></td>
+    <td>
+    {% for input in tx.inputs %}
+    {% if input.ours %}
+    <a class="link-dark" href="{{ bitcoin_explorer }}address/{{ input.address }}"><span class="badge bg-primary">{{ input.sats }}</span></a>
+    {% else %}
+    <a class="link-dark" href="{{ bitcoin_explorer }}address/{{ input.address }}"><span class="badge bg-secondary">{{ input.sats }}</span></a>
+    {% endif %}
+    {% endfor %}
+    </td>
+    <td>
+    <span class="badge bg-secondary">{{ tx.fee_sats }}</span>
+    </td>
+    <td>
+    {% for output in tx.outputs %}
+    {% if output.ours %}
+    <span class="badge bg-primary">{{ output.sats }}</span>
+    {% else %}
+    <span class="badge bg-secondary">{{ output.sats }}</span>
+    {% endif %}
+    {% endfor %}
+    </td>
+    </tr>
         {% endfor %}
         </tbody>
     </table>
