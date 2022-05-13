@@ -11,13 +11,17 @@
     <title>{% block title %}{% endblock %}</title>
   </head>
   <body>
+    {% set printed_messages = dict() %}
     {% for category, message in get_flashed_messages(with_categories=True) %}
+        {% if message not in printed_messages %}
+          {% set x = printed_messages.__setitem__(message, "value")  %}
     <div class="alert alert-{{category}} alert-dismissible fade in" role="alert">
         {{ message }}
         <button type="button" class="close" data-dismiss="alert" aria-label="Close">
             <span aria-hidden="true">&times;</span>
         </button>
     </div>
+        {% endif %}
     {% endfor %}
     {% block content %}{% endblock %}
 

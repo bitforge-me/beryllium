@@ -11,8 +11,8 @@ services:
       - pgdata:/var/lib/postgresql/data
 
   app:
-    image: beryllium_app
-    container_name: beryllium_app
+    image: be_app
+    container_name: be_app
     restart: unless-stopped
     environment:
       TESTNET: ${TESTNET}
@@ -47,17 +47,17 @@ services:
       REGISTRATION_DISABLE: ${REGISTRATION_DISABLE}
       TZ: ${TZ}
     volumes:
-      - "clightning_bitcoin_datadir:/etc/lightning"
+      - "lightning_datadir:/etc/lightning"
       - "bitcoin_datadir:/etc/bitcoin"
     links:
-      - clightning_bitcoin
+      - lightningd
       - db
     expose:
       - "5000"
 
   web:
     image: jonasal/nginx-certbot:2.4.1-nginx1.21.3-alpine
-    container_name: beryllium_web
+    container_name: be_web
     restart: unless-stopped
     environment:
       CERTBOT_EMAIL: ${ADMIN_EMAIL:?ADMIN_EMAIL unset}
@@ -97,9 +97,9 @@ services:
       - "bitcoin_datadir:/data"
       - "bitcoin_wallet_datadir:/walletdata"
 
-  clightning_bitcoin:
-    image: clightning_bitcoin
-    container_name: clightning_bitcoin
+  lightningd:
+    image: lightningd
+    container_name: lightningd
     restart: unless-stopped
     environment:
       LIGHTNINGD_NETWORK: ${BITCOIN_NETWORK:?BITCOIN_NETWORK not set}
@@ -110,12 +110,29 @@ services:
         bitcoin-datadir=/etc/bitcoin
         bitcoin-rpcconnect=bitcoind
     volumes:
-      - "clightning_bitcoin_datadir:/root/.lightning"
+      - "lightning_datadir:/root/.lightning"
       - "bitcoin_datadir:/etc/bitcoin"
     ports:
       - "9735:9735"
     links:
       - bitcoind
+
+  spark:
+    image: shesek/spark-wallet:0.2.9-standalone
+    container_name: spark
+    restart: unless-stopped
+    environment:
+      NETWORK: ${BITCOIN_NETWORK:?BITCOIN_NETWORK not set}
+      # SPARK_LOGIN format `<USER>:<PASS>`
+      # TODO - ensure only admin users can access spark
+      SPARK_OPT: --no-tls -C /data/.cookie --login ${SPARK_LOGIN:?SPARK_LOGIN not set}
+    volumes:
+      - "lightning_datadir:/etc/lightning"
+      - "spark:/data"
+    links:
+      - lightningd
+    expose:
+      - "9737"
 
 volumes:
   pgdata:
@@ -125,8 +142,9 @@ volumes:
       o: 'bind'
       device: '${BITCOIN_DATA_DEVICE:?BITCOIN_DATA_DEVICE not set}'
   bitcoin_wallet_datadir:
-  clightning_bitcoin_datadir:
+  lightning_datadir:
     driver_opts:
       type: 'none'
       o: 'bind'
       device: '${LN_DATA_DEVICE:?LN_DATA_DEVICE not set}'
+  spark:

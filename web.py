@@ -78,6 +78,11 @@ def process_deposits_and_broker_orders():
         logger.info('process broker orders..')
         broker.broker_orders_update(db.session)
 
+def process_btc_tx_index():
+    with app.app_context():
+        logger.info('process btc tx index..')
+        wallet.btc_transactions_index()
+
 #
 # Flask views
 #
@@ -381,6 +386,7 @@ class WebGreenlet():
         current = int(time.time())
         email_alerts_timer_last = current
         deposits_and_orders_timer_last = current
+        btc_tx_index_timer_last = current
         while True:
             current = time.time()
             if current - email_alerts_timer_last > 1800:
@@ -389,6 +395,9 @@ class WebGreenlet():
             if current - deposits_and_orders_timer_last > 300:
                 gevent.spawn(process_deposits_and_broker_orders)
                 deposits_and_orders_timer_last += 300
+            if current - btc_tx_index_timer_last > 3600:
+                gevent.spawn(process_btc_tx_index)
+                btc_tx_index_timer_last += 3600
             gevent.sleep(5)
 
     def _process_ln_invoices_loop(self):
