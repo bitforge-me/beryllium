@@ -8,8 +8,8 @@ from flask_security import roles_accepted
 
 from utils import qrcode_svg_create
 from web_utils import bad_request
-from app_core import app, limiter
-from models import Role
+from app_core import app, limiter, db
+from models import BtcTxIndex, Role
 from ln import LnRpc, _msat_to_sat
 from wallet import bitcoind_rpc, btc_transactions_index, btc_input_transaction_get
 
@@ -18,66 +18,55 @@ ln_wallet = Blueprint('ln_wallet', __name__, template_folder='templates')
 limiter.limit("100/minute")(ln_wallet)
 BITCOIN_EXPLORER = app.config["BITCOIN_EXPLORER"]
 
-def tx_check(addr=None):
+def tx_load(addr=None):
     btc_transactions_index()
     rpc = LnRpc()
-    redeem_script = ""
-    address_txs = []
+    txs = []
     addresses = rpc.list_addrs()['addresses']
     transactions = rpc.list_txs()
-    if addr is not None:
-        for address in addresses:
-            if addr == address["bech32"]:
-                redeem_script = address["bech32_redeemscript"]
-                break
-            if addr == address["p2sh"]:
-                redeem_script = address["p2sh_redeemscript"]
-                break
-    for tx in transactions["transactions"]:
-        is_ours = 0
+    for tx in transactions['transactions']:
         input_sum = 0
         output_sum = 0
-        for output in tx["outputs"]:
-            output_sats = _msat_to_sat(int(output["msat"]))
+        ours = False
+        tx_hex = tx['rawtx']
+        tx_bitcoind = bitcoind_rpc('decoderawtransaction', tx_hex)
+        for output in tx['outputs']:
+            vout = tx_bitcoind['vout'][output['index']]
+            output['address'] = vout['scriptPubKey']['address']
+            output_sats = _msat_to_sat(output['msat'])
             output_sum += output_sats
-            output["sats"] = output_sats
-            output.update({"sats": str(output["sats"]) + " satoshi"})
-            if addr is not None:
-                if output["scriptPubKey"] == redeem_script:
-                    output["ours"] = True
-                    is_ours += 1
+            output['sats'] = output_sats
+            if addr:
+                if output['address'] == addr:
+                    output['ours'] = True
+                    ours = True
             else:
                 for address in addresses:
-                    if output["scriptPubKey"] in (address["bech32_redeemscript"], address["p2sh_redeemscript"]):
-                        output["ours"] = True
-                        is_ours += 1
-        for input in tx["inputs"]:
+                    if output['address'] in (address['bech32'], address['p2sh']):
+                        output['ours'] = True
+        for input in tx['inputs']:
             input_tx_hex = btc_input_transaction_get(input['txid'])
             if not input_tx_hex:
                 logger.error('could not get input tx hex for %s', input['txid'])
                 continue
             input_tx = bitcoind_rpc('decoderawtransaction', input_tx_hex)
-
-            relevant_vout = input_tx["vout"][int(input['index'])]
-            input["address"] = relevant_vout["scriptPubKey"]["address"]
-            input_sats = int(float(relevant_vout["value"]) * 100000000)
+            vout = input_tx['vout'][input['index']]
+            input['address'] = vout['scriptPubKey']['address']
+            input_sats = int(float(vout['value']) * 100000000)
             input_sum += input_sats
-            input["sats"] = str(input_sats) + " satoshi"
-            if addr is not None:
-                if relevant_vout["scriptPubKey"]["hex"] == redeem_script:
-                    input["ours"] = True
-                    is_ours += 1
+            input['sats'] = input_sats
+            if addr:
+                if input['address'] == addr:
+                    input['ours'] = True
+                    ours = True
             else:
                 for address in addresses:
-                    if relevant_vout["scriptPubKey"]["hex"] in (address["bech32_redeemscript"], address["p2sh_redeemscript"]):
-                        input["ours"] = True
-            if is_ours > 0:
-                tx["fee_sats"] = input_sum - output_sum
-                address_txs.append(tx)
-    return sorted(
-        address_txs,
-        key=lambda d: d["blockheight"],
-        reverse=True)
+                    if input['address'] in (address['bech32'], address['p2sh']):
+                        input['ours'] = True
+        tx['fee_sats'] = input_sum - output_sum
+        if not addr or ours:
+            txs.append(tx)
+    return sorted(txs, key=lambda d: d['blockheight'], reverse=True)
 
 @ln_wallet.before_request
 def before_request():
@@ -119,7 +108,7 @@ def list_txs():
     """ Returns template of on-chain txs """
     return render_template(
         "lightning/list_transactions.html",
-        transactions= tx_check(),
+        transactions= tx_load(),
         bitcoin_explorer=BITCOIN_EXPLORER)
 
 @ln_wallet.route('/invoice', methods=['GET', 'POST'])
@@ -349,16 +338,38 @@ def decode_psbt():
     except Exception as e: # pylint: disable=broad-except
         return bad_request(str(e))
 
-@ln_wallet.route('/list_addrs')
+@ln_wallet.route('/address', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
-def list_addrs():
-    rpc = LnRpc()
-    return rpc.list_addrs()
+def address():
+    address = request.args.get('address', '')
+    if address:
+        txs = tx_load(address)
+    else:
+        txs = []
+    return render_template("lightning/address.html", address=address, transactions=txs, bitcoin_explorer=BITCOIN_EXPLORER)
 
-@ln_wallet.route('/address', methods=['GET', 'POST'])
+@ln_wallet.route('/addr_raw/<addr>', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
-def address_history():
-    address = None 
-    if request.method == 'POST':
-        address = request.values.get('address')
-    return render_template("lightning/address.html", transactions=tx_check(address), bitcoin_explorer=BITCOIN_EXPLORER)
+def addr_raw(addr):
+    for a in LnRpc().list_addrs()['addresses']:
+        if addr in (a['bech32'], a['p2sh']):
+            return jsonify(a)
+        if addr in (a['bech32_redeemscript'], a['p2sh_redeemscript']):
+            return jsonify(a)
+        if addr == a['pubkey']:
+            return jsonify(a)
+    return jsonify(dict(msg='address not found'))
+
+@ln_wallet.route('/tx_raw/<txid>', methods=['GET'])
+@roles_accepted(Role.ROLE_ADMIN)
+def tx_raw(txid):
+    tx = BtcTxIndex.from_txid(db.session, txid)
+    if tx:
+        tx = bitcoind_rpc('decoderawtransaction', tx.hex)
+        return jsonify(tx)
+    else:
+        for tx in LnRpc().list_txs()['transactions']:
+            if tx['hash'] == txid:
+                tx = bitcoind_rpc('decoderawtransaction', tx['rawtx'])
+                return jsonify(tx)
+        return jsonify(dict(msg='tx not found'))

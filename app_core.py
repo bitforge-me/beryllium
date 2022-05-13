@@ -35,6 +35,7 @@ if os.getenv("DEBUG"):
 
 app.config.from_pyfile("flask_config.py")
 
+app.config["JSONIFY_PRETTYPRINT_REGULAR"] = True
 if os.getenv("TESTNET"):
     app.config["TESTNET"] = True
 else:
