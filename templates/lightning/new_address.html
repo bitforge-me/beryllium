@@ -1,8 +1,8 @@
 {% extends "lightning/layout.html" %}
+
 {% block title %}New Bitcoin Address{% endblock %}
+
 {% block content %}
-{{ super() }}
-<br/>
 <div class="alert alert-dismissible alert-info">
     <h2>New Bitcoin Address</h2>
     Generate a new bitcoin address by selecting "BECH32" or "P2SH-SEGWIT"
@@ -43,7 +43,4 @@
         </div>
     </div>
 </div>
-{% endblock %}
-{% block footer %}
-  {{ super() }}
 {% endblock %}
