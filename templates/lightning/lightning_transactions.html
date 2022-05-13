@@ -1,8 +1,9 @@
 {% extends "lightning/layout.html" %}
+
 {% block title %}Lightning Transaction History{% endblock %}
+
 {% block content %}
-{{ super() }}
-<br/>
+
 <div class="alert alert-dismissible alert-success">
     <strong>ln-channel balance:</strong> {{ funds_dict.sats_channels }} <strong>SAT</strong>
 </div>
@@ -35,7 +36,4 @@ These are the transactions recorded by the wallet.
             </div>
         </div>
     {% endfor %}
-{% endblock %}
-{% block footer %}
-  {{ super() }}
 {% endblock %}

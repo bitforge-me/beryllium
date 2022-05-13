@@ -5,11 +5,11 @@
 <h2>BALANCES</h2>
 <div class='some-page-wrapper'>
     <div class='row'>
-        <div class='dashboard'>
+        <div class='dashboard_links'>
             <p>on-chain balance<p>
             <p><center>{{ funds_dict.sats_onchain }} <strong>SAT</strong></center></p>
         </div>
-        <div class='dashboard'>
+        <div class='dashboard_links'>
             <p>ln-channel balance<p>
             <p><center>{{ funds_dict.sats_channels }} <strong>SAT</strong></center></p>
         </div>
@@ -21,6 +21,10 @@
         <a href="getinfo">
         <div class='dashboard_links'>
             <p>Lightningd Getinfo<p>
+        </div>
+        <a href="/spark">
+        <div class='dashboard_links'>
+            <p>Spark<p>
         </div>
         </a>
     </div>

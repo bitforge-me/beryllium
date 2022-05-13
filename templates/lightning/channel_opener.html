@@ -1,11 +1,9 @@
 {% extends "lightning/layout.html" %}
+
 {% block title %}Open a Lightning Network Channel{% endblock %}
-{% block head %}
-{{ super() }}
-{% endblock %}
+
 {% block content %}
-{{ super() }}
-<br/>
+
 <div class="alert alert-dismissible alert-success">
     <strong>on-chain balance:</strong> {{ funds_dict.sats_onchain }} <strong>SAT</strong>
 </div>

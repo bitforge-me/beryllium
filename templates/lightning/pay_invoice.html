@@ -1,8 +1,8 @@
 {% extends "lightning/layout.html" %}
+
 {% block title %}Pay Invoice{% endblock %}
+
 {% block content %}
-{{ super() }}
-<br/>
 <div class="alert alert-dismissible alert-success">
     <strong>ln-channel balance:</strong> {{ funds_dict.sats_channels }} <strong>SAT</strong>
 </div>
@@ -67,8 +67,4 @@
         });
     });
 </script>
-{% endblock %}
-
-{% block footer %}
-{{ super() }}
 {% endblock %}
