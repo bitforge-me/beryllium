@@ -85,9 +85,12 @@ def ln_index():
 @ln_wallet.route('/getinfo')
 @roles_accepted(Role.ROLE_ADMIN)
 def lightningd_getinfo():
-    """ Returns template with info about lightningd"""
-    rpc = LnRpc()
-    return render_template('lightning/lightningd_getinfo.html', info=rpc.get_info())
+    return render_template('lightning/lightningd_getinfo.html', info=LnRpc().get_info())
+
+@ln_wallet.route('/utxos', methods=['GET'])
+@roles_accepted(Role.ROLE_ADMIN)
+def utxos_ep():
+    return render_template("lightning/utxos.html", outputs=LnRpc().list_funds()['funds']['outputs'])
 
 @ln_wallet.route('/new_address', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
@@ -97,8 +100,7 @@ def new_address_ep():
     qrcode_svg = None
     if request.method == 'POST':
         address_type = request.form.get('address_type')
-        rpc = LnRpc()
-        address = rpc.new_address(address_type)
+        address = LnRpc().new_address(address_type)
         qrcode_svg = qrcode_svg_create(address[address_type], 10)
     return render_template("lightning/new_address.html", address=address, qrcode_svg=qrcode_svg)
 

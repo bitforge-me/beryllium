@@ -2,7 +2,7 @@
     <thead>
         <tr>
             <th scope="col">Blockheight</th>
-            <th scope="col">Transaction id</th>
+            <th scope="col">TXID</th>
             <th scope="col">Inputs (sats)</th>
             <th scope="col">Outputs (sats)</th>
             <th scope="col">Fee (sats)</th>
@@ -11,8 +11,8 @@
     <tbody>
         {% for tx in transactions %}
         <tr class="table-secondary">
-            <td><a href="{{ bitcoin_explorer }}block-height/{{ tx.blockheight }}">{{ tx.blockheight }}</a></td>
-            <td><a href="{{ bitcoin_explorer }}tx/{{ tx.hash }}">{{ tx.hash }}<a></td>
+            <td><a class="text-dark" href="{{ bitcoin_explorer }}block-height/{{ tx.blockheight }}"><span class="badge bg-light">{{ tx.blockheight }}</span></a></td>
+            <td><a class="text-dark" href="{{ bitcoin_explorer }}tx/{{ tx.hash }}"><span class="badge bg-light">{{ tx.hash }}</span><a></td>
             <td>
             {% for input in tx.inputs %}
                 {% if input.ours %}
@@ -35,6 +35,6 @@
                 <span class="badge bg-light">{{ tx.fee_sats }}</span>
             </td>
         </tr>
-    {% endfor %}
+        {% endfor %}
     </tbody>
 </table>

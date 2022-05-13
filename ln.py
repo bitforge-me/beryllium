@@ -169,19 +169,21 @@ class LnRpc():
     #
 
     def list_funds(self):
-        funds_dict = self.instance.listfunds()
+        funds = self.instance.listfunds()
         msats_largest_channel = 0
         msats_channels = 0
         msats_largest_channel_theirs = 0
         msats_channels_theirs = 0
         msats_onchain = 0
+        msats_onchain_unconfirmed = 0
         sats_largest_channel = 0
         sats_channels = 0
         sats_largest_channel_theirs = 0
         sats_channels_theirs = 0
         sats_onchain = 0
+        sats_onchain_unconfirmed = 0
         # Only shows after the very first transaction otherwise errors.
-        for chan in funds_dict["channels"]:
+        for chan in funds["channels"]:
             if chan["state"] == "CHANNELD_NORMAL":
                 msats_channel = chan["our_amount_msat"].millisatoshis
                 if msats_channel > msats_largest_channel:
@@ -195,11 +197,14 @@ class LnRpc():
         sats_channels = _msat_to_sat(msats_channels)
         sats_largest_channel_theirs = _msat_to_sat(msats_largest_channel_theirs)
         sats_channels_theirs = _msat_to_sat(msats_channels_theirs)
-        for output in funds_dict["outputs"]:
+        for output in funds["outputs"]:
             if output["status"] == "confirmed":
                 msats_onchain += output["amount_msat"].millisatoshis
-        sats_onchain += _msat_to_sat(msats_onchain)
-        return dict(msats_largest_channel=msats_largest_channel, msats_channels=msats_channels, msats_largest_channel_theirs=msats_largest_channel_theirs, msats_channels_theirs=msats_channels_theirs, msats_onchain=msats_onchain, sats_largest_channel=sats_largest_channel, sats_channels=sats_channels, sats_channels_theirs=sats_channels_theirs, sats_largest_channel_theirs=sats_largest_channel_theirs, sats_onchain=sats_onchain)
+            if output["status"] == "unconfirmed":
+                msats_onchain_unconfirmed += output["amount_msat"].millisatoshis
+        sats_onchain = _msat_to_sat(msats_onchain)
+        sats_onchain_unconfirmed = _msat_to_sat(msats_onchain_unconfirmed)
+        return dict(funds=funds, msats_largest_channel=msats_largest_channel, msats_channels=msats_channels, msats_largest_channel_theirs=msats_largest_channel_theirs, msats_channels_theirs=msats_channels_theirs, msats_onchain=msats_onchain, msats_onchain_unconfirmed=msats_onchain_unconfirmed, sats_largest_channel=sats_largest_channel, sats_channels=sats_channels, sats_channels_theirs=sats_channels_theirs, sats_largest_channel_theirs=sats_largest_channel_theirs, sats_onchain=sats_onchain, sats_onchain_unconfirmed=sats_onchain_unconfirmed)
 
     def fund_channel(self, node_id, sats):
         return self.instance.fundchannel(node_id, sats)

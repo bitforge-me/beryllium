@@ -4,14 +4,22 @@
 <br/>
 <h2>BALANCES</h2>
 <div class='some-page-wrapper'>
-    <div class='row'>
-        <div class='dashboard_links'>
-            <p>on-chain balance<p>
-            <p><center>{{ funds_dict.sats_onchain }} <strong>SAT</strong></center></p>
+    <div class='row text-muted'>
+        <div class='card m-1'>
+            <div class="card-body mx-auto">
+                <h5 class="card-title">ONCHAIN</h5>
+                <p>{{ funds_dict.sats_onchain }} <strong>SAT</strong></p>
+                {% if funds_dict.sats_onchain_unconfirmed %}
+                <p>{{ funds_dict.sats_onchain_unconfirmed }} pending <strong>SAT</strong></p>
+                <small>Warning confirmed amount may be less then shown here <a href="https://github.com/ElementsProject/lightning/issues/5249">see here</a> for more details</small>
+                {% endif %}
+            </div>
         </div>
-        <div class='dashboard_links'>
-            <p>ln-channel balance<p>
-            <p><center>{{ funds_dict.sats_channels }} <strong>SAT</strong></center></p>
+        <div class='card m-1'>
+            <div class="card-body mx-auto">
+                <h5 class="card-title">LN CHANNELS</h5>
+                <p>{{ funds_dict.sats_channels }} <strong>SAT</strong></p>
+            </div>
         </div>
     </div>
 </div>
@@ -32,6 +40,11 @@
 <h2>BTC</h2>
 <div class='some-page-wrapper'>
     <div class='row'>
+        <a href="utxos">
+        <div class='dashboard_links'>
+            <p>UTXOs<p>
+        </div>
+        </a>
         <a href="new_address">
         <div class='dashboard_links'>
             <p>New Address<p>
