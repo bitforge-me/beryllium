@@ -1,0 +1,17 @@
+{% extends "lightning/layout.html" %}
+
+{% block title %}Address Transaction List{% endblock %}
+
+{% block content %}
+<div class="alert alert-dismissible alert-info">
+    <form class="form-inline" action="/ln_wallet/address" method="get">
+        <div class="form-group mx-sm-3 mb-2">
+            <label for="address" class="sr-only">Address</label>
+            <input type="text" class="form-control" id="address" placeholder="Address" name="address" value="{{address}}">
+        </div>
+        <button type="submit" class="btn btn-primary mb-2">Load Address</button>
+    </form>
+    <h2 class="mt-3">TRANSACTIONS {% if address %} - {{address}} {% endif %}</h2>
+    {% include 'lightning/tx_table.html' %}
+</div>
+{% endblock %}

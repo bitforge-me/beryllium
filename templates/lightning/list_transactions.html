@@ -1,34 +1,10 @@
 {% extends "lightning/layout.html" %}
-{% block title %}Transaction List{% endblock %}
+
+{% block title %}Wallet Transaction List{% endblock %}
+
 {% block content %}
-{{ super() }}
-<br/>
+
 <div class="alert alert-dismissible alert-info">
     <h2>BTC TRANSACTIONS</h2>
-    <table class="table table-striped table-hover">
-	<thead>
-        <tr>
-            <th scope="col">Blockheight</th>
-            <th scope="col">Transaction id</th>
-            <th scope="col">Outputs</th>
-        </tr>
-        </thead>
-        <tbody>
-        {% for tx in transactions %}
-            <tr class="active">
-            <td><a href="{{ bitcoin_explorer }}block-height/{{ tx.blockheight }}">{{ tx.blockheight }}</a></td>
-            <td><a href="{{ bitcoin_explorer }}tx/{{ tx.hash }}">{{ tx.hash }}<a></td>
-            <td>
-                {% for output in tx.outputs %}
-                <a href="{{ bitcoin_explorer }}tx/{{ tx.hash }}">{{ output.sats }}{% if not loop.last %},{% endif %}<a>
-                {% endfor %}
-            </td>
-	    </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-</div>
-{% endblock %}
-{% block footer %}
-    {{ super() }}
+    {% include 'lightning/tx_table.html' %}
 {% endblock %}

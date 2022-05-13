@@ -2,23 +2,71 @@
 
 import logging
 import secrets
-import os
 
 from flask import Blueprint, render_template, request, flash, Markup, jsonify
 from flask_security import roles_accepted
-from bitcoin.rpc import Proxy
 
 from utils import qrcode_svg_create
 from web_utils import bad_request
-from app_core import app, limiter
-from models import Role
+from app_core import app, limiter, db
+from models import BtcTxIndex, Role
 from ln import LnRpc, _msat_to_sat
+from wallet import bitcoind_rpc, btc_transactions_index, btc_input_transaction_get
 
 logger = logging.getLogger(__name__)
 ln_wallet = Blueprint('ln_wallet', __name__, template_folder='templates')
 limiter.limit("100/minute")(ln_wallet)
 BITCOIN_EXPLORER = app.config["BITCOIN_EXPLORER"]
-TESTNET = app.config['TESTNET']
+
+def tx_load(addr=None):
+    btc_transactions_index()
+    rpc = LnRpc()
+    txs = []
+    addresses = rpc.list_addrs()['addresses']
+    transactions = rpc.list_txs()
+    for tx in transactions['transactions']:
+        input_sum = 0
+        output_sum = 0
+        ours = False
+        tx_hex = tx['rawtx']
+        tx_bitcoind = bitcoind_rpc('decoderawtransaction', tx_hex)
+        for output in tx['outputs']:
+            vout = tx_bitcoind['vout'][output['index']]
+            output['address'] = vout['scriptPubKey']['address']
+            output_sats = _msat_to_sat(output['msat'])
+            output_sum += output_sats
+            output['sats'] = output_sats
+            if addr:
+                if output['address'] == addr:
+                    output['ours'] = True
+                    ours = True
+            else:
+                for address in addresses:
+                    if output['address'] in (address['bech32'], address['p2sh']):
+                        output['ours'] = True
+        for input_ in tx['inputs']:
+            input_tx_hex = btc_input_transaction_get(input_['txid'])
+            if not input_tx_hex:
+                logger.error('could not get input tx hex for %s', input_['txid'])
+                continue
+            input_tx = bitcoind_rpc('decoderawtransaction', input_tx_hex)
+            vout = input_tx['vout'][input_['index']]
+            input_['address'] = vout['scriptPubKey']['address']
+            input_sats = int(float(vout['value']) * 100000000)
+            input_sum += input_sats
+            input_['sats'] = input_sats
+            if addr:
+                if input_['address'] == addr:
+                    input_['ours'] = True
+                    ours = True
+            else:
+                for address in addresses:
+                    if input_['address'] in (address['bech32'], address['p2sh']):
+                        input_['ours'] = True
+        tx['fee_sats'] = input_sum - output_sum
+        if not addr or ours:
+            txs.append(tx)
+    return sorted(txs, key=lambda d: d['blockheight'], reverse=True)
 
 @ln_wallet.before_request
 def before_request():
@@ -58,19 +106,9 @@ def new_address_ep():
 @roles_accepted(Role.ROLE_ADMIN)
 def list_txs():
     """ Returns template of on-chain txs """
-    rpc = LnRpc()
-    transactions = rpc.list_txs()
-    sorted_txs = sorted(
-        transactions["transactions"],
-        key=lambda d: d["blockheight"],
-        reverse=True)
-    for tx in transactions["transactions"]:
-        for output in tx["outputs"]:
-            output["sats"] = int(output["msat"] / 1000)
-            output.update({"sats": str(output["sats"]) + " satoshi"})
     return render_template(
         "lightning/list_transactions.html",
-        transactions=sorted_txs,
+        transactions= tx_load(),
         bitcoin_explorer=BITCOIN_EXPLORER)
 
 @ln_wallet.route('/invoice', methods=['GET', 'POST'])
@@ -95,8 +133,7 @@ def channel_management():
     """ Returns a template listing all connected LN peers """
     rpc = LnRpc()
     if request.method == 'POST':
-        form_name = request.form['form-name']
-        if form_name == 'rebalance_channel_form':
+        if request.form['form-name'] == 'rebalance_channel_form':
             oscid = request.form['oscid']
             iscid = request.form['iscid']
             amount = request.form['amount']
@@ -105,11 +142,10 @@ def channel_management():
                 flash(Markup(f'successfully moved {amount} sats from {oscid} to {iscid}'),'success')
             except Exception as e: # pylint: disable=broad-except
                 flash(Markup(e.args[0]), 'danger')
-        elif form_name == 'close_channel_form':
-            channel_id = request.form['channel_id']
+        elif request.form['form-name'] == 'close_channel_form':
             try:
-                LnRpc().close_channel(channel_id)
-                flash(Markup(f'successfully closed channel {channel_id}'), 'success')
+                LnRpc().close_channel(request.form['channel_id'])
+                flash(Markup(f'successfully closed channel {request.form["channel_id"]}'), 'success')
             except Exception as e: # pylint: disable=broad-except
                 flash(Markup(e.args[0]), 'danger')
     peers = rpc.list_peers()['peers']
@@ -287,21 +323,6 @@ def broadcast():
             flash(f'Broadcast failed: {e}', 'danger')
     return render_template('lightning/broadcast_psbt.html', onchain=onchain, onchain_sats=onchain_sats)
 
-def _build_bitcoin_rpc_url(bitcoin_datadir, bitcoin_host):
-    btc_conf_file = os.path.join(bitcoin_datadir, 'bitcoin.conf')
-    conf = {'rpcuser': ""}
-    with open(btc_conf_file, 'r', encoding='utf-8') as fd:
-        for line in fd.readlines():
-            if '#' in line:
-                line = line[:line.index('#')]
-            if '=' not in line:
-                continue
-            k, v = line.split('=', 1)
-            conf[k.strip()] = v.strip()
-    authpair = f"{conf['rpcuser']}:{conf['rpcpassword']}"
-    service_url = f"http://{authpair}@{bitcoin_host}:{conf['rpcport']}"
-    return service_url
-
 @ln_wallet.route('/decode_psbt')
 @roles_accepted(Role.ROLE_ADMIN)
 def decode_psbt():
@@ -309,10 +330,50 @@ def decode_psbt():
     if not psbt:
         return bad_request('empty psbt string')
     try:
-        service_url = _build_bitcoin_rpc_url(app.config['BITCOIN_DATADIR'], app.config['BITCOIN_RPCCONNECT'])
-        connection = Proxy(service_url=service_url)
-        psbt_json = connection._call('decodepsbt', psbt) # pylint: disable=protected-access
+        psbt_json = bitcoind_rpc('decodepsbt', psbt)
         logger.info('psbt json: %s', psbt_json)
         return jsonify(psbt_json)
     except Exception as e: # pylint: disable=broad-except
         return bad_request(str(e))
+
+@ln_wallet.route('/address', methods=['GET'])
+@roles_accepted(Role.ROLE_ADMIN)
+def address_ep():
+    address = request.args.get('address', '')
+    if address:
+        txs = tx_load(address)
+    else:
+        txs = []
+    return render_template("lightning/address.html", address=address, transactions=txs, bitcoin_explorer=BITCOIN_EXPLORER)
+
+@ln_wallet.route('/addr_raw/<addr>', methods=['GET'])
+@roles_accepted(Role.ROLE_ADMIN)
+def addr_raw(addr):
+    for a in LnRpc().list_addrs()['addresses']:
+        if addr in (a['bech32'], a['p2sh']):
+            return jsonify(a)
+        if addr in (a['bech32_redeemscript'], a['p2sh_redeemscript']):
+            return jsonify(a)
+        if addr == a['pubkey']:
+            return jsonify(a)
+    return jsonify(dict(msg='address not found'))
+
+@ln_wallet.route('/tx_raw/<txid>', methods=['GET'])
+@roles_accepted(Role.ROLE_ADMIN)
+def tx_raw(txid):
+    tx = BtcTxIndex.from_txid(db.session, txid)
+    if tx:
+        tx = bitcoind_rpc('decoderawtransaction', tx.hex)
+        return jsonify(tx)
+    for tx in LnRpc().list_txs()['transactions']:
+        if tx['hash'] == txid:
+            tx = bitcoind_rpc('decoderawtransaction', tx['rawtx'])
+            return jsonify(tx)
+    return jsonify(dict(msg='tx not found'))
+
+@ln_wallet.route('/btc_tx_index_clear', methods=['GET'])
+@roles_accepted(Role.ROLE_ADMIN)
+def btc_tx_index_clear():
+    BtcTxIndex.clear(db.session)
+    db.session.commit()
+    return 'ok'

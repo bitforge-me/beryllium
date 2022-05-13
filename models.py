@@ -1019,3 +1019,25 @@ class CryptoAddress(db.Model, FromUserMixin):
     def need_to_be_checked(cls, session):
         now = datetime.timestamp(datetime.now())
         return session.query(cls).filter(now - cls.checked_at > (cls.checked_at - cls.viewed_at) * 2).all()
+
+class BtcTxIndex(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    txid = db.Column(db.String(255), nullable=False)
+    hex = db.Column(db.String(), nullable=False)
+    blockheight = db.Column(db.Integer)
+    blockhash = db.Column(db.String(255))
+
+    # pylint: disable=redefined-builtin
+    def __init__(self, txid, hex, blockheight, blockhash):
+        self.txid = txid
+        self.hex = hex
+        self.blockheight = blockheight
+        self.blockhash = blockhash
+
+    @classmethod
+    def from_txid(cls, session, txid):
+        return session.query(cls).filter(cls.txid == txid).first()
+
+    @classmethod
+    def clear(cls, session):
+        session.query(cls).delete()
