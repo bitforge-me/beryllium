@@ -1027,6 +1027,7 @@ class BtcTxIndex(db.Model):
     blockheight = db.Column(db.Integer)
     blockhash = db.Column(db.String(255))
 
+    # pylint: disable=redefined-builtin
     def __init__(self, txid, hex, blockheight, blockhash):
         self.txid = txid
         self.hex = hex
@@ -1036,3 +1037,7 @@ class BtcTxIndex(db.Model):
     @classmethod
     def from_txid(cls, session, txid):
         return session.query(cls).filter(cls.txid == txid).first()
+
+    @classmethod
+    def clear(cls, session):
+        session.query(cls).delete()

@@ -138,63 +138,65 @@ def any_deposit_completed(lastpay_index):
     except RpcError as e:
         return None, e.error
 
+def _get_raw_tx(service_url, txid, blockhash=None):
+    # pylint: disable=bare-except
+    try:
+        if blockhash:
+            return bitcoind_rpc_url(service_url, 'getrawtransaction', txid, True, blockhash)
+        return bitcoind_rpc_url(service_url, 'getrawtransaction', txid, True)
+    except:
+        return None
+
+def _get_raw_tx_using_bitaps_blockhash(service_url, txid):
+    network = 'testnet/v1' if TESTNET else 'v1'
+    # pylint: disable=bare-except
+    try:
+        tx = requests.get(f'https://api.bitaps.com/btc/{network}/blockchain/transaction/{txid}').json()
+        blockhash = tx['data']['blockHash']
+        return _get_raw_tx(service_url, txid, blockhash)
+    except:
+        return None
+
+def _get_raw_tx_using_loop(service_url, txid, max_block_history):
+    block_count = bitcoind_rpc_url(service_url, 'getblockcount')
+    current_block = block_count
+    while current_block + max_block_history > block_count and current_block > 0:
+        blockhash = bitcoind_rpc_url(service_url, 'getblockhash', current_block)
+        input_tx = _get_raw_tx(service_url, txid, blockhash)
+        if input_tx:
+            logger.info('found input tx in block %s', current_block)
+            return input_tx
+        current_block -= 1
+    return None
+
 def btc_transactions_index():
-    MAX_BLOCK_HISTORY = 128 * 30 # one month
+    max_block_history = 128 # 1 day
     service_url = bitcoind_service_url()
     rpc = LnRpc()
     try:
         txs = rpc.list_txs()['transactions']
         for tx in txs:
-            for input in tx["inputs"]:
-                input_txid = input['txid']
+            for input_ in tx["inputs"]:
+                input_txid = input_['txid']
                 input_tx = BtcTxIndex.from_txid(db.session, input_txid)
-                blockheight = 0
+                if input_tx:
+                    continue
+                logger.info('searching for input tx %s', input_txid)
+                # try mempool
+                input_tx = _get_raw_tx(service_url, input_txid)
                 if not input_tx:
-                    logger.info('searching for input tx %s', input_txid)
-                    # try mempool
-                    # pylint: disable=broad-except
-                    try:
-                        input_tx = bitcoind_rpc_url(service_url, 'getrawtransaction', input_txid, True)
-                    except:
-                        pass
-                    if not input_tx:
-                        # try looping back though blocks
-                        block_count = bitcoind_rpc_url(service_url, 'getblockcount')
-                        current_block = block_count
-                        while current_block + MAX_BLOCK_HISTORY > block_count and current_block > 0:
-                            blockhash = bitcoind_rpc_url(service_url, 'getblockhash', current_block)
-                            # pylint: disable=broad-except
-                            try:
-                                input_tx = bitcoind_rpc_url(service_url, 'getrawtransaction', input_txid, True, blockhash)
-                            except:
-                                pass
-                            if input_tx:
-                                logger.info('found input tx in block %s', current_block)
-                                blockheight = current_block
-                                break
-                            current_block -= 1
-                    if input_tx:
-                        input_tx = BtcTxIndex(input_txid, input_tx['hex'], blockheight, input_tx['blockhash'])
-                    else:
-                        logger.error('failed to find input tx after searching top %d blocks, trying bitaps.com', MAX_BLOCK_HISTORY)
-
-                        network = 'v1'
-                        if TESTNET:
-                            network = 'testnet/v1'
-                        # pylint: disable=broad-except
-                        try:
-                            tx = requests.get(f'https://api.bitaps.com/btc/{network}/blockchain/transaction/{input_txid}').json()
-                            blockhash = tx['data']['blockHash']
-                            input_tx = bitcoind_rpc_url(service_url, 'getrawtransaction', input_txid, True, blockhash)
-                        except:
-                            pass
-                        if not input_tx:
-                            logger.error('failed to find input tx after searching bitaps.com', MAX_BLOCK_HISTORY)
-                            continue
-                    # make db input tx
-                    input_tx = BtcTxIndex(input_txid, input_tx['hex'], blockheight, input_tx['blockhash'])
-                    db.session.add(input_tx)
-                    db.session.commit()
+                    # try looping back though blocks
+                    input_tx = _get_raw_tx_using_loop(service_url, input_txid, max_block_history)
+                if not input_tx:
+                    logger.error('failed to find input tx after searching top %d blocks, trying bitaps.com', max_block_history)
+                    input_tx = _get_raw_tx_using_bitaps_blockhash(service_url, input_txid)
+                if not input_tx:
+                    logger.error('failed to find input tx after searching bitaps.com')
+                    continue
+                # make db input tx
+                input_tx = BtcTxIndex(input_txid, input_tx['hex'], None, input_tx['blockhash'])
+                db.session.add(input_tx)
+                db.session.commit()
     except RpcError as e:
         logger.error('btc transactions index failed: %s', e.error)
 

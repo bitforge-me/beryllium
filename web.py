@@ -397,7 +397,7 @@ class WebGreenlet():
                 deposits_and_orders_timer_last += 300
             if current - btc_tx_index_timer_last > 3600:
                 gevent.spawn(process_btc_tx_index)
-                btc_tx_index_timer_last += 3600        
+                btc_tx_index_timer_last += 3600
             gevent.sleep(5)
 
     def _process_ln_invoices_loop(self):

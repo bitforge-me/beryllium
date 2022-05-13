@@ -44,25 +44,25 @@ def tx_load(addr=None):
                 for address in addresses:
                     if output['address'] in (address['bech32'], address['p2sh']):
                         output['ours'] = True
-        for input in tx['inputs']:
-            input_tx_hex = btc_input_transaction_get(input['txid'])
+        for input_ in tx['inputs']:
+            input_tx_hex = btc_input_transaction_get(input_['txid'])
             if not input_tx_hex:
-                logger.error('could not get input tx hex for %s', input['txid'])
+                logger.error('could not get input tx hex for %s', input_['txid'])
                 continue
             input_tx = bitcoind_rpc('decoderawtransaction', input_tx_hex)
-            vout = input_tx['vout'][input['index']]
-            input['address'] = vout['scriptPubKey']['address']
+            vout = input_tx['vout'][input_['index']]
+            input_['address'] = vout['scriptPubKey']['address']
             input_sats = int(float(vout['value']) * 100000000)
             input_sum += input_sats
-            input['sats'] = input_sats
+            input_['sats'] = input_sats
             if addr:
-                if input['address'] == addr:
-                    input['ours'] = True
+                if input_['address'] == addr:
+                    input_['ours'] = True
                     ours = True
             else:
                 for address in addresses:
-                    if input['address'] in (address['bech32'], address['p2sh']):
-                        input['ours'] = True
+                    if input_['address'] in (address['bech32'], address['p2sh']):
+                        input_['ours'] = True
         tx['fee_sats'] = input_sum - output_sum
         if not addr or ours:
             txs.append(tx)
@@ -133,8 +133,7 @@ def channel_management():
     """ Returns a template listing all connected LN peers """
     rpc = LnRpc()
     if request.method == 'POST':
-        form_name = request.form['form-name']
-        if form_name == 'rebalance_channel_form':
+        if request.form['form-name'] == 'rebalance_channel_form':
             oscid = request.form['oscid']
             iscid = request.form['iscid']
             amount = request.form['amount']
@@ -143,11 +142,10 @@ def channel_management():
                 flash(Markup(f'successfully moved {amount} sats from {oscid} to {iscid}'),'success')
             except Exception as e: # pylint: disable=broad-except
                 flash(Markup(e.args[0]), 'danger')
-        elif form_name == 'close_channel_form':
-            channel_id = request.form['channel_id']
+        elif request.form['form-name'] == 'close_channel_form':
             try:
-                LnRpc().close_channel(channel_id)
-                flash(Markup(f'successfully closed channel {channel_id}'), 'success')
+                LnRpc().close_channel(request.form['channel_id'])
+                flash(Markup(f'successfully closed channel {request.form["channel_id"]}'), 'success')
             except Exception as e: # pylint: disable=broad-except
                 flash(Markup(e.args[0]), 'danger')
     peers = rpc.list_peers()['peers']
@@ -340,7 +338,7 @@ def decode_psbt():
 
 @ln_wallet.route('/address', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
-def address():
+def address_ep():
     address = request.args.get('address', '')
     if address:
         txs = tx_load(address)
@@ -367,9 +365,15 @@ def tx_raw(txid):
     if tx:
         tx = bitcoind_rpc('decoderawtransaction', tx.hex)
         return jsonify(tx)
-    else:
-        for tx in LnRpc().list_txs()['transactions']:
-            if tx['hash'] == txid:
-                tx = bitcoind_rpc('decoderawtransaction', tx['rawtx'])
-                return jsonify(tx)
-        return jsonify(dict(msg='tx not found'))
+    for tx in LnRpc().list_txs()['transactions']:
+        if tx['hash'] == txid:
+            tx = bitcoind_rpc('decoderawtransaction', tx['rawtx'])
+            return jsonify(tx)
+    return jsonify(dict(msg='tx not found'))
+
+@ln_wallet.route('/btc_tx_index_clear', methods=['GET'])
+@roles_accepted(Role.ROLE_ADMIN)
+def btc_tx_index_clear():
+    BtcTxIndex.clear(db.session)
+    db.session.commit()
+    return 'ok'
