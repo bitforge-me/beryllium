@@ -8,10 +8,12 @@
         <div class='card m-1'>
             <div class="card-body mx-auto">
                 <h5 class="card-title">ONCHAIN</h5>
-                <p>{{ funds_dict.sats_onchain }} <strong>SAT</strong></p>
+                <p>{{ funds_dict.sats_onchain }} available <strong>SAT</strong></p>
+                {% if funds_dict.sats_onchain_reserved %}
+                <p>{{ funds_dict.sats_onchain_reserved }} reserved <strong>SAT</strong></p>
+                {% endif %}
                 {% if funds_dict.sats_onchain_unconfirmed %}
-                <p>{{ funds_dict.sats_onchain_unconfirmed }} pending <strong>SAT</strong></p>
-                <small>Warning confirmed amount may be less then shown here <a href="https://github.com/ElementsProject/lightning/issues/5249">see here</a> for more details</small>
+                <p>{{ funds_dict.sats_onchain_unconfirmed }} unconfirmed <strong>SAT</strong></p>
                 {% endif %}
             </div>
         </div>
