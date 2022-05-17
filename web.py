@@ -407,7 +407,7 @@ class WebGreenlet():
             try:
                 if lastpay_index == 0:
                     lastpay_index = LnRpc().lastpay_index()
-                pay, err = wallet.any_deposit_completed(lastpay_index)
+                pay, err = wallet.ln_any_deposit_completed(lastpay_index)
                 if err:
                     logger.debug('wait_any_invoice failed: "%s"', err)
                     gevent.sleep(2, False) # probably timeout so we wait a short time before polling again

@@ -224,9 +224,9 @@ class LnRpc():
     def list_txs(self):
         return self.instance.listtransactions()
 
-    def multi_withdraw(self, outputs_dict):
+    def multi_withdraw(self, outputs):
         # outputs is in form {"address" : amount}
-        return self.instance.multiwithdraw(outputs_dict)
+        return self.instance.multiwithdraw(outputs)
 
     def prepare_psbt(self, outputs):
         return self.instance.txprepare(outputs)
