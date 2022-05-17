@@ -24,6 +24,9 @@ class BtcInputBasic:
         self.amount = amount
         self.ours = ours
 
+    def __repr__(self) -> str:
+        return f'<txid: {self.txid}, addr: {self.addr}, vout: {self.vout}, amount: {self.amount}>'
+
 @dataclass
 class BtcOutputBasic:
     def __init__(self, addr: str, vout: int, amount: int, ours: bool):
@@ -31,6 +34,9 @@ class BtcOutputBasic:
         self.vout = vout
         self.amount = amount
         self.ours = ours
+
+    def __repr__(self) -> str:
+        return f'<addr: {self.addr}, vout: {self.vout}, amount: {self.amount}>'
 
 @dataclass
 class BtcTxBasic:
@@ -54,6 +60,9 @@ class BtcTxBasic:
             if output.ours:
                 amount += output.amount
         return amount
+
+    def __repr__(self) -> str:
+        return f'<txid: {self.txid}, inputs: {self.inputs}, outputs: {self.outputs}>'
 
 def _build_bitcoin_rpc_url(bitcoin_datadir, bitcoin_host):
     btc_conf_file = os.path.join(bitcoin_datadir, 'bitcoin.conf')
@@ -336,20 +345,20 @@ def btc_txs_load(addr=None) -> list[BtcTxBasic]:
         inputs = []
         for output in tx['outputs']:
             vout = tx_bitcoind['vout'][output['index']]
-            address = vout['scriptPubKey']['address']
+            output_address = vout['scriptPubKey']['address']
             output_sats = _msat_to_sat(output['msat'])
             output_sum += output_sats
             ours = False
             if addr:
-                if address == addr:
-                    output['ours'] = True
+                if output_address == addr:
+                    ours = True
                     has_output_ours = True
             else:
                 for address in addresses:
-                    if address in (address['bech32'], address['p2sh']):
-                        output['ours'] = True
+                    if output_address in (address['bech32'], address['p2sh']):
+                        ours = True
                         has_output_ours = True
-            outputs.append(BtcOutputBasic(address, output['index'], output_sats, ours))
+            outputs.append(BtcOutputBasic(output_address, output['index'], output_sats, ours))
         for input_ in tx['inputs']:
             input_tx_hex = btc_input_transaction_get(input_['txid'])
             if not input_tx_hex:
@@ -358,23 +367,23 @@ def btc_txs_load(addr=None) -> list[BtcTxBasic]:
             input_tx = bitcoind_rpc('decoderawtransaction', input_tx_hex)
             ours = False
             vout = input_tx['vout'][input_['index']]
-            address = vout['scriptPubKey']['address']
+            input_address = vout['scriptPubKey']['address']
             input_sats = int(float(vout['value']) * 100000000)
             input_sum += input_sats
             input_['sats'] = input_sats
             input_['ours'] = False
             if addr:
-                if address == addr:
+                if input_address == addr:
                     ours = True
                     has_input_ours = True
             else:
                 for address in addresses:
-                    if address in (address['bech32'], address['p2sh']):
+                    if input_address in (address['bech32'], address['p2sh']):
                         ours = True
                         has_input_ours = True
-            inputs.append(BtcInputBasic(input_['txid'], address, input_['index'], input_sats, ours))
+            inputs.append(BtcInputBasic(input_['txid'], input_address, input_['index'], input_sats, ours))
         fee = input_sum - output_sum
         ours = has_input_ours or has_output_ours
         if not addr or has_input_ours or has_output_ours:
             txs.append(BtcTxBasic(tx['hash'], tx['blockheight'], inputs, outputs, fee, ours, has_output_ours, has_input_ours))
-    return sorted(txs, key=lambda d: d['blockheight'], reverse=True)
+    return sorted(txs, key=lambda d: d.blockheight, reverse=True)

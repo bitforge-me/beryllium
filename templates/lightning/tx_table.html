@@ -16,18 +16,18 @@
             <td>
             {% for input in tx.inputs %}
                 {% if input.ours %}
-                <a class="text-light" href="address?address={{ input.address }}"><span class="badge bg-warning">{{ input.amount }}</span></a>
+                <a class="text-light" href="address?address={{ input.addr }}"><span class="badge bg-warning">{{ input.amount }}</span></a>
                 {% else %}
-                <a class="text-dark" href="{{ bitcoin_explorer }}address/{{ input.address }}"><span class="badge bg-light">{{ input.amount }}</span></a>
+                <a class="text-dark" href="{{ bitcoin_explorer }}address/{{ input.addr }}"><span class="badge bg-light">{{ input.amount }}</span></a>
                 {% endif %}
             {% endfor %}
             </td>
             <td>
             {% for output in tx.outputs %}
                 {% if output.ours %}
-                <a class="text-light" href="address?address={{ output.address }}"><span class="badge bg-success">{{ output.amount }}</span></a>
+                <a class="text-light" href="address?address={{ output.addr }}"><span class="badge bg-success">{{ output.amount }}</span></a>
                 {% else %}
-                <a class="text-dark" href="{{ bitcoin_explorer }}address/{{ output.address }}"><span class="badge bg-light">{{ output.amount }}</span></a>
+                <a class="text-dark" href="{{ bitcoin_explorer }}address/{{ output.addr }}"><span class="badge bg-light">{{ output.amount }}</span></a>
                 {% endif %}
             {% endfor %}
             </td>
