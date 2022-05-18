@@ -40,15 +40,17 @@ class BtcOutputBasic:
 
 @dataclass
 class BtcTxBasic:
-    def __init__(self, txid: str, blockheight: int, inputs: list[BtcInputBasic], outputs: list[BtcOutputBasic], fee: int, ours: bool, has_output_ours: bool, has_input_ours: bool):
+    def __init__(self, txid: str, blockheight: int, inputs: list[BtcInputBasic], outputs: list[BtcOutputBasic], fee: int, has_output_ours: bool, has_input_ours: bool):
         self.txid = txid
         self.blockheight = blockheight
         self.inputs = inputs
         self.outputs = outputs
         self.fee = fee
-        self.ours = ours
         self.has_output_ours = has_output_ours
         self.has_input_ours = has_input_ours
+
+    def ours(self):
+        return self.has_output_ours or self.has_input_ours
 
     def is_deposit(self):
         return self.has_output_ours and not self.has_input_ours
@@ -340,8 +342,7 @@ def btc_txs_load(addr=None) -> list[BtcTxBasic]:
         output_sum = 0
         has_output_ours = False
         has_input_ours = False
-        tx_hex = tx['rawtx']
-        tx_bitcoind = bitcoind_rpc('decoderawtransaction', tx_hex)
+        tx_bitcoind = bitcoind_rpc('decoderawtransaction', tx['rawtx'])
         outputs = []
         inputs = []
         for output in tx['outputs']:
@@ -365,14 +366,12 @@ def btc_txs_load(addr=None) -> list[BtcTxBasic]:
             if not input_tx_hex:
                 logger.error('could not get input tx hex for %s', input_['txid'])
                 continue
-            input_tx = bitcoind_rpc('decoderawtransaction', input_tx_hex)
+            input_tx_bitcoind = bitcoind_rpc('decoderawtransaction', input_tx_hex)
             ours = False
-            vout = input_tx['vout'][input_['index']]
+            vout = input_tx_bitcoind['vout'][input_['index']]
             input_address = vout['scriptPubKey']['address']
             input_sats = int(float(vout['value']) * 100000000)
             input_sum += input_sats
-            input_['sats'] = input_sats
-            input_['ours'] = False
             if addr:
                 if input_address == addr:
                     ours = True
@@ -383,12 +382,10 @@ def btc_txs_load(addr=None) -> list[BtcTxBasic]:
                         ours = True
                         has_input_ours = True
             inputs.append(BtcInputBasic(input_['txid'], input_address, input_['index'], input_sats, ours))
-        fee = input_sum - output_sum
-        ours = has_input_ours or has_output_ours
         if not addr or has_input_ours or has_output_ours:
-            txs.append(BtcTxBasic(tx['hash'], tx['blockheight'], inputs, outputs, fee, ours, has_output_ours, has_input_ours))
-        def zero_first(tx: BtcTxBasic):
-            if tx.blockheight == 0:
+            txs.append(BtcTxBasic(tx['hash'], tx['blockheight'], inputs, outputs, input_sum - output_sum, has_output_ours, has_input_ours))
+        def zero_first(txn: BtcTxBasic):
+            if txn.blockheight == 0:
                 return 99999999999999
-            return tx.blockheight
+            return txn.blockheight
     return sorted(txs, key=zero_first, reverse=True)
