@@ -51,7 +51,7 @@ class BtcTxBasic:
         self.has_input_ours = has_input_ours
 
     def is_deposit(self):
-        return self.has_input_ours and not self.has_input_ours
+        return self.has_output_ours and not self.has_input_ours
 
     def amount_deposited(self):
         assert self.is_deposit()
@@ -141,7 +141,8 @@ def withdrawal_create(asset: str, l2_network: Optional[str], amount_dec: Decimal
             return None, e.error
     if _is_btc_chain(asset, l2_network):
         try:
-            outputs = {recipient: f'{amount_sat}sats'}
+            amount_sat = assets.asset_dec_to_int(asset, amount_dec)
+            outputs = [{recipient: f'{amount_sat}sats'}]
             result = rpc.multi_withdraw(outputs)
             return result['txid'], None
         except RpcError as e:

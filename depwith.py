@@ -138,7 +138,7 @@ def crypto_deposits_wallet_check(db_session, new_crypto_deposits, updated_crypto
                 if not crypto_deposit:
                     crypto_deposit = CryptoDeposit(user, asset, None, wallet_deposit.amount_deposited(), None, wallet_deposit.txid, wallet_deposit.txid, completed, False)
                     new_crypto_deposits.append(crypto_deposit)
-                elif not crypto_deposit.confirmed and completed:
+                if (crypto_deposit in new_crypto_deposits or not crypto_deposit.confirmed) and completed:
                     # credit the users account
                     ftx = fiatdb_core.tx_create(db_session, user, FiatDbTransaction.ACTION_CREDIT, asset, wallet_deposit.amount_deposited(), f'crypto deposit: {crypto_deposit.token}')
                     if not ftx:
@@ -168,7 +168,7 @@ def crypto_deposits_dasset_check(db_session, new_crypto_deposits, updated_crypto
                 amount_int = assets.asset_dec_to_int(asset, dasset_deposit.amount)
                 crypto_deposit = CryptoDeposit(user, asset, None, amount_int, dasset_deposit.id, None, dasset_deposit.txid, completed, False)
                 new_crypto_deposits.append(crypto_deposit)
-            elif not crypto_deposit.confirmed and completed:
+            if (crypto_deposit in new_crypto_deposits or not crypto_deposit.confirmed) and completed:
                 # if deposit now completed transfer the funds to the master account
                 if not dasset.transfer(None, user.dasset_subaccount.subaccount_id, asset, dasset_deposit.amount):
                     logger.error('failed to transfer funds from subaccount to master %s', dasset_deposit.id)
@@ -203,6 +203,7 @@ def crypto_deposits_address_check(db_session, new_crypto_deposits, updated_crypt
         # update checked at time of CryptoAddress
         addr.checked_at = int(datetime.timestamp(datetime.now()))
         db_session.add(addr)
+    db_session.commit()
     # check for new deposits, update existing deposits
     for user, asset_dict in user_assets.values():
         for asset, addr_list in asset_dict.items():

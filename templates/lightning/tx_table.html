@@ -12,7 +12,7 @@
         {% for tx in txs %}
         <tr class="table-secondary">
             <td><a class="text-dark" href="{{ bitcoin_explorer }}block-height/{{ tx.blockheight }}"><span class="badge bg-light">{{ tx.blockheight }}</span></a></td>
-            <td><a class="text-dark" href="{{ bitcoin_explorer }}tx/{{ tx.txid }}"><span class="badge bg-light">{{ tx.hash }}</span><a></td>
+            <td><a class="text-dark" href="{{ bitcoin_explorer }}tx/{{ tx.txid }}"><span class="badge bg-light">{{ tx.txid }}</span><a></td>
             <td>
             {% for input in tx.inputs %}
                 {% if input.ours %}
