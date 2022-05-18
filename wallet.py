@@ -387,4 +387,8 @@ def btc_txs_load(addr=None) -> list[BtcTxBasic]:
         ours = has_input_ours or has_output_ours
         if not addr or has_input_ours or has_output_ours:
             txs.append(BtcTxBasic(tx['hash'], tx['blockheight'], inputs, outputs, fee, ours, has_output_ours, has_input_ours))
-    return sorted(txs, key=lambda d: d.blockheight, reverse=True)
+        def zero_first(tx: BtcTxBasic):
+            if tx.blockheight == 0:
+                return 99999999999999
+            return tx.blockheight
+    return sorted(txs, key=zero_first, reverse=True)
