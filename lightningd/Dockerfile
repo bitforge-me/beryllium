@@ -10,4 +10,5 @@ COPY ./rebalance.py /etc/bundledplugins/
 # plumbing for --wallet replica
 RUN mkdir /root/.lightning_replica
 COPY ./entrypoint-shim.sh /entrypoint-shim.sh
+RUN chmod +x /entrypoint-shim.sh
 ENTRYPOINT [ "/usr/bin/tini", "-g", "--", "./entrypoint-shim.sh"]
