@@ -1,4 +1,4 @@
-FROM elementsproject/lightningd:v0.11.0.1
+FROM elementsproject/lightningd:v0.11.1
 
 RUN apt-get update
 RUN apt-get install -y build-essential python3-dev python3-setuptools
