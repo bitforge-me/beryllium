@@ -7,3 +7,4 @@
 
 .env
 web/certbot
+lightningd/replica
