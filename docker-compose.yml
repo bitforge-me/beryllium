@@ -104,13 +104,15 @@ services:
     environment:
       LIGHTNINGD_NETWORK: ${BITCOIN_NETWORK:?BITCOIN_NETWORK not set}
       LIGHTNINGD_CHAIN: btc
-      LIGHTNINGD_ALIAS: myawesomenode
+      LIGHTNINGD_ALIAS: benode
       LIGHTNINGD_PORT: 9735
+      LIGHTNINGD_REPLICA: ${LIGHTNINGD_REPLICA}
       LIGHTNINGD_OPT: |
         bitcoin-datadir=/etc/bitcoin
         bitcoin-rpcconnect=bitcoind
     volumes:
       - "lightning_datadir:/root/.lightning"
+      - ./lightningd/replica:/root/.lightning_replica
       - "bitcoin_datadir:/etc/bitcoin"
     ports:
       - "9735:9735"
