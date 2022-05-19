@@ -24,6 +24,8 @@ class Asset:
     min_withdraw: Dec
     is_crypto: bool
     l2_network: Optional['Asset']
+    deposit_instr: Optional[str]
+    withdraw_instr: Optional[str]
 
 @dataclass
 class Market:
@@ -31,15 +33,28 @@ class Market:
     quote_asset: str
 
 TESTNET = app.config['TESTNET']
-NZD = Asset(symbol='NZD', name='New Zealand Dollar', decimals=2, withdraw_fee=Dec(7), min_withdraw=Dec(20), is_crypto=False, l2_network=None)
-BTCLN = Asset(symbol='BTC-LN', name='Bitcoin Lightning', decimals=8, withdraw_fee=Dec('0'), min_withdraw=Dec('0.00000001'), is_crypto=True, l2_network=None)
-BTC = Asset(symbol='BTC', name='Bitcoin', decimals=8, withdraw_fee=Dec('0.0003'), min_withdraw=Dec('0.001'), is_crypto=True, l2_network=BTCLN)
-ETH = Asset(symbol='ETH', name='Ethereum', decimals=18, withdraw_fee=Dec('0.0052'), min_withdraw=Dec('0.01'), is_crypto=True, l2_network=None)
-DOGE = Asset(symbol='DOGE', name='Dogecoin', decimals=8, withdraw_fee=Dec(5), min_withdraw=Dec(20), is_crypto=True, l2_network=None)
-LTC = Asset(symbol='LTC', name='Litecoin', decimals=8, withdraw_fee=Dec('0.01'), min_withdraw=Dec('0.03'), is_crypto=True, l2_network=None)
-WAVES = Asset(symbol='WAVES', name='Waves', decimals=8, withdraw_fee=Dec('0.001'), min_withdraw=Dec('0.003'), is_crypto=True, l2_network=None)
-ASSETS = dict(NZD=NZD, BTC=BTC, ETH=ETH, DOGE=DOGE, LTC=LTC, WAVES=WAVES)
+NZD = Asset(symbol='NZD', name='New Zealand Dollar', decimals=2, withdraw_fee=Dec(7), min_withdraw=Dec(20), is_crypto=False, l2_network=None,
+    deposit_instr=None, withdraw_instr=None)
+BTCLN = Asset(symbol='BTC-LN', name='Bitcoin Lightning', decimals=8, withdraw_fee=Dec('0'), min_withdraw=Dec('0.00000001'), is_crypto=True, l2_network=None,
+    deposit_instr=None, withdraw_instr=None)
+BTC = Asset(symbol='BTC', name='Bitcoin', decimals=8, withdraw_fee=Dec('0.0003'), min_withdraw=Dec('0.001'), is_crypto=True, l2_network=BTCLN,
+    deposit_instr=None, withdraw_instr=None)
+USDT = Asset(symbol='USDT', name='Tether USD', decimals=2, withdraw_fee=Dec(20), min_withdraw=Dec(50), is_crypto=True, l2_network=None,
+    deposit_instr='This is an ethereum network address. Only deposit from the ethereum network.', withdraw_instr='Only withdraw to an ethereum address on the ethereum network.')
+USDC = Asset(symbol='USDC', name='USD Coin', decimals=2, withdraw_fee=Dec(20), min_withdraw=Dec(50), is_crypto=True, l2_network=None,
+    deposit_instr='This is an ethereum network address. Only deposit from the ethereum network.', withdraw_instr='Only withdraw to an ethereum address on the ethereum network.')
+ETH = Asset(symbol='ETH', name='Ethereum', decimals=18, withdraw_fee=Dec('0.0052'), min_withdraw=Dec('0.01'), is_crypto=True, l2_network=None,
+    deposit_instr=None, withdraw_instr=None)
+DOGE = Asset(symbol='DOGE', name='Dogecoin', decimals=8, withdraw_fee=Dec(5), min_withdraw=Dec(20), is_crypto=True, l2_network=None,
+    deposit_instr=None, withdraw_instr=None)
+LTC = Asset(symbol='LTC', name='Litecoin', decimals=8, withdraw_fee=Dec('0.01'), min_withdraw=Dec('0.03'), is_crypto=True, l2_network=None,
+    deposit_instr=None, withdraw_instr=None)
+WAVES = Asset(symbol='WAVES', name='Waves', decimals=8, withdraw_fee=Dec('0.001'), min_withdraw=Dec('0.003'), is_crypto=True, l2_network=None,
+    deposit_instr=None, withdraw_instr=None)
+ASSETS = dict(NZD=NZD, BTC=BTC, USDT=USDT, USDC=USDC, ETH=ETH, DOGE=DOGE, LTC=LTC, WAVES=WAVES)
 MARKETS = {'BTC-NZD': Market(base_asset=BTC, quote_asset=NZD), \
+    'BTC-USDT': Market(base_asset=BTC, quote_asset=USDT), \
+    'BTC-USDC': Market(base_asset=BTC, quote_asset=USDC), \
     'ETH-NZD': Market(base_asset=ETH, quote_asset=NZD), \
     'DOGE-NZD': Market(base_asset=DOGE, quote_asset=NZD), \
     'LTC-NZD': Market(base_asset=LTC, quote_asset=NZD), \
