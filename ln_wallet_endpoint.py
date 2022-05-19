@@ -11,62 +11,12 @@ from web_utils import bad_request
 from app_core import app, limiter, db
 from models import BtcTxIndex, Role
 from ln import LnRpc, _msat_to_sat
-from wallet import bitcoind_rpc, btc_transactions_index, btc_input_transaction_get
+from wallet import bitcoind_rpc, btc_txs_load
 
 logger = logging.getLogger(__name__)
 ln_wallet = Blueprint('ln_wallet', __name__, template_folder='templates')
 limiter.limit("100/minute")(ln_wallet)
 BITCOIN_EXPLORER = app.config["BITCOIN_EXPLORER"]
-
-def tx_load(addr=None):
-    btc_transactions_index()
-    rpc = LnRpc()
-    txs = []
-    addresses = rpc.list_addrs()['addresses']
-    transactions = rpc.list_txs()
-    for tx in transactions['transactions']:
-        input_sum = 0
-        output_sum = 0
-        ours = False
-        tx_hex = tx['rawtx']
-        tx_bitcoind = bitcoind_rpc('decoderawtransaction', tx_hex)
-        for output in tx['outputs']:
-            vout = tx_bitcoind['vout'][output['index']]
-            output['address'] = vout['scriptPubKey']['address']
-            output_sats = _msat_to_sat(output['msat'])
-            output_sum += output_sats
-            output['sats'] = output_sats
-            if addr:
-                if output['address'] == addr:
-                    output['ours'] = True
-                    ours = True
-            else:
-                for address in addresses:
-                    if output['address'] in (address['bech32'], address['p2sh']):
-                        output['ours'] = True
-        for input_ in tx['inputs']:
-            input_tx_hex = btc_input_transaction_get(input_['txid'])
-            if not input_tx_hex:
-                logger.error('could not get input tx hex for %s', input_['txid'])
-                continue
-            input_tx = bitcoind_rpc('decoderawtransaction', input_tx_hex)
-            vout = input_tx['vout'][input_['index']]
-            input_['address'] = vout['scriptPubKey']['address']
-            input_sats = int(float(vout['value']) * 100000000)
-            input_sum += input_sats
-            input_['sats'] = input_sats
-            if addr:
-                if input_['address'] == addr:
-                    input_['ours'] = True
-                    ours = True
-            else:
-                for address in addresses:
-                    if input_['address'] in (address['bech32'], address['p2sh']):
-                        input_['ours'] = True
-        tx['fee_sats'] = input_sum - output_sum
-        if not addr or ours:
-            txs.append(tx)
-    return sorted(txs, key=lambda d: d['blockheight'], reverse=True)
 
 @ln_wallet.before_request
 def before_request():
@@ -108,10 +58,7 @@ def new_address_ep():
 @roles_accepted(Role.ROLE_ADMIN)
 def list_txs():
     """ Returns template of on-chain txs """
-    return render_template(
-        "lightning/list_transactions.html",
-        transactions= tx_load(),
-        bitcoin_explorer=BITCOIN_EXPLORER)
+    return render_template("lightning/list_transactions.html", txs=btc_txs_load(), bitcoin_explorer=BITCOIN_EXPLORER)
 
 @ln_wallet.route('/invoice', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
@@ -343,10 +290,10 @@ def decode_psbt():
 def address_ep():
     address = request.args.get('address', '')
     if address:
-        txs = tx_load(address)
+        txs = btc_txs_load(address)
     else:
         txs = []
-    return render_template("lightning/address.html", address=address, transactions=txs, bitcoin_explorer=BITCOIN_EXPLORER)
+    return render_template("lightning/address.html", address=address, txs=txs, bitcoin_explorer=BITCOIN_EXPLORER)
 
 @ln_wallet.route('/addr_raw/<addr>', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)

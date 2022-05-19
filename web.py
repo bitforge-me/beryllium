@@ -67,16 +67,19 @@ def process_email_alerts():
                     msg = f"Available {balance.symbol} Balance needs to be replenished in the dasset account.<br/><br/>Available {balance.symbol} balance is: ${balance_format}"
                     email_utils.email_notification_alert(logger, subject, msg, app.config["ADMIN_EMAIL"])
 
+def _process_deposits_and_broker_orders():
+    logger.info('process deposits..')
+    depwith.fiat_deposits_update(db.session)
+    depwith.crypto_deposits_check(db.session)
+    logger.info('process withdrawals..')
+    depwith.fiat_withdrawals_update(db.session)
+    depwith.crypto_withdrawals_update(db.session)
+    logger.info('process broker orders..')
+    broker.broker_orders_update(db.session)
+
 def process_deposits_and_broker_orders():
     with app.app_context():
-        logger.info('process deposits..')
-        depwith.fiat_deposits_update(db.session)
-        depwith.crypto_deposits_check(db.session)
-        logger.info('process withdrawals..')
-        depwith.fiat_withdrawals_update(db.session)
-        depwith.crypto_withdrawals_update(db.session)
-        logger.info('process broker orders..')
-        broker.broker_orders_update(db.session)
+        _process_deposits_and_broker_orders()
 
 def process_btc_tx_index():
     with app.app_context():
@@ -363,6 +366,12 @@ def user_order():
 def config():
     return render_template('config.html')
 
+@app.route('/process_depwith_and_broker', methods=['GET'])
+@roles_accepted(Role.ROLE_ADMIN)
+def process_depwith_broker():
+    _process_deposits_and_broker_orders()
+    return 'ok'
+
 #
 # gevent class
 #
@@ -407,7 +416,7 @@ class WebGreenlet():
             try:
                 if lastpay_index == 0:
                     lastpay_index = LnRpc().lastpay_index()
-                pay, err = wallet.any_deposit_completed(lastpay_index)
+                pay, err = wallet.ln_any_deposit_completed(lastpay_index)
                 if err:
                     logger.debug('wait_any_invoice failed: "%s"', err)
                     gevent.sleep(2, False) # probably timeout so we wait a short time before polling again

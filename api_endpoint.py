@@ -519,6 +519,17 @@ def crypto_deposit_recipient_req():
 
     # use local wallet if possible
     if wallet.deposits_supported(asset, l2_network):
+        if not l2_network:
+            crypto_address = CryptoAddress.from_asset(db.session, api_key.user, asset)
+            if not crypto_address:
+                address, err_msg = wallet.address_create(asset, l2_network)
+                if not address:
+                    return bad_request(web_utils.FAILED_WALLET)
+                crypto_address = CryptoAddress(api_key.user, asset, address)
+            crypto_address.viewed_at = int(datetime.timestamp(datetime.now()))
+            db.session.add(crypto_address)
+            db.session.commit()
+            return jsonify(recipient=crypto_address.address, asset=asset, l2_network=l2_network, amount_dec=decimal.Decimal(0))
         if amount_dec <= 0:
             return bad_request(web_utils.INVALID_AMOUNT)
         if not wallet.incoming_available(asset, l2_network, amount_dec):
@@ -553,7 +564,6 @@ def crypto_deposit_recipient_req():
     crypto_address.viewed_at = int(datetime.timestamp(datetime.now()))
     db.session.add(crypto_address)
     db.session.commit()
-
     return jsonify(recipient=crypto_address.address, asset=asset, l2_network=l2_network, amount_dec=decimal.Decimal(0))
 
 @api.route('/crypto_deposits', methods=['POST'])
@@ -640,7 +650,7 @@ def crypto_withdrawal_create_req():
         amount_dec = amount_from_recipient
     if amount_dec <= 0:
         return bad_request(web_utils.INVALID_AMOUNT)
-    if amount_dec <= assets.asset_min_withdraw(asset, l2_network):
+    if amount_dec < assets.asset_min_withdraw(asset, l2_network):
         return bad_request(web_utils.AMOUNT_TOO_LOW)
     # save recipient
     if save_recipient and not l2_network:
@@ -733,7 +743,7 @@ def fiat_withdrawal_create_req():
     amount_dec = decimal.Decimal(amount_dec)
     if amount_dec <= 0:
         return bad_request(web_utils.INVALID_AMOUNT)
-    if amount_dec <= assets.asset_min_withdraw(asset, None):
+    if amount_dec < assets.asset_min_withdraw(asset, None):
         return bad_request(web_utils.AMOUNT_TOO_LOW)
     if not assets.asset_recipient_validate(asset, None, recipient):
         return bad_request(web_utils.INVALID_RECIPIENT)
