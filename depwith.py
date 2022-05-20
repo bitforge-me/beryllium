@@ -9,6 +9,7 @@ import websocket
 import email_utils
 import fiatdb_core
 import coordinator
+import wallet
 import tripwire
 
 logger = logging.getLogger(__name__)
@@ -131,57 +132,116 @@ def _crypto_deposit_email(deposit):
     else:
         email_utils.send_email(logger, 'Deposit Incoming', _crypto_deposit_email_msg(deposit, 'incoming', ''), deposit.user.email)
 
-def crypto_deposits_check(db_session):
+def crypto_deposits_wallet_check(db_session, new_crypto_deposits, updated_crypto_deposits, user, asset, addr_list):
+    for addr in addr_list:
+        wallet_deposits = wallet.address_deposits(asset, None, addr)
+        for wallet_deposit in wallet_deposits:
+            with coordinator.lock:
+                completed = wallet.deposit_completed(asset, None, wallet_deposit.txid)
+                crypto_deposit = CryptoDeposit.from_txid(db_session, wallet_deposit.txid)
+                if not crypto_deposit:
+                    crypto_deposit = CryptoDeposit(user, asset, None, wallet_deposit.amount_deposited(), None, wallet_deposit.txid, wallet_deposit.txid, completed, False)
+                    new_crypto_deposits.append(crypto_deposit)
+                if (crypto_deposit in new_crypto_deposits or not crypto_deposit.confirmed) and completed:
+                    # credit the users account
+                    ftx = fiatdb_core.tx_create(db_session, user, FiatDbTransaction.ACTION_CREDIT, asset, wallet_deposit.amount_deposited(), f'crypto deposit: {crypto_deposit.token}')
+                    if not ftx:
+                        logger.error('failed to create fiatdb transaction for crypto deposit %s', crypto_deposit.token)
+                        continue
+                    db_session.add(ftx)
+                    # update crypto deposit
+                    crypto_deposit.confirmed = completed
+                    updated_crypto_deposits.append(crypto_deposit)
+                if not crypto_deposit.crypto_address:
+                    addr = CryptoAddress.from_addr(db_session, addr)
+                    if addr:
+                        crypto_deposit.crypto_address = addr
+                db_session.add(crypto_deposit)
+                db_session.commit()
+
+def crypto_deposits_dasset_check(db_session, new_crypto_deposits, updated_crypto_deposits, user, asset):
+    if not user.dasset_subaccount:
+        logger.error('user %s dasset subaccount does not exist', user.email)
+        return
+    dasset_deposits = dasset.crypto_deposits(asset, user.dasset_subaccount.subaccount_id)
+    for dasset_deposit in dasset_deposits:
+        with coordinator.lock:
+            completed = dasset.crypto_deposit_completed(dasset_deposit)
+            crypto_deposit = CryptoDeposit.from_txid(db_session, dasset_deposit.txid)
+            if not crypto_deposit:
+                amount_int = assets.asset_dec_to_int(asset, dasset_deposit.amount)
+                crypto_deposit = CryptoDeposit(user, asset, None, amount_int, dasset_deposit.id, None, dasset_deposit.txid, completed, False)
+                new_crypto_deposits.append(crypto_deposit)
+            if (crypto_deposit in new_crypto_deposits or not crypto_deposit.confirmed) and completed:
+                # if deposit now completed transfer the funds to the master account
+                if not dasset.transfer(None, user.dasset_subaccount.subaccount_id, asset, dasset_deposit.amount):
+                    logger.error('failed to transfer funds from subaccount to master %s', dasset_deposit.id)
+                    continue
+                # and credit the users account
+                ftx = fiatdb_core.tx_create(db_session, user, FiatDbTransaction.ACTION_CREDIT, asset, amount_int, f'crypto deposit: {crypto_deposit.token}')
+                if not ftx:
+                    logger.error('failed to create fiatdb transaction for crypto deposit %s', crypto_deposit.token)
+                    continue
+                db_session.add(ftx)
+                # update crypto deposit
+                crypto_deposit.confirmed = completed
+                updated_crypto_deposits.append(crypto_deposit)
+            if not crypto_deposit.crypto_address:
+                addr = CryptoAddress.from_addr(db_session, dasset_deposit.address)
+                if addr:
+                    crypto_deposit.crypto_address = addr
+            db_session.add(crypto_deposit)
+            db_session.commit()
+
+def crypto_deposits_address_check(db_session, new_crypto_deposits, updated_crypto_deposits):
     # query for list of addresses that need to be checked
     addrs = CryptoAddress.need_to_be_checked(db_session)
-    # sort in to groups of assets for each user
+    # sort in groups of assets for each user
     user_assets = {}
     for addr in addrs:
         if addr.user.email not in user_assets:
-            user_assets[addr.user.email] = addr.user, []
-        _, asset_list = user_assets[addr.user.email]
-        if addr.asset not in asset_list:
-            asset_list.append(addr.asset)
+            user_assets[addr.user.email] = addr.user, {}
+        _, asset_dict = user_assets[addr.user.email]
+        if addr.asset not in asset_dict:
+            asset_dict[addr.asset] = [addr.address]
         # update checked at time of CryptoAddress
         addr.checked_at = int(datetime.timestamp(datetime.now()))
         db_session.add(addr)
+    db_session.commit()
     # check for new deposits, update existing deposits
+    for user, asset_dict in user_assets.values():
+        for asset, addr_list in asset_dict.items():
+            if wallet.deposits_supported(asset, None):
+                crypto_deposits_wallet_check(db_session, new_crypto_deposits, updated_crypto_deposits, user, asset, addr_list)
+            else:
+                crypto_deposits_dasset_check(db_session, new_crypto_deposits, updated_crypto_deposits, user, asset)
+
+def crypto_deposits_updated_wallet_check(db_session, updated_crypto_deposits):
+    for deposit in CryptoDeposit.of_wallet(db_session, False, False):
+        with coordinator.lock:
+            logger.info('processing crypto deposit %s (confirmed: %s)..', deposit.token, deposit.confirmed)
+            if wallet.deposit_expired(deposit.asset, deposit.l2_network, deposit.wallet_reference):
+                deposit.expired = True
+                updated_crypto_deposits.append(deposit)
+            elif wallet.deposit_completed(deposit.asset, deposit.l2_network, deposit.wallet_reference):
+                deposit.confirmed = True
+                # credit the users account
+                ftx = fiatdb_core.tx_create(db_session, deposit.user, FiatDbTransaction.ACTION_CREDIT, deposit.asset, deposit.amount, f'crypto deposit: {deposit.token}')
+                if not ftx:
+                    logger.error('failed to create fiatdb transaction for crypto deposit %s', deposit.token)
+                    continue
+                db_session.add(ftx)
+                updated_crypto_deposits.append(deposit)
+            db_session.add(deposit)
+            db_session.commit()
+
+def crypto_deposits_check(db_session):
     new_crypto_deposits = []
     updated_crypto_deposits = []
-    for user, asset_list in user_assets.values():
-        if not user.dasset_subaccount:
-            logger.error('user %s dasset subaccount does not exist', user.email)
-            continue
-        for asset in asset_list:
-            dasset_deposits = dasset.crypto_deposits(asset, user.dasset_subaccount.subaccount_id)
-            for dasset_deposit in dasset_deposits:
-                with coordinator.lock:
-                    completed = dasset.crypto_deposit_completed(dasset_deposit)
-                    crypto_deposit = CryptoDeposit.from_txid(db_session, dasset_deposit.txid)
-                    if not crypto_deposit:
-                        amount_int = assets.asset_dec_to_int(asset, dasset_deposit.amount)
-                        crypto_deposit = CryptoDeposit(user, asset, amount_int, dasset_deposit.id, dasset_deposit.txid, completed)
-                        new_crypto_deposits.append(crypto_deposit)
-                    elif not crypto_deposit.confirmed and completed:
-                        # if deposit now completed transfer the funds to the master account
-                        if not dasset.transfer(None, user.dasset_subaccount.subaccount_id, asset, dasset_deposit.amount):
-                            logger.error('failed to transfer funds from subaccount to master %s', dasset_deposit.id)
-                            continue
-                        # and credit the users account
-                        ftx = fiatdb_core.tx_create(db_session, user, FiatDbTransaction.ACTION_CREDIT, asset, amount_int, f'crypto deposit: {crypto_deposit.token}')
-                        if not ftx:
-                            logger.error('failed to create fiatdb transaction for crypto deposit %s', crypto_deposit.token)
-                            continue
-                        db_session.add(ftx)
-                        # update crypto deposit
-                        crypto_deposit.confirmed = completed
-                        updated_crypto_deposits.append(crypto_deposit)
-                    if not crypto_deposit.crypto_address:
-                        addr = CryptoAddress.from_addr(db_session, dasset_deposit.address)
-                        if addr:
-                            crypto_deposit.crypto_address = addr
-                    db_session.add(crypto_deposit)
-                    db_session.commit()
+    # check crypto deposits from addresses that are due to be checked
+    crypto_deposits_address_check(db_session, new_crypto_deposits, updated_crypto_deposits)
+    # check crypto deposits in our wallet
+    crypto_deposits_updated_wallet_check(db_session, updated_crypto_deposits)
     # send updates
     for deposit in new_crypto_deposits:
         _crypto_deposit_email(deposit)
@@ -198,16 +258,22 @@ def _crypto_withdrawal_update(crypto_withdrawal):
         return updated_records
     # check payout
     if crypto_withdrawal.status == crypto_withdrawal.STATUS_CREATED:
-        # check exchange withdrawal
-        status = dasset.crypto_withdrawal_status_check(crypto_withdrawal.exchange_reference)
-        if status == dasset.CRYPTO_WITHDRAWAL_STATUS_COMPLETED:
-            crypto_withdrawal.status = crypto_withdrawal.STATUS_COMPLETED
-            updated_records.append(crypto_withdrawal)
-        elif status == dasset.CRYPTO_WITHDRAWAL_STATUS_2FA:
-            if not dasset.crypto_withdrawal_confirm(crypto_withdrawal.exchange_reference):
-                logger.error('failed to confirm crypto withdrawal %s', crypto_withdrawal.token)
-        elif status == dasset.CRYPTO_WITHDRAWAL_STATUS_UNKNOWN:
-            logger.error('failed to get crypto withdrawal %s status', crypto_withdrawal.token)
+        if crypto_withdrawal.wallet_reference:
+            # check wallet withdrawal
+            if wallet.withdrawal_completed(crypto_withdrawal.asset, crypto_withdrawal.l2_network, crypto_withdrawal.wallet_reference):
+                crypto_withdrawal.status = crypto_withdrawal.STATUS_COMPLETED
+                updated_records.append(crypto_withdrawal)
+        elif crypto_withdrawal.exchange_reference:
+            # check exchange withdrawal
+            status = dasset.crypto_withdrawal_status_check(crypto_withdrawal.exchange_reference)
+            if status == dasset.CRYPTO_WITHDRAWAL_STATUS_COMPLETED:
+                crypto_withdrawal.status = crypto_withdrawal.STATUS_COMPLETED
+                updated_records.append(crypto_withdrawal)
+            elif status == dasset.CRYPTO_WITHDRAWAL_STATUS_2FA:
+                if not dasset.crypto_withdrawal_confirm(crypto_withdrawal.exchange_reference):
+                    logger.error('failed to confirm crypto withdrawal %s', crypto_withdrawal.token)
+            elif status == dasset.CRYPTO_WITHDRAWAL_STATUS_UNKNOWN:
+                logger.error('failed to get crypto withdrawal %s status', crypto_withdrawal.token)
         return updated_records
     return updated_records
 

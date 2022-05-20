@@ -11,8 +11,8 @@ from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
-SERVER_VERSION = 5
-CLIENT_VERSION_DEPLOYED = 4
+SERVER_VERSION = 8
+CLIENT_VERSION_DEPLOYED = 6
 
 MISSING_VITAL_SETTING = False
 
@@ -35,6 +35,7 @@ if os.getenv("DEBUG"):
 
 app.config.from_pyfile("flask_config.py")
 
+app.config["JSONIFY_PRETTYPRINT_REGULAR"] = True
 if os.getenv("TESTNET"):
     app.config["TESTNET"] = True
 else:
@@ -125,6 +126,11 @@ if os.getenv("MIN_AVAILABLE_NZD_BALANCE"):
 else:
     app.config["MIN_AVAILABLE_NZD_BALANCE"] = decimal.Decimal(2000)
 
+if app.config["TESTNET"]:
+    app.config["BITCOIN_EXPLORER"] = "https://blockstream.info/testnet/"
+else:
+    app.config["BITCOIN_EXPLORER"] = "https://blockstream.info/"
+
 def set_vital_setting(env_name, setting_name=None, acceptable_values=None, custom_handler=None):
     # pylint: disable=global-statement
     global MISSING_VITAL_SETTING
@@ -164,6 +170,8 @@ set_vital_setting("APLYID_WEBHOOK_BEARER_TOKEN")
 set_vital_setting("B2_ACCOUNT_ID")
 set_vital_setting("B2_APPLICATION_KEY")
 set_vital_setting("KYC_BUCKET")
+set_vital_setting("BITCOIN_DATADIR")
+set_vital_setting("BITCOIN_RPCCONNECT")
 
 db = SQLAlchemy(app)
 mail = MailSendGrid(app)

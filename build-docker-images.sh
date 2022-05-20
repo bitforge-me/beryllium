@@ -2,4 +2,5 @@
 
 set -e
 
-docker build -t beryllium_app .
+docker build -t lightningd lightningd
+docker build -t be_app .

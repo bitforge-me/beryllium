@@ -9,7 +9,7 @@ import logging
 from flask import url_for
 from flask_security import UserMixin, RoleMixin
 from marshmallow import Schema, fields
-from sqlalchemy import and_, exists
+from sqlalchemy import and_
 
 from app_core import db
 from utils import generate_key
@@ -36,6 +36,17 @@ class FromUserMixin():
     def total_for_user(cls, session, user):
         # pylint: disable=no-member
         return session.query(cls).filter(cls.user_id == user.id).count()
+
+class OfAssetMixin():
+    @classmethod
+    def of_asset(cls, session, user, asset, l2_network, offset, limit):
+        # pylint: disable=no-member
+        return session.query(cls).filter(and_(cls.user_id == user.id, and_(cls.asset == asset, cls.l2_network == l2_network))).order_by(cls.id.desc()).offset(offset).limit(limit)
+
+    @classmethod
+    def total_of_asset(cls, session, user, asset, l2_network):
+        # pylint: disable=no-member
+        return session.query(cls).filter(and_(cls.user_id == user.id, and_(cls.asset == asset, cls.l2_network == l2_network))).count()
 
 roles_users = db.Table(
     'roles_users',
@@ -462,6 +473,7 @@ class CryptoWithdrawalSchema(Schema):
     token = fields.String()
     date = fields.DateTime()
     asset = fields.String()
+    l2_network = fields.String()
     amount = fields.Integer()
     amount_dec = fields.Method('get_amount_dec')
     recipient = fields.String()
@@ -471,7 +483,7 @@ class CryptoWithdrawalSchema(Schema):
     def get_amount_dec(self, obj):
         return str(assets.asset_int_to_dec(obj.asset, obj.amount))
 
-class CryptoWithdrawal(db.Model, FromUserMixin):
+class CryptoWithdrawal(db.Model, FromUserMixin, OfAssetMixin):
     STATUS_CREATED = 'created'
     STATUS_COMPLETED = 'completed'
     STATUS_CANCELLED = 'cancelled'
@@ -482,20 +494,24 @@ class CryptoWithdrawal(db.Model, FromUserMixin):
     user = db.relationship('User', backref=db.backref('crypto_withdrawals', lazy='dynamic'))
     date = db.Column(db.DateTime(), nullable=False)
     asset = db.Column(db.String, nullable=False)
+    l2_network = db.Column(db.String)
     amount = db.Column(db.BigInteger, nullable=False)
     recipient = db.Column(db.String, nullable=False)
-    exchange_reference = db.Column(db.String, nullable=False)
+    exchange_reference = db.Column(db.String)
+    wallet_reference = db.Column(db.String)
     txid = db.Column(db.String)
     status = db.Column(db.String, nullable=False)
 
-    def __init__(self, user, asset, amount, recipient, exchange_reference):
+    def __init__(self, user, asset, l2_network, amount, recipient, exchange_reference, wallet_reference):
         self.token = generate_key()
         self.user = user
         self.date = datetime.now()
         self.asset = asset
+        self.l2_network = l2_network
         self.amount = amount
         self.recipient = recipient
         self.exchange_reference = exchange_reference
+        self.wallet_reference = wallet_reference
         self.status = self.STATUS_CREATED
 
     def to_json(self):
@@ -510,37 +526,52 @@ class CryptoDepositSchema(Schema):
     token = fields.String()
     date = fields.DateTime()
     asset = fields.String()
+    l2_network = fields.String()
     amount = fields.Integer()
     amount_dec = fields.Method('get_amount_dec')
+    recipient = fields.Method('get_recipient')
     txid = fields.String()
     confirmed = fields.Boolean()
 
     def get_amount_dec(self, obj):
         return str(assets.asset_int_to_dec(obj.asset, obj.amount))
 
-class CryptoDeposit(db.Model, FromUserMixin):
+    def get_recipient(self, obj):
+        if obj.crypto_address:
+            return obj.crypto_address.address
+        if obj.wallet_reference:
+            return obj.wallet_reference
+        return None
+
+class CryptoDeposit(db.Model, FromUserMixin, OfAssetMixin):
     id = db.Column(db.Integer, primary_key=True)
     token = db.Column(db.String(255), unique=True, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     user = db.relationship('User', backref=db.backref('crypto_deposits', lazy='dynamic'))
-    crypto_address_id = db.Column(db.Integer, db.ForeignKey('crypto_address.id'), nullable=False)
+    crypto_address_id = db.Column(db.Integer, db.ForeignKey('crypto_address.id'))
     crypto_address = db.relationship('CryptoAddress', backref=db.backref('crypto_deposits', lazy='dynamic'))
     date = db.Column(db.DateTime(), nullable=False)
     asset = db.Column(db.String, nullable=False)
+    l2_network = db.Column(db.String)
     amount = db.Column(db.BigInteger, nullable=False)
-    exchange_reference = db.Column(db.String, nullable=False)
-    txid = db.Column(db.String(255), unique=True, nullable=False)
+    exchange_reference = db.Column(db.String)
+    wallet_reference = db.Column(db.String)
+    txid = db.Column(db.String(255), unique=True)
     confirmed = db.Column(db.Boolean, nullable=False)
+    expired = db.Column(db.Boolean, nullable=False)
 
-    def __init__(self, user, asset, amount, exchange_reference, txid, confirmed):
+    def __init__(self, user, asset, l2_network, amount, exchange_reference, wallet_reference, txid, confirmed, expired):
         self.token = generate_key()
         self.user = user
         self.date = datetime.now()
         self.asset = asset
+        self.l2_network = l2_network
         self.amount = amount
         self.exchange_reference = exchange_reference
+        self.wallet_reference = wallet_reference
         self.txid = txid
         self.confirmed = confirmed
+        self.expired = expired
 
     def to_json(self):
         ref_schema = CryptoDepositSchema()
@@ -551,9 +582,12 @@ class CryptoDeposit(db.Model, FromUserMixin):
         return session.query(cls).filter(cls.txid == txid).first()
 
     @classmethod
-    def not_in_broker_orders(cls, session, asset, amount):
-        session.query(cls).filter(cls.asset == asset).filter(cls.amount == amount) \
-            .filter(~exists().where(BrokerOrder.crypto_deposit_id == cls.id)).all()
+    def of_wallet(cls, session, confirmed, expired):
+        return session.query(cls).filter(cls.wallet_reference is not None).filter(cls.confirmed == confirmed).filter(cls.expired == expired).all()
+
+    @classmethod
+    def from_wallet_reference(cls, session, wallet_reference):
+        return session.query(cls).filter(cls.wallet_reference == wallet_reference).first()
 
 class WindcavePaymentRequestSchema(Schema):
     date = fields.DateTime()
@@ -985,3 +1019,25 @@ class CryptoAddress(db.Model, FromUserMixin):
     def need_to_be_checked(cls, session):
         now = datetime.timestamp(datetime.now())
         return session.query(cls).filter(now - cls.checked_at > (cls.checked_at - cls.viewed_at) * 2).all()
+
+class BtcTxIndex(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    txid = db.Column(db.String(255), nullable=False)
+    hex = db.Column(db.String(), nullable=False)
+    blockheight = db.Column(db.Integer)
+    blockhash = db.Column(db.String(255))
+
+    # pylint: disable=redefined-builtin
+    def __init__(self, txid, hex, blockheight, blockhash):
+        self.txid = txid
+        self.hex = hex
+        self.blockheight = blockheight
+        self.blockhash = blockhash
+
+    @classmethod
+    def from_txid(cls, session, txid):
+        return session.query(cls).filter(cls.txid == txid).first()
+
+    @classmethod
+    def clear(cls, session):
+        session.query(cls).delete()

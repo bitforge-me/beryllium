@@ -1,0 +1,78 @@
+{% extends "lightning/layout.html" %}
+
+{% block title %}Create Invoice{% endblock %}
+
+{% block content %}
+<div class="alert alert-dismissible alert-success">
+    <strong>on-chain balance:</strong> {{ onchain }} <strong>BTC</strong> <b>|</b> {{ onchain_sats }} <strong>SAT</strong>
+</div>
+<div class="alert alert-dismissible alert-info">
+{% if signed_psbt %}
+<h2>PSBT Signed</h2>
+<div class="form-group">
+    <label for="signed_psbt" class="form-label mt-4">PSBT Data</label>
+    <textarea class="form-control" id="signed_psbt" rows="3" placeholder="{{ signed_psbt }}" readonly></textarea>
+</div>
+<button id="copy-psbt" type="button" class="btn btn-primary">Copy PSBT</button>
+<br/>
+<br/>
+<br/>
+{% endif %}
+
+<h2>Sign PSBT</h2>
+<p>Sign a PSBT.</p>
+<form id="form" method="POST">
+    <div class="form-group">
+        <label for="message" class="form-label mt-4">Unsigned PSBT</label>
+        <textarea class="form-control" aria-required=true placeholder="Paste unsigned PSBT here." name="psbt" id="psbt" rows="3" required></textarea>
+    </div>
+    <button id="form-submit" type="button" class="btn btn-primary">Submit</button>
+</form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static',filename='assets/lightning/utils.js') }}"></script>
+<script>
+    async function confirm(form_class, psbt) {
+        if (!document.querySelector(form_class).reportValidity()) {
+            return;
+        }
+        var data = await decodePsbt(psbt);
+        if (data == null)
+            return;
+        var message = 'Do you want to sign?<br/>';
+        message = message + formatOutputs(data.fee, data.outputs);
+        bootbox.confirm({
+            title: 'Confirm Sign',
+            message: message,
+            buttons: {
+                confirm: {
+                    label: 'Yes',
+                    className: 'btn-success'
+                },
+                cancel: {
+                    label: 'No',
+                    className: 'btn-danger'
+                }
+            },
+            callback: function (result) {
+                if (result)
+                    $(form_class).submit();
+            }
+        });
+    }
+
+    $(document).ready(function() {
+        $('#copy-psbt').click(function() {
+            navigator.clipboard.writeText("{{ signed_psbt }}");
+        });
+
+        $('#form-submit').click(function() {
+            var psbt = $('#psbt').val();
+            confirm('#form', psbt);
+            return false;
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,115 @@
+{% extends "lightning/layout.html" %}
+{% block title %}Lightning Home{% endblock %}
+{% block content %}
+<br/>
+<h2>BALANCES</h2>
+<div class='some-page-wrapper'>
+    <div class='row text-muted'>
+        <div class='card m-1'>
+            <div class="card-body mx-auto">
+                <h5 class="card-title">ONCHAIN</h5>
+                <p>{{ funds_dict.sats_onchain }} available <strong>SAT</strong></p>
+                {% if funds_dict.sats_onchain_reserved %}
+                <p>{{ funds_dict.sats_onchain_reserved }} reserved <strong>SAT</strong></p>
+                {% endif %}
+                {% if funds_dict.sats_onchain_unconfirmed %}
+                <p>{{ funds_dict.sats_onchain_unconfirmed }} unconfirmed <strong>SAT</strong></p>
+                {% endif %}
+            </div>
+        </div>
+        <div class='card m-1'>
+            <div class="card-body mx-auto">
+                <h5 class="card-title">LN CHANNELS</h5>
+                <p>{{ funds_dict.sats_channels }} <strong>SAT</strong></p>
+            </div>
+        </div>
+    </div>
+</div>
+<h2>DIAGNOSTIC</h2>
+<div class='some-page-wrapper'>
+    <div class='row'>
+        <a href="getinfo">
+        <div class='dashboard_links'>
+            <p>Lightningd Getinfo<p>
+        </div>
+        <a href="/spark">
+        <div class='dashboard_links'>
+            <p>Spark<p>
+        </div>
+        </a>
+    </div>
+</div>
+<h2>BTC</h2>
+<div class='some-page-wrapper'>
+    <div class='row'>
+        <a href="utxos">
+        <div class='dashboard_links'>
+            <p>UTXOs<p>
+        </div>
+        </a>
+        <a href="new_address">
+        <div class='dashboard_links'>
+            <p>New Address<p>
+        </div>
+        </a>
+        <a href="list_txs">
+        <div class='dashboard_links'>
+            <p>Transaction History<p>
+        </div>
+        </a>
+        <a href="address">
+        <div class='dashboard_links'>
+            <p>Address History<p>
+        </div>
+        </a>
+        <a href="create_psbt">
+        <div class='dashboard_links'>
+            <p>Create PSBT/Withdrawal<p>
+        </div>
+        </a>
+        <a href="sign_psbt">
+        <div class='dashboard_links'>
+            <p>Sign PSBT<p>
+        </div>
+        </a>
+        <a href="broadcast_psbt">
+        <div class='dashboard_links'>
+            <p>Broadcast PSBT<p>
+        </div>
+        </a>
+    </div>
+</div>
+<h2>LIGHTNING</h2>
+<div class='some-page-wrapper'>
+    <div class='row'>
+        <a href="invoice">
+        <div class='dashboard_links'>
+            <p>Create Invoice<p>
+        </div>
+        </a>
+        <a href="pay_invoice">
+        <div class='dashboard_links'>
+            <p>Pay Invoice<p>
+        </div>
+        </a>
+        <a href="lightning_transactions">
+        <div class='dashboard_links'>
+            <p>Lightning Transactions<p>
+        </div>
+        </a>
+        <a href="channel_opener">
+        <div class='dashboard_links'>
+            <p>Open Channel<p>
+        </div>
+        </a>
+        <a href="channel_management">
+        <div class='dashboard_links'>
+            <p>Channel Management<p>
+        </div>
+        </a>
+    </div>
+</div>
+{% endblock %}
+{% block footer %}
+{{ super() }}
+{% endblock %}

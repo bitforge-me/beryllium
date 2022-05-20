@@ -24,6 +24,7 @@ from reward_endpoint import reward
 from reporting_endpoint import reporting
 from payments_endpoint import payments
 from kyc_endpoint import kyc
+from ln_wallet_endpoint import ln_wallet
 import websocket
 # pylint: disable=unused-import
 import admin
@@ -32,6 +33,8 @@ import assets
 import kyc_core
 import fiatdb_core
 import coordinator
+from ln import LnRpc, _msat_to_sat
+import wallet
 import tripwire
 
 USER_BALANCE_SHOW = 'show balance'
@@ -52,6 +55,7 @@ app.register_blueprint(reward, url_prefix='/reward')
 app.register_blueprint(reporting, url_prefix='/reporting')
 app.register_blueprint(payments, url_prefix='/payments')
 app.register_blueprint(kyc, url_prefix='/kyc')
+app.register_blueprint(ln_wallet, url_prefix='/ln_wallet')
 
 def process_email_alerts():
     with app.app_context():
@@ -64,16 +68,24 @@ def process_email_alerts():
                     msg = f"Available {balance.symbol} Balance needs to be replenished in the dasset account.<br/><br/>Available {balance.symbol} balance is: ${balance_format}"
                     email_utils.email_notification_alert(logger, subject, msg, app.config["ADMIN_EMAIL"])
 
+def _process_deposits_and_broker_orders():
+    logger.info('process deposits..')
+    depwith.fiat_deposits_update(db.session)
+    depwith.crypto_deposits_check(db.session)
+    logger.info('process withdrawals..')
+    depwith.fiat_withdrawals_update(db.session)
+    depwith.crypto_withdrawals_update(db.session)
+    logger.info('process broker orders..')
+    broker.broker_orders_update(db.session)
+
 def process_deposits_and_broker_orders():
     with app.app_context():
-        logger.info('process deposits..')
-        depwith.fiat_deposits_update(db.session)
-        depwith.crypto_deposits_check(db.session)
-        logger.info('process withdrawals..')
-        depwith.fiat_withdrawals_update(db.session)
-        depwith.crypto_withdrawals_update(db.session)
-        logger.info('process broker orders..')
-        broker.broker_orders_update(db.session)
+        _process_deposits_and_broker_orders()
+
+def process_btc_tx_index():
+    with app.app_context():
+        logger.info('process btc tx index..')
+        wallet.btc_transactions_index()
 
 #
 # Flask views
@@ -355,6 +367,12 @@ def user_order():
 def config():
     return render_template('config.html')
 
+@app.route('/process_depwith_and_broker', methods=['GET'])
+@roles_accepted(Role.ROLE_ADMIN)
+def process_depwith_broker():
+    _process_deposits_and_broker_orders()
+    return 'ok'
+
 @app.route('/tripwire', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
 def tripwire_ep():
@@ -371,36 +389,73 @@ class WebGreenlet():
         self.port = port
         self.runloop_greenlet = None
         self.process_periodic_events_greenlet = None
+        self.ln_invoice_greenlet = None
         self.exception_func = exception_func
 
+    def _runloop(self):
+        logger.info("WebGreenlet runloop started")
+        logger.info("WebGreenlet webserver starting (addr: %s, port: %d)", self.addr, self.port)
+        socketio.run(app, host=self.addr, port=self.port)
+
+    def _process_periodic_events_loop(self):
+        current = int(time.time())
+        email_alerts_timer_last = current
+        deposits_and_orders_timer_last = current
+        btc_tx_index_timer_last = current
+        while True:
+            current = time.time()
+            if current - email_alerts_timer_last > 1800:
+                gevent.spawn(process_email_alerts)
+                email_alerts_timer_last += 1800
+            if current - deposits_and_orders_timer_last > 300:
+                gevent.spawn(process_deposits_and_broker_orders)
+                deposits_and_orders_timer_last += 300
+            if current - btc_tx_index_timer_last > 3600:
+                gevent.spawn(process_btc_tx_index)
+                btc_tx_index_timer_last += 3600
+            gevent.sleep(5)
+
+    def _process_ln_invoices_loop(self):
+        gevent.sleep(10, False) # HACK: wait for the webserver to start
+        lastpay_index = 0
+        while True:
+            try:
+                if lastpay_index == 0:
+                    lastpay_index = LnRpc().lastpay_index()
+                pay, err = wallet.ln_any_deposit_completed(lastpay_index)
+                if err:
+                    logger.debug('wait_any_invoice failed: "%s"', err)
+                    gevent.sleep(2, False) # probably timeout so we wait a short time before polling again
+                else:
+                    logger.info('wait_any_invoice: %s', pay)
+                    if pay['status'] == 'paid':
+                        label = pay['label']
+                        payment_hash = pay['payment_hash']
+                        bolt11 = pay['bolt11']
+                        lastpay_index = pay['pay_index']
+                        description = pay['description']
+                        msat = pay['msatoshi']
+                        sat = _msat_to_sat(msat)
+                        deposit = CryptoDeposit.from_wallet_reference(db.session, bolt11)
+                        email = None
+                        if deposit:
+                            email = deposit.user.email
+                        websocket.ln_invoice_paid_event(label, payment_hash, bolt11, email, description, sat)
+            except ConnectionError as e:
+                gevent.sleep(5, False)
+                logger.error('wait_any_invoice error: %s', e)
+
     def start(self):
-        def runloop():
-            logger.info("WebGreenlet runloop started")
-            logger.info("WebGreenlet webserver starting (addr: %s, port: %d)", self.addr, self.port)
-            socketio.run(app, host=self.addr, port=self.port)
-
-        def process_periodic_events_loop():
-            current = int(time.time())
-            email_alerts_timer_last = current
-            deposits_and_orders_timer_last = current
-            while True:
-                current = time.time()
-                if current - email_alerts_timer_last > 1800:
-                    gevent.spawn(process_email_alerts)
-                    email_alerts_timer_last += 1800
-                if current - deposits_and_orders_timer_last > 300:
-                    gevent.spawn(process_deposits_and_broker_orders)
-                    deposits_and_orders_timer_last += 300
-                gevent.sleep(5)
-
         def start_greenlets():
             logger.info("starting WebGreenlet runloop...")
             self.runloop_greenlet.start()
             self.process_periodic_events_greenlet.start()
+            self.ln_invoice_greenlet.start()
 
-        # create greenlet
-        self.runloop_greenlet = gevent.Greenlet(runloop)
-        self.process_periodic_events_greenlet = gevent.Greenlet(process_periodic_events_loop)
+        # create greenlets
+        self.runloop_greenlet = gevent.Greenlet(self._runloop)
+        self.process_periodic_events_greenlet = gevent.Greenlet(self._process_periodic_events_loop)
+        self.ln_invoice_greenlet = gevent.Greenlet(self._process_ln_invoices_loop)
         if self.exception_func:
             self.runloop_greenlet.link_exception(self.exception_func)
         # start greenlets
@@ -409,7 +464,8 @@ class WebGreenlet():
     def stop(self):
         self.runloop_greenlet.kill()
         self.process_periodic_events_greenlet.kill()
-        gevent.joinall([self.runloop_greenlet, self.process_periodic_events_greenlet])
+        self.ln_invoice_greenlet.kill()
+        gevent.joinall([self.runloop_greenlet, self.process_periodic_events_greenlet, self.ln_invoice_greenlet])
 
 def run():
     # setup logging

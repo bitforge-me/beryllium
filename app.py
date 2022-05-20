@@ -125,6 +125,8 @@ if __name__ == "__main__":
             sys.exit(1)
         else:
             logger.info('got all vital settings')
+        # show url map
+        logger.info('url map: %s', app.url_map)
 
         signal.signal(signal.SIGINT, sigint_handler)
 

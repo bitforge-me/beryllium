@@ -1,0 +1,40 @@
+<table class="table table-striped table-hover">
+    <thead>
+        <tr>
+            <th scope="col">Blockheight</th>
+            <th scope="col">TXID</th>
+            <th scope="col">Inputs (sats)</th>
+            <th scope="col">Outputs (sats)</th>
+            <th scope="col">Fee (sats)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for tx in txs %}
+        <tr class="table-secondary">
+            <td><a class="text-dark" href="{{ bitcoin_explorer }}block-height/{{ tx.blockheight }}"><span class="badge bg-light">{{ tx.blockheight }}</span></a></td>
+            <td><a class="text-dark" href="{{ bitcoin_explorer }}tx/{{ tx.txid }}"><span class="badge bg-light">{{ tx.txid }}</span><a></td>
+            <td>
+            {% for input in tx.inputs %}
+                {% if input.ours %}
+                <a class="text-light" href="address?address={{ input.addr }}"><span class="badge bg-warning">{{ input.amount }}</span></a>
+                {% else %}
+                <a class="text-dark" href="{{ bitcoin_explorer }}address/{{ input.addr }}"><span class="badge bg-light">{{ input.amount }}</span></a>
+                {% endif %}
+            {% endfor %}
+            </td>
+            <td>
+            {% for output in tx.outputs %}
+                {% if output.ours %}
+                <a class="text-light" href="address?address={{ output.addr }}"><span class="badge bg-success">{{ output.amount }}</span></a>
+                {% else %}
+                <a class="text-dark" href="{{ bitcoin_explorer }}address/{{ output.addr }}"><span class="badge bg-light">{{ output.amount }}</span></a>
+                {% endif %}
+            {% endfor %}
+            </td>
+            <td>
+                <span class="badge bg-light">{{ tx.fee }}</span>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
