@@ -28,6 +28,7 @@ import fiatdb_core
 import broker
 import coordinator
 import wallet
+import tripwire
 
 logger = logging.getLogger(__name__)
 api = Blueprint('api', __name__, template_folder='templates')
@@ -148,6 +149,7 @@ def user_two_factor_enabled_check():
 @api.route('/api_key_create', methods=['POST'])
 @limiter.limit('10/hour')
 def api_key_create():
+    tripwire.login_attempt()
     content = request.get_json(force=True)
     if content is None:
         return bad_request(web_utils.INVALID_JSON)
@@ -178,6 +180,7 @@ def api_key_create():
 @api.route('/api_key_request', methods=['POST'])
 @limiter.limit('10/hour')
 def api_key_request():
+    tripwire.login_attempt()
     content = request.get_json(force=True)
     if content is None:
         return bad_request(web_utils.INVALID_JSON)
@@ -278,6 +281,7 @@ def user_info():
 @api.route('/user_reset_password', methods=['POST'])
 @limiter.limit('10/hour')
 def user_reset_password():
+    tripwire.login_attempt()
     api_key, err_response = auth_request(db)
     if err_response:
         return err_response
@@ -288,6 +292,7 @@ def user_reset_password():
 @api.route('/user_update_email', methods=['POST'])
 @limiter.limit('10/hour')
 def user_update_email():
+    tripwire.login_attempt()
     email, api_key, err_response = auth_request_get_single_param(db, "email")
     if err_response:
         return err_response
@@ -652,6 +657,10 @@ def crypto_withdrawal_create_req():
         return bad_request(web_utils.INVALID_AMOUNT)
     if amount_dec < assets.asset_min_withdraw(asset, l2_network):
         return bad_request(web_utils.AMOUNT_TOO_LOW)
+    # check withdrawals enabled
+    if not tripwire.WITHDRAWAL.ok:
+        return bad_request(web_utils.NOT_AVAILABLE)
+    tripwire.withdrawal_attempt()
     # save recipient
     if save_recipient and not l2_network:
         entry = AddressBook.from_recipient(db.session, api_key.user, asset, recipient)
@@ -747,6 +756,10 @@ def fiat_withdrawal_create_req():
         return bad_request(web_utils.AMOUNT_TOO_LOW)
     if not assets.asset_recipient_validate(asset, None, recipient):
         return bad_request(web_utils.INVALID_RECIPIENT)
+    # check withdrawals enabled
+    if not tripwire.WITHDRAWAL.ok:
+        return bad_request(web_utils.NOT_AVAILABLE)
+    tripwire.withdrawal_attempt()
     if save_recipient:
         entry = AddressBook.from_recipient(db.session, api_key.user, asset, recipient)
         if entry:

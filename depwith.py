@@ -10,6 +10,7 @@ import email_utils
 import fiatdb_core
 import coordinator
 import wallet
+import tripwire
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +79,9 @@ def fiat_deposits_update(db_session):
 def _fiat_withdrawal_update(fiat_withdrawal):
     logger.info('processing fiat withdrawal %s (%s)..', fiat_withdrawal.token, fiat_withdrawal.status)
     updated_records = []
+    # check withdrawals enabled
+    if not tripwire.WITHDRAWAL.ok:
+        return updated_records
     # check payout
     if fiat_withdrawal.status == fiat_withdrawal.STATUS_CREATED:
         if fiat_withdrawal.payout_request:
@@ -249,6 +253,9 @@ def crypto_deposits_check(db_session):
 def _crypto_withdrawal_update(crypto_withdrawal):
     logger.info('processing crypto withdrawal %s (%s)..', crypto_withdrawal.token, crypto_withdrawal.status)
     updated_records = []
+    # check withdrawals enabled
+    if not tripwire.WITHDRAWAL.ok:
+        return updated_records
     # check payout
     if crypto_withdrawal.status == crypto_withdrawal.STATUS_CREATED:
         if crypto_withdrawal.wallet_reference:

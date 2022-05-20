@@ -35,6 +35,7 @@ import fiatdb_core
 import coordinator
 from ln import LnRpc, _msat_to_sat
 import wallet
+import tripwire
 
 USER_BALANCE_SHOW = 'show balance'
 USER_BALANCE_CREDIT = 'credit'
@@ -371,6 +372,11 @@ def config():
 def process_depwith_broker():
     _process_deposits_and_broker_orders()
     return 'ok'
+
+@app.route('/tripwire', methods=['GET'])
+@roles_accepted(Role.ROLE_ADMIN)
+def tripwire_ep():
+    return render_template('tripwire.html', data=tripwire.DATA)
 
 #
 # gevent class

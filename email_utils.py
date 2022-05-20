@@ -86,3 +86,9 @@ def email_payouts_notification(logger: Logger, payout_requests: list[PayoutReque
     url = url_for('payments.payouts', _external=True)
     html_content = f'{len(payout_requests)} payout requests<br/><br/><a href="{url}">payouts</a>'
     send_email(logger, subject, html_content, recipient=recipient)
+
+def email_tripwire_notification(logger: Logger):
+    server_name = app.config['SERVER_NAME']
+    subject = f'{server_name} tripwire'
+    html_content = f'the tripwire at <a href="{server_name}">{server_name}</a> has triggered'
+    send_email(logger, subject, html_content)
