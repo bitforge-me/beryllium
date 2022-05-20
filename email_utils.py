@@ -1,5 +1,4 @@
 from logging import Logger
-from typing import Optional
 
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, From, Attachment, FileContent, FileName, FileType, Disposition, ContentId
@@ -21,7 +20,7 @@ def _attachment(b64data, mime_type, filename, content_id, disposition='attachmen
 def _attachment_inline(b64data, mime_type, filename, content_id):
     return _attachment(b64data, mime_type, filename, content_id, 'inline')
 
-def send_email(logger: Logger, subject: str, msg: str, recipient: Optional[str] = None, attachment: Optional[str] = None) -> bool:
+def send_email(logger: Logger, subject: str, msg: str, recipient: str | None = None, attachment: str | None = None) -> bool:
     if not recipient:
         recipient = app.config["ADMIN_EMAIL"]
     from_email = From(app.config["FROM_EMAIL"], app.config["FROM_NAME"])

@@ -1,6 +1,5 @@
 import os
 import datetime
-from typing import Optional
 
 from pyln.client import LightningRpc
 
@@ -34,14 +33,14 @@ class LnRpc():
     # LN
     #
 
-    def invoice(self, sats, label, msg):
+    def invoice(self, sats: int, label: str, msg: str) -> dict:
         # create a LN invoice
         return self.instance.invoice(_sat_to_msat(sats), label, msg)
 
     def invoice_status(self, bolt11: str) -> bool:
         return self.instance.listinvoices(invstring=bolt11)
 
-    def pay(self, bolt11: str) -> Optional[dict]:
+    def pay(self, bolt11: str) -> dict:
         # pay a bolt11 invoice
         return self.instance.pay(bolt11)
 
@@ -53,7 +52,7 @@ class LnRpc():
         # show the status of a specific payment hash
         return self.instance.listpays(payment_hash=payment_hash)
 
-    def lastpay_index(self):
+    def lastpay_index(self) -> int:
         result = self.instance.listinvoices()
         invoices = result['invoices']
         current_pay_index = 0
@@ -81,26 +80,26 @@ class LnRpc():
                             "amount_sats": amount_sats})
         return results
 
-    def decode_bolt11(self, bolt11: str) -> Optional[dict]:
+    def decode_bolt11(self, bolt11: str) -> dict:
         result = self.instance.decodepay(bolt11)
         sats = _msat_to_sat(result["amount_msat"].millisatoshis)
         result['amount_sat'] = sats
         return result
 
-    def wait_any_invoice(self, lastpay_index=0, timeout=None):
+    def wait_any_invoice(self, lastpay_index=0, timeout: int | None = None) -> dict:
         return self.instance.waitanyinvoice(lastpay_index=lastpay_index, timeout=timeout)
 
     def list_channels(self):
         return self.instance.listchannels()
 
-    def rebalance_channel(self, oscid, iscid, amount_sat):
+    def rebalance_channel(self, oscid: str, iscid: str, amount_sat: int):
         return self.instance.rebalance(oscid, iscid, _sat_to_msat(amount_sat))
 
     def fee_rates(self):
         # get fee rates in unit of sats per 1000 virtual bytes
         return self.instance.feerates("perkb")
 
-    def key_send(self, node_id, sats):
+    def key_send(self, node_id: str, sats: int):
         return self.instance.keysend(node_id, _sat_to_msat(sats))
 
     def list_forwards(self):
@@ -211,36 +210,36 @@ class LnRpc():
         sats_onchain_reserved = _msat_to_sat(msats_onchain_reserved)
         return dict(funds=funds, msats_largest_channel=msats_largest_channel, msats_channels=msats_channels, msats_largest_channel_theirs=msats_largest_channel_theirs, msats_channels_theirs=msats_channels_theirs, msats_onchain=msats_onchain, msats_onchain_unconfirmed=msats_onchain_unconfirmed, msats_onchain_reserved=msats_onchain_reserved, sats_largest_channel=sats_largest_channel, sats_channels=sats_channels, sats_channels_theirs=sats_channels_theirs, sats_largest_channel_theirs=sats_largest_channel_theirs, sats_onchain=sats_onchain, sats_onchain_unconfirmed=sats_onchain_unconfirmed, sats_onchain_reserved=sats_onchain_reserved)
 
-    def fund_channel(self, node_id, sats):
-        return self.instance.fundchannel(node_id, sats)
+    def fund_channel(self, node_id: str, amount: str):
+        return self.instance.fundchannel(node_id, amount)
 
-    def close_channel(self, channel_id):
+    def close_channel(self, channel_id: str):
         return self.instance.close(channel_id)
 
-    def new_address(self, address_type):
+    def new_address(self, address_type: str):
         # return a bech32 address
         return self.instance.newaddr(addresstype=address_type)
 
     def list_txs(self):
         return self.instance.listtransactions()
 
-    def multi_withdraw(self, outputs):
+    def multi_withdraw(self, outputs: dict[str, str]):
         # outputs is in form {"address" : amount}
         return self.instance.multiwithdraw(outputs)
 
-    def prepare_psbt(self, outputs):
+    def prepare_psbt(self, outputs: dict[str, str]):
         return self.instance.txprepare(outputs)
 
-    def send_invoice(self, bolt11):
+    def send_invoice(self, bolt11: str):
         # pay a bolt11 invoice
         invoice_result = self.instance.pay(bolt11)
         invoice_result["sats_sent"] = _msat_to_sat(invoice_result["msatoshi_sent"])
         return invoice_result
 
-    def sign_psbt(self, unsigned_psbt):
+    def sign_psbt(self, unsigned_psbt: str):
         return self.instance.signpsbt(unsigned_psbt)
 
-    def send_psbt(self, signed_psbt):
+    def send_psbt(self, signed_psbt: str):
         return self.instance.sendpsbt(signed_psbt)
 
     def list_addrs(self):

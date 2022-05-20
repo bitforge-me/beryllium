@@ -1,8 +1,8 @@
 import logging
 from decimal import Decimal as Dec
 from enum import Enum
-from typing import Union, Optional
 from dataclasses import dataclass
+from typing import Optional
 
 import bitcoin
 import bitcoin.wallet
@@ -24,8 +24,8 @@ class Asset:
     min_withdraw: Dec
     is_crypto: bool
     l2_network: Optional['Asset']
-    deposit_instr: Optional[str]
-    withdraw_instr: Optional[str]
+    deposit_instr: str | None
+    withdraw_instr: str | None
 
 @dataclass
 class Market:
@@ -87,14 +87,14 @@ def _base58_validate(address: str, mainnet_prefixes: list[int], testnet_prefixes
 # Public functions
 #
 
-def market_side_is(have: Union[MarketSide, str], should_have: MarketSide) -> bool:
+def market_side_is(have: MarketSide | str, should_have: MarketSide) -> bool:
     assert isinstance(should_have, MarketSide)
     assert isinstance(have, (MarketSide, str))
     if isinstance(have, str):
         return have == should_have.value
     return have is should_have
 
-def market_side_nice(side: Union[MarketSide, str]) -> str:
+def market_side_nice(side: MarketSide | str) -> str:
     if isinstance(side, str):
         if side == MarketSide.ASK.value:
             return 'sell'
@@ -113,12 +113,12 @@ def assets_from_market(market: str) -> tuple[str, str]:
 def asset_decimals(asset: str) -> int:
     return ASSETS[asset].decimals
 
-def asset_withdraw_fee(asset: str, l2_network: Optional[str]) -> Dec:
+def asset_withdraw_fee(asset: str, l2_network: str | None) -> Dec:
     if not l2_network:
         return ASSETS[asset].withdraw_fee
     return ASSETS[asset].l2_network.withdraw_fee
 
-def asset_min_withdraw(asset: str, l2_network: Optional[str]) -> Dec:
+def asset_min_withdraw(asset: str, l2_network: str | None) -> Dec:
     ass = ASSETS[asset]
     if l2_network:
         assert ass.l2_network is not None and ass.l2_network.symbol == l2_network
@@ -143,7 +143,7 @@ def asset_is_crypto(asset: str) -> bool:
             return True
     return False
 
-def asset_has_l2(asset: str, l2_network: Optional[str]) -> bool:
+def asset_has_l2(asset: str, l2_network: str | None) -> bool:
     if not l2_network:
         return True
     for item in ASSETS.values():
@@ -157,7 +157,7 @@ def asset_is_fiat(asset: str) -> bool:
             return True
     return False
 
-def asset_recipient_extract_amount(asset: str, l2_network: Optional[str], recipient: str) -> Dec:
+def asset_recipient_extract_amount(asset: str, l2_network: str | None, recipient: str) -> Dec:
     if asset == BTC.symbol and l2_network == BTCLN.symbol:
         rpc = LnRpc()
         result = rpc.decode_bolt11(recipient)
@@ -166,7 +166,7 @@ def asset_recipient_extract_amount(asset: str, l2_network: Optional[str], recipi
         return asset_int_to_dec(asset, result['amount_sat'])
     return Dec(0)
 
-def asset_recipient_validate(asset: str, l2_network: Optional[str], recipient: str) -> bool:
+def asset_recipient_validate(asset: str, l2_network: str | None, recipient: str) -> bool:
     result = False
     if asset == NZD.symbol:
         result = bankaccount.is_valid(recipient)
@@ -189,16 +189,3 @@ def asset_recipient_validate(asset: str, l2_network: Optional[str], recipient: s
     if not result:
         logger.error('failed to validate recipient "%s" (%s)', recipient, asset)
     return result
-
-def crypto_uri(asset: str, address: str, amount_int: int) -> Optional[str]:
-    assert isinstance(amount_int, int)
-    amount = asset_int_to_dec(asset, amount_int)
-    if asset == 'BTC':
-        return f'bitcoin:{address}?amount={amount}'
-    if asset == 'ETH':
-        return f'ethereum:{address}?value={amount}'
-    if asset == 'DOGE':
-        return f'dogecoin:{address}?amount={amount}'
-    if asset == 'LTC':
-        return f'litecoin:{address}?amount={amount}'
-    return None

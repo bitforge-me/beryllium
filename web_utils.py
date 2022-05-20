@@ -2,7 +2,6 @@ import hmac
 import hashlib
 import base64
 import logging
-from typing import Optional, Union
 
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm.scoping import scoped_session
@@ -60,7 +59,7 @@ def bad_request(message: str, code: int = 400) -> Response:
     response.status_code = code
     return response
 
-def get_json_params(json_content, param_names: list[str]) -> tuple[list, Optional[Response]]:
+def get_json_params(json_content, param_names: list[str]) -> tuple[list, Response | None]:
     param_values = []
     param_name = ''
     try:
@@ -82,7 +81,7 @@ def get_json_params_optional(json_content, param_names: list[str]) -> list:
             param_values.append(None)
     return param_values
 
-def to_bytes(data: Union[str, bytes, bytearray]) -> Union[bytes, bytearray]:
+def to_bytes(data: str | bytes | bytearray) -> bytes | bytearray:
     if not isinstance(data, (bytes, bytearray)):
         return data.encode("utf-8")
     return data
@@ -105,7 +104,7 @@ def check_hmac_auth(api_key: ApiKey, nonce: int, sig: str, body: str) -> tuple[b
         return True, ""
     return False, AUTH_FAILED
 
-def check_auth(session: scoped_session, api_key_token: str, nonce: int, sig: str, body: str) -> tuple[bool, str, Optional[ApiKey]]:
+def check_auth(session: scoped_session, api_key_token: str, nonce: int, sig: str, body: str) -> tuple[bool, str, ApiKey | None]:
     # pylint: disable=import-outside-toplevel
     api_key = ApiKey.from_token(session, api_key_token)
     if not api_key:
@@ -121,7 +120,7 @@ def check_auth(session: scoped_session, api_key_token: str, nonce: int, sig: str
 
 # pylint: disable=unbalanced-tuple-unpacking
 # pylint: disable=invalid-name
-def auth_request(db: SQLAlchemy) -> tuple[Optional[ApiKey], Optional[Response]]:
+def auth_request(db: SQLAlchemy) -> tuple[ApiKey | None, Response | None]:
     sig = request_get_signature()
     content = request.get_json(force=True)
     if content is None:
@@ -137,7 +136,7 @@ def auth_request(db: SQLAlchemy) -> tuple[Optional[ApiKey], Optional[Response]]:
 
 # pylint: disable=unbalanced-tuple-unpacking
 # pylint: disable=invalid-name
-def auth_request_get_single_param(db: SQLAlchemy, param_name: str) -> tuple[Optional[str], Optional[ApiKey], Optional[Response]]:
+def auth_request_get_single_param(db: SQLAlchemy, param_name: str) -> tuple[str | None, ApiKey | None, Response | None]:
     sig = request_get_signature()
     content = request.get_json(force=True)
     if content is None:
@@ -151,7 +150,7 @@ def auth_request_get_single_param(db: SQLAlchemy, param_name: str) -> tuple[Opti
         return None, None, bad_request(reason)
     return param, api_key, None
 
-def auth_request_get_params(db: SQLAlchemy, param_names: list[str]) -> tuple[list[str], Optional[ApiKey], Optional[Response]]:
+def auth_request_get_params(db: SQLAlchemy, param_names: list[str]) -> tuple[list[str], ApiKey | None, Response | None]:
     sig = request_get_signature()
     content = request.get_json(force=True)
     if content is None:

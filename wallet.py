@@ -1,6 +1,5 @@
 import os
 from decimal import Decimal
-from typing import Optional
 import logging
 from dataclasses import dataclass
 from pyln.client.lightning import RpcError
@@ -92,13 +91,13 @@ def bitcoind_rpc(name, *args):
     service_url = bitcoind_service_url()
     return bitcoind_rpc_url(service_url, name, *args)
 
-def _is_ln(asset: str, l2_network: Optional[str]) -> bool:
+def _is_ln(asset: str, l2_network: str | None) -> bool:
     return asset == assets.BTC.symbol and l2_network == assets.BTCLN.symbol
 
-def _is_btc_chain(asset: str, l2_network: Optional[str]) -> bool:
+def _is_btc_chain(asset: str, l2_network: str | None) -> bool:
     return asset == assets.BTC.symbol and l2_network is None
 
-def incoming_available(asset: str, l2_network: Optional[str], amount_dec: Decimal) -> bool:
+def incoming_available(asset: str, l2_network: str | None, amount_dec: Decimal) -> bool:
     if _is_ln(asset, l2_network):
         funds = LnRpc().list_funds()
         sats = assets.asset_dec_to_int(asset, amount_dec)
@@ -106,7 +105,7 @@ def incoming_available(asset: str, l2_network: Optional[str], amount_dec: Decima
         return funds['sats_largest_channel_theirs'] >= sats
     return False
 
-def funds_available(asset: str, l2_network: Optional[str], amount_dec: Decimal) -> bool:
+def funds_available(asset: str, l2_network: str | None, amount_dec: Decimal) -> bool:
     if _is_ln(asset, l2_network):
         funds = LnRpc().list_funds()
         sats = assets.asset_dec_to_int(asset, amount_dec * Decimal('1.01')) # add a 1% buffer for fees
@@ -119,10 +118,10 @@ def funds_available(asset: str, l2_network: Optional[str], amount_dec: Decimal) 
         return funds['sats_onchain'] >= sats
     return False
 
-def withdrawals_supported(asset: str, l2_network: Optional[str]):
+def withdrawals_supported(asset: str, l2_network: str | None):
     return _is_ln(asset, l2_network) or _is_btc_chain(asset, l2_network)
 
-def withdrawal_create(asset: str, l2_network: Optional[str], amount_dec: Decimal, recipient: str):
+def withdrawal_create(asset: str, l2_network: str | None, amount_dec: Decimal, recipient: str):
     assert withdrawals_supported(asset, l2_network)
     rpc = LnRpc()
     if _is_ln(asset, l2_network):
@@ -152,7 +151,7 @@ def withdrawal_create(asset: str, l2_network: Optional[str], amount_dec: Decimal
             return None, e.error
     return None, 'unsupported'
 
-def withdrawal_completed(asset: str, l2_network: Optional[str], wallet_reference: str) -> bool:
+def withdrawal_completed(asset: str, l2_network: str | None, wallet_reference: str) -> bool:
     rpc = LnRpc()
     if _is_ln(asset, l2_network):
         result = rpc.pay_status_from_hash(wallet_reference)
@@ -171,10 +170,10 @@ def withdrawal_completed(asset: str, l2_network: Optional[str], wallet_reference
         return False
     return False
 
-def deposits_supported(asset: str, l2_network: Optional[str]):
+def deposits_supported(asset: str, l2_network: str | None):
     return _is_ln(asset, l2_network) or _is_btc_chain(asset, l2_network)
 
-def deposit_create(asset: str, l2_network: Optional[str], label: str, msg: str, amount_dec: Decimal):
+def deposit_create(asset: str, l2_network: str | None, label: str, msg: str, amount_dec: Decimal):
     assert deposits_supported(asset, l2_network)
     rpc = LnRpc()
     if _is_ln(asset, l2_network):
@@ -191,7 +190,7 @@ def deposit_create(asset: str, l2_network: Optional[str], label: str, msg: str, 
             return None, e.error
     return None, 'unsupported'
 
-def address_create(asset: str, l2_network: Optional[str]):
+def address_create(asset: str, l2_network: str | None):
     assert deposits_supported(asset, l2_network)
     rpc = LnRpc()
     if _is_btc_chain(asset, l2_network):
@@ -213,7 +212,7 @@ def address_create(asset: str, l2_network: Optional[str]):
             return None, e.error
     return None, 'unsupported'
 
-def address_deposits(asset: str, l2_network: Optional[str], address: str) -> list[BtcTxBasic]:
+def address_deposits(asset: str, l2_network: str | None, address: str) -> list[BtcTxBasic]:
     assert deposits_supported(asset, l2_network)
     deposit_txs = []
     if _is_btc_chain(asset, l2_network):
@@ -223,7 +222,7 @@ def address_deposits(asset: str, l2_network: Optional[str], address: str) -> lis
                 deposit_txs.append(tx)
     return deposit_txs
 
-def deposit_expired(asset: str, l2_network: Optional[str], wallet_reference: str) -> bool:
+def deposit_expired(asset: str, l2_network: str | None, wallet_reference: str) -> bool:
     rpc = LnRpc()
     if _is_ln(asset, l2_network):
         result = rpc.invoice_status(wallet_reference)
@@ -237,7 +236,7 @@ def deposit_expired(asset: str, l2_network: Optional[str], wallet_reference: str
         return False
     return False
 
-def deposit_completed(asset: str, l2_network: Optional[str], wallet_reference: str) -> bool:
+def deposit_completed(asset: str, l2_network: str | None, wallet_reference: str) -> bool:
     rpc = LnRpc()
     if _is_ln(asset, l2_network):
         result = rpc.invoice_status(wallet_reference)

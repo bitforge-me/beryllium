@@ -1,6 +1,5 @@
 import logging
 import json
-from typing import Optional, Union
 
 from flask import request
 from flask_socketio import Namespace, emit, join_room, leave_room
@@ -52,7 +51,7 @@ def user_info_dict_ws(user: User) -> dict:
 # Websocket events
 #
 
-def user_info_event(user: User, old_email: Optional[str] = None):
+def user_info_event(user: User, old_email: str | None = None):
     email = user.email
     if old_email:
         email = old_email
@@ -110,7 +109,7 @@ def fiat_withdrawal_new_event(fiat_withdrawal: FiatWithdrawal):
     socketio.emit('fiat_withdrawal_new', data, json=True, room=fiat_withdrawal.user.email, namespace=NS)
     logger.info('fiat_withdrawal_new: %s', fiat_withdrawal.token)
 
-def ln_invoice_paid_event(label: str, payment_hash: str, bolt11: str, email: Optional[str], description: str, amount_sat: int):
+def ln_invoice_paid_event(label: str, payment_hash: str, bolt11: str, email: str | None, description: str, amount_sat: int):
     data = json.dumps(dict(label=label, payment_hash=payment_hash, bolt11=bolt11, description=description, amount_sat=amount_sat))
     socketio.emit('ln_invoice_paid', data, json=True, room=f'ln-{label}', namespace=NS)
     if email:
@@ -126,7 +125,7 @@ class EventsNamespace(Namespace):
         logger.info("connect sid: %s", request.sid)
         emit('version', json.dumps(dict(server_version=SERVER_VERSION, client_version_deployed=CLIENT_VERSION_DEPLOYED)), json=True, namespace=NS)
 
-    def on_auth(self, auth: Union[dict, str]):
+    def on_auth(self, auth: dict | str):
         if not isinstance(auth, dict):
             try:
                 auth = json.loads(auth)

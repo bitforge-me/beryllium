@@ -4,7 +4,6 @@ import logging
 import time
 from datetime import datetime
 import decimal
-from typing import Optional
 
 from flask import Blueprint, request, jsonify, flash, redirect, render_template
 import flask_security
@@ -504,7 +503,7 @@ def balances_req():
         balances_formatted[asset] = dict(symbol=asset, name=assets.ASSETS[asset].name, total=str(balance_dec), available=str(balance_dec))
     return jsonify(balances=balances_formatted)
 
-def _validate_crypto_asset_deposit(asset: str, l2_network: Optional[str]):
+def _validate_crypto_asset_deposit(asset: str, l2_network: str | None):
     if not assets.asset_is_crypto(asset):
         return bad_request(web_utils.INVALID_ASSET)
     if not assets.asset_has_l2(asset, l2_network):
@@ -584,7 +583,7 @@ def crypto_deposits_req():
     total = CryptoDeposit.total_of_asset(db.session, api_key.user, asset, l2_network)
     return jsonify(deposits=deposits, offset=offset, limit=limit, total=total)
 
-def _validate_crypto_asset_withdraw(asset: str, l2_network: Optional[str], recipient: Optional[str]):
+def _validate_crypto_asset_withdraw(asset: str, l2_network: str | None, recipient: str | None):
     if not assets.asset_is_crypto(asset):
         return bad_request(web_utils.INVALID_ASSET)
     if not assets.asset_has_l2(asset, l2_network):
@@ -593,7 +592,7 @@ def _validate_crypto_asset_withdraw(asset: str, l2_network: Optional[str], recip
         return bad_request(web_utils.INVALID_RECIPIENT)
     return None
 
-def _create_withdrawal(user: User, asset: str, l2_network: Optional[str], amount_dec: decimal.Decimal, recipient: str):
+def _create_withdrawal(user: User, asset: str, l2_network: str | None, amount_dec: decimal.Decimal, recipient: str):
     with coordinator.lock:
         amount_plus_fee_dec = amount_dec + assets.asset_withdraw_fee(asset, None)
         if wallet.withdrawals_supported(asset, l2_network):
