@@ -180,7 +180,7 @@ def asset_recipient_validate(asset: str, l2_network: Optional[str], recipient: s
             result = True
         except: # pylint: disable=bare-except
             pass
-    elif asset == ETH.symbol:
+    elif asset in (USDT.symbol, USDC.symbol, ETH.symbol):
         result = web3.Web3.isAddress(recipient)
     elif asset == DOGE.symbol:
         result = _base58_validate(recipient, [0x1E], [0x71])
