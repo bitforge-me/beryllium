@@ -12,6 +12,7 @@ import fiatdb_core
 import coordinator
 import wallet
 import tripwire
+import utils
 
 logger = logging.getLogger(__name__)
 
@@ -125,7 +126,9 @@ def fiat_withdrawals_update(db_session: Session):
 def _crypto_deposit_email_msg(deposit: CryptoDeposit, verb: str, msg: str):
     amount = assets.asset_int_to_dec(deposit.asset, deposit.amount)
     amount = assets.asset_dec_to_str(deposit.asset, amount)
-    return f'Your deposit {deposit.txid} ({amount} {deposit.asset}) is now {verb}. \n\n{msg}'
+    deposit_id = deposit.txid if deposit.txid else deposit.wallet_reference
+    deposit_id = utils.shorten(deposit_id)
+    return f'Your deposit {deposit_id} ({amount} {deposit.asset}) is now {verb}. \n\n{msg}'
 
 def _crypto_deposit_email(deposit: CryptoDeposit):
     if deposit.confirmed:

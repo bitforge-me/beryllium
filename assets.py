@@ -135,7 +135,7 @@ def asset_dec_to_int(asset: str, value: Dec) -> int:
 
 def asset_dec_to_str(asset: str, value: Dec) -> str:
     decimals = asset_decimals(asset)
-    return str(value.quantize(Dec(10) ** -decimals))
+    return format(value, f'.{decimals}f')
 
 def asset_is_crypto(asset: str) -> bool:
     for item in ASSETS.values():

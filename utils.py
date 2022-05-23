@@ -42,3 +42,10 @@ def qrcode_pngb64_create(data: str, box_size: int = 10) -> str:
 def round_dec(value: decimal.Decimal, places: int) -> decimal.Decimal:
     fmt = '.' + (places - 1) * '0' + '1'
     return value.quantize(decimal.Decimal(fmt), rounding=decimal.ROUND_DOWN)
+
+def shorten(value: str) -> str:
+    if not value:
+        return ''
+    if len(value) <= 100:
+        return value
+    return f'{value[0:15]}.....{value[len(value)-15:]}'
