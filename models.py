@@ -3,6 +3,7 @@
 # pylint: disable=too-few-public-methods
 # pylint: disable=too-many-lines
 
+from __future__ import annotations
 from datetime import datetime, timedelta
 import logging
 
@@ -64,7 +65,7 @@ class Role(db.Model, RoleMixin):
     description = db.Column(db.String(255))
 
     @classmethod
-    def from_name(cls, session, name):
+    def from_name(cls, session, name) -> Role | None:
         return session.query(cls).filter(cls.name == name).first()
 
     def __str__(self):
@@ -115,7 +116,7 @@ class User(db.Model, UserMixin):
         return None
 
     @classmethod
-    def from_email(cls, session, email):
+    def from_email(cls, session, email) -> User | None:
         return session.query(cls).filter(cls.email == email).first()
 
     def __str__(self):
@@ -150,7 +151,7 @@ class UserCreateRequest(db.Model, FromTokenMixin):
         self.expiry = datetime.now() + timedelta(minutes=self.MINUTES_EXPIRY)
 
     @classmethod
-    def from_email(cls, session, email):
+    def from_email(cls, session, email) -> 'UserCreateRequest' | None:
         return session.query(cls).filter(cls.email == email).first()
 
     def __str__(self):
@@ -174,7 +175,7 @@ class UserUpdateEmailRequest(db.Model, FromTokenMixin):
         self.expiry = datetime.now() + timedelta(minutes=self.MINUTES_EXPIRY)
 
     @classmethod
-    def from_email(cls, session, email):
+    def from_email(cls, session, email) -> 'UserUpdateEmailRequest' | None:
         return session.query(cls).filter(cls.email == email).first()
 
     def __str__(self):
@@ -199,7 +200,7 @@ class Permission(db.Model):
     description = db.Column(db.String(255))
 
     @classmethod
-    def from_name(cls, session, name):
+    def from_name(cls, session, name) -> Permission | None:
         return session.query(cls).filter(cls.name == name).first()
 
     def __str__(self):
@@ -265,11 +266,11 @@ class Topic(db.Model):
         self.topic = topic
 
     @classmethod
-    def topic_list(cls, session):
+    def topic_list(cls, session) -> list[str]:
         return [row.topic for row in session.query(cls.topic)]
 
     @classmethod
-    def from_name(cls, session, name):
+    def from_name(cls, session, name) -> 'Topic' | None:
         return session.query(cls).filter(cls.topic == name).first()
 
     def __repr__(self):
@@ -292,7 +293,7 @@ class PushNotificationLocation(db.Model, FromTokenMixin):
         self.date = datetime.now()
 
     @classmethod
-    def tokens_at_location(cls, session, latitude, max_lat_delta, longitude, max_long_delta, max_age_minutes):
+    def tokens_at_location(cls, session, latitude, max_lat_delta, longitude, max_long_delta, max_age_minutes) -> 'PushNotificationLocation' | None:
         since = datetime.now() - timedelta(minutes=max_age_minutes)
         return session.query(cls).filter(and_(cls.date >= since, and_(and_(cls.latitude <= latitude + max_lat_delta, cls.latitude >= latitude - max_lat_delta), and_(cls.longitude <= longitude + max_long_delta, cls.longitude >= longitude - max_long_delta)))).all()
 
@@ -362,7 +363,7 @@ class Referral(db.Model, FromTokenMixin, FromUserMixin):
         return ref_schema.dump(self)
 
     @classmethod
-    def from_token_user(cls, session, token, user):
+    def from_token_user(cls, session, token, user) -> Referral | None:
         return session.query(cls).filter(and_(cls.token == token, cls.user_id == user.id)).first()
 
 class BrokerOrderSchema(Schema):
@@ -432,7 +433,7 @@ class BrokerOrder(db.Model, FromUserMixin, FromTokenMixin):
         return ref_schema.dump(self)
 
     @classmethod
-    def all_active(cls, session):
+    def all_active(cls, session) -> list[BrokerOrder]:
         return session.query(cls).filter(and_(cls.status != cls.STATUS_COMPLETED, and_(cls.status != cls.STATUS_EXPIRED, and_(cls.status != cls.STATUS_FAILED, cls.status != cls.STATUS_CANCELLED)))).all()
 
 class DassetSubaccount(db.Model):
@@ -448,11 +449,11 @@ class DassetSubaccount(db.Model):
         self.subaccount_id = subaccount_id
 
     @classmethod
-    def count(cls, session):
+    def count(cls, session) -> int:
         return session.query(cls).count()
 
     @classmethod
-    def from_subaccount_id(cls, session, subaccount_id):
+    def from_subaccount_id(cls, session, subaccount_id) -> DassetSubaccount | None:
         return session.query(cls).filter(cls.subaccount_id == subaccount_id).first()
 
     def __repr__(self):
@@ -519,7 +520,7 @@ class CryptoWithdrawal(db.Model, FromUserMixin, OfAssetMixin):
         return ref_schema.dump(self)
 
     @classmethod
-    def all_active(cls, session):
+    def all_active(cls, session) -> list[CryptoWithdrawal]:
         return session.query(cls).filter(and_(cls.status != cls.STATUS_COMPLETED, cls.status != cls.STATUS_CANCELLED)).all()
 
 class CryptoDepositSchema(Schema):
@@ -578,15 +579,15 @@ class CryptoDeposit(db.Model, FromUserMixin, OfAssetMixin):
         return ref_schema.dump(self)
 
     @classmethod
-    def from_txid(cls, session, txid):
+    def from_txid(cls, session, txid) -> CryptoDeposit | None:
         return session.query(cls).filter(cls.txid == txid).first()
 
     @classmethod
-    def of_wallet(cls, session, confirmed, expired):
+    def of_wallet(cls, session, confirmed, expired) -> list[CryptoDeposit]:
         return session.query(cls).filter(cls.wallet_reference is not None).filter(cls.confirmed == confirmed).filter(cls.expired == expired).all()
 
     @classmethod
-    def from_wallet_reference(cls, session, wallet_reference):
+    def from_wallet_reference(cls, session, wallet_reference) -> CryptoDeposit | None:
         return session.query(cls).filter(cls.wallet_reference == wallet_reference).first()
 
 class WindcavePaymentRequestSchema(Schema):
@@ -626,7 +627,7 @@ class WindcavePaymentRequest(db.Model, FromTokenMixin):
         self.status = self.STATUS_CREATED
 
     @classmethod
-    def count(cls, session):
+    def count(cls, session) -> int:
         return session.query(cls).count()
 
     def __repr__(self):
@@ -705,20 +706,20 @@ class PayoutRequest(db.Model, FromTokenMixin):
         self.status = self.STATUS_CREATED
 
     @classmethod
-    def count(cls, session):
+    def count(cls, session) -> int:
         return session.query(cls).count()
 
     @classmethod
-    def where_status_created(cls, session):
+    def where_status_created(cls, session) -> list[PayoutRequest]:
         return session.query(cls).filter(cls.status == cls.STATUS_CREATED).all()
 
     @classmethod
-    def where_status_suspended(cls, session):
+    def where_status_suspended(cls, session) -> list[PayoutRequest]:
         return session.query(cls).filter(cls.status == cls.STATUS_SUSPENDED).all()
 
     @classmethod
-    def not_completed(cls, session):
-        return session.query(cls).filter(cls.status != cls.STATUS_COMPLETED)
+    def not_completed(cls, session) -> list[PayoutRequest]:
+        return session.query(cls).filter(cls.status != cls.STATUS_COMPLETED).all()
 
     def __repr__(self):
         return f'<PayoutRequest {self.token}>'
@@ -781,11 +782,11 @@ class KycRequest(db.Model, FromTokenMixin):
         return url_for('kyc.request_start', token=self.token, _external=True)
 
     @classmethod
-    def count(cls, session):
+    def count(cls, session) -> int:
         return session.query(cls).count()
 
     @classmethod
-    def from_user(cls, session, user):
+    def from_user(cls, session, user) -> KycRequest | None:
         return session.query(cls).filter(cls.user_id == user.id).first()
 
     def __repr__(self):
@@ -821,15 +822,15 @@ class AddressBook(db.Model, FromTokenMixin):
         self.description = description
 
     @classmethod
-    def count(cls, session):
+    def count(cls, session) -> int:
         return session.query(cls).count()
 
     @classmethod
-    def from_recipient(cls, session, user, asset, recipient):
+    def from_recipient(cls, session, user, asset, recipient) -> AddressBook | None:
         return session.query(cls).filter(and_(cls.user_id == user.id, and_(cls.asset == asset, cls.recipient == recipient))).first()
 
     @classmethod
-    def of_asset(cls, session, user, asset):
+    def of_asset(cls, session, user, asset) -> list[AddressBook]:
         return session.query(cls).filter(and_(cls.user_id == user.id, cls.asset == asset)).all()
 
     def to_json(self):
@@ -870,7 +871,7 @@ class FiatDbTransaction(db.Model, FromTokenMixin):
         self.attachment = attachment
 
     @classmethod
-    def all(cls, session):
+    def all(cls, session) -> list[FiatDbTransaction]:
         return session.query(cls).all()
 
     def __str__(self):
@@ -935,7 +936,7 @@ class FiatDeposit(db.Model, FromUserMixin, FromTokenMixin):
         return ref_schema.dump(self)
 
     @classmethod
-    def all_active(cls, session):
+    def all_active(cls, session) -> list[FiatDeposit]:
         return session.query(cls).filter(and_(cls.status != cls.STATUS_COMPLETED, and_(cls.status != cls.STATUS_EXPIRED, cls.status != cls.STATUS_CANCELLED))).all()
 
 class FiatWithdrawalSchema(Schema):
@@ -983,7 +984,7 @@ class FiatWithdrawal(db.Model, FromUserMixin, FromTokenMixin):
         return ref_schema.dump(self)
 
     @classmethod
-    def all_active(cls, session):
+    def all_active(cls, session) -> list[FiatWithdrawal]:
         return session.query(cls).filter(and_(cls.status != cls.STATUS_COMPLETED, cls.status != cls.STATUS_CANCELLED)).all()
 
 class CryptoAddress(db.Model, FromUserMixin):
@@ -1008,15 +1009,15 @@ class CryptoAddress(db.Model, FromUserMixin):
         self.checked_at = 0
 
     @classmethod
-    def from_asset(cls, session, user, asset):
+    def from_asset(cls, session, user, asset) -> CryptoAddress | None:
         return session.query(cls).filter(and_(cls.user_id == user.id, cls.asset == asset)).first()
 
     @classmethod
-    def from_addr(cls, session, addr):
+    def from_addr(cls, session, addr) -> CryptoAddress | None:
         return session.query(cls).filter(cls.address == addr).first()
 
     @classmethod
-    def need_to_be_checked(cls, session):
+    def need_to_be_checked(cls, session) -> list[CryptoAddress]:
         now = datetime.timestamp(datetime.now())
         return session.query(cls).filter(now - cls.checked_at > (cls.checked_at - cls.viewed_at) * 2).all()
 
@@ -1035,7 +1036,7 @@ class BtcTxIndex(db.Model):
         self.blockhash = blockhash
 
     @classmethod
-    def from_txid(cls, session, txid):
+    def from_txid(cls, session, txid) -> BtcTxIndex | None:
         return session.query(cls).filter(cls.txid == txid).first()
 
     @classmethod
