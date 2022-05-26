@@ -9,10 +9,10 @@ import gevent
 import gevent.pool
 from flask_security.utils import encrypt_password
 
+import payouts_core
 import web
 import email_utils
 import log_utils
-import payments_core
 from app_core import MISSING_VITAL_SETTING, app, db
 from models import User, Role, Permission, Topic
 from security import user_datastore
@@ -75,7 +75,7 @@ def add_role(email, role_name):
 
 def payouts_notification_create():
     with app.app_context():
-        payments_core.payouts_notification_create()
+        payouts_core.payouts_notification_create()
 
 def sigint_handler(signum, frame):
     # pylint: disable=global-statement
