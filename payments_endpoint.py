@@ -1,4 +1,3 @@
-# pylint: disable=unbalanced-tuple-unpacking
 import io
 import logging
 
@@ -9,7 +8,8 @@ from app_core import db, limiter
 from models import PayoutRequest, PayoutGroup, WindcavePaymentRequest, Role
 import web_utils
 import bnz_ib4b
-import payments_core
+import payouts_core
+import windcave
 import depwith
 
 logger = logging.getLogger(__name__)
@@ -32,17 +32,17 @@ def payment_interstitial(token=None):
         depwith.fiat_deposit_update_and_commit(db.session, req.fiat_deposit)
     if req.status != req.STATUS_CREATED:
         return redirect(url_for('payments.payment', token=token))
-    return render_template('payments/payment_request.html', token=token, interstitial=True, mock=payments_core.mock())
+    return render_template('payments/payment_request.html', token=token, interstitial=True, mock=windcave.mock())
 
 @payments.route('/payment/mock/<token>', methods=['GET'])
 def payment_mock_confirm(token=None):
-    if not payments_core.mock():
+    if not windcave.mock():
         return web_utils.bad_request('not found', code=404)
     req = WindcavePaymentRequest.from_token(db.session, token)
     if not req:
         flash('Sorry payment request not found', category='danger')
         return redirect('/')
-    payments_core.payment_request_mock_confirm(req)
+    windcave.payment_request_mock_confirm(req)
     if req.fiat_deposit:
         depwith.fiat_deposit_update_and_commit(db.session, req.fiat_deposit)
     return redirect(url_for('payments.payment', token=token))
@@ -53,7 +53,7 @@ def payment(token=None):
     if not req:
         flash('Sorry payment request not found', category='danger')
         return redirect('/')
-    payments_core.payment_request_status_update(req)
+    windcave.payment_request_status_update(req)
     completed = req.status == req.STATUS_COMPLETED
     cancelled = req.status == req.STATUS_CANCELLED
     return render_template('payments/payment_request.html', token=token, completed=completed, cancelled=cancelled, req=req)
@@ -83,7 +83,7 @@ def payout_group(token=None):
 @payments.route('/payout_group_create', methods=['POST'])
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def payout_group_create():
-    group = payments_core.payout_group_create()
+    group = payouts_core.payout_group_create()
     if group:
         db.session.commit()
         return redirect(f'/payments/payout_group/{group.token}')
@@ -98,7 +98,7 @@ def payout_group_processed():
     logger.info('looking for %s', token)
     group = PayoutGroup.from_token(db.session, token)
     if group:
-        payments_core.set_payout_requests_complete(group.requests)
+        payouts_core.set_payout_requests_complete(group.requests)
         db.session.commit()
         return redirect(f'/payments/payout_group/{token}')
     flash('Sorry group not found', category='danger')
@@ -112,7 +112,7 @@ def payout_suspend():
     logger.info('looking for %s', token)
     req = PayoutRequest.from_token(db.session, token)
     if req:
-        payments_core.set_payout_request_suspended(req)
+        payouts_core.set_payout_request_suspended(req)
         db.session.commit()
         return redirect('/payments/payouts')
     flash('Sorry payout not found', category='danger')
@@ -126,7 +126,7 @@ def payout_unsuspend():
     logger.info('looking for %s', token)
     req = PayoutRequest.from_token(db.session, token)
     if req:
-        payments_core.set_payout_request_created(req)
+        payouts_core.set_payout_request_created(req)
         db.session.commit()
         return redirect('/payments/payouts')
     flash('Sorry payout not found', category='danger')

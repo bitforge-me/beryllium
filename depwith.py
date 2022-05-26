@@ -2,7 +2,7 @@ from datetime import datetime
 import logging
 from sqlalchemy.orm.session import Session
 
-import payments_core
+import windcave
 import dasset
 import assets
 from models import CryptoAddress, CryptoDeposit, CryptoWithdrawal, FiatDbTransaction, FiatDeposit, FiatWithdrawal, User
@@ -23,7 +23,7 @@ def _fiat_deposit_update(db_session: Session, fiat_deposit: FiatDeposit):
     if fiat_deposit.status == fiat_deposit.STATUS_CREATED:
         if fiat_deposit.windcave_payment_request:
             payment_req = fiat_deposit.windcave_payment_request
-            payments_core.payment_request_status_update(payment_req)
+            windcave.payment_request_status_update(payment_req)
             if payment_req.status == payment_req.STATUS_CANCELLED:
                 fiat_deposit.status = fiat_deposit.STATUS_CANCELLED
                 updated_records.append(payment_req)

@@ -17,7 +17,8 @@ import email_utils
 from models import CryptoWithdrawal, FiatDbTransaction, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, FiatDeposit, FiatWithdrawal, CryptoAddress, CryptoDeposit, DassetSubaccount
 from app_core import app, db, limiter, SERVER_VERSION, CLIENT_VERSION_DEPLOYED
 from security import tf_enabled_check, tf_method, tf_code_send, tf_method_set, tf_method_unset, tf_secret_init, tf_code_validate, user_datastore
-import payments_core
+import payouts_core
+import windcave
 import kyc_core
 import dasset
 import assets
@@ -708,7 +709,7 @@ def fiat_deposit_create_req():
         return bad_request(web_utils.INVALID_AMOUNT)
     amount_int = assets.asset_dec_to_int(asset, amount_dec)
     fiat_deposit = FiatDeposit(api_key.user, asset, amount_int)
-    payment_request = payments_core.payment_create(amount_int, fiat_deposit.expiry)
+    payment_request = windcave.payment_create(amount_int, fiat_deposit.expiry)
     if not payment_request:
         return bad_request(web_utils.FAILED_PAYMENT_CREATE)
     fiat_deposit.windcave_payment_request = payment_request
@@ -773,7 +774,7 @@ def fiat_withdrawal_create_req():
             return bad_request(web_utils.INSUFFICIENT_BALANCE)
         amount_int = assets.asset_dec_to_int(asset, amount_dec)
         fiat_withdrawal = FiatWithdrawal(api_key.user, asset, amount_int, recipient)
-        payout_request = payments_core.payout_create(amount_int, fiat_withdrawal.token, '', fiat_withdrawal.user.email, recipient, fiat_withdrawal.token, '', '')
+        payout_request = payouts_core.payout_create(amount_int, fiat_withdrawal.token, '', fiat_withdrawal.user.email, recipient, fiat_withdrawal.token, '', '')
         if not payout_request:
             return bad_request(web_utils.FAILED_PAYMENT_CREATE)
         fiat_withdrawal.payout_request = payout_request
