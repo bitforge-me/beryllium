@@ -1,11 +1,11 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 from sqlalchemy.orm.session import Session
 
 import windcave
 import dasset
 import assets
-from models import CryptoAddress, CryptoDeposit, CryptoWithdrawal, FiatDbTransaction, FiatDeposit, FiatWithdrawal, User
+from models import CryptoAddress, CryptoDeposit, CryptoWithdrawal, FiatDbTransaction, FiatDeposit, FiatWithdrawal, User, CrownPayment
 import websocket
 import email_utils
 import fiatdb_core
@@ -13,6 +13,7 @@ import coordinator
 import wallet
 import tripwire
 import utils
+import crown_financial
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +40,23 @@ def _fiat_deposit_update(db_session: Session, fiat_deposit: FiatDeposit):
                 else:
                     logger.error('failed to create fiatdb transaction for fiat deposit %s', fiat_deposit.token)
                 return updated_records
-    # check expiry
-    if fiat_deposit.status == fiat_deposit.STATUS_CREATED:
+        elif fiat_deposit.crown_payment:
+            crown_payment = fiat_deposit.crown_payment
+            tx = crown_financial.transaction_details(crown_payment.crown_txn_id)
+            if tx.status == tx.STATUS_ACCEPTED:
+                crown_payment.crown_status = tx.STATUS_ACCEPTED
+                crown_payment.status = fiat_deposit.crown_payment.STATUS_COMPLETED
+                fiat_deposit.status = fiat_deposit.STATUS_COMPLETED
+                ftx = fiatdb_core.tx_create(db_session, fiat_deposit.user, FiatDbTransaction.ACTION_CREDIT, fiat_deposit.asset, fiat_deposit.amount, f'fiat deposit: {fiat_deposit.token}')
+                if ftx:
+                    updated_records.append(crown_payment)
+                    updated_records.append(fiat_deposit)
+                    updated_records.append(ftx)
+                else:
+                    logger.error('failed to create fiatdb transaction for fiat deposit %s', fiat_deposit.token)
+                return updated_records
+    # check expiry (for deposits via windcave)
+    if fiat_deposit.status == fiat_deposit.STATUS_CREATED and fiat_deposit.windcave_payment_request:
         if datetime.now() > fiat_deposit.expiry:
             fiat_deposit.status = fiat_deposit.STATUS_EXPIRED
             updated_records.append(fiat_deposit)
@@ -57,6 +73,19 @@ def _fiat_deposit_email(fiat_deposit: FiatDeposit):
         email_utils.send_email(logger, 'Deposit Completed', _fiat_deposit_email_msg(fiat_deposit, ''), fiat_deposit.user.email)
     if fiat_deposit.status == fiat_deposit.STATUS_EXPIRED:
         email_utils.send_email(logger, 'Deposit Expired', _fiat_deposit_email_msg(fiat_deposit, ''), fiat_deposit.user.email)
+
+def _crown_check_new_desposits(db_session: Session):
+    txs = crown_financial.transactions_filtered_type(crown_financial.CrownTx.TYPE_DEPOSIT, datetime.now() - timedelta(days=7), datetime.now())
+    for tx in txs:
+        if tx.currency == crown_financial.CURRENCY and not CrownPayment.from_crown_txn_id(db_session, tx.crown_txn_id):
+            payment = CrownPayment(utils.generate_key(), tx.currency, tx.amount, tx.crown_txn_id, tx.status)
+            user = crown_financial.user_from_deposit(db_session, tx)
+            if user:
+                deposit = FiatDeposit(user, crown_financial.CURRENCY, tx.amount)
+                deposit.crown_payment = payment
+                db_session.add(payment)
+                db_session.add(deposit)
+                db_session.commit()
 
 def fiat_deposit_update_and_commit(db_session: Session, deposit: FiatDeposit):
     while True:
@@ -77,6 +106,7 @@ def fiat_deposits_update(db_session: Session):
     logger.info('num deposits: %d', len(deposits))
     for deposit in deposits:
         fiat_deposit_update_and_commit(db_session, deposit)
+    _crown_check_new_desposits(db_session)
 
 def _fiat_withdrawal_update(fiat_withdrawal: FiatWithdrawal):
     logger.info('processing fiat withdrawal %s (%s)..', fiat_withdrawal.token, fiat_withdrawal.status)

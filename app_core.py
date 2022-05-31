@@ -11,8 +11,8 @@ from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
-SERVER_VERSION = 8
-CLIENT_VERSION_DEPLOYED = 6
+SERVER_VERSION = 9
+CLIENT_VERSION_DEPLOYED = 7
 
 MISSING_VITAL_SETTING = False
 
@@ -169,6 +169,12 @@ set_vital_setting("APLYID_API_SECRET")
 set_vital_setting("APLYID_WEBHOOK_BEARER_TOKEN")
 set_vital_setting("B2_ACCOUNT_ID")
 set_vital_setting("B2_APPLICATION_KEY")
+set_vital_setting("KYC_BUCKET")
+set_vital_setting("CROWN_ACCOUNT_EMAIL")
+set_vital_setting("CROWN_ACCOUNT_NUMBER")
+set_vital_setting("CROWN_ACCOUNT_CODE")
+set_vital_setting("CROWN_API_KEY")
+set_vital_setting("CROWN_API_PASSWORD")
 set_vital_setting("KYC_BUCKET")
 set_vital_setting("BITCOIN_DATADIR")
 set_vital_setting("BITCOIN_RPCCONNECT")
