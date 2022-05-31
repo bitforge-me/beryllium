@@ -14,7 +14,7 @@ import web_utils
 from web_utils import bad_request, get_json_params, auth_request, auth_request_get_single_param, auth_request_get_params
 import utils
 import email_utils
-from models import CryptoWithdrawal, FiatDbTransaction, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, FiatDeposit, FiatWithdrawal, CryptoAddress, CryptoDeposit, DassetSubaccount
+from models import CryptoWithdrawal, FiatDbTransaction, FiatDepositCode, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, FiatDeposit, FiatWithdrawal, CryptoAddress, CryptoDeposit, DassetSubaccount
 from app_core import app, db, limiter, SERVER_VERSION, CLIENT_VERSION_DEPLOYED
 from security import tf_enabled_check, tf_method, tf_code_send, tf_method_set, tf_method_unset, tf_secret_init, tf_code_validate, user_datastore
 import payouts_core
@@ -696,8 +696,8 @@ def crypto_withdrawals_req():
     total = CryptoWithdrawal.total_of_asset(db.session, api_key.user, asset, l2_network)
     return jsonify(withdrawals=withdrawals, offset=offset, limit=limit, total=total)
 
-@api.route('/fiat_deposit_create', methods=['POST'])
-def fiat_deposit_create_req():
+@api.route('/fiat_deposit_windcave', methods=['POST'])
+def fiat_deposit_windcave_req():
     params, api_key, err_response = auth_request_get_params(db, ['asset', 'amount_dec'])
     if err_response:
         return err_response
@@ -718,6 +718,25 @@ def fiat_deposit_create_req():
     db.session.commit()
     websocket.fiat_deposit_new_event(fiat_deposit)
     return jsonify(deposit=fiat_deposit.to_json())
+
+@api.route('/fiat_deposit_direct', methods=['POST'])
+def fiat_deposit_direct_req():
+    asset, api_key, err_response = auth_request_get_single_param(db, 'asset')
+    if err_response:
+        return err_response
+    if not assets.asset_is_fiat(asset):
+        return bad_request(web_utils.INVALID_ASSET)
+
+    deposit_codes = list(api_key.user.fiat_deposit_codes)
+    if not deposit_codes:
+        deposit_code = FiatDepositCode(api_key.user, None)
+        db.session.add(deposit_code)
+        db.session.commit()
+    else:
+        deposit_code = deposit_codes[0]
+    crown_account_number = app.config['CROWN_ACCOUNT_NUMBER']
+    crown_account_code = app.config['CROWN_ACCOUNT_CODE']
+    return jsonify(deposit=dict(account_number=crown_account_number, reference=crown_account_code, code=deposit_code.token))
 
 @api.route('/fiat_deposits', methods=['POST'])
 def fiat_deposits_req():

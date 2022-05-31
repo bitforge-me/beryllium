@@ -11,6 +11,7 @@ from flask import url_for
 from flask_security import UserMixin, RoleMixin
 from marshmallow import Schema, fields
 from sqlalchemy import and_
+from sqlalchemy.orm.session import Session
 
 from app_core import db
 from utils import generate_key
@@ -637,6 +638,54 @@ class WindcavePaymentRequest(db.Model, FromTokenMixin):
         schema = WindcavePaymentRequestSchema()
         return schema.dump(self)
 
+class CrownPayment(db.Model, FromTokenMixin):
+    STATUS_CREATED = 'created'
+    STATUS_COMPLETED = 'completed'
+    STATUS_CANCELLED = 'cancelled'
+
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.DateTime(), nullable=False, unique=False)
+    token = db.Column(db.String, nullable=False, unique=True)
+    asset = db.Column(db.String, nullable=False)
+    amount = db.Column(db.Integer, nullable=False)
+    crown_txn_id = db.Column(db.String, nullable=False, unique=True)
+    crown_status = db.Column(db.String)
+    status = db.Column(db.String)
+
+    def __init__(self, token, asset, amount, crown_txn_id, crown_status):
+        self.date = datetime.now()
+        self.token = token
+        self.asset = asset
+        self.amount = amount
+        self.crown_txn_id = crown_txn_id
+        self.crown_status = crown_status
+        self.status = self.STATUS_CREATED
+
+    @classmethod
+    def count(cls, session: Session) -> int:
+        return session.query(cls).count()
+
+    @classmethod
+    def from_crown_txn_id(cls, session: Session, crown_txn_id: str) -> int:
+        return session.query(cls).filter(cls.crown_txn_id == crown_txn_id).first()
+
+    def __repr__(self):
+        return f'<CrownPayment {self.token}>'
+
+class FiatDepositCode(db.Model, FromTokenMixin):
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.DateTime(), nullable=False, unique=False)
+    token = db.Column(db.String, nullable=False, unique=True)
+    autobuy_asset = db.Column(db.String)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref=db.backref('fiat_deposit_codes', lazy='dynamic'))
+
+    def __init__(self, user: User, autobuy_asset: str | None):
+        self.date = datetime.now()
+        self.user = user
+        self.token = generate_key(8, True)
+        self.autobuy_asset = autobuy_asset
+
 class PayoutGroupRequest(db.Model):
     payout_group_id = db.Column(db.Integer, db.ForeignKey('payout_group.id'), primary_key=True)
     payout_request_id = db.Column(db.Integer, db.ForeignKey('payout_request.id'), primary_key=True)
@@ -919,6 +968,8 @@ class FiatDeposit(db.Model, FromUserMixin, FromTokenMixin):
     amount = db.Column(db.BigInteger, nullable=False)
     windcave_payment_request_id = db.Column(db.Integer, db.ForeignKey('windcave_payment_request.id'))
     windcave_payment_request = db.relationship('WindcavePaymentRequest', backref=db.backref('fiat_deposit', uselist=False))
+    crown_payment_id = db.Column(db.Integer, db.ForeignKey('crown_payment.id'))
+    crown_payment = db.relationship('CrownPayment', backref=db.backref('fiat_deposit', uselist=False))
 
     status = db.Column(db.String, nullable=False)
 

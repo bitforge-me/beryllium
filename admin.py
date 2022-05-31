@@ -13,7 +13,7 @@ from flask_security import current_user
 from markupsafe import Markup
 
 from app_core import app, db
-from models import Role, User, ApiKey, Topic, PushNotificationLocation, Referral, BrokerOrder, ExchangeOrder, CryptoWithdrawal, CryptoDeposit, CryptoAddress, KycRequest, AplyId, FiatDbTransaction, FiatDeposit, FiatWithdrawal, WindcavePaymentRequest, PayoutRequest
+from models import Role, User, ApiKey, Topic, PushNotificationLocation, Referral, BrokerOrder, ExchangeOrder, CryptoWithdrawal, CryptoDeposit, CryptoAddress, KycRequest, AplyId, FiatDbTransaction, FiatDeposit, FiatWithdrawal, WindcavePaymentRequest, PayoutRequest, CrownPayment
 from security import security
 
 # helper functions/classes
@@ -638,6 +638,7 @@ admin.add_view(RestrictedModelView(CryptoAddress, db.session, category='Admin'))
 admin.add_view(FiatWithdrawalModelView(FiatWithdrawal, db.session, category='Admin'))
 admin.add_view(FiatDepositModelView(FiatDeposit, db.session, category='Admin'))
 admin.add_view(RestrictedModelView(WindcavePaymentRequest, db.session, category='Admin'))
+admin.add_view(RestrictedModelView(CrownPayment, db.session, category='Admin'))
 admin.add_view(PayoutRequestModelView(PayoutRequest, db.session, category='Admin'))
 admin.add_view(FiatDbTransactionModelView(FiatDbTransaction, db.session, category='Admin'))
 admin.add_view(RestrictedModelView(KycRequest, db.session, category='Admin'))
