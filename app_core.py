@@ -5,6 +5,7 @@ from flask import Flask
 import flask.json
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 from flask_mail_sendgrid import MailSendGrid
 from flask_socketio import SocketIO
 from flask_cors import CORS
@@ -180,6 +181,7 @@ set_vital_setting("BITCOIN_DATADIR")
 set_vital_setting("BITCOIN_RPCCONNECT")
 
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 mail = MailSendGrid(app)
 socketio = SocketIO(app, cors_allowed_origins='*')
 limiter = Limiter(app, key_func=get_remote_address, headers_enabled=True, default_limits=["3000 per minute"])
