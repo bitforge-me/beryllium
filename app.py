@@ -97,22 +97,20 @@ if __name__ == "__main__":
     ch = log_utils.setup_logging(logger, logging.INFO)
     log_utils.log_socketio_version(logger)
 
-    # create tables
-    db.create_all()
-    create_role(Role.ROLE_ADMIN, "super user")
-    create_role(Role.ROLE_FINANCE, "Can view all records, can authorize rewards")
-    create_role(Role.ROLE_REFERRAL_CLAIMER, "Can claim referrals")
-    create_permission(Permission.PERMISSION_RECIEVE, "view account name")
-    create_permission(Permission.PERMISSION_BALANCE, "view account balance")
-    create_permission(Permission.PERMISSION_HISTORY, "view account history")
-    create_permission(Permission.PERMISSION_TRANSFER, "transfer funds")
-    create_permission(Permission.PERMISSION_ISSUE, "issue funds")
-    create_topic("test")
-    create_topic("general")
-    db.session.commit()
-
     # process commands
     if len(sys.argv) > 1:
+        if sys.argv[1] == "seed_db":
+            create_role(Role.ROLE_ADMIN, "super user")
+            create_role(Role.ROLE_FINANCE, "Can view all records, can authorize rewards")
+            create_role(Role.ROLE_REFERRAL_CLAIMER, "Can claim referrals")
+            create_permission(Permission.PERMISSION_RECIEVE, "view account name")
+            create_permission(Permission.PERMISSION_BALANCE, "view account balance")
+            create_permission(Permission.PERMISSION_HISTORY, "view account history")
+            create_permission(Permission.PERMISSION_TRANSFER, "transfer funds")
+            create_permission(Permission.PERMISSION_ISSUE, "issue funds")
+            create_topic("test")
+            create_topic("general")
+            db.session.commit()
         if sys.argv[1] == "add_user":
             add_user(sys.argv[2], sys.argv[3])
         if sys.argv[1] == "add_role":
