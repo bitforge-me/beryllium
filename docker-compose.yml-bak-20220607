@@ -1,0 +1,153 @@
+version: "3"
+
+services:
+  db:
+    image: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: beryllium
+      POSTGRES_PASSWORD: beryllium
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  app:
+    image: be_app
+    container_name: be_app
+    restart: unless-stopped
+    environment:
+      TESTNET: ${TESTNET}
+      BITCOIN_DATADIR: /etc/bitcoin
+      BITCOIN_RPCCONNECT: bitcoind
+      DATABASE_URL: postgresql://beryllium:beryllium@db:5432/beryllium
+      SERVER_NAME: ${SERVER_NAME:?SERVER_NAME unset}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?ADMIN_EMAIL unset}
+      FROM_EMAIL: ${FROM_EMAIL:?FROM_EMAIL unset}
+      FROM_NAME: ${FROM_NAME:?FROM_NAME unset}
+      SESSION_KEY: ${SESSION_KEY:?SESSION_KEY unset}
+      PASSWORD_SALT: ${PASSWORD_SALT:?PASSWORD_SALT unset}
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY:?SENDGRID_API_KEY unset}
+      FIREBASE_CREDENTIALS: ${FIREBASE_CREDENTIALS:?FIREBASE_CREDENTIALS unset}
+      DASSET_API_SECRET: ${DASSET_API_SECRET:?DASSET_API_SECRET unset}
+      DASSET_ACCOUNT_ID: ${DASSET_ACCOUNT_ID:?DASSET_ACCOUNT_ID unset}
+      DASSET_TOTP_KEY: ${DASSET_TOTP_KEY:?DASSET_TOTP_KEY unset}
+      PAYOUT_GROUP_EMAIL: ${PAYOUT_GROUP_EMAIL:?PAYOUT_GROUP_EMAIL unset}
+      APLYID_BASE_URL: ${APLYID_BASE_URL:?APLYID_BASE_URL unset}
+      APLYID_API_KEY: ${APLYID_API_KEY:?APLYID_API_KEY unset}
+      APLYID_API_SECRET: ${APLYID_API_SECRET:?APLYID_API_SECRET unset}
+      APLYID_WEBHOOK_BEARER_TOKEN: ${APLYID_WEBHOOK_BEARER_TOKEN:?APLYID_WEBHOOK_BEARER_TOKEN unset}
+      B2_ACCOUNT_ID: ${B2_ACCOUNT_ID:?B2_ACCOUNT_ID unset}
+      B2_APPLICATION_KEY: ${B2_APPLICATION_KEY:?B2_APPLICATION_KEY unset}
+      KYC_BUCKET: ${KYC_BUCKET:?KYC_BUCKET unset}
+      WINDCAVE_API_USER: ${WINDCAVE_API_USER:?WINDCAVE_API_USER not set}
+      WINDCAVE_API_KEY: ${WINDCAVE_API_KEY:?WINDCAVE_API_KEY not set}
+      PAYOUT_SENDER_NAME: ${PAYOUT_SENDER_NAME:?PAYOUT_SENDER_NAME not set}
+      PAYOUT_SENDER_ACCOUNT: ${PAYOUT_SENDER_ACCOUNT:?PAYOUT_SENDER_ACCOUNT not set}
+      WINDCAVE_MOCK: ${WINDCAVE_MOCK}
+      EXCHANGE_ACCOUNT_MOCK: ${EXCHANGE_ACCOUNT_MOCK}
+      REGISTRATION_DISABLE: ${REGISTRATION_DISABLE}
+      TZ: ${TZ}
+    volumes:
+      - "lightning_datadir:/etc/lightning"
+      - "bitcoin_datadir:/etc/bitcoin"
+    links:
+      - lightningd
+      - db
+    expose:
+      - "5000"
+
+  web:
+    image: jonasal/nginx-certbot:2.4.1-nginx1.21.3-alpine
+    container_name: be_web
+    restart: unless-stopped
+    environment:
+      CERTBOT_EMAIL: ${ADMIN_EMAIL:?ADMIN_EMAIL unset}
+      SERVER_NAME: ${SERVER_NAME:?SERVER_NAME unset}
+      USE_LOCAL_CA: ${USE_LOCAL_CA:-0}
+    links:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./web/nginx:/etc/nginx/templates
+      - ./web/alloy:/etc/nginx/alloy
+      - ./web/certbot/conf:/etc/letsencrypt
+      - /var/log/nginx:/var/log/nginx
+
+  bitcoind:
+    image: btcpayserver/bitcoin:22.0
+    container_name: bitcoind
+    restart: unless-stopped
+    environment:
+      # BITCOIN_NETWORK `bitcoin|testnet`
+      BITCOIN_NETWORK: ${BITCOIN_NETWORK:?BITCOIN_NETWORK not set}
+      BITCOIN_WALLETDIR: "/walletdata"
+      BITCOIN_EXTRA_ARGS: |
+        server=1
+        whitelist=0.0.0.0/0
+        rpcuser=rpcuser
+        rpcpassword=rpcpass
+        rpcport=18332
+        rpcbind=0.0.0.0:18332
+        rpcallowip=0.0.0.0/0
+        settings=false
+    ports:
+      - "0.0.0.0:${BITCOIN_P2P_PORT:?BITCOIN_P2P_PORT not set}:${BITCOIN_P2P_PORT}"
+      - "0.0.0.0:18332:18332"
+    volumes:
+      - "bitcoin_datadir:/data"
+      - "bitcoin_wallet_datadir:/walletdata"
+
+  lightningd:
+    image: lightningd
+    container_name: lightningd
+    restart: unless-stopped
+    environment:
+      LIGHTNINGD_NETWORK: ${BITCOIN_NETWORK:?BITCOIN_NETWORK not set}
+      LIGHTNINGD_CHAIN: btc
+      LIGHTNINGD_ALIAS: benode
+      LIGHTNINGD_PORT: 9735
+      LIGHTNINGD_REPLICA: ${LIGHTNINGD_REPLICA}
+      LIGHTNINGD_OPT: |
+        bitcoin-datadir=/etc/bitcoin
+        bitcoin-rpcconnect=bitcoind
+    volumes:
+      - "lightning_datadir:/root/.lightning"
+      - ./lightningd/replica:/root/.lightning_replica
+      - "bitcoin_datadir:/etc/bitcoin"
+    ports:
+      - "9735:9735"
+    links:
+      - bitcoind
+
+  spark:
+    image: shesek/spark-wallet:0.2.9-standalone
+    container_name: spark
+    restart: unless-stopped
+    environment:
+      NETWORK: ${BITCOIN_NETWORK:?BITCOIN_NETWORK not set}
+      # SPARK_LOGIN format `<USER>:<PASS>`
+      # TODO - ensure only admin users can access spark
+      SPARK_OPT: --no-tls -C /data/.cookie --login ${SPARK_LOGIN:?SPARK_LOGIN not set}
+    volumes:
+      - "lightning_datadir:/etc/lightning"
+      - "spark:/data"
+    links:
+      - lightningd
+    expose:
+      - "9737"
+
+volumes:
+  pgdata:
+  bitcoin_datadir:
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: '${BITCOIN_DATA_DEVICE:?BITCOIN_DATA_DEVICE not set}'
+  bitcoin_wallet_datadir:
+  lightning_datadir:
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: '${LN_DATA_DEVICE:?LN_DATA_DEVICE not set}'
+  spark:
