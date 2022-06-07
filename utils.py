@@ -16,7 +16,7 @@ def generate_key(chars: int = 10, upper: bool = True) -> str:
     return ''.join(secrets.choice(alphabet) for i in range(chars))
 
 def is_email(val: str):
-    return re.match("[^@]+@[^@]+\.[^@]+", val) # pylint: disable=anomalous-backslash-in-string
+    return re.match(r"[^@]+@[^@]+\.[^@]+", val)
 
 def is_mobile(val: str):
     return val.isnumeric()

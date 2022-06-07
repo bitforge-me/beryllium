@@ -11,7 +11,6 @@ class EventType:
     name: str
     attempts: int
     last_attempt: float
-    # pylint: disable=invalid-name
     ok: bool
 
 LOGIN = EventType(name='login', attempts=0, last_attempt=time(), ok=True)

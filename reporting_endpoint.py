@@ -1,6 +1,3 @@
-# pylint: disable=unbalanced-tuple-unpacking
-# pylint: disable=too-many-locals
-
 import logging
 from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
@@ -16,17 +13,27 @@ import assets
 logger = logging.getLogger(__name__)
 reporting = Blueprint('reporting', __name__, template_folder='templates/reporting')
 
-### FREQUENTLY USE DATES
-TODAY = lambda: date.today() # pylint: disable=unnecessary-lambda
-YESTERDAY = lambda: date.today() - timedelta(days=1)
-TOMORROW = lambda: date.today() + timedelta(days=1)
-WEEKDAY = lambda: date.today().weekday()
-MONDAY = lambda: date.today() - timedelta(days=date.today().weekday())
-NEXT_MONDAY = lambda: date.today() + timedelta(days=-date.today().weekday(), weeks=1)
-FIRST_DAY_CURRENT_MONTH = lambda: date.today().replace(day=1)
-FIRST_DAY_NEXT_MONTH = lambda: date.today().replace(day=1) + relativedelta(months=+1)
-FIRST_DAY_CURRENT_YEAR = lambda: date.today().replace(day=1) + relativedelta(month=1)
-FIRST_DAY_NEXT_YEAR = lambda: date.today().replace(day=1) + relativedelta(month=1, years=+1)
+# FREQUENTLY USED DATES
+def TODAY():
+    return date.today()
+def YESTERDAY():
+    return date.today() - timedelta(days=1)
+def TOMORROW():
+    return date.today() + timedelta(days=1)
+def WEEKDAY():
+    return date.today().weekday()
+def MONDAY():
+    return date.today() - timedelta(days=date.today().weekday())
+def NEXT_MONDAY():
+    return date.today() + timedelta(days=-date.today().weekday(), weeks=1)
+def FIRST_DAY_CURRENT_MONTH():
+    return date.today().replace(day=1)
+def FIRST_DAY_NEXT_MONTH():
+    return date.today().replace(day=1) + relativedelta(months=+1)
+def FIRST_DAY_CURRENT_YEAR():
+    return date.today().replace(day=1) + relativedelta(month=1)
+def FIRST_DAY_NEXT_YEAR():
+    return date.today().replace(day=1) + relativedelta(month=1, years=+1)
 
 def user_counting(table, start_date, end_date):
     result = table.query.filter(and_(table.confirmed_at >= str(start_date), table.confirmed_at <= str(end_date))).count()
@@ -42,7 +49,7 @@ def broker_order_amount(table, start_date, end_date, market):
         result = 0
     asset_symbol = market.split('-')[0]
     result = assets.asset_int_to_dec(asset_symbol, result)
-    result = '{0:.4f}'.format(result) # pylint: disable=consider-using-f-string
+    result = '{0:.4f}'.format(result)
     return result
 
 def broker_order_amount_lifetime(table, market):
@@ -52,7 +59,7 @@ def broker_order_amount_lifetime(table, market):
         result = 0
     asset_symbol = market.split('-')[0]
     result = assets.asset_int_to_dec(asset_symbol, result)
-    result = '{0:.4f}'.format(result) # pylint: disable=consider-using-f-string
+    result = '{0:.4f}'.format(result)
     return result
 
 def broker_order_count(table, start_date, end_date, market):

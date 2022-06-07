@@ -129,7 +129,8 @@ class EventsNamespace(Namespace):
         if not isinstance(auth, dict):
             try:
                 auth = json.loads(auth)
-            except: # pylint: disable=bare-except
+                assert isinstance(auth, dict)
+            except:
                 emit("info", "invalid json", namespace=NS)
                 return
         if "api_key" not in auth:
@@ -143,17 +144,17 @@ class EventsNamespace(Namespace):
             return
         # check auth
         res, reason, api_key = check_auth(db.session, auth["api_key"], auth["nonce"], auth["signature"], str(auth["nonce"]))
-        if res:
+        if res and api_key:
             emit("info", "authenticated!", namespace=NS)
             # join room and store user
             logger.info("join room for email: %s", api_key.user.email)
             join_room(api_key.user.email)
             # store sid -> email map
-            ws_sids[request.sid] = api_key.user.email
+            ws_sids[request.sid] = api_key.user.email # type: ignore
         else:
-            api_key = auth["api_key"]
-            emit("info", f"failed authentication ({api_key}): {reason}", namespace=NS)
-            logger.info("failed authentication (%s): %s", api_key, reason)
+            api_key_token = auth["api_key"]
+            emit("info", f"failed authentication ({api_key_token}): {reason}", namespace=NS)
+            logger.info("failed authentication (%s): %s", api_key_token, reason)
 
     def on_ln_invoice(self, label: str):
         logger.info("ln_invoice: %s", label)

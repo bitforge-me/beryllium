@@ -1,4 +1,4 @@
-name: Pylint
+name: lint
 
 on: [push, pull_request]
 
@@ -20,6 +20,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements_lint.txt
-    - name: Analysing the code with pylint
+    - name: Analysing the code with linters
       run: |
-        ./pylint.sh
+        ./lint.sh

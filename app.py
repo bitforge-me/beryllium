@@ -28,8 +28,7 @@ def add_user(email, password):
     with app.app_context():
         user = User.from_email(db.session, email)
         if user:
-            #logger.error("user already exists")
-            #return
+            logger.info('user already exists, updating password...')
             user.password = encrypt_password(password)
         else:
             user = user_datastore.create_user(email=email, password=encrypt_password(password))
@@ -38,7 +37,7 @@ def add_user(email, password):
 def create_role(name, desc):
     role = Role.from_name(db.session, name)
     if not role:
-        role = Role(name=name, description=desc) # pylint: disable=unexpected-keyword-arg
+        role = Role(name=name, description=desc)
     else:
         role.description = desc
     db.session.add(role)
@@ -78,13 +77,11 @@ def payouts_notification_create():
         payouts_core.payouts_notification_create()
 
 def sigint_handler(signum, frame):
-    # pylint: disable=global-statement
     global KEEP_RUNNING
     logger.warning("SIGINT caught, attempting to exit gracefully")
     KEEP_RUNNING = False
 
 def g_exception(greenlet):
-    # pylint: disable=broad-except
     try:
         greenlet.get()
     except Exception as e:

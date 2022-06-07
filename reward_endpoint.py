@@ -1,5 +1,3 @@
-# pylint: disable=unbalanced-tuple-unpacking
-
 import logging
 import time
 

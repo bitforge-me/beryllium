@@ -60,8 +60,8 @@ def _parse_order_book(item):
 
 def _parse_order(item):
     side = assets.MarketSide.BID if item['type'] == 'BUY' else assets.MarketSide.ASK
-    return Munch(id=item['id'], base_asset=['baseSymbol'], quote_asset=['quoteSymbol'], date=item['timestamp'], side=side, status=item['status'], \
-        base_amount=item['baseAmount'], quote_amount=item['quoteAmount'], filled=item['details']['filled'])
+    return Munch(id=item['id'], base_asset=['baseSymbol'], quote_asset=['quoteSymbol'], date=item['timestamp'], side=side, status=item['status'],
+                 base_amount=item['baseAmount'], quote_amount=item['quoteAmount'], filled=item['details']['filled'])
 
 def _parse_deposit(item):
     return Munch(id=item['id'], symbol=item['currencySymbol'], address=item['cryptoAddress'], amount=decimal.Decimal(item['quantity']), date=item['updatedAt'], status=item['status'], txid=item['txId'])
@@ -82,7 +82,7 @@ def _parse_withdrawal_2fa(item):
 def _parse_withdrawal(item):
     try:
         return _parse_withdrawal_full(item)
-    except: # pylint: disable=bare-except
+    except:
         return _parse_withdrawal_2fa(item)
 
 #

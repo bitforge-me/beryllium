@@ -6,7 +6,7 @@
     <h1>{{ _fsdomain("Two-factor Authentication") }}</h1>
     <h2>{{ _fsdomain("Please enter your authentication code") }}</h2>
     <form action="{{ url_for_security("two_factor_token_validation") }}" method="POST"
-          name="two_factor_verify_code_form">
+        name="two_factor_verify_code_form">
         {{ two_factor_verify_code_form.hidden_tag() }}
         {{ render_field_with_errors(two_factor_verify_code_form.code, placeholder="enter code") }}
         {{ render_field(two_factor_verify_code_form.submit) }}

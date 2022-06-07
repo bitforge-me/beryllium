@@ -1,9 +1,5 @@
-# pylint: disable=too-many-instance-attributes
-# pylint: disable=too-many-arguments
-# pylint: disable=too-few-public-methods
-# pylint: disable=too-many-lines
-
 from __future__ import annotations
+from typing import List
 from datetime import datetime, timedelta
 import logging
 
@@ -31,23 +27,19 @@ class FromTokenMixin():
 class FromUserMixin():
     @classmethod
     def from_user(cls, session, user, offset, limit):
-        # pylint: disable=no-member
         return session.query(cls).filter(cls.user_id == user.id).order_by(cls.id.desc()).offset(offset).limit(limit)
 
     @classmethod
     def total_for_user(cls, session, user):
-        # pylint: disable=no-member
         return session.query(cls).filter(cls.user_id == user.id).count()
 
 class OfAssetMixin():
     @classmethod
     def of_asset(cls, session, user, asset, l2_network, offset, limit):
-        # pylint: disable=no-member
         return session.query(cls).filter(and_(cls.user_id == user.id, and_(cls.asset == asset, cls.l2_network == l2_network))).order_by(cls.id.desc()).offset(offset).limit(limit)
 
     @classmethod
     def total_of_asset(cls, session, user, asset, l2_network):
-        # pylint: disable=no-member
         return session.query(cls).filter(and_(cls.user_id == user.id, and_(cls.asset == asset, cls.l2_network == l2_network))).count()
 
 roles_users = db.Table(
@@ -219,7 +211,7 @@ class ApiKey(db.Model, FromTokenMixin):
     device_name = db.Column(db.String(255))
     expiry = db.Column(db.DateTime())
     permissions = db.relationship('Permission', secondary=permissions_api_keys,
-                            backref=db.backref('api_keys', lazy='dynamic'))
+                                  backref=db.backref('api_keys', lazy='dynamic'))
 
     def __init__(self, user, device_name):
         self.user_id = user.id
@@ -232,7 +224,7 @@ class ApiKey(db.Model, FromTokenMixin):
     def has_permission(self, permission_name):
         perm = Permission.from_name(db.session, permission_name)
         if perm:
-            return perm in self.permissions # pylint: disable=unsupported-membership-test
+            return perm in self.permissions
         return False
 
 class ApiKeyRequest(db.Model, FromTokenMixin):
@@ -662,11 +654,11 @@ class CrownPayment(db.Model, FromTokenMixin):
         self.status = self.STATUS_CREATED
 
     @classmethod
-    def count(cls, session: Session) -> int:
+    def count(cls, session: Session):
         return session.query(cls).count()
 
     @classmethod
-    def from_crown_txn_id(cls, session: Session, crown_txn_id: str) -> int:
+    def from_crown_txn_id(cls, session: Session, crown_txn_id: str):
         return session.query(cls).filter(cls.crown_txn_id == crown_txn_id).first()
 
     def __repr__(self):
@@ -717,42 +709,31 @@ class PayoutRequest(db.Model, FromTokenMixin):
     STATUS_COMPLETED = 'completed'
     STATUS_SUSPENDED = 'suspended'
 
-    id = db.Column(db.Integer, primary_key=True)
-    date = db.Column(db.DateTime(), nullable=False, unique=False)
-    token = db.Column(db.String, nullable=False, unique=True)
-    asset = db.Column(db.String, nullable=False)
-    amount = db.Column(db.Integer, nullable=False)
-    sender = db.Column(db.String, nullable=False)
-    sender_account = db.Column(db.String, nullable=False)
-    sender_reference = db.Column(db.String, nullable=False)
-    sender_code = db.Column(db.String, nullable=False)
-    receiver = db.Column(db.String, nullable=False)
-    receiver_account = db.Column(db.String, nullable=False)
-    receiver_reference = db.Column(db.String, nullable=False)
-    receiver_code = db.Column(db.String, nullable=False)
-    receiver_particulars = db.Column(db.String, nullable=False)
-    email = db.Column(db.String, nullable=False)
-    email_sent = db.Column(db.Boolean)
-    status = db.Column(db.String)
-    groups = db.relationship('PayoutGroup', secondary='payout_group_request', back_populates='requests')
+    id: int = db.Column(db.Integer, primary_key=True)
+    date: datetime = db.Column(db.DateTime(), nullable=False, unique=False)
+    token: str = db.Column(db.String, nullable=False, unique=True)
+    asset: str = db.Column(db.String, nullable=False)
+    amount: int = db.Column(db.Integer, nullable=False)
+    reference: str = db.Column(db.String, nullable=False)
+    code: str = db.Column(db.String, nullable=False)
+    email: str = db.Column(db.String, nullable=False)
+    email_sent: bool | None = db.Column(db.Boolean)
+    status: str | None = db.Column(db.String)
+    groups: List[PayoutGroup] = db.relationship('PayoutGroup', secondary='payout_group_request', back_populates='requests')
+    address_book_id: int | None = db.Column(db.Integer, db.ForeignKey('address_book.id'))
+    address_book: AddressBook | None = db.relationship("AddressBook")
 
-    def __init__(self, asset, amount, sender, sender_account, sender_reference, sender_code, receiver, receiver_account, receiver_reference, receiver_code, receiver_particulars, email, email_sent):
+    def __init__(self, asset, amount, reference, code, email, email_sent, address_book):
         self.date = datetime.now()
         self.token = generate_key()
         self.asset = asset
         self.amount = amount
-        self.sender = sender
-        self.sender_account = sender_account
-        self.sender_reference = sender_reference
-        self.sender_code = sender_code
-        self.receiver = receiver
-        self.receiver_account = receiver_account
-        self.receiver_reference = receiver_reference
-        self.receiver_code = receiver_code
-        self.receiver_particulars = receiver_particulars
+        self.reference = reference
+        self.code = code
         self.email = email
         self.email_sent = email_sent
         self.status = self.STATUS_CREATED
+        self.address_book = address_book
 
     @classmethod
     def count(cls, session) -> int:
@@ -778,14 +759,28 @@ class PayoutRequest(db.Model, FromTokenMixin):
         return schema.dump(self)
 
 class PayoutGroup(db.Model, FromTokenMixin):
-    id = db.Column(db.Integer, primary_key=True)
-    token = db.Column(db.String, nullable=False, unique=True)
-    expired = db.Column(db.Boolean, nullable=False)
-    requests = db.relationship('PayoutRequest', secondary='payout_group_request', back_populates='groups')
+    id: int = db.Column(db.Integer, primary_key=True)
+    token: str = db.Column(db.String, nullable=False, unique=True)
+    expired: bool = db.Column(db.Boolean, nullable=False)
+    requests: List[PayoutRequest] = db.relationship('PayoutRequest', secondary='payout_group_request', back_populates='groups')
 
     def __init__(self):
         self.token = generate_key()
         self.expired = False
+
+    def total_payout(self):
+        asset = None
+        total = 0
+        n = 0
+        for req in self.requests:
+            if not asset:
+                asset = req.asset
+            assert asset == req.asset
+            if req.status != req.STATUS_CREATED:
+                continue
+            total += req.amount
+            n += 1
+        return asset, total, n
 
     @classmethod
     def expire_all_but(cls, session, group):
@@ -851,6 +846,10 @@ class AddressBookSchema(Schema):
     asset = fields.String()
     recipient = fields.String()
     description = fields.String()
+    account_name = fields.String()
+    account_addr_01 = fields.String()
+    account_addr_02 = fields.String()
+    account_addr_country = fields.String()
 
 class AddressBook(db.Model, FromTokenMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -859,16 +858,24 @@ class AddressBook(db.Model, FromTokenMixin):
     asset = db.Column(db.String, nullable=False)
     recipient = db.Column(db.String, nullable=False)
     description = db.Column(db.String)
+    account_name = db.Column(db.String)
+    account_addr_01 = db.Column(db.String)
+    account_addr_02 = db.Column(db.String)
+    account_addr_country = db.Column(db.String)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     user = db.relationship('User', backref=db.backref('address_book_entries', lazy='dynamic'))
 
-    def __init__(self, user, asset, recipient, description):
+    def __init__(self, user, asset, recipient, description, account_name, account_addr_01, account_addr_02, account_addr_country):
         self.user = user
         self.date = datetime.now()
         self.token = generate_key()
         self.asset = asset
         self.recipient = recipient
         self.description = description
+        self.account_name = account_name
+        self.account_addr_01 = account_addr_01
+        self.account_addr_02 = account_addr_02
+        self.account_addr_country = account_addr_country
 
     @classmethod
     def count(cls, session) -> int:
@@ -1079,7 +1086,6 @@ class BtcTxIndex(db.Model):
     blockheight = db.Column(db.Integer)
     blockhash = db.Column(db.String(255))
 
-    # pylint: disable=redefined-builtin
     def __init__(self, txid, hex, blockheight, blockhash):
         self.txid = txid
         self.hex = hex
