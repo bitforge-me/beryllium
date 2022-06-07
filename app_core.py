@@ -25,8 +25,6 @@ class MyJSONEncoder(flask.json.JSONEncoder):
             return str(o)
         return super().default(o)
 
-csrf = CSRFProtect()
-
 # Create Flask application
 
 app = Flask(__name__)
@@ -135,4 +133,5 @@ migrate = Migrate(app, db)
 mail = MailSendGrid(app)
 socketio = SocketIO(app, cors_allowed_origins='*')
 limiter = Limiter(app, key_func=get_remote_address, headers_enabled=True, default_limits=["3000 per minute"])
+csrf = CSRFProtect()
 csrf.init_app(app)

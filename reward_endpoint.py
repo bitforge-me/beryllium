@@ -13,8 +13,8 @@ from models import User, Role, Referral
 logger = logging.getLogger(__name__)
 reward = Blueprint('reward', __name__, template_folder='templates')
 limiter.limit("100/minute")(reward)
-use_referrals = app.config["USE_REFERRALS"]
 csrf.exempt(reward)
+use_referrals = app.config["USE_REFERRALS"]
 
 #
 # Private (reward) API
