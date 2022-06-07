@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta
 import logging
-from sqlalchemy.orm.session import Session
+from typing import Dict, Tuple
+
+from sqlalchemy.orm import scoped_session
 
 import windcave
 import dasset
@@ -17,7 +19,7 @@ import crown_financial
 
 logger = logging.getLogger(__name__)
 
-def _fiat_deposit_update(db_session: Session, fiat_deposit: FiatDeposit):
+def _fiat_deposit_update(db_session: scoped_session, fiat_deposit: FiatDeposit):
     logger.info('processing fiat deposit %s (%s)..', fiat_deposit.token, fiat_deposit.status)
     updated_records = []
     # check payment
@@ -64,9 +66,9 @@ def _fiat_deposit_update(db_session: Session, fiat_deposit: FiatDeposit):
     return updated_records
 
 def _fiat_deposit_email_msg(fiat_deposit: FiatDeposit, msg: str):
-    amount =  assets.asset_int_to_dec(fiat_deposit.asset, fiat_deposit.amount)
-    amount = assets.asset_dec_to_str(fiat_deposit.asset, amount)
-    return f'Your deposit {fiat_deposit.token} ({amount} {fiat_deposit.asset}) is now {fiat_deposit.status}. \n\n{msg}'
+    amount = assets.asset_int_to_dec(fiat_deposit.asset, fiat_deposit.amount)
+    amount_str = assets.asset_dec_to_str(fiat_deposit.asset, amount)
+    return f'Your deposit {fiat_deposit.token} ({amount_str} {fiat_deposit.asset}) is now {fiat_deposit.status}. \n\n{msg}'
 
 def _fiat_deposit_email(fiat_deposit: FiatDeposit):
     if fiat_deposit.status == fiat_deposit.STATUS_COMPLETED:
@@ -74,7 +76,7 @@ def _fiat_deposit_email(fiat_deposit: FiatDeposit):
     if fiat_deposit.status == fiat_deposit.STATUS_EXPIRED:
         email_utils.send_email(logger, 'Deposit Expired', _fiat_deposit_email_msg(fiat_deposit, ''), fiat_deposit.user.email)
 
-def _crown_check_new_desposits(db_session: Session):
+def _crown_check_new_desposits(db_session: scoped_session):
     txs = crown_financial.transactions_filtered_type(crown_financial.CrownTx.TYPE_DEPOSIT, datetime.now() - timedelta(days=7), datetime.now())
     for tx in txs:
         if tx.currency == crown_financial.CURRENCY and not CrownPayment.from_crown_txn_id(db_session, tx.crown_txn_id):
@@ -87,7 +89,7 @@ def _crown_check_new_desposits(db_session: Session):
                 db_session.add(deposit)
                 db_session.commit()
 
-def fiat_deposit_update_and_commit(db_session: Session, deposit: FiatDeposit):
+def fiat_deposit_update_and_commit(db_session: scoped_session, deposit: FiatDeposit):
     while True:
         with coordinator.lock:
             updated_records = _fiat_deposit_update(db_session, deposit)
@@ -101,7 +103,7 @@ def fiat_deposit_update_and_commit(db_session: Session, deposit: FiatDeposit):
         _fiat_deposit_email(deposit)
         websocket.fiat_deposit_update_event(deposit)
 
-def fiat_deposits_update(db_session: Session):
+def fiat_deposits_update(db_session: scoped_session):
     deposits = FiatDeposit.all_active(db_session)
     logger.info('num deposits: %d', len(deposits))
     for deposit in deposits:
@@ -110,44 +112,42 @@ def fiat_deposits_update(db_session: Session):
 
 def _fiat_withdrawal_update(fiat_withdrawal: FiatWithdrawal):
     logger.info('processing fiat withdrawal %s (%s)..', fiat_withdrawal.token, fiat_withdrawal.status)
-    updated_records = []
+    updated_record = None
     # check withdrawals enabled
     if not tripwire.WITHDRAWAL.ok:
-        return updated_records
+        return updated_record
     # check payout
     if fiat_withdrawal.status == fiat_withdrawal.STATUS_CREATED:
         if fiat_withdrawal.payout_request:
             payout_request = fiat_withdrawal.payout_request
             if payout_request.status == payout_request.STATUS_COMPLETED:
                 fiat_withdrawal.status = fiat_withdrawal.STATUS_COMPLETED
-                updated_records.append(fiat_withdrawal)
-                return updated_records
-    return updated_records
+                updated_record = fiat_withdrawal
+    return updated_record
 
 def _fiat_withdrawal_email_msg(fiat_withdrawal: FiatWithdrawal, msg: str):
-    amount =  assets.asset_int_to_dec(fiat_withdrawal.asset, fiat_withdrawal.amount)
-    amount = assets.asset_dec_to_str(fiat_withdrawal.asset, amount)
-    return f'Your withdrawal {fiat_withdrawal.token} ({amount} {fiat_withdrawal.asset}) is now {fiat_withdrawal.status}. \n\n{msg}'
+    amount = assets.asset_int_to_dec(fiat_withdrawal.asset, fiat_withdrawal.amount)
+    amount_str = assets.asset_dec_to_str(fiat_withdrawal.asset, amount)
+    return f'Your withdrawal {fiat_withdrawal.token} ({amount_str} {fiat_withdrawal.asset}) is now {fiat_withdrawal.status}. \n\n{msg}'
 
 def _fiat_withdrawal_email(fiat_withdrawal: FiatWithdrawal):
     if fiat_withdrawal.status == fiat_withdrawal.STATUS_COMPLETED:
         email_utils.send_email(logger, 'Withdrawal Completed', _fiat_withdrawal_email_msg(fiat_withdrawal, ''), fiat_withdrawal.user.email)
 
-def fiat_withdrawal_update_and_commit(db_session: Session, withdrawal: FiatWithdrawal):
+def fiat_withdrawal_update_and_commit(db_session: scoped_session, withdrawal: FiatWithdrawal):
     while True:
         with coordinator.lock:
-            updated_records = _fiat_withdrawal_update(withdrawal)
-            # commit db if records updated
-            if not updated_records:
+            updated_record = _fiat_withdrawal_update(withdrawal)
+            # commit db if record updated
+            if not updated_record:
                 return
-            for rec in updated_records:
-                db_session.add(rec)
+            db_session.add(updated_record)
             db_session.commit()
         # send updates
         _fiat_withdrawal_email(withdrawal)
         websocket.fiat_withdrawal_update_event(withdrawal)
 
-def fiat_withdrawals_update(db_session: Session):
+def fiat_withdrawals_update(db_session: scoped_session):
     withdrawals = FiatWithdrawal.all_active(db_session)
     logger.info('num withdrawals: %d', len(withdrawals))
     for withdrawal in withdrawals:
@@ -155,10 +155,10 @@ def fiat_withdrawals_update(db_session: Session):
 
 def _crypto_deposit_email_msg(deposit: CryptoDeposit, verb: str, msg: str):
     amount = assets.asset_int_to_dec(deposit.asset, deposit.amount)
-    amount = assets.asset_dec_to_str(deposit.asset, amount)
+    amount_str = assets.asset_dec_to_str(deposit.asset, amount)
     deposit_id = deposit.txid if deposit.txid else deposit.wallet_reference
     deposit_id = utils.shorten(deposit_id)
-    return f'Your deposit {deposit_id} ({amount} {deposit.asset}) is now {verb}. \n\n{msg}'
+    return f'Your deposit {deposit_id} ({amount_str} {deposit.asset}) is now {verb}. \n\n{msg}'
 
 def _crypto_deposit_email(deposit: CryptoDeposit):
     if deposit.confirmed:
@@ -166,7 +166,7 @@ def _crypto_deposit_email(deposit: CryptoDeposit):
     else:
         email_utils.send_email(logger, 'Deposit Incoming', _crypto_deposit_email_msg(deposit, 'incoming', ''), deposit.user.email)
 
-def crypto_deposits_wallet_check(db_session: Session, new_crypto_deposits: list[CryptoDeposit], updated_crypto_deposits: list[CryptoDeposit], user: User, asset: str, addr_list: list[str]):
+def crypto_deposits_wallet_check(db_session: scoped_session, new_crypto_deposits: list[CryptoDeposit], updated_crypto_deposits: list[CryptoDeposit], user: User, asset: str, addr_list: list[str]):
     for addr in addr_list:
         wallet_deposits = wallet.address_deposits(asset, None, addr)
         for wallet_deposit in wallet_deposits:
@@ -187,13 +187,13 @@ def crypto_deposits_wallet_check(db_session: Session, new_crypto_deposits: list[
                     crypto_deposit.confirmed = completed
                     updated_crypto_deposits.append(crypto_deposit)
                 if not crypto_deposit.crypto_address:
-                    addr = CryptoAddress.from_addr(db_session, addr)
-                    if addr:
-                        crypto_deposit.crypto_address = addr
+                    addr_db = CryptoAddress.from_addr(db_session, addr)
+                    if addr_db:
+                        crypto_deposit.crypto_address = addr_db
                 db_session.add(crypto_deposit)
                 db_session.commit()
 
-def crypto_deposits_dasset_check(db_session: Session, new_crypto_deposits: list[CryptoDeposit], updated_crypto_deposits: list[CryptoDeposit], user: User, asset: str):
+def crypto_deposits_dasset_check(db_session: scoped_session, new_crypto_deposits: list[CryptoDeposit], updated_crypto_deposits: list[CryptoDeposit], user: User, asset: str):
     if not user.dasset_subaccount:
         logger.error('user %s dasset subaccount does not exist', user.email)
         return
@@ -227,11 +227,11 @@ def crypto_deposits_dasset_check(db_session: Session, new_crypto_deposits: list[
             db_session.add(crypto_deposit)
             db_session.commit()
 
-def crypto_deposits_address_check(db_session: Session, new_crypto_deposits: list[CryptoDeposit], updated_crypto_deposits: list[CryptoDeposit]):
+def crypto_deposits_address_check(db_session: scoped_session, new_crypto_deposits: list[CryptoDeposit], updated_crypto_deposits: list[CryptoDeposit]):
     # query for list of addresses that need to be checked
     addrs = CryptoAddress.need_to_be_checked(db_session)
     # sort in groups of assets for each user
-    user_assets = {}
+    user_assets: Dict[str, Tuple[User, dict]] = {}
     for addr in addrs:
         if addr.user.email not in user_assets:
             user_assets[addr.user.email] = addr.user, {}
@@ -250,7 +250,7 @@ def crypto_deposits_address_check(db_session: Session, new_crypto_deposits: list
             else:
                 crypto_deposits_dasset_check(db_session, new_crypto_deposits, updated_crypto_deposits, user, asset)
 
-def crypto_deposits_updated_wallet_check(db_session: Session, updated_crypto_deposits: list[CryptoDeposit]):
+def crypto_deposits_updated_wallet_check(db_session: scoped_session, updated_crypto_deposits: list[CryptoDeposit]):
     for deposit in CryptoDeposit.of_wallet(db_session, False, False):
         with coordinator.lock:
             logger.info('processing crypto deposit %s (confirmed: %s)..', deposit.token, deposit.confirmed)
@@ -269,9 +269,9 @@ def crypto_deposits_updated_wallet_check(db_session: Session, updated_crypto_dep
             db_session.add(deposit)
             db_session.commit()
 
-def crypto_deposits_check(db_session: Session):
-    new_crypto_deposits = []
-    updated_crypto_deposits = []
+def crypto_deposits_check(db_session: scoped_session):
+    new_crypto_deposits: list[CryptoDeposit] = []
+    updated_crypto_deposits: list[CryptoDeposit] = []
     # check crypto deposits from addresses that are due to be checked
     crypto_deposits_address_check(db_session, new_crypto_deposits, updated_crypto_deposits)
     # check crypto deposits in our wallet
@@ -286,7 +286,7 @@ def crypto_deposits_check(db_session: Session):
 
 def _crypto_withdrawal_update(crypto_withdrawal: CryptoWithdrawal):
     logger.info('processing crypto withdrawal %s (%s)..', crypto_withdrawal.token, crypto_withdrawal.status)
-    updated_records = []
+    updated_records: list[CryptoDeposit] = []
     # check withdrawals enabled
     if not tripwire.WITHDRAWAL.ok:
         return updated_records
@@ -312,15 +312,15 @@ def _crypto_withdrawal_update(crypto_withdrawal: CryptoWithdrawal):
     return updated_records
 
 def _crypto_withdrawal_email_msg(crypto_withdrawal: CryptoWithdrawal, msg: str):
-    amount =  assets.asset_int_to_dec(crypto_withdrawal.asset, crypto_withdrawal.amount)
-    amount = assets.asset_dec_to_str(crypto_withdrawal.asset, amount)
-    return f'Your withdrawal {crypto_withdrawal.token} ({amount} {crypto_withdrawal.asset}) is now {crypto_withdrawal.status}. \n\n{msg}'
+    amount = assets.asset_int_to_dec(crypto_withdrawal.asset, crypto_withdrawal.amount)
+    amount_str = assets.asset_dec_to_str(crypto_withdrawal.asset, amount)
+    return f'Your withdrawal {crypto_withdrawal.token} ({amount_str} {crypto_withdrawal.asset}) is now {crypto_withdrawal.status}. \n\n{msg}'
 
 def _crypto_withdrawal_email(crypto_withdrawal: CryptoWithdrawal):
     if crypto_withdrawal.status == crypto_withdrawal.STATUS_COMPLETED:
         email_utils.send_email(logger, 'Withdrawal Completed', _crypto_withdrawal_email_msg(crypto_withdrawal, ''), crypto_withdrawal.user.email)
 
-def crypto_withdrawal_update_and_commit(db_session: Session, withdrawal: CryptoWithdrawal):
+def crypto_withdrawal_update_and_commit(db_session: scoped_session, withdrawal: CryptoWithdrawal):
     while True:
         with coordinator.lock:
             updated_records = _crypto_withdrawal_update(withdrawal)
@@ -334,7 +334,7 @@ def crypto_withdrawal_update_and_commit(db_session: Session, withdrawal: CryptoW
         _crypto_withdrawal_email(withdrawal)
         websocket.crypto_withdrawal_update_event(withdrawal)
 
-def crypto_withdrawals_update(db_session: Session):
+def crypto_withdrawals_update(db_session: scoped_session):
     withdrawals = CryptoWithdrawal.all_active(db_session)
     logger.info('num withdrawals: %d', len(withdrawals))
     for withdrawal in withdrawals:

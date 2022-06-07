@@ -1,6 +1,3 @@
-# pylint: disable=unbalanced-tuple-unpacking
-import os
-import sys
 import logging
 
 import email_utils
@@ -9,18 +6,9 @@ from models import PayoutRequest, PayoutGroup, PayoutGroupRequest
 
 logger = logging.getLogger(__name__)
 
-PAYOUT_SENDER_NAME = os.environ.get('PAYOUT_SENDER_NAME', '')
-PAYOUT_SENDER_ACCOUNT = os.environ.get('PAYOUT_SENDER_ACCOUNT', '')
-if not PAYOUT_SENDER_NAME:
-    logger.error('ERROR: no PAYOUT_SENDER_NAME')
-    sys.exit(1)
-if not PAYOUT_SENDER_ACCOUNT:
-    logger.error('ERROR: no PAYOUT_SENDER_ACCOUNT')
-    sys.exit(1)
-
-def payout_create(amount, sender_reference, sender_code, account_name, account_number, reference, code, particulars):
+def payout_create(amount, reference, code, address_book):
     # create payout request
-    req = PayoutRequest('NZD', amount, PAYOUT_SENDER_NAME, PAYOUT_SENDER_ACCOUNT, sender_reference, sender_code, account_name, account_number, reference, code, particulars, app.config['PAYOUT_GROUP_EMAIL'], False)
+    req = PayoutRequest('NZD', amount, reference, code, app.config['PAYOUT_GROUP_EMAIL'], False, address_book)
     return req
 
 def payouts_notification_create():
@@ -41,13 +29,9 @@ def payout_group_create():
     PayoutGroup.expire_all_but(db.session, group)
     return group
 
-def set_payout_requests_complete(reqs):
-    for req in reqs:
-        # ignore suspended
-        if req.status == req.STATUS_SUSPENDED:
-            continue
-        req.status = req.STATUS_COMPLETED
-        db.session.add(req)
+def set_payout_request_complete(req):
+    req.status = req.STATUS_COMPLETED
+    db.session.add(req)
 
 def set_payout_request_suspended(req):
     # ignore not in created state

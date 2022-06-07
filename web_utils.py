@@ -27,7 +27,7 @@ INVALID_CATEGORY = 'invalid category'
 USER_EXISTS = 'user exists'
 INCORRECT_PASSWORD = 'incorrect password'
 WEAK_PASSWORD = 'weak password'
-NOT_IMPLEMENTED  = 'net yet implemented'
+NOT_IMPLEMENTED = 'net yet implemented'
 NOT_AVAILABLE = 'not available'
 INVALID_AMOUNT = 'invalid amount'
 INVALID_MARKET = 'invalid market'
@@ -66,7 +66,7 @@ def get_json_params(json_content, param_names: list[str]) -> tuple[list, Respons
         for param in param_names:
             param_name = param
             param_values.append(json_content[param])
-    except Exception as e: # pylint: disable=broad-except
+    except Exception as e:
         logger.error("'%s' not found", param_name)
         logger.error(e)
         return param_values, bad_request(f"'{param_name}' not found")
@@ -77,7 +77,7 @@ def get_json_params_optional(json_content, param_names: list[str]) -> list:
     for param in param_names:
         try:
             param_values.append(json_content[param])
-        except Exception: # pylint: disable=broad-except
+        except Exception:
             param_values.append(None)
     return param_values
 
@@ -86,16 +86,15 @@ def to_bytes(data: str | bytes | bytearray) -> bytes | bytearray:
         return data.encode("utf-8")
     return data
 
-def create_hmac_sig(api_secret: str, message: str) -> str:
+def create_hmac_sig(api_secret: str, message: str | bytes) -> str:
     _hmac = hmac.new(to_bytes(api_secret), msg=to_bytes(message), digestmod=hashlib.sha256)
-    signature = _hmac.digest()
-    signature = base64.b64encode(signature).decode("utf-8")
-    return signature
+    sig_bytes = _hmac.digest()
+    return base64.b64encode(sig_bytes).decode("utf-8")
 
-def request_get_signature() -> str:
+def request_get_signature():
     return request.headers.get('X-Signature')
 
-def check_hmac_auth(api_key: ApiKey, nonce: int, sig: str, body: str) -> tuple[bool, str]:
+def check_hmac_auth(api_key: ApiKey, nonce: int, sig: str, body: str | bytes) -> tuple[bool, str]:
     if int(nonce) <= int(api_key.nonce):
         return False, OLD_NONCE
     our_sig = create_hmac_sig(api_key.secret, body)
@@ -104,8 +103,7 @@ def check_hmac_auth(api_key: ApiKey, nonce: int, sig: str, body: str) -> tuple[b
         return True, ""
     return False, AUTH_FAILED
 
-def check_auth(session: scoped_session, api_key_token: str, nonce: int, sig: str, body: str) -> tuple[bool, str, ApiKey | None]:
-    # pylint: disable=import-outside-toplevel
+def check_auth(session: scoped_session, api_key_token: str, nonce: int, sig: str, body: str | bytes) -> tuple[bool, str, ApiKey | None]:
     api_key = ApiKey.from_token(session, api_key_token)
     if not api_key:
         return False, AUTH_FAILED, None
@@ -118,8 +116,6 @@ def check_auth(session: scoped_session, api_key_token: str, nonce: int, sig: str
     session.commit()
     return True, "", api_key
 
-# pylint: disable=unbalanced-tuple-unpacking
-# pylint: disable=invalid-name
 def auth_request(db: SQLAlchemy) -> tuple[ApiKey | None, Response | None]:
     sig = request_get_signature()
     content = request.get_json(force=True)
@@ -134,8 +130,6 @@ def auth_request(db: SQLAlchemy) -> tuple[ApiKey | None, Response | None]:
         return None, bad_request(reason)
     return api_key, None
 
-# pylint: disable=unbalanced-tuple-unpacking
-# pylint: disable=invalid-name
 def auth_request_get_single_param(db: SQLAlchemy, param_name: str) -> tuple[str | None, ApiKey | None, Response | None]:
     sig = request_get_signature()
     content = request.get_json(force=True)
@@ -150,7 +144,7 @@ def auth_request_get_single_param(db: SQLAlchemy, param_name: str) -> tuple[str 
         return None, None, bad_request(reason)
     return param, api_key, None
 
-def auth_request_get_params(db: SQLAlchemy, param_names: list[str]) -> tuple[list[str], ApiKey | None, Response | None]:
+def auth_request_get_params(db: SQLAlchemy, param_names: list[str]) -> tuple[list[str] | None, ApiKey | None, Response | None]:
     sig = request_get_signature()
     content = request.get_json(force=True)
     if content is None:

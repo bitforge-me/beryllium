@@ -1,5 +1,3 @@
-# pylint: disable=unbalanced-tuple-unpacking
-
 import logging
 import time
 from datetime import datetime
@@ -357,7 +355,7 @@ def user_update_password():
     verified_password = verify_password(current_password, user.password)
     if not verified_password:
         return bad_request(web_utils.INCORRECT_PASSWORD)
-    ### set the new_password:
+    # set the new_password:
     if flask_security.password_length_validator(new_password) or flask_security.password_complexity_validator(new_password, True) or flask_security.password_breached_validator(new_password):
         return bad_request(web_utils.WEAK_PASSWORD)
     user.password = encrypt_password(new_password)
@@ -667,7 +665,7 @@ def crypto_withdrawal_create_req():
         if entry:
             entry.description = recipient_description
         else:
-            entry = AddressBook(api_key.user, asset, recipient, recipient_description)
+            entry = AddressBook(api_key.user, asset, recipient, recipient_description, None, None, None, None)
         db.session.add(entry)
     # create withdrawal
     crypto_withdrawal, err_response = _create_withdrawal(api_key.user, asset, l2_network, amount_dec, recipient)
@@ -759,10 +757,10 @@ def fiat_deposits_req():
 
 @api.route('/fiat_withdrawal_create', methods=['POST'])
 def fiat_withdrawal_create_req():
-    params, api_key, err_response = auth_request_get_params(db, ['asset', 'amount_dec', 'recipient', 'save_recipient', 'recipient_description', 'tf_code'])
+    params, api_key, err_response = auth_request_get_params(db, ['asset', 'amount_dec', 'recipient', 'recipient_description', 'account_name', 'account_addr_01', 'account_addr_02', 'account_addr_country', 'tf_code'])
     if err_response:
         return err_response
-    asset, amount_dec, recipient, save_recipient, recipient_description, tf_code = params
+    asset, amount_dec, recipient, recipient_description, account_name, account_addr_01, account_addr_02, account_addr_country, tf_code = params
     err_response = _tf_check_withdrawal(api_key.user, tf_code)
     if err_response:
         return err_response
@@ -779,13 +777,16 @@ def fiat_withdrawal_create_req():
     if not tripwire.WITHDRAWAL.ok:
         return bad_request(web_utils.NOT_AVAILABLE)
     tripwire.withdrawal_attempt()
-    if save_recipient:
-        entry = AddressBook.from_recipient(db.session, api_key.user, asset, recipient)
-        if entry:
-            entry.description = recipient_description
-        else:
-            entry = AddressBook(api_key.user, asset, recipient, recipient_description)
-        db.session.add(entry)
+    entry = AddressBook.from_recipient(db.session, api_key.user, asset, recipient)
+    if entry:
+        entry.description = recipient_description
+        entry.account_name = account_name
+        entry.account_addr_01 = account_addr_01
+        entry.account_addr_02 = account_addr_02
+        entry.account_addr_country = account_addr_country
+    else:
+        entry = AddressBook(api_key.user, asset, recipient, recipient_description, account_name, account_addr_01, account_addr_02, account_addr_country)
+    db.session.add(entry)
     with coordinator.lock:
         balance = fiatdb_core.user_balance(db.session, asset, api_key.user)
         balance_dec = assets.asset_int_to_dec(asset, balance)
@@ -793,7 +794,8 @@ def fiat_withdrawal_create_req():
             return bad_request(web_utils.INSUFFICIENT_BALANCE)
         amount_int = assets.asset_dec_to_int(asset, amount_dec)
         fiat_withdrawal = FiatWithdrawal(api_key.user, asset, amount_int, recipient)
-        payout_request = payouts_core.payout_create(amount_int, fiat_withdrawal.token, '', fiat_withdrawal.user.email, recipient, fiat_withdrawal.token, '', '')
+        app_name = app.config['CROWN_WITHDRAW_NAME']
+        payout_request = payouts_core.payout_create(amount_int, app_name, fiat_withdrawal.token, entry)
         if not payout_request:
             return bad_request(web_utils.FAILED_PAYMENT_CREATE)
         fiat_withdrawal.payout_request = payout_request

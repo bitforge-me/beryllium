@@ -1,4 +1,3 @@
-# pylint: disable=unbalanced-tuple-unpacking
 from io import BytesIO
 import logging
 
@@ -26,7 +25,7 @@ def aplyid_send_text(mobile_number, token):
         r = requests.post(APLYID_BASE_URL + '/send_text', headers=headers, json=params)
         r.raise_for_status()
         return r.json()['transaction_id']
-    except Exception as ex: # pylint: disable=broad-except
+    except Exception as ex:
         print('failed to get transaction id')
         print(ex)
     return None
@@ -51,7 +50,7 @@ def aplyid_download_pdf(transaction_id):
         r = requests.get(APLYID_BASE_URL + f'/biometric/pdf/{transaction_id}.pdf', headers=headers)
         r.raise_for_status()
         return BytesIO(r.content)
-    except Exception as ex: # pylint: disable=broad-except
+    except Exception as ex:
         print('failed to get pdf')
         print(ex)
         print(r.text)
@@ -64,7 +63,7 @@ def backup_aplyid_pdf(token, transaction_id, pdf):
         upload_url, upload_auth_token = b2blaze.backblaze_get_upload_url(api_url, auth_token, bucket_id)
         b2blaze.backblaze_upload_file(upload_url, upload_auth_token, f'{token}.pdf', pdf, 'application/pdf')
         return True
-    except Exception as ex: # pylint: disable=broad-except
+    except Exception as ex:
         logger.error('failed to backup pdf')
         logger.error(ex)
     return False
@@ -74,7 +73,7 @@ def download_pdf_backup(token):
         _, download_url, auth_token = b2blaze.backblaze_authorize_account()
         pdf = b2blaze.backblaze_download_file(download_url, auth_token, KYC_BUCKET, f'{token}.pdf')
         return pdf
-    except Exception as ex: # pylint: disable=broad-except
+    except Exception as ex:
         logger.error('failed to download pdf')
         logger.error(ex)
     return None

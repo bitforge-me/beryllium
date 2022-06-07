@@ -53,7 +53,6 @@ def order_check_funds(db_session, order, check_user=True):
 # Helper functions (private)
 #
 
-# pylint: disable=too-many-statements
 def _broker_order_action(db_session, broker_order):
     logger.info('processing broker order %s (%s)..', broker_order.token, broker_order.status)
     updated_records = []
@@ -126,7 +125,7 @@ def _broker_order_action(db_session, broker_order):
 
 def _email_msg(broker_order, msg):
     side = assets.market_side_nice(broker_order.side)
-    amount =  assets.asset_int_to_dec(broker_order.base_asset, broker_order.base_amount)
+    amount = assets.asset_int_to_dec(broker_order.base_asset, broker_order.base_amount)
     amount = assets.asset_dec_to_str(broker_order.base_asset, amount)
     return f'Your order {broker_order.token} ({side} {amount} {broker_order.base_asset}) is now {broker_order.status}. \n\n{msg}'
 

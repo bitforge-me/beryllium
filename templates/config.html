@@ -2,33 +2,33 @@
 
 {% block content %}
 
-<div class="card">
-    <div class="card-body">
-        <h5 class="card-title">Config</h5>
-        <table class="table">
-            <thead>
-              <tr>
-                <th scope="col">Key</th>
-                <th scope="col">Value</th>
-              </tr>
-            </thead>
-            <tbody>
-                {% for key, value in config.items() %}
-                <tr>
-                    <td>{{ key }}</td>
-                    <td>
-                        {% if 'SECRET' in key.upper() or '_SALT' in key.upper() or '_KEY' in key.upper() %}
-                            *****
-                        {% else %}
-                            {{ value }}
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Config</h5>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th scope="col">Key</th>
+                        <th scope="col">Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for key, value in config.items() %}
+                        <tr>
+                            <td>{{ key }}</td>
+                            <td>
+                                {% if 'SECRET' in key.upper() or '_SALT' in key.upper() or '_KEY' in key.upper() %}
+                                    *****
+                                {% else %}
+                                    {{ value }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
-</div>
 
 {% endblock %}
 

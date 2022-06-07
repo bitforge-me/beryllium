@@ -25,7 +25,7 @@ SECURITY_RECOVERABLE = True
 SECURITY_CHANGEABLE = True
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 SECURITY_TWO_FACTOR = True
-SECURITY_TWO_FACTOR_ENABLED_METHODS = ['email'] #TODO - change to ['authenticator'] when all vulnerable paths updated
+SECURITY_TWO_FACTOR_ENABLED_METHODS = ['email'] # TODO - change to ['authenticator'] when all vulnerable paths updated
 SECURITY_TOTP_ISSUER = 'beryllium'
 SECURITY_FRESHNESS = timedelta(minutes=30)
 SECURITY_FRESHNESS_GRACE_PERIOD = timedelta(seconds=300)

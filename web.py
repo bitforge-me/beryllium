@@ -1,8 +1,5 @@
 #!/usr/bin/python3
 
-# pylint: disable=import-outside-toplevel
-# pylint: disable=unbalanced-tuple-unpacking
-
 import decimal
 import logging
 import math
@@ -26,7 +23,6 @@ from payments_endpoint import payments
 from kyc_endpoint import kyc
 from ln_wallet_endpoint import ln_wallet
 import websocket
-# pylint: disable=unused-import
 import admin
 import dasset
 import assets
@@ -143,7 +139,7 @@ def push_notifications():
                 registration_token = request.form["registration_token"]
                 fcm.send_to_tokens([registration_token], title, body, image, html)
                 flash("sent push notification", "success")
-        except Exception as e: # pylint: disable=broad-except
+        except Exception as e:
             flash(str(e.args[0]), "danger")
     topics = Topic.topic_list(db.session)
     return render_template("push_notifications.html", topics=topics, type_=type_, topic=topic, location=location, title=title, body=body, image=image, html=html, registration_token=registration_token)
@@ -266,6 +262,7 @@ def user_balance():
     actions = (USER_BALANCE_SHOW, USER_BALANCE_CREDIT, USER_BALANCE_DEBIT, USER_BALANCE_SWEEP)
     asset_names = assets.ASSETS.keys()
     action = email = asset = amount = desc = ''
+
     def return_response(err_msg=None):
         if err_msg:
             flash(err_msg, 'danger')
@@ -294,7 +291,7 @@ def user_balance():
                 return return_response('Invalid asset')
             try:
                 amount_dec = decimal.Decimal(amount)
-            except: # pylint: disable=bare-except
+            except:
                 amount_dec = decimal.Decimal(0)
             if amount_dec <= decimal.Decimal(0):
                 return return_response('Invalid amount')
@@ -331,6 +328,7 @@ def user_balance():
 def user_order():
     actions = (USER_ORDER_SHOW, USER_ORDER_CANCEL)
     action = token = ''
+
     def return_response(err_msg=None):
         if err_msg:
             flash(err_msg, 'danger')

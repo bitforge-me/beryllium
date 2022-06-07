@@ -3,101 +3,102 @@
 {% block title %}Create PSBT/Withdrawal{% endblock %}
 
 {% block content %}
-<div class="alert alert-dismissible alert-success">
-	<strong>on-chain balance:</strong> {{ onchain }} <strong>BTC</strong> <b>|</b> {{ onchain_sats }} <strong>SAT</strong>
-</div>
-<div class="alert alert-dismissible alert-info">
-{% if psbt %}
-<h2>PSBT Created</h2>
-<div class="form-group">
-    <label for="created_psbt" class="form-label mt-4">PSBT Data</label>
-    <textarea class="form-control" id="created_psbt" rows="3" placeholder="{{ psbt }}" readonly></textarea>
-</div>
-<button id="copy-psbt" type="button" class="btn btn-primary">Copy PSBT</button>
-<br/>
-<br/>
-<br/>
-{% endif %}
-
-<h2>Create PSBT/Withdrawal</h2>
-<form id="form" method="POST">
-    <div class="payment-fields">
-        <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="mode" id="psbt" value="psbt" {% if mode == 'psbt' %}checked{% endif %}>
-            <label class="form-check-label" for="psbt">Create PSBT</label>
-        </div>
-        <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="mode" id="withdraw" value="withdraw" {% if mode == 'withdraw' %}checked{% endif %}>
-            <label class="form-check-label" for="withdraw">Create Withdrawal</label>
-        </div>
-	<br>
-        <div class="alert alert-dismissible alert-warning">
-        Unit: 
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="unit" id="btc" value="btc" {% if unit == 'btc' %}checked{% endif %} required>
-    	    <label class="form-check-label" for="btc"><strong>BTC</strong></label>
-            </div>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="unit" id="sat" value="sat" checked>
-    	    <label class="form-check-label" for="sat"><strong>SAT</strong></label>
-            </div>
-	</div>
-        <div class="form-group">
-            <label for="address" class="form-label">Recipient Address</label>
-            <input type="text" id="address" name="address" class="payment form-control" placeholder="Recipient Address" required>
-        </div>
-        <label for="amount" class="form-label">Amount</label>
-        <div class="input-group">
-            <input type="text" id="amount" name="amount" class="payment form-control" placeholder="Amount" required>
-            <div class="input-group-append">
-                <button class="btn btn-outline-secondary" type="button" id="max">Max</button>
-            </div>
-        </div>
+    <div class="alert alert-dismissible alert-success">
+        <strong>on-chain balance:</strong> {{ onchain }} <strong>BTC</strong> <b>|</b> {{ onchain_sats }} <strong>SAT</strong>
     </div>
-    <button id="form-remove-output" type="button" class="btn btn-danger btn-sm">Remove</button>
-    <br/>
-    <br/>
-    <button id="form-add-output" type="button" class="btn btn-primary btn-sm">Add Output</button>
-    <br/>
-    <br/>
-    <button id="form-submit" type="button" class="btn btn-primary">Submit</button>
-</form>
-</div>
+    <div class="alert alert-dismissible alert-info">
+        {% if psbt %}
+            <h2>PSBT Created</h2>
+            <div class="form-group">
+                <label for="created_psbt" class="form-label mt-4">PSBT Data</label>
+                <textarea class="form-control" id="created_psbt" rows="3" placeholder="{{ psbt }}" readonly></textarea>
+            </div>
+            <button id="copy-psbt" type="button" class="btn btn-primary">Copy PSBT</button>
+            <br/>
+            <br/>
+            <br/>
+        {% endif %}
+
+        <h2>Create PSBT/Withdrawal</h2>
+        <form id="form" method="POST">
+            <div class="payment-fields">
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="mode" id="psbt" value="psbt" {% if mode == 'psbt' %}checked{% endif %} />
+                    <label class="form-check-label" for="psbt">Create PSBT</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="mode" id="withdraw" value="withdraw" {% if mode == 'withdraw' %}checked{% endif %} />
+                    <label class="form-check-label" for="withdraw">Create Withdrawal</label>
+                </div>
+                <br />
+                <div class="alert alert-dismissible alert-warning">
+                    Unit:
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="unit" id="btc" value="btc" {% if unit == 'btc' %}checked{% endif %} required />
+                        <label class="form-check-label" for="btc"><strong>BTC</strong></label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="unit" id="sat" value="sat" checked />
+                        <label class="form-check-label" for="sat"><strong>SAT</strong></label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="address" class="form-label">Recipient Address</label>
+                    <input type="text" id="address" name="address" class="payment form-control" placeholder="Recipient Address" required />
+                </div>
+                <label for="amount" class="form-label">Amount</label>
+                <div class="input-group">
+                    <input type="text" id="amount" name="amount" class="payment form-control" placeholder="Amount" required />
+                    <div class="input-group-append">
+                        <button class="btn btn-outline-secondary" type="button" id="max">Max</button>
+                    </div>
+                </div>
+            </div>
+            <button id="form-remove-output" type="button" class="btn btn-danger btn-sm">Remove</button>
+            <br/>
+            <br/>
+            <button id="form-add-output" type="button" class="btn btn-primary btn-sm">Add Output</button>
+            <br/>
+            <br/>
+            <button id="form-submit" type="button" class="btn btn-primary">Submit</button>
+        </form>
+    </div>
 {% endblock %}
 
 {% block scripts %}
-<script>
-    function confirm(form_class, outputs, totalBtc, action, unit) {
-        if (!document.querySelector(form_class).reportValidity()) {
-            return;
-        }
-        if (isNaN(totalBtc) || totalBtc <= 0) {
-            bootbox.alert({message: 'Invalid amount'});
-            return;
-        }
-        bootbox.confirm({
-            title: `Confirm Create ${action}`,
-            message: `Total: ${totalBtc}${unit}. Do you want to create the ${action}?`,
-            buttons: {
-                confirm: {
-                    label: 'Yes',
-                    className: 'btn-success'
-                },
-                cancel: {
-                    label: 'No',
-                    className: 'btn-danger'
-                }
-            },
-            callback: function (result) {
-                if (result)
-                    $(form_class).submit();
+    <script>
+        function confirm(form_class, outputs, totalBtc, action, unit) {
+            if (!document.querySelector(form_class).reportValidity()) {
+                return;
             }
-        });
-    }
+            if (isNaN(totalBtc) || totalBtc <= 0) {
+                bootbox.alert({message: 'Invalid amount'});
+                return;
+            }
+            bootbox.confirm({
+                title: `Confirm Create ${action}`,
+                message: `Total: ${totalBtc}${unit}. Do you want to create the ${action}?`,
+                buttons: {
+                    confirm: {
+                        label: 'Yes',
+                        className: 'btn-success'
+                    },
+                    cancel: {
+                        label: 'No',
+                        className: 'btn-danger'
+                    }
+                },
+                callback: function (result) {
+                    if (result) {
+                        $(form_class).submit();
+                    }
+                }
+            });
+        }
 
-    function addOutput(addr, amount) {
-        document.querySelector(".payment-fields").insertAdjacentHTML("afterend",
-            `
+        function addOutput(addr, amount) {
+            document.querySelector(".payment-fields").insertAdjacentHTML("afterend",
+                `
             <div class="payment-fields">
                 <hr>
                 <div class="form-group">
@@ -110,76 +111,76 @@
                 </div>
             </div>
         `);
-        $('#form-remove-output').show();
-    }
-
-    $(document).ready(function() {
-        $('#copy-psbt').click(function() {
-            navigator.clipboard.writeText("{{ psbt }}");
-        });
-
-        $('#max').click(function() {
-            var ele = $('#max').parent().prev();
-            console.log(ele);
-            const unit = document.querySelector('input[name="unit"]:checked').value;
-            if(unit == 'btc')
-                return ele.val('{{ onchain }}');
-            else if(unit == 'sat')
-                return ele.val('{{ onchain_sats }}');
-            else
-                return
-        });
-
-        $('#form-remove-output').hide();
-        $('#form-remove-output').click(function() {
-            var ele = $('.payment-fields').last();
-            console.log(ele);
-            ele.remove();
-            if ($('.payment-fields').length == 1)
-                $('#form-remove-output').hide();
-            return false
-        });
-
-        $('#form-add-output').click(function() {
-            addOutput('', '');
-            return false;
-        });
-
-        $('#form-submit').click(function() {
-            var outputs = [];
-            var paymentFields = document.getElementsByClassName('payment');
-            var totalBtc = 0;
-            for (var i = 0; i < paymentFields.length; i += 2) {
-                var output = {sats: paymentFields[i].value, btc: paymentFields[i + 1].value};
-                outputs.push(output);
-                totalBtc += parseFloat(output.btc);
-            }
-            totalBtc = Math.round(totalBtc * 100000000) / 100000000;
-            const mode = document.querySelector('input[name="mode"]:checked').value;
-            const unit = document.querySelector('input[name="unit"]:checked').value;
-            var action = '!ERR!';
-            if (mode == 'psbt')
-                action = 'PSBT';
-            else if (mode == 'withdraw')
-                action = 'Withdrawal Transaction';
-            else
-                return;
-            confirm('#form', outputs, totalBtc, action, unit);
-            return false;
-        });
-
-        // load initial values
-        var addrs = {{ addrs | safe }};
-        var amounts = {{ amounts | safe }};
-        for (var i = 0; i < addrs.length; i++) {
-            if (i == 0) {
-                $('#address').val(addrs[i]);
-                $('#amount').val(amounts[i]);
-            } else {
-                addOutput(addrs[i], amounts[i]);
-            }
+            $('#form-remove-output').show();
         }
 
-    });
-</script>
+        $(document).ready(function() {
+            $('#copy-psbt').click(function() {
+                navigator.clipboard.writeText("{{ psbt }}");
+            });
+
+            $('#max').click(function() {
+                var ele = $('#max').parent().prev();
+                console.log(ele);
+                const unit = document.querySelector('input[name="unit"]:checked').value;
+                if(unit == 'btc')
+                return ele.val('{{ onchain }}');
+                else if(unit == 'sat')
+                return ele.val('{{ onchain_sats }}');
+                else
+                return
+            });
+
+            $('#form-remove-output').hide();
+            $('#form-remove-output').click(function() {
+                var ele = $('.payment-fields').last();
+                console.log(ele);
+                ele.remove();
+                if ($('.payment-fields').length == 1)
+                $('#form-remove-output').hide();
+                return false
+            });
+
+            $('#form-add-output').click(function() {
+                addOutput('', '');
+                return false;
+            });
+
+            $('#form-submit').click(function() {
+                var outputs = [];
+                var paymentFields = document.getElementsByClassName('payment');
+                var totalBtc = 0;
+                for (var i = 0; i < paymentFields.length; i += 2) {
+                    var output = {sats: paymentFields[i].value, btc: paymentFields[i + 1].value};
+                    outputs.push(output);
+                    totalBtc += parseFloat(output.btc);
+                }
+                totalBtc = Math.round(totalBtc * 100000000) / 100000000;
+                const mode = document.querySelector('input[name="mode"]:checked').value;
+                const unit = document.querySelector('input[name="unit"]:checked').value;
+                var action = '!ERR!';
+                if (mode == 'psbt')
+                action = 'PSBT';
+                else if (mode == 'withdraw')
+                action = 'Withdrawal Transaction';
+                else
+                return;
+                confirm('#form', outputs, totalBtc, action, unit);
+                return false;
+            });
+
+            // load initial values
+            var addrs = {{ addrs | safe }};
+            var amounts = {{ amounts | safe }};
+            for (var i = 0; i < addrs.length; i++) {
+                if (i == 0) {
+                    $('#address').val(addrs[i]);
+                    $('#amount').val(amounts[i]);
+                } else {
+                    addOutput(addrs[i], amounts[i]);
+                }
+            }
+
+        });
+    </script>
 {% endblock %}

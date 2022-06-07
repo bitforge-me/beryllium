@@ -1,9 +1,5 @@
 #!/usr/bin/python3
 
-# pylint: disable=invalid-name
-# pylint: disable=unused-variable
-# pylint: disable-msg=too-many-statements
-
 import sys
 import argparse
 import time
@@ -37,27 +33,26 @@ WS_URL = f'{WS_SCHEMA}://{SERVER_NAME}/'
 
 EXIT_NO_COMMAND = 1
 
-# pylint: disable=too-many-locals
 def construct_parser():
     # construct argument parser
     parser = argparse.ArgumentParser()
 
     subparsers = parser.add_subparsers(dest='command')
 
-    ## General
+    # General
 
     parser_sign = subparsers.add_parser('sign', help='Sign an arbritrary message')
     parser_sign.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
     parser_sign.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
     parser_sign.add_argument('message', metavar='MESSAGE', type=str, help='the message')
 
-    ## Websocket
+    # Websocket
 
     parser_ws = subparsers.add_parser('websocket', help='Listen to a websocket')
     parser_ws.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
     parser_ws.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
 
-    ## REST commands
+    # REST commands
 
     parser_api_key_create = subparsers.add_parser('api_key_create', help='Create an api key with your username and password')
     parser_api_key_create.add_argument('email', metavar='EMAIL', type=str, help='email')
@@ -200,6 +195,7 @@ def websocket(args):
     ns = '/paydb'
     # open websocket
     sio = socketio.Client()
+
     @sio.event(namespace=ns)
     def connect():
         print('connection established')
@@ -348,7 +344,6 @@ def referral_claim(args):
     check_request_status(r)
     print(r.text)
 
-# pylint: disable=too-many-branches
 def run_parser():
     # parse arguments
     parser = construct_parser()

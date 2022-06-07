@@ -16,7 +16,8 @@ EMAIL = app.config['CROWN_ACCOUNT_EMAIL']
 API_KEY = app.config['CROWN_API_KEY']
 API_PASSWORD = app.config['CROWN_API_PASSWORD']
 CROWN_ACCOUNT_CODE = app.config['CROWN_ACCOUNT_CODE']
-URL_BASE = 'XXX' #TODO
+CROWN_WITHDRAW_FEE_INT = int(app.config['CROWN_WITHDRAW_FEE_INT'])
+URL_BASE = 'XXX' # TODO
 if app.config['TESTNET']:
     URL_BASE = 'https://api.mycrown.services/'
 
@@ -127,22 +128,16 @@ def transactions_filtered_type(type_: str, from_date: datetime, to_date: datetim
         txs.append(_parse_tx(json_tx))
     return txs
 
-def withdrawal(amount: int, reference: str, account_number: str, account_name: str, account_address_01: str, account_address_02: str, account_address_country: str) -> str:
+def withdrawal(amount: int, reference: str, code: str, account_number: str, account_name: str, account_address_01: str, account_address_02: str, account_address_country: str) -> str:
     logger.info(':: calling withdrawal to bank..')
-    amount = amount / 100.0
-    r = _req('transaction/withdrawal/bank', dict(source_currency=CURRENCY, to_currency=CURRENCY, amount=amount, pre_assigned_code=CROWN_ACCOUNT_CODE, reference=reference, \
-        sent_payment_to_country='New Zealand', to_account_number=account_number, bank_swift_bic='-', bank_account_name=account_name, \
-        bank_owner_address_1=account_address_01, bank_owner_address_2=account_address_02, bank_owner_address_country=account_address_country))
+    amount_float = amount / 100.0
+    r = _req('transaction/withdrawal/bank', dict(source_currency=CURRENCY, to_currency=CURRENCY, amount=amount_float, pre_assigned_code=reference, reference=code,
+                                                 sent_payment_to_country='New Zealand', to_account_number=account_number, bank_swift_bic='-', bank_account_name=account_name,
+                                                 bank_owner_address_1=account_address_01, bank_owner_address_2=account_address_02, bank_owner_address_country=account_address_country))
     _check_request_status(r)
-    return r.json(['transaction_id'])
+    return r.json()['transaction_id']
 
 if __name__ == '__main__':
     setup_logging(logger, logging.DEBUG)
-    #for tx in transactions():
-    #    print(tx)
-    #print(transaction_details('BD88C41C093B7CAAF224D50682A8FFD7'))
-    #print(balance())
-    #for tx in transactions_filtered_status(CrownTx.STATUS_ACCEPTED, datetime.now() - timedelta(days=7), datetime.now()):
-    #    print(tx)
     for tx in transactions_filtered_type(CrownTx.TYPE_DEPOSIT, datetime.now() - timedelta(days=7), datetime.now()):
         print(tx)

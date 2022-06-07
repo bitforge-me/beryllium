@@ -18,7 +18,7 @@ class FCM:
                     fp.write(firebase_credentials)
                     fp.flush()
                     self.init_firebase(fp.name)
-            except Exception as e: # pylint: disable=broad-except
+            except Exception as e:
                 logger.error(e)
                 logger.error('"firebase_credentials" failed to load from json')
 

@@ -25,18 +25,18 @@
 {% endblock %}
 
 {% block scripts %}
-<script type="text/javascript">
-    var form_id = null;
+    <script type="text/javascript">
+        var form_id = null;
 
-    $('.submit_button').click(function() {
-        form_id = null;
-        form_id = this.getAttribute('data-form');
-        var action = this.getAttribute('data-action');
-        $('#submit_action').text(action);
-    });
+        $('.submit_button').click(function() {
+            form_id = null;
+            form_id = this.getAttribute('data-form');
+            var action = this.getAttribute('data-action');
+            $('#submit_action').text(action);
+        });
 
-    $('#submit').click(function(){
-        $('#' + form_id).submit();
-    });
-</script>
+        $('#submit').click(function(){
+            $('#' + form_id).submit();
+        });
+    </script>
 {% endblock %}
