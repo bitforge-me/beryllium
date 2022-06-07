@@ -29,3 +29,4 @@
 - include: docker.yml
   when: full_deploy
 - include: beryllium.yml
+- include: fail2ban.yml
