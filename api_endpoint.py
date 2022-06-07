@@ -602,8 +602,9 @@ def _create_withdrawal(user: User, asset: str, l2_network: str | None, amount_de
         exchange_reference = None
         wallet_reference = None
         # step 1) create CryptoWithdrawal and ftx and commit so that users balance is updated
+        amount_int = assets.asset_dec_to_int(asset, amount_dec)
         amount_plus_fee_int = assets.asset_dec_to_int(asset, amount_plus_fee_dec)
-        crypto_withdrawal = CryptoWithdrawal(user, asset, l2_network, amount_plus_fee_int, recipient, exchange_reference, wallet_reference)
+        crypto_withdrawal = CryptoWithdrawal(user, asset, l2_network, amount_int, recipient, exchange_reference, wallet_reference)
         ftx = fiatdb_core.tx_create(db.session, user, FiatDbTransaction.ACTION_DEBIT, asset, amount_plus_fee_int, f'crypto withdrawal: {crypto_withdrawal.token}')
         if not ftx:
             logger.error('failed to create fiatdb transaction for crypto withdrawal %s', crypto_withdrawal.token)
@@ -788,18 +789,20 @@ def fiat_withdrawal_create_req():
         entry = AddressBook(api_key.user, asset, recipient, recipient_description, account_name, account_addr_01, account_addr_02, account_addr_country)
     db.session.add(entry)
     with coordinator.lock:
+        amount_plus_fee_dec = amount_dec + assets.asset_withdraw_fee(asset, None)
         balance = fiatdb_core.user_balance(db.session, asset, api_key.user)
         balance_dec = assets.asset_int_to_dec(asset, balance)
-        if balance_dec < amount_dec:
+        if balance_dec < amount_plus_fee_dec:
             return bad_request(web_utils.INSUFFICIENT_BALANCE)
         amount_int = assets.asset_dec_to_int(asset, amount_dec)
+        amount_plus_fee_int = assets.asset_dec_to_int(asset, amount_plus_fee_dec)
         fiat_withdrawal = FiatWithdrawal(api_key.user, asset, amount_int, recipient)
         app_name = app.config['CROWN_WITHDRAW_NAME']
         payout_request = payouts_core.payout_create(amount_int, app_name, fiat_withdrawal.token, entry)
         if not payout_request:
             return bad_request(web_utils.FAILED_PAYMENT_CREATE)
         fiat_withdrawal.payout_request = payout_request
-        ftx = fiatdb_core.tx_create(db.session, api_key.user, FiatDbTransaction.ACTION_DEBIT, asset, amount_int, f'fiat withdrawal: {fiat_withdrawal.token}')
+        ftx = fiatdb_core.tx_create(db.session, api_key.user, FiatDbTransaction.ACTION_DEBIT, asset, amount_plus_fee_int, f'fiat withdrawal: {fiat_withdrawal.token}')
         if not ftx:
             logger.error('failed to create fiatdb transaction for fiat withdrawal %s', fiat_withdrawal.token)
             return bad_request(web_utils.FAILED_PAYMENT_CREATE)
