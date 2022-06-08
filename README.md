@@ -1,6 +1,6 @@
 ## DB Migrations
 
-Note: The first migration file was taken when the DB was at git revision 1bad8a09. If you already have a database you should ensure your database container schema matches 1bad8a09 and then run `./flask-cli.sh db stamp head` to tell flask-migrate that your database is starting from that state.
+Note: The first migration file was taken when the DB was at git revision `8acb5f22`. If you already have a database you should ensure your database container schema matches 1bad8a09 and then run `./flask-cli.sh db stamp head` to tell flask-migrate that your database is starting from that state.
 
 `./flask-cli.sh db upgrade` to apply new migrations to your database container
 
