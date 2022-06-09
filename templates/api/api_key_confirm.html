@@ -7,7 +7,6 @@
                 <div class="card-body">
                     <h5 class="card-title">Email Login Request</h5>
                     <form method="POST">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <h6>Device Name:</h6>
                         <span>{{req.device_name | e}}</span>
                         <h6>Permissions:</h6>

@@ -23,6 +23,7 @@
                     </div>
 
                     <form id="aplyid_form" method="post" style="display: none">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <input type="hidden" id="token" value="{{token}}" name="token"/>
                         <div class="row">
                             <div class="col-sm-12">
