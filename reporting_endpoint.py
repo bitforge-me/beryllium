@@ -1,10 +1,3 @@
-<<<<<<< HEAD
-=======
-# pylint: disable=unbalanced-tuple-unpacking
-# pylint: disable=too-many-locals
-# pylint: disable=unnecessary-lambda-assignment
-
->>>>>>> changes as per requested
 import logging
 from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta

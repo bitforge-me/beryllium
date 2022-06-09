@@ -26,7 +26,6 @@ class MyJSONEncoder(flask.json.JSONEncoder):
         return super().default(o)
 
 # Create Flask application
-
 app = Flask(__name__)
 app.json_encoder = MyJSONEncoder
 app.wsgi_app = ProxyFix(app.wsgi_app) # type: ignore
