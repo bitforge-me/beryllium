@@ -72,7 +72,7 @@ services:
       - ./web/nginx:/etc/nginx/templates
       - ./web/alloy:/etc/nginx/alloy
       - ./web/certbot/conf:/etc/letsencrypt
-      - /var/log/nginx:/var/log/nginx
+      - ./web/log/nginx:/var/log/nginx
 
   bitcoind:
     image: btcpayserver/bitcoin:22.0
