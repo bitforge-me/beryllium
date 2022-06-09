@@ -12,8 +12,8 @@ from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
-SERVER_VERSION = 9
-CLIENT_VERSION_DEPLOYED = 7
+SERVER_VERSION = 10
+CLIENT_VERSION_DEPLOYED = 8
 
 MISSING_VITAL_SETTING = False
 
