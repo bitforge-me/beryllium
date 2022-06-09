@@ -18,9 +18,7 @@
       shell: curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
 
     - name: Add docker repository
-      ansible.builtin.apt_repository:
-        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ansible_distribution_release}} stable"
-        state: present
+      shell: add-apt-repository -y "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 
     - name: install packages (2)
       apt:
