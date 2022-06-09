@@ -2,29 +2,29 @@
 
 {% block content %}
 
-<div class="card">
-    <div class="card-body">
-        <h5 class="card-title">Send email</h5>
-        <form id="general-form" method="POST">
-            <div class="form-group">
-                <label for="subject">Subject</label>
-                <input type="text" class="form-control" id="subject" name="subject" aria-describedby="subjectHelp" value="{{subject}}">
-                <small id="subjectHelp" class="form-text text-muted">The subject.</small>
-            </div>
-            <div class="form-group">
-                <label for="recipient">Recipient</label>
-                <input type="text" class="form-control" id="recipient" name="recipient" aria-describedby="recipientHelp" value="{{recipient}}">
-                <small id="recipientHelp" class="form-text text-muted">The email recipient (address).</small>
-            </div>
-            <div class="form-group">
-                <label for="message">Message</label>
-                <textarea type="text" class="form-control" id="message" name="message" aria-describedby="messageHelp" rows="3">{{message}}</textarea>
-                <small id="messageHelp" class="form-text text-muted">The email message.</small>
-            </div>
-            <button id="general-form-submit" type="submit" class="btn btn-primary">Send</button>
-        </form>
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Send email</h5>
+            <form id="general-form" method="POST">
+                <div class="form-group">
+                    <label for="subject">Subject</label>
+                    <input type="text" class="form-control" id="subject" name="subject" aria-describedby="subjectHelp" value="{{subject}}" />
+                    <small id="subjectHelp" class="form-text text-muted">The subject.</small>
+                </div>
+                <div class="form-group">
+                    <label for="recipient">Recipient</label>
+                    <input type="text" class="form-control" id="recipient" name="recipient" aria-describedby="recipientHelp" value="{{recipient}}" />
+                    <small id="recipientHelp" class="form-text text-muted">The email recipient (address).</small>
+                </div>
+                <div class="form-group">
+                    <label for="message">Message</label>
+                    <textarea type="text" class="form-control" id="message" name="message" aria-describedby="messageHelp" rows="3">{{message}}</textarea>
+                    <small id="messageHelp" class="form-text text-muted">The email message.</small>
+                </div>
+                <button id="general-form-submit" type="submit" class="btn btn-primary">Send</button>
+            </form>
+        </div>
     </div>
-</div>
 
 {% endblock %}
 

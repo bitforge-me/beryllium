@@ -1,15 +1,14 @@
-# pylint: disable=unbalanced-tuple-unpacking
-import io
 import logging
 
-from flask import Blueprint, request, render_template, flash, redirect, make_response, url_for
+from flask import Blueprint, request, render_template, flash, redirect, url_for
 from flask_security import roles_accepted
 
 from app_core import db, limiter
 from models import PayoutRequest, PayoutGroup, WindcavePaymentRequest, Role
 import web_utils
-import bnz_ib4b
-import payments_core
+import payouts_core
+import windcave
+import crown_financial
 import depwith
 
 logger = logging.getLogger(__name__)
@@ -32,17 +31,17 @@ def payment_interstitial(token=None):
         depwith.fiat_deposit_update_and_commit(db.session, req.fiat_deposit)
     if req.status != req.STATUS_CREATED:
         return redirect(url_for('payments.payment', token=token))
-    return render_template('payments/payment_request.html', token=token, interstitial=True, mock=payments_core.mock())
+    return render_template('payments/payment_request.html', token=token, interstitial=True, mock=windcave.mock())
 
 @payments.route('/payment/mock/<token>', methods=['GET'])
 def payment_mock_confirm(token=None):
-    if not payments_core.mock():
+    if not windcave.mock():
         return web_utils.bad_request('not found', code=404)
     req = WindcavePaymentRequest.from_token(db.session, token)
     if not req:
         flash('Sorry payment request not found', category='danger')
         return redirect('/')
-    payments_core.payment_request_mock_confirm(req)
+    windcave.payment_request_mock_confirm(req)
     if req.fiat_deposit:
         depwith.fiat_deposit_update_and_commit(db.session, req.fiat_deposit)
     return redirect(url_for('payments.payment', token=token))
@@ -53,7 +52,7 @@ def payment(token=None):
     if not req:
         flash('Sorry payment request not found', category='danger')
         return redirect('/')
-    payments_core.payment_request_status_update(req)
+    windcave.payment_request_status_update(req)
     completed = req.status == req.STATUS_COMPLETED
     cancelled = req.status == req.STATUS_CANCELLED
     return render_template('payments/payment_request.html', token=token, completed=completed, cancelled=cancelled, req=req)
@@ -83,25 +82,42 @@ def payout_group(token=None):
 @payments.route('/payout_group_create', methods=['POST'])
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def payout_group_create():
-    group = payments_core.payout_group_create()
+    group = payouts_core.payout_group_create()
     if group:
         db.session.commit()
         return redirect(f'/payments/payout_group/{group.token}')
     flash('Sorry group not created', category='danger')
     return redirect('/')
 
-@payments.route('/payout_group_processed', methods=['POST'])
+@payments.route('/payout_group_process_all', methods=['POST'])
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
-def payout_group_processed():
+def payout_group_process_all():
     content = request.form
     token = content['token']
     logger.info('looking for %s', token)
     group = PayoutGroup.from_token(db.session, token)
     if group:
-        payments_core.set_payout_requests_complete(group.requests)
-        db.session.commit()
+        asset, total, count = group.total_payout()
+        assert asset == crown_financial.CURRENCY
+        balance = crown_financial.balance()
+        total += crown_financial.CROWN_WITHDRAW_FEE_INT * count
+        if balance < total:
+            flash('Sorry, crown balance is not sufficient')
+        else:
+            for req in group.requests:
+                # ignore suspended or completed
+                if req.status in (req.STATUS_SUSPENDED, req.STATUS_COMPLETED):
+                    continue
+                address_book = req.address_book
+                if not address_book:
+                    logger.error('unable to create withdrawal for payout without address_book (%s)', req.token)
+                    continue
+                crown_txn_id = crown_financial.withdrawal(req.amount, req.reference, req.code, address_book.recipient, address_book.account_name, address_book.account_addr_01, address_book.account_addr_02, address_book.account_addr_country)
+                if crown_txn_id:
+                    payouts_core.set_payout_request_complete(req)
+                    db.session.commit()
         return redirect(f'/payments/payout_group/{token}')
-    flash('Sorry group not found', category='danger')
+    flash('Sorry, group not found', category='danger')
     return redirect('/')
 
 @payments.route('/payout_request_suspend', methods=['POST'])
@@ -112,7 +128,7 @@ def payout_suspend():
     logger.info('looking for %s', token)
     req = PayoutRequest.from_token(db.session, token)
     if req:
-        payments_core.set_payout_request_suspended(req)
+        payouts_core.set_payout_request_suspended(req)
         db.session.commit()
         return redirect('/payments/payouts')
     flash('Sorry payout not found', category='danger')
@@ -126,42 +142,8 @@ def payout_unsuspend():
     logger.info('looking for %s', token)
     req = PayoutRequest.from_token(db.session, token)
     if req:
-        payments_core.set_payout_request_created(req)
+        payouts_core.set_payout_request_created(req)
         db.session.commit()
         return redirect('/payments/payouts')
     flash('Sorry payout not found', category='danger')
     return redirect('/')
-
-def ib4b_response(token, reqs):
-    # create output
-    output = io.StringIO()
-    # process requests
-    txs = []
-    sender_account = ''
-    sender = ''
-    for req in reqs:
-        # ingore already completed
-        if req.status == req.STATUS_COMPLETED:
-            continue
-        # ignore suspended
-        if req.status == req.STATUS_SUSPENDED:
-            continue
-        tx = (req.receiver_account, req.amount, req.sender_reference, req.sender_code, req.receiver, req.receiver_reference, req.receiver_code, req.receiver_particulars)
-        txs.append(tx)
-        sender_account = req.sender_account
-        sender = req.sender
-    bnz_ib4b.write_txs(output, "", sender_account, sender, txs)
-    # return file response
-    resp = make_response(output.getvalue())
-    resp.headers['Content-Type'] = "application/octet-stream"
-    resp.headers['Content-Disposition'] = f"inline; filename=bnz_{token}.txt"
-    return resp
-
-@payments.route('/payout_group/BNZ_IB4B_file/<token>', methods=['GET'])
-@roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
-def payout_group_ib4b_file(token=None):
-    group = PayoutGroup.from_token(db.session, token)
-    if not group:
-        flash('Sorry group not found', category='danger')
-        return redirect('/')
-    return ib4b_response("group_" + group.token, group.requests)

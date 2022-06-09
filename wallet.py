@@ -85,7 +85,7 @@ def bitcoind_service_url():
 
 def bitcoind_rpc_url(service_url, name, *args):
     bitcoind = Proxy(service_url=service_url)
-    return bitcoind._call(name, *args) # pylint: disable=protected-access
+    return bitcoind._call(name, *args)
 
 def bitcoind_rpc(name, *args):
     service_url = bitcoind_service_url()
@@ -263,7 +263,6 @@ def ln_any_deposit_completed(lastpay_index):
         return None, e.error
 
 def _get_raw_tx(service_url, txid, blockhash=None):
-    # pylint: disable=bare-except
     try:
         if blockhash:
             return bitcoind_rpc_url(service_url, 'getrawtransaction', txid, True, blockhash)
@@ -273,7 +272,6 @@ def _get_raw_tx(service_url, txid, blockhash=None):
 
 def _get_raw_tx_using_bitaps_blockhash(service_url, txid):
     network = 'testnet/v1' if TESTNET else 'v1'
-    # pylint: disable=bare-except
     try:
         tx = requests.get(f'https://api.bitaps.com/btc/{network}/blockchain/transaction/{txid}').json()
         blockhash = tx['data']['blockHash']
@@ -383,6 +381,7 @@ def btc_txs_load(addr=None) -> list[BtcTxBasic]:
             inputs.append(BtcInputBasic(input_['txid'], input_address, input_['index'], input_sats, ours))
         if not addr or has_input_ours or has_output_ours:
             txs.append(BtcTxBasic(tx['hash'], tx['blockheight'], inputs, outputs, input_sum - output_sum, has_output_ours, has_input_ours))
+
         def zero_first(txn: BtcTxBasic):
             if txn.blockheight == 0:
                 return 99999999999999

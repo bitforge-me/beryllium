@@ -29,36 +29,36 @@ class Asset:
 
 @dataclass
 class Market:
-    base_asset: str
-    quote_asset: str
+    base_asset: Asset
+    quote_asset: Asset
 
 TESTNET = app.config['TESTNET']
 NZD = Asset(symbol='NZD', name='New Zealand Dollar', decimals=2, withdraw_fee=Dec(7), min_withdraw=Dec(20), is_crypto=False, l2_network=None,
-    deposit_instr=None, withdraw_instr=None)
+            deposit_instr=None, withdraw_instr=None)
 BTCLN = Asset(symbol='BTC-LN', name='Bitcoin Lightning', decimals=8, withdraw_fee=Dec('0'), min_withdraw=Dec('0.00000001'), is_crypto=True, l2_network=None,
-    deposit_instr=None, withdraw_instr=None)
+              deposit_instr=None, withdraw_instr=None)
 BTC = Asset(symbol='BTC', name='Bitcoin', decimals=8, withdraw_fee=Dec('0.0003'), min_withdraw=Dec('0.001'), is_crypto=True, l2_network=BTCLN,
-    deposit_instr=None, withdraw_instr=None)
+            deposit_instr=None, withdraw_instr=None)
 USDT = Asset(symbol='USDT', name='Tether USD', decimals=2, withdraw_fee=Dec(20), min_withdraw=Dec(50), is_crypto=True, l2_network=None,
-    deposit_instr='This is an ethereum network address. Only deposit from the ethereum network.', withdraw_instr='Only withdraw to an ethereum address on the ethereum network.')
+             deposit_instr='This is an ethereum network address. Only deposit from the ethereum network.', withdraw_instr='Only withdraw to an ethereum address on the ethereum network.')
 USDC = Asset(symbol='USDC', name='USD Coin', decimals=2, withdraw_fee=Dec(20), min_withdraw=Dec(50), is_crypto=True, l2_network=None,
-    deposit_instr='This is an ethereum network address. Only deposit from the ethereum network.', withdraw_instr='Only withdraw to an ethereum address on the ethereum network.')
+             deposit_instr='This is an ethereum network address. Only deposit from the ethereum network.', withdraw_instr='Only withdraw to an ethereum address on the ethereum network.')
 ETH = Asset(symbol='ETH', name='Ethereum', decimals=18, withdraw_fee=Dec('0.0052'), min_withdraw=Dec('0.01'), is_crypto=True, l2_network=None,
-    deposit_instr=None, withdraw_instr=None)
+            deposit_instr=None, withdraw_instr=None)
 DOGE = Asset(symbol='DOGE', name='Dogecoin', decimals=8, withdraw_fee=Dec(5), min_withdraw=Dec(20), is_crypto=True, l2_network=None,
-    deposit_instr=None, withdraw_instr=None)
+             deposit_instr=None, withdraw_instr=None)
 LTC = Asset(symbol='LTC', name='Litecoin', decimals=8, withdraw_fee=Dec('0.01'), min_withdraw=Dec('0.03'), is_crypto=True, l2_network=None,
-    deposit_instr=None, withdraw_instr=None)
+            deposit_instr=None, withdraw_instr=None)
 WAVES = Asset(symbol='WAVES', name='Waves', decimals=8, withdraw_fee=Dec('0.001'), min_withdraw=Dec('0.003'), is_crypto=True, l2_network=None,
-    deposit_instr=None, withdraw_instr=None)
+              deposit_instr=None, withdraw_instr=None)
 ASSETS = dict(NZD=NZD, BTC=BTC, USDT=USDT, USDC=USDC, ETH=ETH, DOGE=DOGE, LTC=LTC, WAVES=WAVES)
-MARKETS = {'BTC-NZD': Market(base_asset=BTC, quote_asset=NZD), \
-    'BTC-USDT': Market(base_asset=BTC, quote_asset=USDT), \
-    'BTC-USDC': Market(base_asset=BTC, quote_asset=USDC), \
-    'ETH-NZD': Market(base_asset=ETH, quote_asset=NZD), \
-    'DOGE-NZD': Market(base_asset=DOGE, quote_asset=NZD), \
-    'LTC-NZD': Market(base_asset=LTC, quote_asset=NZD), \
-    'WAVES-BTC': Market(base_asset=WAVES, quote_asset=BTC)}
+MARKETS = {'BTC-NZD': Market(base_asset=BTC, quote_asset=NZD),
+           'BTC-USDT': Market(base_asset=BTC, quote_asset=USDT),
+           'BTC-USDC': Market(base_asset=BTC, quote_asset=USDC),
+           'ETH-NZD': Market(base_asset=ETH, quote_asset=NZD),
+           'DOGE-NZD': Market(base_asset=DOGE, quote_asset=NZD),
+           'LTC-NZD': Market(base_asset=LTC, quote_asset=NZD),
+           'WAVES-BTC': Market(base_asset=WAVES, quote_asset=BTC)}
 
 class MarketSide(Enum):
     BID = 'bid'
@@ -68,7 +68,7 @@ class MarketSide(Enum):
     def parse(cls, val: str):
         try:
             return cls(val)
-        except: # pylint: disable=bare-except
+        except:
             return None
 
 #
@@ -107,16 +107,17 @@ def market_side_nice(side: MarketSide | str) -> str:
             return 'buy'
     return 'n/a'
 
-def assets_from_market(market: str) -> tuple[str, str]:
+def assets_from_market(market: str) -> list[str]:
     return market.split('-')
 
 def asset_decimals(asset: str) -> int:
     return ASSETS[asset].decimals
 
 def asset_withdraw_fee(asset: str, l2_network: str | None) -> Dec:
-    if not l2_network:
-        return ASSETS[asset].withdraw_fee
-    return ASSETS[asset].l2_network.withdraw_fee
+    asset_ = ASSETS[asset]
+    if not l2_network or not asset_.l2_network:
+        return asset_.withdraw_fee
+    return asset_.l2_network.withdraw_fee
 
 def asset_min_withdraw(asset: str, l2_network: str | None) -> Dec:
     ass = ASSETS[asset]
@@ -178,7 +179,7 @@ def asset_recipient_validate(asset: str, l2_network: str | None, recipient: str)
         try:
             bitcoin.wallet.CBitcoinAddress(recipient)
             result = True
-        except: # pylint: disable=bare-except
+        except:
             pass
     elif asset in (USDT.symbol, USDC.symbol, ETH.symbol):
         result = web3.Web3.isAddress(recipient)

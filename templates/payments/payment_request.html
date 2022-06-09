@@ -2,15 +2,15 @@
 
 {% block content %}
 
-        <!-- Page Content -->
-        <div class="container">
-            <div class="row">
-                <div class="col-lg-12">
-                    {% if mock %}
+    <!-- Page Content -->
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-12">
+                {% if mock %}
                     <form action="/payments/payment/mock/{{token}}">
                         <button type="submit">Complete payment (mock)</button>
                     </form>
-                    {% elif interstitial %}
+                {% elif interstitial %}
                     <h3>Account2Account</h3>
                     <ul>
                         <li>
@@ -46,58 +46,59 @@
                                 <li>
                                     Westpac
                                 </li>
+                            </ul>
                         </li>
+                        <form action="/payments/payment/x/{{token}}">
+                            <button type="submit">Continue</button>
+                        </form>
                     </ul>
-                    <form action="/payments/payment/x/{{token}}">
-                        <button type="submit">Continue</button>
-                    </form>
-                    {% else %}
-                        {% if not completed and not cancelled%}
+                {% else %}
+                    {% if not completed and not cancelled%}
                         <h3 style="margin-top: 40px;">Payment status: {{req.windcave_status}}</h3>
-                            {% if req.windcave_authorised != None %}
+                        {% if req.windcave_authorised != None %}
                             <p>
                                 Authorised: {{req.windcave_authorised}}
                             </p>
-                            {% endif %}
-                            {% if req.windcave_allow_retry != None %}
+                        {% endif %}
+                        {% if req.windcave_allow_retry != None %}
                             <p>
                                 Allow retry: {{req.windcave_allow_retry}}
                             </p>
-                            {% endif %}
-                            {% if req.windcave_url %}
+                        {% endif %}
+                        {% if req.windcave_url %}
                             <p>
                                 To continue your payment go to <a href="{{req.windcave_url}}">{{req.windcave_url}}</a>.
                             </p>
-                            {% endif %}
-                        {% elif completed%}
+                        {% endif %}
+                    {% elif completed%}
                         <h3 style="margin-top: 40px;">Payment completed</h3>
                         <p>
                             Your payment is complete.
                         </p>
-                        {% elif cancelled%}
+                    {% elif cancelled%}
                         <h3 style="margin-top: 40px;">Payment cancelled</h3>
                         <p>
                             Your payment is cancelled.
                         </p>
-                        {% endif %}
-                        <p>Thank-you.</p>
                     {% endif %}
-                </div>
+                    <p>Thank-you.</p>
+                {% endif %}
             </div>
         </div>
+    </div>
 {% endblock %}
 
 {% block scripts %}
-        <script type="text/javascript">
-            $(document).ready(function() {
-                {% if interstitial %}
-                {% else %}
-                    {% if not completed and not cancelled %}
-                        {% if req.windcave_url %}
+    <script type="text/javascript">
+        $(document).ready(function() {
+            {% if interstitial %}
+            {% else %}
+                {% if not completed and not cancelled %}
+                    {% if req.windcave_url %}
                         window.location.replace("{{req.windcave_url}}");
-                        {% endif %}
                     {% endif %}
                 {% endif %}
-            });
-        </script>
+            {% endif %}
+        });
+    </script>
 {% endblock %}

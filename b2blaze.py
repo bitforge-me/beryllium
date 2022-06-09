@@ -76,7 +76,7 @@ def backup_file(bucket, filename, bytesio, content_type):
         upload_url, upload_auth_token = backblaze_get_upload_url(api_url, auth_token, bucket_id)
         backblaze_upload_file(upload_url, upload_auth_token, filename, bytesio, content_type)
         return True
-    except Exception as ex: # pylint: disable=broad-except
+    except Exception as ex:
         logger.error('failed to backup file %s', filename)
         logger.error(ex)
     return False
@@ -86,7 +86,7 @@ def restore_file(bucket, filename):
         _, download_url, auth_token = backblaze_authorize_account()
         bytesio = backblaze_download_file(download_url, auth_token, bucket, filename)
         return bytesio
-    except Exception as ex: # pylint: disable=broad-except
+    except Exception as ex:
         logger.error('failed to download pdf')
         logger.error(ex)
     return None

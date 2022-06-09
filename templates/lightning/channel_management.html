@@ -3,161 +3,163 @@
 {% block title %}Channel Management{% endblock %}
 
 {% block content %}
-<div>
-    <br>
-    <div class="alert alert-dismissible alert-info">
-    <h2>Rebalance Channels</h2>
-    <p>Rebalance channels by sending satoshis from one channel into another channel.</p>
-    <form id="rebalance-channel-form" method="POST">
-      <input type="hidden" name="form-name" value="rebalance_channel_form">
-      <div class="form-group">
-        <label for="oscid">From channel</label>
-        <input type="text" name="oscid" class="form-control" id="oscid" placeholder="Channel ID" required>
-      </div>
-      <div class="form-group">
-        <label for="iscid">To channel</label>
-        <input type="text" name="iscid" class="form-control" id="iscid" placeholder="Channel ID" required>
-      </div>
-      <div class="form-group">
-        <label for="iscid">Amount (sats)</label>
-        <input type="number" name="amount" id="amount" class="form-control" required>
-      </div>
-      <button id="rebalance-channel-submit" type="submit" class="btn btn-primary">Rebalance channels</button>
-    </form>
-    </div>
-    <div class="alert alert-dismissible alert-info">
-    <h2>Total Liquidity</h2>
-    <div class="channel">
-      <header class="d-flex justify-content-between mb-2">
-        <span class="capacity">{{total_spendable_sats + total_receivable_sats}}</span>
-        <span class="state"></span>
-      </header>
-      {% if total_spendable_sats + total_receivable_sats > 0 %}
-      <div class="channel-bar">
-        <div class="progress-bar bg-success" role="progressbar" title="Spendable: {{ total_spendable_sats }}" style="width: {{ total_spendable_sats / (total_spendable_sats + total_receivable_sats) * 100 }}%;"></div>
-        <div class="progress-bar bg-info" role="progressbar" title="Receivable: {{ total_receivable_sats }}" style="width: {{ total_receivable_sats / (total_spendable_sats + total_receivable_sats) * 100 }}%;"></div>
-      </div>
-      {% endif %}
-      <ul class="list-unstyled my-3">
-        <li><strong>Spendable:</strong> {{ total_spendable_sats }} sats</li>
-        <li><strong>Receivable:</strong> {{ total_receivable_sats }} sats</li>
-      </ul>
-    </div>
-    <h2>Channels</h2>
-    <ul class="channels">
-    {% for channel in channels %}
-    <button type="button" class="btn btn-light btn-lg btn-block" data-toggle="collapse" href="#collapseExample{{loop.index}}" role="button" aria-expanded="false" aria-controls="collapseExample">
-      <header class="d-flex justify-content-between mb-2">
-        <span class="capacity">{{channel.total_sats}}</span>
-        <span class="state">{% if channel.peer.connected %}active{% else %}offline{% endif %}</span>
-      </header>
-      <div class="channel-bar">
-        {% set ratio = channel.total_sats / largest_channel_sats %}
-        <div class="progress-bar bg-warning" role="progressbar" title="Our reserve: {{ channel.our_reserve_sats }} sats" style="width: {{ channel.our_reserve_sats / channel.total_sats * 100 * ratio }}%;"></div>
-        <div class="progress-bar bg-success" role="progressbar" title="Spendable: {{ channel.spendable_sats }}" style="width: {{ channel.spendable_sats / channel.total_sats * 100 * ratio }}%;"></div>
-        <div class="progress-bar bg-info" role="progressbar" title="Receivable: {{ channel.receivable_sats }}" style="width: {{ channel.receivable_sats / channel.total_sats * 100 * ratio }}%;"></div>
-        <div class="progress-bar bg-warning" role="progressbar" title="Their reserve: {{ channel.their_reserve_sats }}" style="width: {{ channel.their_reserve_sats / channel.total_sats * 100 * ratio }}%;"></div>
-      </div>
-    </button>
-      <div class="collapse" id="collapseExample{{loop.index}}">
-        <div class="card card-body">
-          <ul class="list-unstyled my-3">
-            <li><strong>Channel ID:</strong> {{ channel.short_channel_id }}</li>
-            <li><strong>Status:</strong> {{ channel.state }}</li>
-            <li><strong>Spendable:</strong> {{ channel.spendable_sats }} sats</li>
-            <li><strong>Receivable:</strong> {{ channel.receivable_sats }} sats</li>
-            <li><strong>Age:</strong> n/a</li>
-            <li><strong>Peer:</strong> <small class="break-all">{{ channel.peer.id }}</small></li>
-            <li>
-            {% if channel.state == "CHANNELD_NORMAL" %}
-              <form id="close-channel-form-{{loop.index}}" method="POST">
-                <input type="hidden" name="form-name" value="close_channel_form">
-                <input type="hidden" id="channel_id" name="channel_id" value={{ channel.channel_id }}>
-                <input type="hidden" id="channel_short_id" name="channel_short_id" value={{ channel.short_channel_id }}>
-                <button type="submit" class="close-channel-submit btn-sm btn-secondary">Close channel</button>
-              </form>
-            {% endif %}
-            </li>
-          </ul>
+    <div>
+        <br />
+        <div class="alert alert-dismissible alert-info">
+            <h2>Rebalance Channels</h2>
+            <p>Rebalance channels by sending satoshis from one channel into another channel.</p>
+            <form id="rebalance-channel-form" method="POST">
+                <input type="hidden" name="form-name" value="rebalance_channel_form" />
+                <div class="form-group">
+                    <label for="oscid">From channel</label>
+                    <input type="text" name="oscid" class="form-control" id="oscid" placeholder="Channel ID" required />
+                </div>
+                <div class="form-group">
+                    <label for="iscid">To channel</label>
+                    <input type="text" name="iscid" class="form-control" id="iscid" placeholder="Channel ID" required />
+                </div>
+                <div class="form-group">
+                    <label for="iscid">Amount (sats)</label>
+                    <input type="number" name="amount" id="amount" class="form-control" required />
+                </div>
+                <button id="rebalance-channel-submit" type="submit" class="btn btn-primary">Rebalance channels</button>
+            </form>
         </div>
-        <br>
-      </div>
-    <br>
-    {% endfor %}
-    </ul>
+        <div class="alert alert-dismissible alert-info">
+            <h2>Total Liquidity</h2>
+            <div class="channel">
+                <header class="d-flex justify-content-between mb-2">
+                    <span class="capacity">{{total_spendable_sats + total_receivable_sats}}</span>
+                    <span class="state"></span>
+                </header>
+                {% if total_spendable_sats + total_receivable_sats > 0 %}
+                    <div class="channel-bar">
+                        <div class="progress-bar bg-success" role="progressbar" title="Spendable: {{ total_spendable_sats }}" style="width: {{ total_spendable_sats / (total_spendable_sats + total_receivable_sats) * 100 }}%;"></div>
+                        <div class="progress-bar bg-info" role="progressbar" title="Receivable: {{ total_receivable_sats }}" style="width: {{ total_receivable_sats / (total_spendable_sats + total_receivable_sats) * 100 }}%;"></div>
+                    </div>
+                {% endif %}
+                <ul class="list-unstyled my-3">
+                    <li><strong>Spendable:</strong> {{ total_spendable_sats }} sats</li>
+                    <li><strong>Receivable:</strong> {{ total_receivable_sats }} sats</li>
+                </ul>
+            </div>
+            <h2>Channels</h2>
+            <ul class="channels">
+                {% for channel in channels %}
+                    <button type="button" class="btn btn-light btn-lg btn-block" data-toggle="collapse" href="#collapseExample{{loop.index}}" role="button" aria-expanded="false" aria-controls="collapseExample">
+                        <header class="d-flex justify-content-between mb-2">
+                            <span class="capacity">{{channel.total_sats}}</span>
+                            <span class="state">{% if channel.peer.connected %}active{% else %}offline{% endif %}</span>
+                        </header>
+                        <div class="channel-bar">
+                            {% set ratio = channel.total_sats / largest_channel_sats %}
+                            <div class="progress-bar bg-warning" role="progressbar" title="Our reserve: {{ channel.our_reserve_sats }} sats" style="width: {{ channel.our_reserve_sats / channel.total_sats * 100 * ratio }}%;"></div>
+                            <div class="progress-bar bg-success" role="progressbar" title="Spendable: {{ channel.spendable_sats }}" style="width: {{ channel.spendable_sats / channel.total_sats * 100 * ratio }}%;"></div>
+                            <div class="progress-bar bg-info" role="progressbar" title="Receivable: {{ channel.receivable_sats }}" style="width: {{ channel.receivable_sats / channel.total_sats * 100 * ratio }}%;"></div>
+                            <div class="progress-bar bg-warning" role="progressbar" title="Their reserve: {{ channel.their_reserve_sats }}" style="width: {{ channel.their_reserve_sats / channel.total_sats * 100 * ratio }}%;"></div>
+                        </div>
+                    </button>
+                    <div class="collapse" id="collapseExample{{loop.index}}">
+                        <div class="card card-body">
+                            <ul class="list-unstyled my-3">
+                                <li><strong>Channel ID:</strong> {{ channel.short_channel_id }}</li>
+                                <li><strong>Status:</strong> {{ channel.state }}</li>
+                                <li><strong>Spendable:</strong> {{ channel.spendable_sats }} sats</li>
+                                <li><strong>Receivable:</strong> {{ channel.receivable_sats }} sats</li>
+                                <li><strong>Age:</strong> n/a</li>
+                                <li><strong>Peer:</strong> <small class="break-all">{{ channel.peer.id }}</small></li>
+                                <li>
+                                    {% if channel.state == "CHANNELD_NORMAL" %}
+                                        <form id="close-channel-form-{{loop.index}}" method="POST">
+                                            <input type="hidden" name="form-name" value="close_channel_form" />
+                                            <input type="hidden" id="channel_id" name="channel_id" value={{ channel.channel_id }} />
+                                            <input type="hidden" id="channel_short_id" name="channel_short_id" value={{ channel.short_channel_id }} />
+                                            <button type="submit" class="close-channel-submit btn-sm btn-secondary">Close channel</button>
+                                        </form>
+                                    {% endif %}
+                                </li>
+                            </ul>
+                        </div>
+                        <br />
+                    </div>
+                    <br />
+                {% endfor %}
+            </ul>
+        </div>
     </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
-<script>
-    function confirm_close(form, channelShortId) {
-        bootbox.confirm({
-            title: `Confirm Close Channel`,
-            message: `Do you want to close the channel ${channelShortId}?`,
-            buttons: {
-                confirm: {
-                    label: 'Yes',
-                    className: 'btn-success'
+    <script>
+        function confirm_close(form, channelShortId) {
+            bootbox.confirm({
+                title: `Confirm Close Channel`,
+                message: `Do you want to close the channel ${channelShortId}?`,
+                buttons: {
+                    confirm: {
+                        label: 'Yes',
+                        className: 'btn-success'
+                    },
+                    cancel: {
+                        label: 'No',
+                        className: 'btn-danger'
+                    }
                 },
-                cancel: {
-                    label: 'No',
-                    className: 'btn-danger'
+                callback: function (result) {
+                    if (result) {
+                        form.submit();
+                    }
                 }
-            },
-            callback: function (result) {
-                if (result)
-                    form.submit();
-            }
-        });
-    }
+            });
+        }
 
-    function confirm_rebalance(form_class, oscid, iscid, amount) {
-        if (!document.querySelector(form_class).reportValidity()) {
-            return;
-        }
-        if (isNaN(amount) || amount <= 0) {
-            bootbox.alert({message: 'Invalid amount'});
-            return;
-        }
-        bootbox.confirm({
-            title: `Confirm Rebalance Channels`,
-            message: `Moving ${amount} sats from ${oscid} to ${iscid}. Do you want to continue?`,
-            buttons: {
-                confirm: {
-                    label: 'Yes',
-                    className: 'btn-success'
+        function confirm_rebalance(form_class, oscid, iscid, amount) {
+            if (!document.querySelector(form_class).reportValidity()) {
+                return;
+            }
+            if (isNaN(amount) || amount <= 0) {
+                bootbox.alert({message: 'Invalid amount'});
+                return;
+            }
+            bootbox.confirm({
+                title: `Confirm Rebalance Channels`,
+                message: `Moving ${amount} sats from ${oscid} to ${iscid}. Do you want to continue?`,
+                buttons: {
+                    confirm: {
+                        label: 'Yes',
+                        className: 'btn-success'
+                    },
+                    cancel: {
+                        label: 'No',
+                        className: 'btn-danger'
+                    }
                 },
-                cancel: {
-                    label: 'No',
-                    className: 'btn-danger'
+                callback: function (result) {
+                    if (result) {
+                        $(form_class).submit();
+                    }
                 }
-            },
-            callback: function (result) {
-                if (result)
-                    $(form_class).submit();
-            }
+            });
+        }
+
+        $(document).ready(function() {
+
+            $('.close-channel-submit').click(function() {
+                var channelShortId = $(this).prev().val();
+                var form = $(this).parent();
+                confirm_close(form, channelShortId);
+                return false;
+            });
+
+            $('#rebalance-channel-submit').click(function() {
+                var oscid = $('#oscid').val();
+                var iscid = $('#iscid').val();
+                var amount = $('#amount').val();
+                var form = $(this).parent();
+                confirm_rebalance('#rebalance-channel-form', oscid, iscid, amount);
+                return false;
+            });
+
         });
-    }
-
-    $(document).ready(function() {
-
-        $('.close-channel-submit').click(function() {
-            var channelShortId = $(this).prev().val();
-            var form = $(this).parent();
-            confirm_close(form, channelShortId);
-            return false;
-        });
-
-        $('#rebalance-channel-submit').click(function() {
-            var oscid = $('#oscid').val();
-            var iscid = $('#iscid').val();
-            var amount = $('#amount').val();
-            var form = $(this).parent();
-            confirm_rebalance('#rebalance-channel-form', oscid, iscid, amount);
-            return false;
-        });
-
-    });
-</script>
+    </script>
 {% endblock %}

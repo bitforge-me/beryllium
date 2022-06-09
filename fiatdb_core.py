@@ -11,8 +11,8 @@ from assets import ASSETS, asset_int_to_dec
 logger = logging.getLogger(__name__)
 _lock = threading.Lock()
 
-def __balance(session: scoped_session, asset: str, user: User):
-    ## assumes lock is held
+def __balance(session: scoped_session, asset: str, user: User | None):
+    # !assumes lock is held!
     query = session.query(func.sum(FiatDbTransaction.amount)) \
         .filter(FiatDbTransaction.asset == asset)
     if user:
@@ -28,7 +28,7 @@ def __balance(session: scoped_session, asset: str, user: User):
     return credit - debit
 
 def __balance_total(session: scoped_session, asset: str):
-    ## assumes lock is held
+    # !assumes lock is held!
     return __balance(session, asset, None)
 
 def user_balance(session: scoped_session, asset: str, user: User):
@@ -59,7 +59,7 @@ def tx_create(session: scoped_session, user: User, action: str, asset: str, amou
             error = f'{action}: {user.email} is not active'
         elif amount <= 0:
             error = f'{action}: amount ({amount}) is less then or equal to zero'
-        elif not action in (FiatDbTransaction.ACTION_CREDIT, FiatDbTransaction.ACTION_DEBIT):
+        elif action not in (FiatDbTransaction.ACTION_CREDIT, FiatDbTransaction.ACTION_DEBIT):
             error = 'invalid action'
         if error:
             logger.error(error)

@@ -1,164 +1,165 @@
 {% extends "layout.html" %}
 
 {% block content %}
-{% if current_user.is_authenticated %}
-    <div class="row justify-content-center">
-    <div class="col-sm-10">
+    {% if current_user.is_authenticated %}
+        <div class="row justify-content-center">
+            <div class="col-sm-10">
 
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Send to topic/location</h5>
-                <form id="general-form" method="POST">
-                    <div class="form-group">
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="type" id="type-topic" value="topic" {% if type_ == 'topic' or not type_ %}checked{% endif %} >
-                            <label class="form-check-label" for="type-topic">Topic</label>
-                        </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="type" id="type-location" value="location" {% if type_ == 'location' %}checked{% endif %}>
-                            <label class="form-check-label" for="type-location">Location</label>
-                        </div>
-                    </div>
-                    <div class="form-group" id="topic-group">
-                        <select class="form-control" id="topic" name="topic" aria-describedby="topicHelp">
-                            {% for t in topics %}
-                            <option {% if topic == t %}selected{% endif %} value="{{t}}">{{t}}</option>
-                            {% endfor %}
-                        </select>
-                        <small id="topicHelp" class="form-text text-muted">The push notification topic</small>
-                    </div>
-                    <div class="form-group" id="location-group">
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="location" name="location" aria-describedby="locationHelp" value="{{location}}">
-                            <div class="input-group-append">
-                                <button id="location-btn" class="btn btn-primary"><i class="fas fa-location-arrow"></i></button>
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Send to topic/location</h5>
+                        <form id="general-form" method="POST">
+                            <div class="form-group">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="type" id="type-topic" value="topic" {% if type_ == 'topic' or not type_ %}checked{% endif %} />
+                                    <label class="form-check-label" for="type-topic">Topic</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="type" id="type-location" value="location" {% if type_ == 'location' %}checked{% endif %} />
+                                    <label class="form-check-label" for="type-location">Location</label>
+                                </div>
                             </div>
-                        </div>
-                        <small id="locationHelp" class="form-text text-muted">Target location for push notification. Format like: <pre>&lt;LATITUDE&gt;, &lt;LONGITUDE&gt;, &lt;MAX_DISTANCE_IN_METERS&gt;, &lt;MAX_AGE_IN_MINUTES&gt;</pre></small>
+                            <div class="form-group" id="topic-group">
+                                <select class="form-control" id="topic" name="topic" aria-describedby="topicHelp">
+                                    {% for t in topics %}
+                                        <option {% if topic == t %}selected{% endif %} value="{{t}}">{{t}}</option>
+                                    {% endfor %}
+                                </select>
+                                <small id="topicHelp" class="form-text text-muted">The push notification topic</small>
+                            </div>
+                            <div class="form-group" id="location-group">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="location" name="location" aria-describedby="locationHelp" value="{{location}}" />
+                                    <div class="input-group-append">
+                                        <button id="location-btn" class="btn btn-primary"><i class="fas fa-location-arrow"></i></button>
+                                    </div>
+                                </div>
+                                <small id="locationHelp" class="form-text text-muted">Target location for push notification. Format like: <pre>&lt;LATITUDE&gt;, &lt;LONGITUDE&gt;, &lt;MAX_DISTANCE_IN_METERS&gt;, &lt;MAX_AGE_IN_MINUTES&gt;</pre></small>
+                            </div>
+                            <div class="form-group">
+                                <label for="title">Title</label>
+                                <input type="text" class="form-control" id="title" name="title" aria-describedby="titleHelp" value="{{title}}" />
+                                <small id="titleHelp" class="form-text text-muted">The push notication title.</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="body">Body</label>
+                                <input type="text" class="form-control" id="body" name="body" aria-describedby="bodyHelp" value="{{body}}" />
+                                <small id="bodyHelp" class="form-text text-muted">The push notication body.</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="image">Image URL</label>
+                                <input type="text" class="form-control" id="image" name="image" aria-describedby="imageHelp" value="{{image}}" />
+                                <small id="imageHelp" class="form-text text-muted">The push notication image URL (optional).</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="image">HTML</label>
+                                <textarea type="text" class="form-control" id="html" name="html" aria-describedby="htmlHelp" rows="3">{{html}}</textarea>
+                                <small id="htmlHelp" class="form-text text-muted">The push notication HTML data (optional).</small>
+                            </div>
+                            <button id="general-form-submit" type="submit" class="btn btn-primary">Send</button>
+                        </form>
                     </div>
-                    <div class="form-group">
-                        <label for="title">Title</label>
-                        <input type="text" class="form-control" id="title" name="title" aria-describedby="titleHelp" value="{{title}}">
-                        <small id="titleHelp" class="form-text text-muted">The push notication title.</small>
+                </div>
+
+                <br />
+
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Send to specific device</h5>
+                        <form method="POST">
+                            <input type="hidden" id="type" name="type" value="specific_device" />
+                            <div class="form-group">
+                                <label for="registration_token">Registration token</label>
+                                <input type="text" class="form-control" id="registration_token" name="registration_token" aria-describedby="tokenHelp" value="{{registration_token}}" />
+                                <small id="tokenHelp" class="form-text text-muted">The Firebase registration token of the target device.</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="title">Title</label>
+                                <input type="text" class="form-control" id="title" name="title" aria-describedby="titleHelp" value="{{title}}" />
+                                <small id="titleHelp" class="form-text text-muted">The push notication title.</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="body">Body</label>
+                                <input type="text" class="form-control" id="body" name="body" aria-describedby="bodyHelp" value="{{body}}" />
+                                <small id="bodyHelp" class="form-text text-muted">The push notication body.</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="image">Image URL</label>
+                                <input type="text" class="form-control" id="image" name="image" aria-describedby="imageHelp" value="{{image}}" />
+                                <small id="imageHelp" class="form-text text-muted">The push notication image URL (optional).</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="image">HTML</label>
+                                <textarea type="text" class="form-control" id="html" name="html" aria-describedby="htmlHelp" rows="3">{{html}}</textarea>
+                                <small id="htmlHelp" class="form-text text-muted">The push notication HTML data (optional).</small>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Send</button>
+                        </form>
                     </div>
-                    <div class="form-group">
-                        <label for="body">Body</label>
-                        <input type="text" class="form-control" id="body" name="body" aria-describedby="bodyHelp" value="{{body}}">
-                        <small id="bodyHelp" class="form-text text-muted">The push notication body.</small>
-                    </div>
-                    <div class="form-group">
-                        <label for="image">Image URL</label>
-                        <input type="text" class="form-control" id="image" name="image" aria-describedby="imageHelp" value="{{image}}">
-                        <small id="imageHelp" class="form-text text-muted">The push notication image URL (optional).</small>
-                    </div>
-                    <div class="form-group">
-                        <label for="image">HTML</label>
-                        <textarea type="text" class="form-control" id="html" name="html" aria-describedby="htmlHelp" rows="3">{{html}}</textarea>
-                        <small id="htmlHelp" class="form-text text-muted">The push notication HTML data (optional).</small>
-                    </div>
-                    <button id="general-form-submit" type="submit" class="btn btn-primary">Send</button>
-                </form>
+                </div>
+
             </div>
         </div>
 
-        <br />
-
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Send to specific device</h5>
-                <form method="POST">
-                    <input type="hidden" id="type" name="type" value="specific_device" />
-                    <div class="form-group">
-                        <label for="registration_token">Registration token</label>
-                        <input type="text" class="form-control" id="registration_token" name="registration_token" aria-describedby="tokenHelp" value="{{registration_token}}">
-                        <small id="tokenHelp" class="form-text text-muted">The Firebase registration token of the target device.</small>
-                    </div>
-                    <div class="form-group">
-                        <label for="title">Title</label>
-                        <input type="text" class="form-control" id="title" name="title" aria-describedby="titleHelp" value="{{title}}">
-                        <small id="titleHelp" class="form-text text-muted">The push notication title.</small>
-                    </div>
-                    <div class="form-group">
-                        <label for="body">Body</label>
-                        <input type="text" class="form-control" id="body" name="body" aria-describedby="bodyHelp" value="{{body}}">
-                        <small id="bodyHelp" class="form-text text-muted">The push notication body.</small>
-                    </div>
-                    <div class="form-group">
-                        <label for="image">Image URL</label>
-                        <input type="text" class="form-control" id="image" name="image" aria-describedby="imageHelp" value="{{image}}">
-                        <small id="imageHelp" class="form-text text-muted">The push notication image URL (optional).</small>
-                    </div>
-                    <div class="form-group">
-                        <label for="image">HTML</label>
-                        <textarea type="text" class="form-control" id="html" name="html" aria-describedby="htmlHelp" rows="3">{{html}}</textarea>
-                        <small id="htmlHelp" class="form-text text-muted">The push notication HTML data (optional).</small>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Send</button>
-                </form>
-            </div>
-        </div>
-
-    </div>
-    </div>
-
-{% endif %}
+    {% endif %}
 {% endblock %}
 
 {% block scripts %}
-<script>
-    var deviceClass = '';
+    <script>
+        var deviceClass = '';
 
-    function showTopicLocation(type) {
-        if (type == 'location') {
-            $('#topic-group').hide();
-            $('#location-group').show();
-            deviceClass = 'devices at the location'
-        }
-        else {
-            $('#topic-group').show();
-            $('#location-group').hide();
-            deviceClass = 'devices subscribed to the topic'
-        }
-    }
-
-    $(document).ready(function() {
-        showTopicLocation('{{type_}}');
-        $('input[type=radio][name=type]').change(function() {
-            showTopicLocation(this.value);
-        });
-        $('#location-btn').click(function() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(function(position) {
-                    latitude = position.coords.latitude;
-                    longitude = position.coords.longitude;
-                    console.log(`${latitude}, ${longitude}`);
-                    $('#location').val(`${latitude}, ${longitude}, <MAX_DISTANCE_IN_METERS>, <MAX_AGE_IN_MINUTES>`);
-                }, function() {
-                    console.log("geolocation error'd");
-                });
+        function showTopicLocation(type) {
+            if (type == 'location') {
+                $('#topic-group').hide();
+                $('#location-group').show();
+                deviceClass = 'devices at the location'
             }
-            return false;
-        });
-        $('#general-form-submit').click(function() {
-            bootbox.confirm({
-                message: `Are you sure you want to send a push notification to all ${deviceClass}?`,
-                buttons: {
-                    confirm: {
-                        label: 'Yes',
-                        className: 'btn-success'
-                    },
-                    cancel: {
-                        label: 'No',
-                        className: 'btn-danger'
-                    }
-                },
-                callback: function (result) {
-                    if (result)
-                        $('#general-form').submit();
-                }
+            else {
+                $('#topic-group').show();
+                $('#location-group').hide();
+                deviceClass = 'devices subscribed to the topic'
+            }
+        }
+
+        $(document).ready(function() {
+            showTopicLocation('{{type_}}');
+            $('input[type=radio][name=type]').change(function() {
+                showTopicLocation(this.value);
             });
-            return false;
+            $('#location-btn').click(function() {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(function(position) {
+                        latitude = position.coords.latitude;
+                        longitude = position.coords.longitude;
+                        console.log(`${latitude}, ${longitude}`);
+                        $('#location').val(`${latitude}, ${longitude}, <MAX_DISTANCE_IN_METERS>, <MAX_AGE_IN_MINUTES>`);
+                    }, function() {
+                        console.log("geolocation error'd");
+                    });
+                }
+                return false;
+            });
+            $('#general-form-submit').click(function() {
+                bootbox.confirm({
+                    message: `Are you sure you want to send a push notification to all ${deviceClass}?`,
+                    buttons: {
+                        confirm: {
+                            label: 'Yes',
+                            className: 'btn-success'
+                        },
+                        cancel: {
+                            label: 'No',
+                            className: 'btn-danger'
+                        }
+                    },
+                    callback: function (result) {
+                        if (result) {
+                            $('#general-form').submit();
+                        }
+                    }
+                });
+                return false;
+            });
         });
-    });
-</script>
+    </script>
 {% endblock %}

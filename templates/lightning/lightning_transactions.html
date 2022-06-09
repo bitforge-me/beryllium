@@ -4,14 +4,14 @@
 
 {% block content %}
 
-<div class="alert alert-dismissible alert-success">
-    <strong>ln-channel balance:</strong> {{ funds_dict.sats_channels }} <strong>SAT</strong>
-</div>
-<br>
-<h2>Lightning Transaction History</h2>
-These are the transactions recorded by the wallet.
-<br>
-<p align="right">{{ record_no }} transactions recorded</p>
+    <div class="alert alert-dismissible alert-success">
+        <strong>ln-channel balance:</strong> {{ funds_dict.sats_channels }} <strong>SAT</strong>
+    </div>
+    <br />
+    <h2>Lightning Transaction History</h2>
+    These are the transactions recorded by the wallet.
+    <br />
+    <p align="right">{{ record_no }} transactions recorded</p>
     {% for tx in sorted_txs %}
         <div class="alert alert-dismissible alert-info">
             <button class={% if tx.amount_sent_sats is defined %}"btn btn-danger disabled"{% elif tx.amount_received_sats is defined %}"btn btn-success disabled"{% endif %} type="button" data-toggle="collapse" data-target="#collapseExample{{loop.index}}" aria-expanded="false" aria-controls="collapseExample">
@@ -21,16 +21,16 @@ These are the transactions recorded by the wallet.
             <div class="collapse" id="collapseExample{{loop.index}}">
                 <div class="card card-body">
                     {% if tx.amount_sent_sats is defined %}
-                        <b>Amount:</b> {{tx.amount_sent_sats}} SAT<br>
-                        <b>Destination:</b> {{tx.destination}}<br>
+                        <b>Amount:</b> {{tx.amount_sent_sats}} SAT<br />
+                        <b>Destination:</b> {{tx.destination}}<br />
                     {% elif tx.amount_received_sats is defined %}
-                        <b>Amount:</b> {{tx.amount_received_sats}} SAT<br>
+                        <b>Amount:</b> {{tx.amount_received_sats}} SAT<br />
                         {% if tx.description is defined %}
-                            <b>Description:</b> {{tx.description}}<br> 
+                            <b>Description:</b> {{tx.description}}<br />
                         {% endif %}
-                        <b>Label:</b> {{tx.label}}<br>
+                        <b>Label:</b> {{tx.label}}<br />
                     {% endif %}
-                    <b>Payment hash:</b> {{tx.payment_hash}}<br>
+                    <b>Payment hash:</b> {{tx.payment_hash}}<br />
                     <b>Status:</b> {{tx.status}}
                 </div>
             </div>
