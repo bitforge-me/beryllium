@@ -22,6 +22,7 @@
         <h2>Create Invoice</h2>
         <p>Create a lightning network invoice.</p>
         <form id="form" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="form-group">
                 <label class="col-form-label mt-4" for="amount">Amount (sats)</label>
                 <input type="number" class="form-control" aria-required="true" placeholder="Enter amount here in satoshi." name="amount" id="amount" required />

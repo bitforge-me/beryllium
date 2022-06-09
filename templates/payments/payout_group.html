@@ -16,7 +16,15 @@
             </table>
             <div class="col-lg-12">
                 <p>
+<<<<<<< HEAD
                     <form action="/payments/payout_group_process_all" method="post" id="submit_form_process_all">
+=======
+                    BNZ IB4B File: <a href="/payments/payout_group/BNZ_IB4B_file/{{group.token}}">{{group.token}}</a>
+                </p>
+                <p>
+                    <form action="/payments/payout_group_processed" method="post" id="submit_form_all_completed">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+>>>>>>> added csrf protection
                         <input type="hidden" name="token" value="{{group.token}}" />
                         <input type="button" value="Process all" data-action="process all" data-form="submit_form_process_all" data-toggle="modal" data-target="#confirm_submit" class="btn btn-primary submit_button" />
                     </form>

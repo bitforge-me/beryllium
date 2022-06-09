@@ -8,6 +8,7 @@
             <div class="col-lg-12">
                 {% if mock %}
                     <form action="/payments/payment/mock/{{token}}">
+			<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <button type="submit">Complete payment (mock)</button>
                     </form>
                 {% elif interstitial %}
@@ -49,6 +50,7 @@
                             </ul>
                         </li>
                         <form action="/payments/payment/x/{{token}}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <button type="submit">Continue</button>
                         </form>
                     </ul>

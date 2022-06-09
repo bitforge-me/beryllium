@@ -6,6 +6,7 @@
         <div class="card-body">
             <h5 class="card-title">Send Websocket Event</h5>
             <form id="general-form" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="form-group" id="event-group">
                     <select class="form-control" id="event" name="event" aria-describedby="eventHelp">
                         {% for e in events %}

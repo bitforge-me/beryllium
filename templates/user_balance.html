@@ -6,6 +6,7 @@
         <div class="card-body">
             <h5 class="card-title">User Balance</h5>
             <form id="form" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="form-group" id="action-group">
                     <select class="form-control" id="action" name="action" aria-describedby="actionHelp">
                         {% for a in actions %}
