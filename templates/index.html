@@ -1,100 +1,131 @@
 {% extends "layout.html" %}
-
 {% block content %}
-{% if current_user.is_authenticated %}
-    <div class='some-page-wrapper'>
-        <div class='row'>
-            {% if current_user.has_role("admin") or current_user.has_role("finance") %}
-            <a href="{{ url_for('reporting.dashboard_general') }}">
-            <div class='dashboard'>
-                <img src="static/assets/img/index_img/dashboard.png" width="100" height="100">
-                <p><center>Dashboard</center></p>
+    {% if current_user.is_authenticated %}
+        <div class="some-page-wrapper">
+            <div class="row">
+                {% if current_user.has_role("admin") or current_user.has_role("finance") %}
+                    <a href="{{ url_for('reporting.dashboard_general') }}">
+                        <div class="dashboard">
+                            <img src="static/assets/img/index_img/dashboard.png"
+                                 width="100"
+                                 height="100"
+                                 alt="dashboard logo"/>
+                            <p>
+                                <center>Dashboard</center>
+                            </p>
+                        </div>
+                    </a>
+                    <a href="{{ url_for('push_notifications') }}">
+                        <div class="dashboard">
+                            <img src="static/assets/img/index_img/notification.png"
+                                 width="100"
+                                 height="100"
+                                 alt="notification logo"/>
+                            <p>
+                                <center>Push Notification</center>
+                            </p>
+                        </div>
+                    </a>
+                    <a href="{{ url_for('admin.index') }}">
+                        <div class="dashboard">
+                            <img src="static/assets/img/index_img/admin-with-cogwheels.png"
+                                 width="100"
+                                 height="100"
+                                 alt="admin logo"/>
+                            <p>
+                                <center>Admin</center>
+                            </p>
+                        </div>
+                    </a>
+                    <a href="{{ url_for('payments.payouts') }}">
+                        <div class="dashboard">
+                            <p>
+                                <center>Payouts</center>
+                            </p>
+                        </div>
+                    </a>
+                    <a href="{{ url_for('test_email') }}">
+                        <div class="dashboard">
+                            <p>
+                                <center>Test Email</center>
+                            </p>
+                        </div>
+                    </a>
+                    <a href="{{ url_for('test_ws') }}">
+                        <div class="dashboard">
+                            <p>
+                                <center>Test Websocket</center>
+                            </p>
+                        </div>
+                    </a>
+                    <a href="{{ url_for('user_kyc') }}">
+                        <div class="dashboard">
+                            <p>
+                                <center>User KYC</center>
+                            </p>
+                        </div>
+                    </a>
+                {% endif %}
+                {% if current_user.has_role("admin") %}
+                    <a href="{{ url_for('user_balance') }}">
+                        <div class="dashboard">
+                            <p>
+                                <center>User Balance</center>
+                            </p>
+                        </div>
+                    </a>
+                    <a href="{{ url_for('user_order') }}">
+                        <div class="dashboard">
+                            <p>
+                                <center>User Order</center>
+                            </p>
+                        </div>
+                    </a>
+                    <a href="{{ url_for('ln_wallet.ln_index') }}">
+                        <div class="dashboard">
+                            <p>
+                                <center>Lightning</center>
+                            </p>
+                        </div>
+                    </a>
+                    <a href="{{ url_for('config') }}">
+                        <div class="dashboard">
+                            <p>
+                                <center>Config</center>
+                            </p>
+                        </div>
+                    </a>
+                    <a href="{{ url_for('process_depwith_broker') }}">
+                        <div class="dashboard">
+                            <p>
+                                <center>Process deposits/withdrawals and broker orders</center>
+                            </p>
+                        </div>
+                    </a>
+                    <a href="{{ url_for('tripwire_ep') }}">
+                        <div class="dashboard">
+                            <p>
+                                <center>Tripwire</center>
+                            </p>
+                        </div>
+                    </a>
+                {% endif %}
             </div>
-            </a>
-            <a href="{{ url_for('push_notifications') }}">
-            <div class='dashboard'>
-                <img src="static/assets/img/index_img/notification.png" width="100" height="100">
-                <p><center>Push Notification</center></p>
-            </div>
-            </a>
-            <a href="{{ url_for('admin.index') }}">
-            <div class='dashboard'>
-                <img src="static/assets/img/index_img/admin-with-cogwheels.png" width="100" height="100">
-                <p><center>Admin</center></p>
-            </div>
-            </a>
-            <a href="{{ url_for('payments.payouts') }}">
-            <div class='dashboard'>
-                <p><center>Payouts</center></p>
-            </div>
-            </a>
-            <a href="{{ url_for('test_email') }}">
-            <div class='dashboard'>
-                <p><center>Test Email</center></p>
-            </div>
-            </a>
-            <a href="{{ url_for('test_ws') }}">
-            <div class='dashboard'>
-                <p><center>Test Websocket</center></p>
-            </div>
-            </a>
-            <a href="{{ url_for('user_kyc') }}">
-            <div class='dashboard'>
-                <p><center>User KYC</center></p>
-            </div>
-            </a>
-            {% endif %}
-            {% if current_user.has_role("admin") %}
-            <a href="{{ url_for('user_balance') }}">
-            <div class='dashboard'>
-                <p><center>User Balance</center></p>
-            </div>
-            </a>
-            <a href="{{ url_for('user_order') }}">
-                <div class='dashboard'>
-                    <p><center>User Order</center></p>
-                </div>
-            </a>
-            <a href="{{ url_for('ln_wallet.ln_index') }}">
-                <div class='dashboard'>
-                    <p><center>Lightning</center></p>
-                </div>
-            </a>
-            <a href="{{ url_for('config') }}">
-                <div class='dashboard'>
-                    <p><center>Config</center></p>
-                </div>
-            </a>
-            <a href="{{ url_for('process_depwith_broker') }}">
-                <div class='dashboard'>
-                    <p><center>Process deposits/withdrawals and broker orders</center></p>
-                </div>
-            </a>
-            <a href="{{ url_for('tripwire_ep') }}">
-                <div class='dashboard'>
-                    <p><center>Tripwire</center></p>
-                </div>
-            </a>
-            {% endif %}
         </div>
-    </div>
-{% endif %}
+    {% endif %}
 {% endblock %}
-
 {% block footer %}
     <div class="row justify-content-center">
-    <div class="col-sm-6">
-        <div class="card">
-            <div class="card-body">
-                <p class="card-text">
-                <center>
-                    <small class="text-muted">
-                        FOOTER
-                    </small>
-                </center>
-                </p>
+        <div class="col-sm-6">
+            <div class="card">
+                <div class="card-body">
+                    <p class="card-text">
+                        <center>
+                            <small class="text-muted">FOOTER</small>
+                        </center>
+                    </p>
+                </div>
             </div>
         </div>
-    </div>
     </div>
 {% endblock %}

@@ -1,3 +1,6 @@
-pylint
-pylint-flask
-pylint-flask-sqlalchemy
+djlint
+pycodestyle
+mypy
+sqlalchemy-stubs
+types-requests
+types-python-dateutil

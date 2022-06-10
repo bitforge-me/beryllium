@@ -2,24 +2,24 @@
     <div class="card-body">
         <h5 class="card-title">Referrals</h5>
         <p class="card-text">
-        <center>
-            Sender reward:
-            {% if config["REFERRAL_REWARD_TYPE_SENDER"] == 'fixed' %}
-                {{ config["REFERRAL_REWARD_SENDER"] }} {{ config["ASSET_NAME"] }}
-            {% else %}
-                {{ config["REFERRAL_REWARD_SENDER"] }}%
-            {% endif %}
-            <br/>
-            Recipient reward:
-            {% if config["REFERRAL_REWARD_TYPE_RECIPIENT"] == 'fixed' %}
-                {{ config["REFERRAL_REWARD_RECIPIENT"] }} {{ config["ASSET_NAME"] }}
-            {% else %}
-                {{ config["REFERRAL_REWARD_RECIPIENT"] }}%
-            {% endif %}
-            <br/>
-            Recipient minimum spend: {{ config["REFERRAL_RECIPIENT_MIN_SPEND"] }} {{ config["REFERRAL_SPEND_ASSET"]}}
-            <br/>
-        </center>
+            <center>
+                Sender reward:
+                {% if config["REFERRAL_REWARD_TYPE_SENDER"] == 'fixed' %}
+                    {{ config["REFERRAL_REWARD_SENDER"] }} {{ config["ASSET_NAME"] }}
+                {% else %}
+                    {{ config["REFERRAL_REWARD_SENDER"] }}%
+                {% endif %}
+                <br/>
+                Recipient reward:
+                {% if config["REFERRAL_REWARD_TYPE_RECIPIENT"] == 'fixed' %}
+                    {{ config["REFERRAL_REWARD_RECIPIENT"] }} {{ config["ASSET_NAME"] }}
+                {% else %}
+                    {{ config["REFERRAL_REWARD_RECIPIENT"] }}%
+                {% endif %}
+                <br/>
+                Recipient minimum spend: {{ config["REFERRAL_RECIPIENT_MIN_SPEND"] }} {{ config["REFERRAL_SPEND_ASSET"] }}
+                <br/>
+            </center>
         </p>
     </div>
 </div>

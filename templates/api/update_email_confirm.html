@@ -1,32 +1,30 @@
-
 {% extends "layout.html" %}
-
 {% block content %}
     <div class="row justify-content-center">
-    <div class="col-sm-6">
-
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Update Email Request</h5>
-                <form method="POST">
-                    <h6>Old Email:</h6>
-                    <span>{{req.user.email | e}}</span>
-                    <br/>
-                    <br/>
-                    <h6>New Email:</h6>
-                    <span>{{req.email | e}}</span>
-                    <br/>
-                    <br/>
-                    {% if current_user.tf_primary_method  %}
-                    <div class="form-group">
-                        <input type="text" id="tf_code" name="tf_code" value="">
-                        <label for="tf_code">Two Factor Authentication Code</label>
-                    </div>
-                    {% endif %}
-                    <button type="submit" class="btn btn-primary" name="confirm" value="true">Approve Email Update</button>
-                    <button type="submit" class="btn btn-primary" name="confirm" value="false">Cancel</button>
-                </form>
+        <div class="col-sm-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Update Email Request</h5>
+                    <form method="POST">
+                        <h6>Old Email:</h6>
+                        <span>{{ req.user.email | e }}</span>
+                        <br/>
+                        <br/>
+                        <h6>New Email:</h6>
+                        <span>{{ req.email | e }}</span>
+                        <br/>
+                        <br/>
+                        {% if current_user.tf_primary_method  %}
+                            <div class="form-group">
+                                <input type="text" id="tf_code" name="tf_code" value="" />
+                                <label for="tf_code">Two Factor Authentication Code</label>
+                            </div>
+                        {% endif %}
+                        <button type="submit" class="btn btn-primary" name="confirm" value="true">Approve Email Update</button>
+                        <button type="submit" class="btn btn-primary" name="confirm" value="false">Cancel</button>
+                    </form>
+                </div>
             </div>
         </div>
-
+    </div>
 {% endblock %}

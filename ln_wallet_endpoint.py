@@ -1,5 +1,3 @@
-# pylint: disable=unbalanced-tuple-unpacking
-
 import logging
 import secrets
 
@@ -88,14 +86,14 @@ def channel_management():
             amount = request.form['amount']
             try:
                 LnRpc().rebalance_channel(oscid, iscid, amount)
-                flash(Markup(f'successfully moved {amount} sats from {oscid} to {iscid}'),'success')
-            except Exception as e: # pylint: disable=broad-except
+                flash(Markup(f'successfully moved {amount} sats from {oscid} to {iscid}'), 'success')
+            except Exception as e:
                 flash(Markup(e.args[0]), 'danger')
         elif request.form['form-name'] == 'close_channel_form':
             try:
                 LnRpc().close_channel(request.form['channel_id'])
                 flash(Markup(f'successfully closed channel {request.form["channel_id"]}'), 'success')
-            except Exception as e: # pylint: disable=broad-except
+            except Exception as e:
                 flash(Markup(e.args[0]), 'danger')
     peers = rpc.list_peers()['peers']
     channels = []
@@ -144,9 +142,9 @@ def pay_invoice():
     if request.method == 'POST':
         invoice = request.form['invoice']
         try:
-            result = LnRpc().send_invoice(invoice)
+            result = LnRpc().pay(invoice)
             flash(f'Invoice paid: {result}', 'success')
-        except Exception as e: # pylint: disable=broad-except
+        except Exception as e:
             flash(f'Error paying invoice: {e}', 'danger')
     return render_template("lightning/pay_invoice.html", invoice=invoice, funds_dict=LnRpc().list_funds())
 
@@ -178,7 +176,7 @@ def decode_bolt11(bolt11=None):
     try:
         rpc = LnRpc()
         return rpc.decode_bolt11(str(bolt11))
-    except Exception as e: # pylint: disable=broad-except
+    except Exception as e:
         return bad_request(str(e))
 
 @ln_wallet.route('/channel_opener', methods=['GET', 'POST'])
@@ -193,7 +191,7 @@ def channel_opener():
             node_id = nodeid.split("@")
             rpc.fund_channel(node_id[0], amount)
             flash(Markup(f'successfully added node id: {node_id[0]} with the amount: {amount}'), 'success')
-        except Exception as e: # pylint: disable=broad-except
+        except Exception as e:
             flash(Markup(e.args[0]), 'danger')
     return render_template('lightning/channel_opener.html', funds_dict=LnRpc().list_funds())
 
@@ -222,7 +220,7 @@ def create_psbt():
                 res = rpc.prepare_psbt(outputs)
                 psbt = res['psbt']
                 flash('PSBT created', 'success')
-            except Exception as e: # pylint: disable=broad-except
+            except Exception as e:
                 flash(f'Failed to create PSBT: {e}', 'danger')
         elif mode == 'withdraw':
             logger.info('preparing withdrawal with outputs: %s', outputs)
@@ -230,7 +228,7 @@ def create_psbt():
                 res = rpc.multi_withdraw(outputs)
                 txid = res['txid']
                 flash(f'Withdrawal transaction created: {txid}', 'success')
-            except Exception as e: # pylint: disable=broad-except
+            except Exception as e:
                 flash(f'Failed to create withdrawal transaction: {e}', 'danger')
         else:
             flash(f'Unknown mode: {mode}', 'danger')
@@ -251,7 +249,7 @@ def sign_psbt():
             res = rpc.sign_psbt(psbt)
             signed_psbt = res['signed_psbt']
             flash('Sign successful', 'success')
-        except Exception as e: # pylint: disable=broad-except
+        except Exception as e:
             flash(f'Sign failed: {e}', 'danger')
     return render_template('lightning/sign_psbt.html', signed_psbt=signed_psbt, onchain=onchain, onchain_sats=onchain_sats)
 
@@ -268,7 +266,7 @@ def broadcast():
             res = rpc.send_psbt(psbt)
             txid = res['txid']
             flash(f'Broadcast successful, TXID: {txid}', 'success')
-        except Exception as e: # pylint: disable=broad-except
+        except Exception as e:
             flash(f'Broadcast failed: {e}', 'danger')
     return render_template('lightning/broadcast_psbt.html', onchain=onchain, onchain_sats=onchain_sats)
 
@@ -282,7 +280,7 @@ def decode_psbt():
         psbt_json = bitcoind_rpc('decodepsbt', psbt)
         logger.info('psbt json: %s', psbt_json)
         return jsonify(psbt_json)
-    except Exception as e: # pylint: disable=broad-except
+    except Exception as e:
         return bad_request(str(e))
 
 @ln_wallet.route('/address', methods=['GET'])

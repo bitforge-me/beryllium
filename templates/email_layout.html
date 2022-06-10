@@ -1,199 +1,194 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <title></title>
+        <style type="text/css">
+            /* Client-specific Styles */
+            #outlook a {padding:0;} /* Force Outlook to provide a "view in browser" menu link. */
+            body{width:100% !important; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; margin:0; padding:0;}
+            /* Prevent Webkit and Windows Mobile platforms from changing default font sizes, while not breaking desktop design. */
+            .ExternalClass {width:100%;} /* Force Hotmail to display emails at full width */
+            .ExternalClass, .ExternalClass p, .ExternalClass span, .ExternalClass font, .ExternalClass td, .ExternalClass div {line-height: 100%;} /* Force Hotmail to display normal line spacing.  More on that: http://www.emailonacid.com/forum/viewthread/43/ */
+            #backgroundDiv {margin:0; padding:0; width:100% !important; background-color: #ffffff; color: #000000;}
+            #headerDiv {width:100%; background-color: #f8f9fa; color: #000000;}
+            /* End reset */
 
-<html xmlns="http://www.w3.org/1999/xhtml">
-<head>
-	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-	<title></title>
-	<style type="text/css">
+            img {outline:none; text-decoration:none; -ms-interpolation-mode: bicubic;}
+            a img {border:none;}
+            .image_fix {display:block;}
+            .logo {margin: 15px 35px 15px; }
+            .small {font-size: 10px; text-decoration: none; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif; color: #666666}
+            .content {font-size: 12pt; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif; color: #000000; margin: 15px 35px 15px;}
+            .content-margin {margin: 15px 35px 15px;}
+            .align-right {text-align: right;}
+            .divider { border-top: 1px solid #007bff; margin-top: 15px; margin-bottom: 15px; width: 530px;}
 
-		/* Client-specific Styles */
-		#outlook a {padding:0;} /* Force Outlook to provide a "view in browser" menu link. */
-		body{width:100% !important; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; margin:0; padding:0;}
-		/* Prevent Webkit and Windows Mobile platforms from changing default font sizes, while not breaking desktop design. */
-		.ExternalClass {width:100%;} /* Force Hotmail to display emails at full width */
-		.ExternalClass, .ExternalClass p, .ExternalClass span, .ExternalClass font, .ExternalClass td, .ExternalClass div {line-height: 100%;} /* Force Hotmail to display normal line spacing.  More on that: http://www.emailonacid.com/forum/viewthread/43/ */
-		#backgroundDiv {margin:0; padding:0; width:100% !important; background-color: #ffffff; color: #000000;}
-		#headerDiv {width:100%; background-color: #f8f9fa; color: #000000;}
-		/* End reset */
+            p {margin: 1em 0;}
 
-		img {outline:none; text-decoration:none; -ms-interpolation-mode: bicubic;}
-		a img {border:none;}
-		.image_fix {display:block;}
-		.logo {margin: 15px 35px 15px; }
-		.small {font-size: 10px; text-decoration: none; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif; color: #666666}
-		.content {font-size: 12pt; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif; color: #000000; margin: 15px 35px 15px;}
-		.content-margin {margin: 15px 35px 15px;}
-		.align-right {text-align: right;}
-		.divider { border-top: 1px solid #007bff; margin-top: 15px; margin-bottom: 15px; width: 530px;}
+            h1, h2, h3, h4, h5, h6 {color: black !important;}
 
-		p {margin: 1em 0;}
+            h1 a, h2 a, h3 a, h4 a, h5 a, h6 a {color: blue !important;}
 
-		h1, h2, h3, h4, h5, h6 {color: black !important;}
+            h1 a:active, h2 a:active,  h3 a:active, h4 a:active, h5 a:active, h6 a:active {
+                color: #007bff !important; /* Preferably not the same color as the normal header link color.  There is limited support for psuedo classes in email clients, this was added just for good measure. */
+            }
 
-		h1 a, h2 a, h3 a, h4 a, h5 a, h6 a {color: blue !important;}
+            h1 a:visited, h2 a:visited,  h3 a:visited, h4 a:visited, h5 a:visited, h6 a:visited {
+                color: #007bff !important; /* Preferably not the same color as the normal header link color. There is limited support for psuedo classes in email clients, this was added just for good measure. */
+            }
 
-		h1 a:active, h2 a:active,  h3 a:active, h4 a:active, h5 a:active, h6 a:active {
-			color: #007bff !important; /* Preferably not the same color as the normal header link color.  There is limited support for psuedo classes in email clients, this was added just for good measure. */
-		 }
+            table td {border-collapse: collapse;}
 
-		h1 a:visited, h2 a:visited,  h3 a:visited, h4 a:visited, h5 a:visited, h6 a:visited {
-			color: #007bff !important; /* Preferably not the same color as the normal header link color. There is limited support for psuedo classes in email clients, this was added just for good measure. */
-		}
+            table { border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt; }
 
-		table td {border-collapse: collapse;}
+            a { color: #007bff; }
+            a:link { color: #007bff; }
+            a:visited { color: #007bff; }
+            a:hover { color: #007bff; }
 
-		table { border-collapse:collapse; mso-table-lspace:0pt; mso-table-rspace:0pt; }
+            /* override gmail styling of links */
+            .ii a[href] {
+                color: #007bff;
+            }
 
-		a { color: #007bff; }
-		a:link { color: #007bff; }
-		a:visited { color: #007bff; }
-		a:hover { color: #007bff; }
+            @media only screen and (max-device-width: 480px) {
 
-		/* override gmail styling of links */
-		.ii a[href] {
-			color: #007bff;
-		}
+                a[href^="tel"], a[href^="sms"] {
+                    text-decoration: none;
+                    color: #007bff; /* or whatever your want */
+                    pointer-events: none;
+                    cursor: default;
+                }
 
-		@media only screen and (max-device-width: 480px) {
+                .mobile_link a[href^="tel"], .mobile_link a[href^="sms"] {
+                    text-decoration: default;
+                    color: #007bff !important; /* or whatever your want */
+                    pointer-events: auto;
+                    cursor: default;
+                }
+            }
 
-			a[href^="tel"], a[href^="sms"] {
-						text-decoration: none;
-						color: #007bff; /* or whatever your want */
-						pointer-events: none;
-						cursor: default;
-					}
+            /* More Specific Targeting */
 
-			.mobile_link a[href^="tel"], .mobile_link a[href^="sms"] {
-						text-decoration: default;
-						color: #007bff !important; /* or whatever your want */
-						pointer-events: auto;
-						cursor: default;
-					}
-		}
+            @media only screen and (min-device-width: 768px) and (max-device-width: 1024px) {
+                /* You guessed it, ipad (tablets, smaller screens, etc) */
 
-		/* More Specific Targeting */
+                /* Step 1a: Repeating for the iPad */
+                a[href^="tel"], a[href^="sms"] {
+                    text-decoration: none;
+                    color: blue; /* or whatever your want */
+                    pointer-events: none;
+                    cursor: default;
+                }
 
-		@media only screen and (min-device-width: 768px) and (max-device-width: 1024px) {
-			/* You guessed it, ipad (tablets, smaller screens, etc) */
+                .mobile_link a[href^="tel"], .mobile_link a[href^="sms"] {
+                    text-decoration: default;
+                    color: #007bff !important;
+                    pointer-events: auto;
+                    cursor: default;
+                }
+            }
 
-			/* Step 1a: Repeating for the iPad */
-			a[href^="tel"], a[href^="sms"] {
-						text-decoration: none;
-						color: blue; /* or whatever your want */
-						pointer-events: none;
-						cursor: default;
-					}
+            @media only screen and (-webkit-min-device-pixel-ratio: 2) {
+                /* Put your iPhone 4g styles in here */
+            }
 
-			.mobile_link a[href^="tel"], .mobile_link a[href^="sms"] {
-						text-decoration: default;
-						color: #007bff !important;
-						pointer-events: auto;
-						cursor: default;
-					}
-		}
-
-		@media only screen and (-webkit-min-device-pixel-ratio: 2) {
-			/* Put your iPhone 4g styles in here */
-		}
-
-		/* Following Android targeting from:
+            /* Following Android targeting from:
 		http://developer.android.com/guide/webapps/targeting.html
 		http://pugetworks.com/2011/04/css-media-queries-for-targeting-different-mobile-devices/  */
-		@media only screen and (-webkit-device-pixel-ratio:.75){
-			/* Put CSS for low density (ldpi) Android layouts in here */
-		}
-		@media only screen and (-webkit-device-pixel-ratio:1){
-			/* Put CSS for medium density (mdpi) Android layouts in here */
-		}
-		@media only screen and (-webkit-device-pixel-ratio:1.5){
-			/* Put CSS for high density (hdpi) Android layouts in here */
-		}
-		/* end Android targeting */
-	</style>
-
-	<!-- Targeting Windows Mobile -->
-	<!--[if IEMobile 7]>
-	<style type="text/css">
-
-	</style>
+            @media only screen and (-webkit-device-pixel-ratio:.75){
+                /* Put CSS for low density (ldpi) Android layouts in here */
+            }
+            @media only screen and (-webkit-device-pixel-ratio:1){
+                /* Put CSS for medium density (mdpi) Android layouts in here */
+            }
+            @media only screen and (-webkit-device-pixel-ratio:1.5){
+                /* Put CSS for high density (hdpi) Android layouts in here */
+            }
+            /* end Android targeting */
+        </style>
+        <!-- Targeting Windows Mobile -->
+        <!--[if IEMobile 7]>
+	<style type="text/css"></style>
+<![endif]-->
+        <!--[if gte mso 9]>
+	<style>/* Target Outlook 2007 and 2010 */</style>
 	<![endif]-->
-
-	<!--[if gte mso 9]>
-	<style>
-		/* Target Outlook 2007 and 2010 */
-	</style>
-	<![endif]-->
-</head>
-<body>
-	<div id="backgroundDiv">
-		<div id="headerDiv">
-		<table cellpadding="0" cellspacing="0" border="0" align="center">
-			<tr>
-				<td width="200" valign="top">
-					<div class="logo">
-						<img class="image_fix" src="{{ config['LOGO_EMAIL_SRC'] }}" alt="beryllium logo" title="beryllium logo" width="30" />
-					</div>
-				</td>
-				<td width="200" valign="top"></td>
-				<td width="200" valign="center" align="center">
-					<a class="small" 
-					style="font-size: 10px; text-decoration: none; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif; color: #666666"
-					target ="_blank" href="https://zap.me">Zap</a>
-				</td>
-			</tr>
-		</table>
-		</div>
-		<table cellpadding="0" cellspacing="0" border="0" align="center" width="600">
-			<tr>
-				<td>
-					<div class="content">
-						{% block content %}
-						{% endblock %}
-					</div>
-					<div>&nbsp;</div>
-				</td>
-			</tr>
-		</table>
-
-		<table cellpadding="0" cellspacing="0" border="0" align="center" width="600">
-			<tr>
-				<td>
-					<div class="small content-margin"
-					style="margin: 15px 35px 15px; font-size: 10px; text-decoration: none; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif; color: #666666;">
-						Terms & Conditions
-					</div>
-				</td>
-			</tr>
-			<tr>
-				<td>
-					<div class="small content-margin"
-					style="margin: 15px 35px 15px; font-size: 10px; text-decoration: none; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif; color: #666666;">
-						This email message contains information that is confidential and intended for a specific individual and purpose. Only the intended recipient should peruse, use, disseminate, distribute or copy this message. If you have received this message in error, please notify us immediately by email or telephone. Thank you.
-					</div>
-				</td>
-			</tr>
-		</table>
-
-		<table border="0" cellpadding="0" cellspacing="0" align="center">
-			<tbody>
-				<tr>
-					<td><div class="divider"></div></td>
-				</tr>
-			</tbody>
-		</table>
-
-		<table cellpadding="0" cellspacing="0" border="0" align="center" width="600">
-			<tr>
-				<td>
-					<div class="small content-margin align-right"
-					style="margin: 15px 35px 15px; font-size: 10px; text-decoration: none; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif; color: #666666; text-align: right;">
-						&copy; Copyright Zap 2021
-					</div>
-				</td>
-			</tr>
-		</table>
-
-	</div>
-</body>
+    </head>
+    <body>
+        <div id="backgroundDiv">
+            <div id="headerDiv">
+                <table cellpadding="0" cellspacing="0" border="0" align="center">
+                    <tr>
+                        <td width="200" valign="top">
+                            <div class="logo">
+                                <img class="image_fix"
+                                     src="{{ config['LOGO_EMAIL_SRC'] }}"
+                                     alt="beryllium logo"
+                                     title="beryllium logo"
+                                     width="30"/>
+                            </div>
+                        </td>
+                        <td width="200" valign="top"></td>
+                        <td width="200" valign="center" align="center">
+                            <a class="small"
+                               style="font-size: 10px; text-decoration: none; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif; color: #666666"
+                               target
+                               _blank
+                               href="https://zap.me">Zap</a>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <table cellpadding="0" cellspacing="0" border="0" align="center" width="600">
+                <tr>
+                    <td>
+                        <div class="content">
+                            {% block content %}{% endblock %}
+                        </div>
+                        <div>&nbsp;</div>
+                    </td>
+                </tr>
+            </table>
+            <table cellpadding="0" cellspacing="0" border="0" align="center" width="600">
+                <tr>
+                    <td>
+                        <div class="small content-margin"
+                             style="margin: 15px 35px 15px; font-size: 10px; text-decoration: none; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif; color: #666666;">
+                            Terms & Conditions
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <div class="small content-margin"
+                             style="margin: 15px 35px 15px; font-size: 10px; text-decoration: none; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif; color: #666666;">
+                            This email message contains information that is confidential and intended for a specific individual and purpose. Only the intended recipient should peruse, use, disseminate, distribute or copy this message. If you have received this message in error, please notify us immediately by email or telephone. Thank you.
+                        </div>
+                    </td>
+                </tr>
+            </table>
+            <table border="0" cellpadding="0" cellspacing="0" align="center">
+                <tbody>
+                    <tr>
+                        <td>
+                            <div class="divider"></div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <table cellpadding="0" cellspacing="0" border="0" align="center" width="600">
+                <tr>
+                    <td>
+                        <div class="small content-margin align-right"
+                             style="margin: 15px 35px 15px; font-size: 10px; text-decoration: none; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif; color: #666666; text-align: right;">
+                            © Copyright Zap 2021
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </body>
 </html>

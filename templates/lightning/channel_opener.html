@@ -1,65 +1,71 @@
 {% extends "lightning/layout.html" %}
-
 {% block title %}Open a Lightning Network Channel{% endblock %}
-
 {% block content %}
-
-<div class="alert alert-dismissible alert-success">
-    <strong>on-chain balance:</strong> {{ funds_dict.sats_onchain }} <strong>SAT</strong>
-</div>
-
-<div class="alert alert-dismissible alert-info">
-<h2>Open a Lightning Network Channel</h2>
-<p>Open a channel with a lighting node, entering the Node ID in this format: pubkey@address:port</p>
-<form id="form" method="POST">
-    <div class="form-group">
-        <label class="col-form-label mt-4" for="amount">Amount</label>
-        <input type="text" class="form-control" placeholder="Enter amount in satoshi" name="amount" id="amount" required>
+    <div class="alert alert-dismissible alert-success">
+        <strong>on-chain balance:</strong> {{ funds_dict.sats_onchain }} <strong>SAT</strong>
     </div>
-    <div class="form-group">
-        <label class="col-form-label mt-4" for="nodeid">Node ID</label>
-        <input type="text" class="form-control" placeholder="Enter Node ID" name="nodeid" id="nodeid" required>
+    <div class="alert alert-dismissible alert-info">
+        <h2>Open a Lightning Network Channel</h2>
+        <p>Open a channel with a lighting node, entering the Node ID in this format: pubkey@address:port</p>
+        <form id="form" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="form-group">
+                <label class="col-form-label mt-4" for="amount">Amount</label>
+                <input type="text"
+                       class="form-control"
+                       placeholder="Enter amount in satoshi"
+                       name="amount"
+                       id="amount"
+                       required/>
+            </div>
+            <div class="form-group">
+                <label class="col-form-label mt-4" for="nodeid">Node ID</label>
+                <input type="text"
+                       class="form-control"
+                       placeholder="Enter Node ID"
+                       name="nodeid"
+                       id="nodeid"
+                       required/>
+            </div>
+            <button id="form-submit" type="button" class="btn btn-primary">Submit</button>
+        </form>
     </div>
-    <button id="form-submit" type="button" class="btn btn-primary">Submit</button>
-</form>
-</div>
 {% endblock %}
 {% block scripts %}
-<script>
-    function confirm(form_class, amount, nodeid) {
-        if (!document.querySelector(form_class).reportValidity()) {
-            return;
-        }
-        bootbox.confirm({
-            title: 'Opening Channel',
-	    message: `Confirm the creation of channel ${nodeid} with the amount of ${amount} sats`,
-            buttons: {
-                confirm: {
-                    label: 'Yes',
-                    className: 'btn-success'
-                },
-                cancel: {
-                    label: 'No',
-                    className: 'btn-danger'
-                }
-            },
-            callback: function (result) {
-                if (result)
-                    $(form_class).submit();
+    <script>
+        function confirm(formclass, amount, nodeid) {
+            if (!document.querySelector(formclass).reportValidity()) {
+                return;
             }
-        });
-    }
+            bootbox.confirm({
+                title: 'Opening Channel',
+                message: `Confirm the creation of channel ${nodeid} with the amount of ${amount} sats`,
+                buttons: {
+                    confirm: {
+                        label: 'Yes',
+                        className: 'btn-success'
+                    },
+                    cancel: {
+                        label: 'No',
+                        className: 'btn-danger'
+                    }
+                },
+                callback: function(result) {
+                    if (result) {
+                        $(formclass).submit();
+                    }
+                }
+            });
+        }
 
-    $(document).ready(function() {
-        $('#form-submit').click(function() {
-            var amount = $('#amount').val();
-            var nodeid = $('#nodeid').val();
-            confirm('#form', amount, nodeid);
-            return false;
+        $(document).ready(function() {
+            $('#form-submit').click(function() {
+                const amount = $('#amount').val();
+                const nodeid = $('#nodeid').val();
+                confirm('#form', amount, nodeid);
+                return false;
+            });
         });
-    });
-</script>
+    </script>
 {% endblock %}
-{% block footer %}
-{{ super() }}
-{% endblock %}
+{% block footer %}{{ super() }}{% endblock %}

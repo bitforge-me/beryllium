@@ -1,5 +1,3 @@
-# pylint: disable=unbalanced-tuple-unpacking
-
 import logging
 import time
 
@@ -9,12 +7,13 @@ import web_utils
 from web_utils import auth_request_get_params, bad_request, auth_request, auth_request_get_single_param
 import utils
 import email_utils
-from app_core import app, db, limiter
+from app_core import app, db, limiter, csrf
 from models import User, Role, Referral
 
 logger = logging.getLogger(__name__)
 reward = Blueprint('reward', __name__, template_folder='templates')
 limiter.limit("100/minute")(reward)
+csrf.exempt(reward)
 use_referrals = app.config["USE_REFERRALS"]
 
 #

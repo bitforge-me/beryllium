@@ -1,20 +1,17 @@
 {% extends "layout.html" %}
-
 {% block content %}
-
-    {% block payout_content %}
-    {% endblock %}
-
-    <div class="modal fade" id="confirm_submit" tabindex="-1" role="dialog" aria-hidden="true">
+    {% block payout_content %}{% endblock %}
+    <div class="modal fade"
+         id="confirm_submit"
+         tabindex="-1"
+         role="dialog"
+         aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header">
-                    Confirm Submit
-                </div>
+                <div class="modal-header">Confirm Submit</div>
                 <div class="modal-body">
                     Are you sure you want to <span id="submit_action">????</span>?
                 </div>
-
                 <div class="modal-footer">
                     <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
                     <a href="#" id="submit" class="btn btn-success success">Submit</a>
@@ -23,20 +20,19 @@
         </div>
     </div>
 {% endblock %}
-
 {% block scripts %}
-<script type="text/javascript">
-    var form_id = null;
+    <script type="text/javascript">
+        let formId = null;
 
-    $('.submit_button').click(function() {
-        form_id = null;
-        form_id = this.getAttribute('data-form');
-        var action = this.getAttribute('data-action');
-        $('#submit_action').text(action);
-    });
+        $('.submit_button').click(function() {
+            formId = null;
+            formId = this.getAttribute('data-form');
+            const action = this.getAttribute('data-action');
+            $('#submit_action').text(action);
+        });
 
-    $('#submit').click(function(){
-        $('#' + form_id).submit();
-    });
-</script>
+        $('#submit').click(function() {
+            $('#' + formId).submit();
+        });
+    </script>
 {% endblock %}

@@ -26,7 +26,7 @@ def tf_enabled_check(user: User) -> bool:
     return user.tf_primary_method is not None
 
 def tf_secret_init(user: User):
-    totp_factory = _security._totp_factory # pylint: disable=protected-access
+    totp_factory = _security._totp_factory
     user.tf_totp_secret = totp_factory.generate_totp_secret()
     return totp_factory.fetch_setup_values(user.tf_totp_secret, user)
 
@@ -57,7 +57,6 @@ def tf_code_validate(user: User, code: str) -> bool:
         return False
 
     # verify entered token with user's totp secret
-    # pylint: disable=protected-access
     if not _security._totp_factory.verify_totp(
         token=code,
         totp_secret=user.tf_totp_secret,
@@ -77,7 +76,7 @@ def check_verify():
     # we need to manually send the two factor security token because we cant change the
     # 'verify' view in flask_security.views
     if current_user.is_active and current_user.is_authenticated and \
-        request.path == url_for('security.verify') and request.method == 'GET':
+       request.path == url_for('security.verify') and request.method == 'GET':
         msg = current_user.tf_send_security_token(
             method=current_user.tf_primary_method,
             totp_secret=current_user.tf_totp_secret,
@@ -110,7 +109,7 @@ class SecureTwoFactorSetupForm(flask_security.forms.TwoFactorSetupForm):
 
     def validate(self):
         # only allow a user to setup a new method if no current method enabled
-        data = self.data # pylint: disable=no-member
+        data = self.data
         if "setup" in data:
             choice = data["setup"]
             if current_user.tf_primary_method and choice != "disable":
@@ -127,7 +126,7 @@ class SecureTwoFactorRescueForm(flask_security.forms.TwoFactorRescueForm):
 
     def validate(self):
         # do not allow the lost device option
-        data = self.data # pylint: disable=no-member
+        data = self.data
         if "help_setup" in data:
             choice = data["help_setup"]
             if choice == "lost_device":

@@ -1,7 +1,10 @@
+from decimal import Decimal
 import os
 import datetime
 
 from pyln.client import LightningRpc
+
+import assets
 
 def _msat_to_sat(msats):
     return int(int(msats) / 1000)
@@ -9,7 +12,6 @@ def _msat_to_sat(msats):
 def _sat_to_msat(sats):
     return int(sats) * 1000
 
-# pylint: disable=too-many-public-methods
 class LnRpc():
     def __init__(self):
         if 'LN_RPC_FILE' in os.environ:
@@ -37,18 +39,22 @@ class LnRpc():
         # create a LN invoice
         return self.instance.invoice(_sat_to_msat(sats), label, msg)
 
-    def invoice_status(self, bolt11: str) -> bool:
+    def invoice_status(self, bolt11: str) -> dict:
         return self.instance.listinvoices(invstring=bolt11)
 
     def pay(self, bolt11: str) -> dict:
         # pay a bolt11 invoice
-        return self.instance.pay(bolt11)
+        assert assets.BTCLN.withdraw_fee_fixed is False
+        max_fee_percent = str(assets.BTCLN.withdraw_fee * Decimal(100))
+        result = self.instance.pay(bolt11, maxfeepercent=max_fee_percent)
+        result["sats_sent"] = _msat_to_sat(result["msatoshi_sent"])
+        return result
 
     def pay_status(self, bolt11: str) -> list:
         # show the status of a specific paid bolt11 invoice
         return self.instance.listpays(bolt11=bolt11)
 
-    def pay_status_from_hash(self, payment_hash: str) -> list:
+    def pay_status_from_hash(self, payment_hash: str) -> dict:
         # show the status of a specific payment hash
         return self.instance.listpays(payment_hash=payment_hash)
 
@@ -129,7 +135,7 @@ class LnRpc():
                 paid_at = invoice["paid_at"]
                 paid_date = datetime.datetime.fromtimestamp(paid_at)
                 payment_preimage = invoice["payment_preimage"]
-                results.append({"paid_at": paid_at, "paid_date": paid_date, "description": description, "status": status, "amount_msat": amount_msat, "amount_sats": amount_sats, "pay_index": pay_index, "amount_received_msat": amount_received_msat, "amount_received_sats": amount_received_sats,"payment_preimage": payment_preimage, "bolt11": bolt11, "expires_at": expires_at, "payment_hash": payment_hash, "label": label})
+                results.append({"paid_at": paid_at, "paid_date": paid_date, "description": description, "status": status, "amount_msat": amount_msat, "amount_sats": amount_sats, "pay_index": pay_index, "amount_received_msat": amount_received_msat, "amount_received_sats": amount_received_sats, "payment_preimage": payment_preimage, "bolt11": bolt11, "expires_at": expires_at, "payment_hash": payment_hash, "label": label})
         return results
 
     def list_sendpays(self):
@@ -223,18 +229,12 @@ class LnRpc():
     def list_txs(self):
         return self.instance.listtransactions()
 
-    def multi_withdraw(self, outputs: dict[str, str]):
+    def multi_withdraw(self, outputs: list[dict[str, str]]):
         # outputs is in form {"address" : amount}
         return self.instance.multiwithdraw(outputs)
 
     def prepare_psbt(self, outputs: dict[str, str]):
         return self.instance.txprepare(outputs)
-
-    def send_invoice(self, bolt11: str):
-        # pay a bolt11 invoice
-        invoice_result = self.instance.pay(bolt11)
-        invoice_result["sats_sent"] = _msat_to_sat(invoice_result["msatoshi_sent"])
-        return invoice_result
 
     def sign_psbt(self, unsigned_psbt: str):
         return self.instance.signpsbt(unsigned_psbt)

@@ -1,62 +1,71 @@
 {% extends "lightning/layout.html" %}
-
 {% block title %}Create Invoice{% endblock %}
-
 {% block content %}
-<div class="alert alert-dismissible alert-success">
-    <strong>on-chain balance:</strong> {{ onchain }} <strong>BTC</strong> <b>|</b> {{ onchain_sats }} <strong>SAT</strong>
-</div>
-<div class="alert alert-dismissible alert-info">
-<h2>Broadcast PSBT</h2>
-<p>Broadcast a signed PSBT.</p>
-<form id="form" method="POST">
-    <div class="form-group">
-        <label for="psbt" class="form-label mt-4">Signed PSBT</label>
-        <textarea class="form-control" aria-required=true placeholder="Paste signed PSBT here." name="psbt" id="psbt" rows="3" required></textarea>
+    <div class="alert alert-dismissible alert-success">
+        <strong>on-chain balance:</strong> {{ onchain }} <strong>BTC</strong> <b>|</b> {{ onchain_sats }} <strong>SAT</strong>
     </div>
-    <button id="form-submit" type="button" class="btn btn-primary">Submit</button>
-</form>
-</div>
+    <div class="alert alert-dismissible alert-info">
+        <h2>Broadcast PSBT</h2>
+        <p>Broadcast a signed PSBT.</p>
+        <form id="form" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="form-group">
+                <label for="psbt" class="form-label mt-4">Signed PSBT</label>
+                <textarea class="form-control"
+                          aria-required
+                          true
+                          placeholder="Paste signed PSBT here."
+                          name="psbt"
+                          id="psbt"
+                          rows="3"
+                          required></textarea>
+            </div>
+            <button id="form-submit" type="button" class="btn btn-primary">Submit</button>
+        </form>
+    </div>
 {% endblock %}
-
 {% block scripts %}
-<script src="{{ url_for('static',filename='assets/lightning/utils.js') }}"></script>
-<script>
-    async function confirm(form_class, signedPsbt) {
-        if (!document.querySelector(form_class).reportValidity()) {
-            return;
-        }
-        var data = await decodePsbt(signedPsbt);
-        if (data == null)
-            return;
-        var message = 'Do you want to broadcast?<br/>';
-        message = message + formatOutputs(data.fee, data.outputs);
-        bootbox.confirm({
-            title: 'Confirm Broadcast',
-            message: message,
-            buttons: {
-                confirm: {
-                    label: 'Yes',
-                    className: 'btn-success'
-                },
-                cancel: {
-                    label: 'No',
-                    className: 'btn-danger'
-                }
-            },
-            callback: function (result) {
-                if (result)
-                    $(form_class).submit();
-            }
-        });
-    }
+    <script src="{{ url_for('static',filename='assets/lightning/utils.js') }}"></script>
+    <script>
+        /* globals decodePsbt, formatOutputs */
 
-    $(document).ready(function() {
-        $('#form-submit').click(function() {
-            var signedPsbt = $('#psbt').val();
-            confirm('#form', signedPsbt);
-            return false;
+        async function confirm(formclass, signedPsbt) {
+            if (!document.querySelector(formclass).reportValidity()) {
+                return;
+            }
+            const data = await decodePsbt(signedPsbt);
+            if (data == null) {
+                return;
+            }
+            let message = 'Do you want to broadcast?<br/>';
+            message = message + formatOutputs(data.fee, data.outputs);
+            bootbox.confirm({
+                title: 'Confirm Broadcast',
+                message,
+                buttons: {
+                    confirm: {
+                        label: 'Yes',
+                        className: 'btn-success'
+                    },
+                    cancel: {
+                        label: 'No',
+                        className: 'btn-danger'
+                    }
+                },
+                callback: function(result) {
+                    if (result) {
+                        $(formclass).submit();
+                    }
+                }
+            });
+        }
+
+        $(document).ready(function() {
+            $('#form-submit').click(function() {
+                const signedPsbt = $('#psbt').val();
+                confirm('#form', signedPsbt);
+                return false;
+            });
         });
-    });
-</script>
+    </script>
 {% endblock %}

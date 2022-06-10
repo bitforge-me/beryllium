@@ -1,10 +1,8 @@
 {% extends "lightning/layout.html" %}
-
 {% block title %}Wallet Transaction List{% endblock %}
-
 {% block content %}
-<div class="alert alert-dismissible alert-info">
-    <h2>BTC TRANSACTIONS</h2>
-    {% include 'lightning/tx_table.html' %}
-</div>
+    <div class="alert alert-dismissible alert-info">
+        <h2>BTC TRANSACTIONS</h2>
+        {% include 'lightning/tx_table.html' %}
+    </div>
 {% endblock %}

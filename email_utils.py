@@ -32,7 +32,7 @@ def send_email(logger: Logger, subject: str, msg: str, recipient: str | None = N
         sg = SendGridAPIClient(app.config["MAIL_SENDGRID_API_KEY"])
         sg.send(message)
         return True
-    except Exception as ex: # pylint: disable=broad-except
+    except Exception as ex:
         logger.error(f"email '{subject}': {ex}")
     return False
 

@@ -1,4 +1,3 @@
-# pylint: disable=unbalanced-tuple-unpacking
 import logging
 
 from flask import Blueprint, request, render_template, flash, redirect, make_response, abort
@@ -40,7 +39,7 @@ def request_start(token=None):
             else:
                 verification_message = 'unable to send text message, please ensure the mobile number is valid (country code first without the "+", followed by the phone number without any leading zeros "0")'
     # render template
-    return render_template('kyc/request.html', token=token, completed=req.status==req.STATUS_COMPLETED, aplyid_transaction_id=aplyid_transaction_id, verification_message=verification_message)
+    return render_template('kyc/request.html', token=token, completed=req.status == req.STATUS_COMPLETED, aplyid_transaction_id=aplyid_transaction_id, verification_message=verification_message)
 
 @kyc.route('/aplyid_pdf/<token>', methods=['GET'])
 def aplyid_pdf(token=None):
