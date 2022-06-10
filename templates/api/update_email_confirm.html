@@ -19,7 +19,7 @@
                         {% if current_user.tf_primary_method  %}
                             <div class="form-group">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                <input type="text" id="tf_code" name="tf_code" value=""/>
+                                <input type="text" id="tf_code" name="tf_code" value="" />
                                 <label for="tf_code">Two Factor Authentication Code</label>
                             </div>
                         {% endif %}
