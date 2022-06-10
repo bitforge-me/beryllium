@@ -9,19 +9,20 @@
     - name: get beryllium code
       ansible.builtin.git:
         repo: 'https://github.com/zap-me/beryllium.git'
-        dest: /root/beryllium
+        dest: /opt/beryllium
         version: master
+        force: yes
 
     - name: get alloy code
       ansible.builtin.git:
         repo: 'https://github.com/zap-me/alloy.git'
-        dest: /root/beryllium/web/alloy
+        dest: /opt/beryllium/web/alloy
         version: gh-pages
 
     - name: build containers
       shell:
-        cmd: cd ~/beryllium && ./build-docker-images.sh
+        cmd: cd /opt/beryllium && ./build-docker-images.sh
 
     - name: run containers
       shell:
-        cmd: cd ~/beryllium && docker-compose up --detach
+        cmd: cd /opt/beryllium && docker-compose up --detach
