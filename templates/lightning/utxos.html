@@ -1,7 +1,5 @@
 {% extends "lightning/layout.html" %}
-
 {% block title %}Wallet UTXOs{% endblock %}
-
 {% block content %}
     <div class="alert alert-dismissible alert-info">
         <h2>UTXOs</h2>
@@ -20,11 +18,16 @@
                         <td>
                             <a class="text-dark" href="address?address={{ output.address }}"><span class="badge bg-light">{{ output.address }}</span></a>
                         </td>
-                        <td><span class="badge text-light bg-success">{{ output.amount_msat.to_satoshi() }}</span></td>
-                        <td><span class="badge text-dark bg-light">{{ output.status }}</span></td>
+                        <td>
+                            <span class="badge text-light bg-success">{{ output.amount_msat.to_satoshi() }}</span>
+                        </td>
+                        <td>
+                            <span class="badge text-dark bg-light">{{ output.status }}</span>
+                        </td>
                         <td>
                             <span class="badge text-dark bg-light">
-                                {{ output.reserved }}{% if output.reserved %} (until blk {{ output.reserved_to_block }}){% endif %}
+                                {{ output.reserved }}
+                                {% if output.reserved %}(until blk {{ output.reserved_to_block }}){% endif %}
                             </span>
                         </td>
                     </tr>

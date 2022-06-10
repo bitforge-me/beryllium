@@ -1,41 +1,45 @@
 <!--<div class="col-lg-12{{ ' text-muted' if req.status == req.STATUS_SUSPENDED else '' }}">-->
 <tr class="{{ 'text-muted' if req.status == req.STATUS_SUSPENDED else '' }}">
-    <td>{{req.token}}</td>
-    <td>{{req.status}}</td>
-    <td>
-        Date: {{ req.date }}
-    </td>
-    <td>
-        {{req.address_book.recipient}}
-    </td>
-    <td>
-        {{req.address_book.account_name}}
-    </td>
-    <td>
-        {{req.reference}}
-    </td>
-    <td>
-        {{req.code}}
-    </td>
-    <td>
-        {{req.amount}} cents
-    </td>
+    <td>{{ req.token }}</td>
+    <td>{{ req.status }}</td>
+    <td>Date: {{ req.date }}</td>
+    <td>{{ req.address_book.recipient }}</td>
+    <td>{{ req.address_book.account_name }}</td>
+    <td>{{ req.reference }}</td>
+    <td>{{ req.code }}</td>
+    <td>{{ req.amount }} cents</td>
     {% if not group %}
         <td>
             {% if req.status == req.STATUS_CREATED %}
                 <p>
-                    <form action="/payments/payout_request_suspend" method="post" id="submit_form_s{{req.token}}">
+                    <form action="/payments/payout_request_suspend"
+                          method="post"
+                          id="submit_form_s{{ req.token }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                        <input type="hidden" name="token" value="{{req.token}}" />
-                        <input type="button" value="Suspend" data-action="set suspended" data-form="submit_form_s{{req.token}}" data-toggle="modal" data-target="#confirm_submit" class="btn btn-primary submit_button" />
+                        <input type="hidden" name="token" value="{{ req.token }}" />
+                        <input type="button"
+                               value="Suspend"
+                               data-action="set suspended"
+                               data-form="submit_form_s{{ req.token }}"
+                               data-toggle="modal"
+                               data-target="#confirm_submit"
+                               class="btn btn-primary submit_button"/>
                     </form>
                 </p>
             {% elif req.status == req.STATUS_SUSPENDED %}
                 <p>
-                    <form action="/payments/payout_request_unsuspend" method="post" id="submit_form_u{{req.token}}">
+                    <form action="/payments/payout_request_unsuspend"
+                          method="post"
+                          id="submit_form_u{{ req.token }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                        <input type="hidden" name="token" value="{{req.token}}" />
-                        <input type="button" value="Unsuspend" data-action="set unsuspended" data-form="submit_form_u{{req.token}}" data-toggle="modal" data-target="#confirm_submit" class="btn btn-primary submit_button" />
+                        <input type="hidden" name="token" value="{{ req.token }}" />
+                        <input type="button"
+                               value="Unsuspend"
+                               data-action="set unsuspended"
+                               data-form="submit_form_u{{ req.token }}"
+                               data-toggle="modal"
+                               data-target="#confirm_submit"
+                               class="btn btn-primary submit_button"/>
                     </form>
                 </p>
             {% endif %}

@@ -1,7 +1,5 @@
 {% extends "lightning/layout.html" %}
-
 {% block title %}Create Invoice{% endblock %}
-
 {% block content %}
     <div class="alert alert-dismissible alert-success">
         <strong>on-chain balance:</strong> {{ onchain }} <strong>BTC</strong> <b>|</b> {{ onchain_sats }} <strong>SAT</strong>
@@ -11,27 +9,36 @@
             <h2>PSBT Signed</h2>
             <div class="form-group">
                 <label for="signed_psbt" class="form-label mt-4">PSBT Data</label>
-                <textarea class="form-control" id="signed_psbt" rows="3" placeholder="{{ signed_psbt }}" readonly></textarea>
+                <textarea class="form-control"
+                          id="signed_psbt"
+                          rows="3"
+                          placeholder="{{ signed_psbt }}"
+                          readonly></textarea>
             </div>
             <button id="copy-psbt" type="button" class="btn btn-primary">Copy PSBT</button>
             <br/>
             <br/>
             <br/>
         {% endif %}
-
         <h2>Sign PSBT</h2>
         <p>Sign a PSBT.</p>
         <form id="form" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="form-group">
                 <label for="message" class="form-label mt-4">Unsigned PSBT</label>
-                <textarea class="form-control" aria-required=true placeholder="Paste unsigned PSBT here." name="psbt" id="psbt" rows="3" required></textarea>
+                <textarea class="form-control"
+                          aria-required
+                          true
+                          placeholder="Paste unsigned PSBT here."
+                          name="psbt"
+                          id="psbt"
+                          rows="3"
+                          required></textarea>
             </div>
             <button id="form-submit" type="button" class="btn btn-primary">Submit</button>
         </form>
     </div>
 {% endblock %}
-
 {% block scripts %}
     <script src="{{ url_for('static',filename='assets/lightning/utils.js') }}"></script>
     <script>
