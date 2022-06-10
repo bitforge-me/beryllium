@@ -1,9 +1,5 @@
 {% extends "email_layout.html" %}
-
 {% block content %}
-
     <p>{{ _fsdomain("Welcome") }} {{ username }}!</p>
-
     <p>{{ _fsdomain("You can log into your account using the following code:") }} {{ token }}</p>
-
 {% endblock %}

@@ -1,7 +1,5 @@
 {% extends "lightning/layout.html" %}
-
 {% block title %}Channel Management{% endblock %}
-
 {% block content %}
     <div>
         <br />
@@ -13,11 +11,21 @@
                 <input type="hidden" name="form-name" value="rebalance_channel_form" />
                 <div class="form-group">
                     <label for="oscid">From channel</label>
-                    <input type="text" name="oscid" class="form-control" id="oscid" placeholder="Channel ID" required />
+                    <input type="text"
+                           name="oscid"
+                           class="form-control"
+                           id="oscid"
+                           placeholder="Channel ID"
+                           required/>
                 </div>
                 <div class="form-group">
                     <label for="iscid">To channel</label>
-                    <input type="text" name="iscid" class="form-control" id="iscid" placeholder="Channel ID" required />
+                    <input type="text"
+                           name="iscid"
+                           class="form-control"
+                           id="iscid"
+                           placeholder="Channel ID"
+                           required/>
                 </div>
                 <div class="form-group">
                     <label for="iscid">Amount (sats)</label>
@@ -30,53 +38,107 @@
             <h2>Total Liquidity</h2>
             <div class="channel">
                 <header class="d-flex justify-content-between mb-2">
-                    <span class="capacity">{{total_spendable_sats + total_receivable_sats}}</span>
+                    <span class="capacity">{{ total_spendable_sats + total_receivable_sats }}</span>
                     <span class="state"></span>
                 </header>
                 {% if total_spendable_sats + total_receivable_sats > 0 %}
                     <div class="channel-bar">
-                        <div class="progress-bar bg-success" role="progressbar" title="Spendable: {{ total_spendable_sats }}" style="width: {{ total_spendable_sats / (total_spendable_sats + total_receivable_sats) * 100 }}%;"></div>
-                        <div class="progress-bar bg-info" role="progressbar" title="Receivable: {{ total_receivable_sats }}" style="width: {{ total_receivable_sats / (total_spendable_sats + total_receivable_sats) * 100 }}%;"></div>
+                        <div class="progress-bar bg-success"
+                             role="progressbar"
+                             title="Spendable: {{ total_spendable_sats }}"
+                             style="width: {{ total_spendable_sats / (total_spendable_sats + total_receivable_sats) * 100 }}%;">
+                        </div>
+                        <div class="progress-bar bg-info"
+                             role="progressbar"
+                             title="Receivable: {{ total_receivable_sats }}"
+                             style="width: {{ total_receivable_sats / (total_spendable_sats + total_receivable_sats) * 100 }}%;">
+                        </div>
                     </div>
                 {% endif %}
                 <ul class="list-unstyled my-3">
-                    <li><strong>Spendable:</strong> {{ total_spendable_sats }} sats</li>
-                    <li><strong>Receivable:</strong> {{ total_receivable_sats }} sats</li>
+                    <li>
+                        <strong>Spendable:</strong> {{ total_spendable_sats }} sats
+                    </li>
+                    <li>
+                        <strong>Receivable:</strong> {{ total_receivable_sats }} sats
+                    </li>
                 </ul>
             </div>
             <h2>Channels</h2>
             <ul class="channels">
                 {% for channel in channels %}
-                    <button type="button" class="btn btn-light btn-lg btn-block" data-toggle="collapse" href="#collapseExample{{loop.index}}" role="button" aria-expanded="false" aria-controls="collapseExample">
+                    <button type="button"
+                            class="btn btn-light btn-lg btn-block"
+                            data-toggle="collapse"
+                            href="#collapseExample{{ loop.index }}"
+                            role="button"
+                            aria-expanded="false"
+                            aria-controls="collapseExample">
                         <header class="d-flex justify-content-between mb-2">
-                            <span class="capacity">{{channel.total_sats}}</span>
-                            <span class="state">{% if channel.peer.connected %}active{% else %}offline{% endif %}</span>
+                            <span class="capacity">{{ channel.total_sats }}</span>
+                            <span class="state">
+                                {% if channel.peer.connected %}
+                                    active
+                                {% else %}
+                                    offline
+                                {% endif %}
+                            </span>
                         </header>
                         <div class="channel-bar">
                             {% set ratio = channel.total_sats / largest_channel_sats %}
-                            <div class="progress-bar bg-warning" role="progressbar" title="Our reserve: {{ channel.our_reserve_sats }} sats" style="width: {{ channel.our_reserve_sats / channel.total_sats * 100 * ratio }}%;"></div>
-                            <div class="progress-bar bg-success" role="progressbar" title="Spendable: {{ channel.spendable_sats }}" style="width: {{ channel.spendable_sats / channel.total_sats * 100 * ratio }}%;"></div>
-                            <div class="progress-bar bg-info" role="progressbar" title="Receivable: {{ channel.receivable_sats }}" style="width: {{ channel.receivable_sats / channel.total_sats * 100 * ratio }}%;"></div>
-                            <div class="progress-bar bg-warning" role="progressbar" title="Their reserve: {{ channel.their_reserve_sats }}" style="width: {{ channel.their_reserve_sats / channel.total_sats * 100 * ratio }}%;"></div>
+                            <div class="progress-bar bg-warning"
+                                 role="progressbar"
+                                 title="Our reserve: {{ channel.our_reserve_sats }} sats"
+                                 style="width: {{ channel.our_reserve_sats / channel.total_sats * 100 * ratio }}%;">
+                            </div>
+                            <div class="progress-bar bg-success"
+                                 role="progressbar"
+                                 title="Spendable: {{ channel.spendable_sats }}"
+                                 style="width: {{ channel.spendable_sats / channel.total_sats * 100 * ratio }}%;">
+                            </div>
+                            <div class="progress-bar bg-info"
+                                 role="progressbar"
+                                 title="Receivable: {{ channel.receivable_sats }}"
+                                 style="width: {{ channel.receivable_sats / channel.total_sats * 100 * ratio }}%;">
+                            </div>
+                            <div class="progress-bar bg-warning"
+                                 role="progressbar"
+                                 title="Their reserve: {{ channel.their_reserve_sats }}"
+                                 style="width: {{ channel.their_reserve_sats / channel.total_sats * 100 * ratio }}%;">
+                            </div>
                         </div>
                     </button>
-                    <div class="collapse" id="collapseExample{{loop.index}}">
+                    <div class="collapse" id="collapseExample{{ loop.index }}">
                         <div class="card card-body">
                             <ul class="list-unstyled my-3">
-                                <li><strong>Channel ID:</strong> {{ channel.short_channel_id }}</li>
-                                <li><strong>Status:</strong> {{ channel.state }}</li>
-                                <li><strong>Spendable:</strong> {{ channel.spendable_sats }} sats</li>
-                                <li><strong>Receivable:</strong> {{ channel.receivable_sats }} sats</li>
-                                <li><strong>Age:</strong> n/a</li>
-                                <li><strong>Peer:</strong> <small class="break-all">{{ channel.peer.id }}</small></li>
+                                <li>
+                                    <strong>Channel ID:</strong> {{ channel.short_channel_id }}
+                                </li>
+                                <li>
+                                    <strong>Status:</strong> {{ channel.state }}
+                                </li>
+                                <li>
+                                    <strong>Spendable:</strong> {{ channel.spendable_sats }} sats
+                                </li>
+                                <li>
+                                    <strong>Receivable:</strong> {{ channel.receivable_sats }} sats
+                                </li>
+                                <li>
+                                    <strong>Age:</strong> n/a
+                                </li>
+                                <li>
+                                    <strong>Peer:</strong> <small class="break-all">{{ channel.peer.id }}</small>
+                                </li>
                                 <li>
                                     {% if channel.state == "CHANNELD_NORMAL" %}
-                                        <form id="close-channel-form-{{loop.index}}" method="POST">
+                                        <form id="close-channel-form-{{ loop.index }}" method="POST">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                             <input type="hidden" name="form-name" value="close_channel_form" />
                                             <input type="hidden" id="channel_id" name="channel_id" value={{ channel.channel_id }} />
                                             <input type="hidden" id="channel_short_id" name="channel_short_id" value={{ channel.short_channel_id }} />
-                                            <button type="submit" class="close-channel-submit btn-sm btn-secondary">Close channel</button>
+                                            <button type="submit" class="close-channel-submit btn-sm btn-secondary">
+                                                Close channel
+                                            </button>
                                         </form>
                                     {% endif %}
                                 </li>
@@ -90,7 +152,6 @@
         </div>
     </div>
 {% endblock %}
-
 {% block scripts %}
     <script>
         function confirmClose(form, channelShortId) {

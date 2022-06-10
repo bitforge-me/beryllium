@@ -1,7 +1,5 @@
 {% extends "layout.html" %}
-
 {% block content %}
-
     <div class="card">
         <div class="card-body">
             <h5 class="card-title">Send email</h5>
@@ -9,12 +7,22 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="form-group">
                     <label for="subject">Subject</label>
-                    <input type="text" class="form-control" id="subject" name="subject" aria-describedby="subjectHelp" value="{{subject}}" />
+                    <input type="text"
+                           class="form-control"
+                           id="subject"
+                           name="subject"
+                           aria-describedby="subjectHelp"
+                           value="{{ subject }}"/>
                     <small id="subjectHelp" class="form-text text-muted">The subject.</small>
                 </div>
                 <div class="form-group">
                     <label for="recipient">Recipient</label>
-                    <input type="text" class="form-control" id="recipient" name="recipient" aria-describedby="recipientHelp" value="{{recipient}}" />
+                    <input type="text"
+                           class="form-control"
+                           id="recipient"
+                           name="recipient"
+                           aria-describedby="recipientHelp"
+                           value="{{ recipient }}"/>
                     <small id="recipientHelp" class="form-text text-muted">The email recipient (address).</small>
                 </div>
                 <div class="form-group">
@@ -26,6 +34,4 @@
             </form>
         </div>
     </div>
-
 {% endblock %}
-

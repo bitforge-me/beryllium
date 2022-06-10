@@ -1,4 +1,3 @@
-djhtml
 djlint
 pycodestyle
 mypy

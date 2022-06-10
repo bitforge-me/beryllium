@@ -1,7 +1,5 @@
 {% extends "lightning/layout.html" %}
-
 {% block title %}Pay Invoice{% endblock %}
-
 {% block content %}
     <div class="alert alert-dismissible alert-success">
         <strong>ln-channel balance:</strong> {{ funds_dict.sats_channels }} <strong>SAT</strong>
@@ -13,13 +11,18 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="form-group">
                 <label class="form-label mt-4" for="invoice">Invoice</label>
-                <input type="text" class="form-control" placeholder="Enter invoice data here." name="invoice" id="invoice" value="{{ invoice }}" required />
+                <input type="text"
+                       class="form-control"
+                       placeholder="Enter invoice data here."
+                       name="invoice"
+                       id="invoice"
+                       value="{{ invoice }}"
+                       required/>
             </div>
             <button id="form-submit" type="button" class="btn btn-primary">Submit</button>
         </form>
     </div>
 {% endblock %}
-
 {% block scripts %}
     <script>
         async function decodeInvoice(invoice) {
