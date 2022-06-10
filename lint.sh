@@ -9,6 +9,10 @@ echo '# linting html files with djlint..'
 djlint --version
 djlint --ignore H029,H006,H021,H030,H031,H020 `find templates/ -name '*.html' | xargs`
 
+echo '# linting html/js files with eslint..'
+npx eslint static/assets/lightning/utils.js
+npx eslint templates/**
+
 # see https://www.flake8rules.com/ for description of rules
 echo '# linting python files with pycodestyle..'
 pycodestyle --version

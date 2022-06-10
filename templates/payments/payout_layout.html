@@ -26,17 +26,17 @@
 
 {% block scripts %}
     <script type="text/javascript">
-        var form_id = null;
+        let formId = null;
 
         $('.submit_button').click(function() {
-            form_id = null;
-            form_id = this.getAttribute('data-form');
-            var action = this.getAttribute('data-action');
+            formId = null;
+            formId = this.getAttribute('data-form');
+            const action = this.getAttribute('data-action');
             $('#submit_action').text(action);
         });
 
-        $('#submit').click(function(){
-            $('#' + form_id).submit();
+        $('#submit').click(function() {
+            $('#' + formId).submit();
         });
     </script>
 {% endblock %}

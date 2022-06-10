@@ -27,8 +27,8 @@
 {% endblock %}
 {% block scripts %}
     <script>
-        function confirm(form_class, amount, nodeid) {
-            if (!document.querySelector(form_class).reportValidity()) {
+        function confirm(formclass, amount, nodeid) {
+            if (!document.querySelector(formclass).reportValidity()) {
                 return;
             }
             bootbox.confirm({
@@ -44,9 +44,9 @@
                         className: 'btn-danger'
                     }
                 },
-                callback: function (result) {
+                callback: function(result) {
                     if (result) {
-                        $(form_class).submit();
+                        $(formclass).submit();
                     }
                 }
             });
@@ -54,8 +54,8 @@
 
         $(document).ready(function() {
             $('#form-submit').click(function() {
-                var amount = $('#amount').val();
-                var nodeid = $('#nodeid').val();
+                const amount = $('#amount').val();
+                const nodeid = $('#nodeid').val();
                 confirm('#form', amount, nodeid);
                 return false;
             });

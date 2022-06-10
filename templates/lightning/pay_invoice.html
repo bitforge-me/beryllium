@@ -32,14 +32,15 @@
             return data;
         }
 
-        async function confirm(form_class, amount) {
-            if (!document.querySelector(form_class).reportValidity()) {
+        async function confirm(formclass, amount) {
+            if (!document.querySelector(formclass).reportValidity()) {
                 return;
             }
-            var invoice = document.querySelector('#invoice').value;
-            var data = await decodeInvoice(invoice);
-            if (data == null)
-            return;
+            const invoice = document.querySelector('#invoice').value;
+            const data = await decodeInvoice(invoice);
+            if (data == null) {
+                return;
+            }
 
             bootbox.confirm({
                 message: `Are you sure you want to pay the invoice? - Amount: ${data.amount_sat} sats, Description: ${data.description}`,
@@ -53,16 +54,17 @@
                         className: 'btn-danger'
                     }
                 },
-                callback: function (result) {
-                    if (result)
-                    $(form_class).submit();
+                callback: function(result) {
+                    if (result) {
+                        $(formclass).submit();
+                    }
                 }
             });
         }
 
         $(document).ready(function() {
             $('#form-submit').click(function() {
-                var amount = $('#amount').val();
+                const amount = $('#amount').val();
                 confirm('#form', amount);
                 return false;
             });

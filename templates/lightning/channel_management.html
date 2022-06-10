@@ -93,9 +93,9 @@
 
 {% block scripts %}
     <script>
-        function confirm_close(form, channelShortId) {
+        function confirmClose(form, channelShortId) {
             bootbox.confirm({
-                title: `Confirm Close Channel`,
+                title: 'Confirm Close Channel',
                 message: `Do you want to close the channel ${channelShortId}?`,
                 buttons: {
                     confirm: {
@@ -107,7 +107,7 @@
                         className: 'btn-danger'
                     }
                 },
-                callback: function (result) {
+                callback: function(result) {
                     if (result) {
                         form.submit();
                     }
@@ -115,8 +115,8 @@
             });
         }
 
-        function confirm_rebalance(form_class, oscid, iscid, amount) {
-            if (!document.querySelector(form_class).reportValidity()) {
+        function confirmRebalance(formclass, oscid, iscid, amount) {
+            if (!document.querySelector(formclass).reportValidity()) {
                 return;
             }
             if (isNaN(amount) || amount <= 0) {
@@ -124,7 +124,7 @@
                 return;
             }
             bootbox.confirm({
-                title: `Confirm Rebalance Channels`,
+                title: 'Confirm Rebalance Channels',
                 message: `Moving ${amount} sats from ${oscid} to ${iscid}. Do you want to continue?`,
                 buttons: {
                     confirm: {
@@ -136,32 +136,29 @@
                         className: 'btn-danger'
                     }
                 },
-                callback: function (result) {
+                callback: function(result) {
                     if (result) {
-                        $(form_class).submit();
+                        $(formclass).submit();
                     }
                 }
             });
         }
 
         $(document).ready(function() {
-
             $('.close-channel-submit').click(function() {
-                var channelShortId = $(this).prev().val();
-                var form = $(this).parent();
-                confirm_close(form, channelShortId);
+                const channelShortId = $(this).prev().val();
+                const form = $(this).parent();
+                confirmClose(form, channelShortId);
                 return false;
             });
 
             $('#rebalance-channel-submit').click(function() {
-                var oscid = $('#oscid').val();
-                var iscid = $('#iscid').val();
-                var amount = $('#amount').val();
-                var form = $(this).parent();
-                confirm_rebalance('#rebalance-channel-form', oscid, iscid, amount);
+                const oscid = $('#oscid').val();
+                const iscid = $('#iscid').val();
+                const amount = $('#amount').val();
+                confirmRebalance('#rebalance-channel-form', oscid, iscid, amount);
                 return false;
             });
-
         });
     </script>
 {% endblock %}

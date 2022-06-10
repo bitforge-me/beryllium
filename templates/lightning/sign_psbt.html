@@ -35,18 +35,21 @@
 {% block scripts %}
     <script src="{{ url_for('static',filename='assets/lightning/utils.js') }}"></script>
     <script>
-        async function confirm(form_class, psbt) {
-            if (!document.querySelector(form_class).reportValidity()) {
+        /*global decodePsbt, formatOutputs*/
+
+        async function confirm(formClass, psbt) {
+            if (!document.querySelector(formClass).reportValidity()) {
                 return;
             }
-            var data = await decodePsbt(psbt);
-            if (data == null)
-            return;
-            var message = 'Do you want to sign?<br/>';
+            const data = await decodePsbt(psbt);
+            if (data == null) {
+                return;
+            }
+            let message = 'Do you want to sign?<br/>';
             message = message + formatOutputs(data.fee, data.outputs);
             bootbox.confirm({
                 title: 'Confirm Sign',
-                message: message,
+                message,
                 buttons: {
                     confirm: {
                         label: 'Yes',
@@ -57,20 +60,21 @@
                         className: 'btn-danger'
                     }
                 },
-                callback: function (result) {
-                    if (result)
-                    $(form_class).submit();
+                callback: function(result) {
+                    if (result) {
+                        $(formClass).submit();
+                    }
                 }
             });
         }
 
         $(document).ready(function() {
             $('#copy-psbt').click(function() {
-                navigator.clipboard.writeText("{{ signed_psbt }}");
+                navigator.clipboard.writeText('{{ signed_psbt }}');
             });
 
             $('#form-submit').click(function() {
-                var psbt = $('#psbt').val();
+                const psbt = $('#psbt').val();
                 confirm('#form', psbt);
                 return false;
             });
