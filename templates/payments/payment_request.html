@@ -97,7 +97,7 @@
             {% else %}
                 {% if not completed and not cancelled %}
                     {% if req.windcave_url %}
-                        window.location.replace("{{req.windcave_url}}");
+            window.location.replace('{{req.windcave_url}}');
                     {% endif %}
                 {% endif %}
             {% endif %}

@@ -29,7 +29,7 @@
 
 {% block scripts %}
     <script>
-        function confirm(form_class, action, token) {
+        function confirm(formClass, action, token) {
             bootbox.confirm({
                 message: `Are you sure you want to ${action} for order ${token}?`,
                 buttons: {
@@ -42,17 +42,18 @@
                         className: 'btn-danger'
                     }
                 },
-                callback: function (result) {
-                    if (result)
-                    $(form_class).submit();
+                callback: function(result) {
+                    if (result) {
+                        $(formClass).submit();
+                    }
                 }
             });
         }
 
         $(document).ready(function() {
             $('#form-submit').click(function() {
-                var action = $('#action').val();
-                var token = $('#token').val();
+                const action = $('#action').val();
+                const token = $('#token').val();
                 confirm('#form', action, token);
                 return false;
             });

@@ -38,14 +38,17 @@
 
 {% block scripts %}
     <script>
+        /* global io */
+
         function socketOpen(label) {
-            var socket = io('/events', {transports: ['websocket']});
+            const socket = io('/events', {transports: ['websocket']});
             console.log('socket.io protocol:', socket.protocol);
             socket.on('connect', function() {
                 console.log('connected');
                 // subscribe to invoice events
-                if (label.length > 0)
-                socket.emit('ln_invoice', label, (response) => console.log(`sent invoice label: ${label}`));
+                if (label.length > 0) {
+                    socket.emit('ln_invoice', label, (response) => console.log(`sent invoice label: ${label}`));
+                }
             });
             socket.on('info', function(msg) {
                 console.log(`info: ${msg}`);
@@ -56,18 +59,18 @@
             socket.on('ln_invoice_paid', function(msg) {
                 console.log('invoice paid:', msg);
                 msg = JSON.parse(msg);
-                var bolt11 = msg['bolt11'];
+                const bolt11 = msg.bolt11;
                 console.log(bolt11);
-                var shortenedBolt11 = bolt11.slice(0,15) + '.....' + bolt11.slice(-15);
+                const shortenedBolt11 = bolt11.slice(0, 15) + '.....' + bolt11.slice(-15);
                 bootbox.alert({
                     title: 'Invoice Paid',
-                    message: shortenedBolt11,
+                    message: shortenedBolt11
                 });
             });
         }
 
-        function confirm(form_class, amount) {
-            if (!document.querySelector(form_class).reportValidity()) {
+        function confirm(formclass, amount) {
+            if (!document.querySelector(formclass).reportValidity()) {
                 return;
             }
             if (isNaN(amount) || amount <= 0) {
@@ -86,23 +89,24 @@
                         className: 'btn-danger'
                     }
                 },
-                callback: function (result) {
-                    if (result)
-                    $(form_class).submit();
+                callback: function(result) {
+                    if (result) {
+                        $(formclass).submit();
+                    }
                 }
             });
         }
 
         $(document).ready(function() {
-            var label = '{{ label if label }}';
+            const label = '{{ label if label }}';
             socketOpen(label);
 
             $('#copy-invoice').click(function() {
-                navigator.clipboard.writeText("{{ bolt11 }}");
+                navigator.clipboard.writeText('{{ bolt11 }}');
             });
 
             $('#form-submit').click(function() {
-                var amount = $('#amount').val();
+                const amount = $('#amount').val();
                 confirm('#form', amount);
                 return false;
             });

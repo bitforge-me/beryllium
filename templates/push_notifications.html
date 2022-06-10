@@ -108,18 +108,17 @@
 
 {% block scripts %}
     <script>
-        var deviceClass = '';
+        let deviceClass = '';
 
         function showTopicLocation(type) {
-            if (type == 'location') {
+            if (type === 'location') {
                 $('#topic-group').hide();
                 $('#location-group').show();
-                deviceClass = 'devices at the location'
-            }
-            else {
+                deviceClass = 'devices at the location';
+            } else {
                 $('#topic-group').show();
                 $('#location-group').hide();
-                deviceClass = 'devices subscribed to the topic'
+                deviceClass = 'devices subscribed to the topic';
             }
         }
 
@@ -131,8 +130,8 @@
             $('#location-btn').click(function() {
                 if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(function(position) {
-                        latitude = position.coords.latitude;
-                        longitude = position.coords.longitude;
+                        const latitude = position.coords.latitude;
+                        const longitude = position.coords.longitude;
                         console.log(`${latitude}, ${longitude}`);
                         $('#location').val(`${latitude}, ${longitude}, <MAX_DISTANCE_IN_METERS>, <MAX_AGE_IN_MINUTES>`);
                     }, function() {
@@ -154,7 +153,7 @@
                             className: 'btn-danger'
                         }
                     },
-                    callback: function (result) {
+                    callback: function(result) {
                         if (result) {
                             $('#general-form').submit();
                         }

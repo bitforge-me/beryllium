@@ -59,7 +59,7 @@
                     <br/>
                     <br/>
                     {% if aplyid_transaction_id %}
-                        <span ondblclick="download_aplyid_pdf()">aplyid: {{aplyid_transaction_id}}</span>
+                        <span>aplyid: {{aplyid_transaction_id}}</span>
                     {% endif %}
                 </p>
             </div>
@@ -74,43 +74,35 @@
     <!--<script src="https://wzrd.in/standalone/is-webview@1.0.1"></script>-->
 
     <script type="text/javascript">
-
         $(document).ready(function() {
             {% if not completed %}
                 {% if not aplyid_transaction_id %}
-                    $("#aplyid_form").show();
+            $('#aplyid_form').show();
                 {% else %}
-                    $("#aplyid_continue").show();
+            $('#aplyid_continue').show();
                 {% endif %}
             {% endif %}
-        })
+        });
 
         function showAplyid() {
-            $("#verification_message").hide();
-            $("#aplyid_continue").hide();
-            $("#aplyid_form").show();
+            $('#verification_message').hide();
+            $('#aplyid_continue').hide();
+            $('#aplyid_form').show();
         }
 
         {% if completed %}
-            $(document).ready(function() {
-                /* webview detection not working
-        if (!isWebview(navigator.userAgent)) {
-            $("#return-to-parent").show();
-        }
-        */
-                if (window.hasOwnProperty("ReactNativeWebView")) {
-                    console.log("react native webview");
-                    window.ReactNativeWebView.postMessage("kycCompleted");
-                }
-            });
-        {% endif %}
-
-        {% if aplyid_transaction_id %}
-            function download_aplyid_pdf() {
-                window.location = '/aplyid_pdf/{{token}}';
+        $(document).ready(function() {
+            /* webview detection not working
+            if (!isWebview(navigator.userAgent)) {
+                $('#return-to-parent').show();
             }
+            */
+            if (Object.prototype.hasOwnProperty.call(window, 'ReactNativeWebView')) {
+                console.log('react native webview');
+                window.ReactNativeWebView.postMessage('kycCompleted');
+            }
+        });
         {% endif %}
-
     </script>
 
 {% endblock %}
