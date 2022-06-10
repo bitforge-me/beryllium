@@ -6,6 +6,7 @@
         <div class="card-body">
             <h5 class="card-title">Retrieve User KYC</h5>
             <form id="general-form" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="form-group">
                     <label for="email">Email Address</label>
                     <input type="text" class="form-control" id="email" name="email" aria-describedby="emailHelp" value="{{email}}" />

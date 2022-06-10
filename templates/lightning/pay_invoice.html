@@ -10,6 +10,7 @@
         <h2>Pay Invoice</h2>
         <p>Pay lightning invoice.</p>
         <form id="form" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="form-group">
                 <label class="form-label mt-4" for="invoice">Invoice</label>
                 <input type="text" class="form-control" placeholder="Enter invoice data here." name="invoice" id="invoice" value="{{ invoice }}" required />

@@ -9,6 +9,7 @@
                     <div class="card-body">
                         <h5 class="card-title">Send to topic/location</h5>
                         <form id="general-form" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <div class="form-group">
                                 <div class="form-check form-check-inline">
                                     <input class="form-check-input" type="radio" name="type" id="type-topic" value="topic" {% if type_ == 'topic' or not type_ %}checked{% endif %} />
@@ -67,6 +68,7 @@
                     <div class="card-body">
                         <h5 class="card-title">Send to specific device</h5>
                         <form method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <input type="hidden" id="type" name="type" value="specific_device" />
                             <div class="form-group">
                                 <label for="registration_token">Registration token</label>

@@ -13,7 +13,7 @@ from web_utils import bad_request, get_json_params, auth_request, auth_request_g
 import utils
 import email_utils
 from models import CryptoWithdrawal, FiatDbTransaction, FiatDepositCode, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, FiatDeposit, FiatWithdrawal, CryptoAddress, CryptoDeposit, DassetSubaccount
-from app_core import app, db, limiter, SERVER_VERSION, CLIENT_VERSION_DEPLOYED
+from app_core import app, db, limiter, csrf, SERVER_VERSION, CLIENT_VERSION_DEPLOYED
 from security import tf_enabled_check, tf_method, tf_code_send, tf_method_set, tf_method_unset, tf_secret_init, tf_code_validate, user_datastore
 import payouts_core
 import windcave
@@ -31,6 +31,7 @@ import tripwire
 logger = logging.getLogger(__name__)
 api = Blueprint('api', __name__, template_folder='templates')
 limiter.limit('100/minute')(api)
+csrf.exempt(api)
 
 def _user_subaccount_get_or_create(db_session, user):
     # create subaccount for user

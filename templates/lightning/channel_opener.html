@@ -12,6 +12,7 @@
         <h2>Open a Lightning Network Channel</h2>
         <p>Open a channel with a lighting node, entering the Node ID in this format: pubkey@address:port</p>
         <form id="form" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="form-group">
                 <label class="col-form-label mt-4" for="amount">Amount</label>
                 <input type="text" class="form-control" placeholder="Enter amount in satoshi" name="amount" id="amount" required />

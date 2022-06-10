@@ -21,6 +21,7 @@
 
         <h2>Create PSBT/Withdrawal</h2>
         <form id="form" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="payment-fields">
                 <div class="form-check form-check-inline">
                     <input class="form-check-input" type="radio" name="mode" id="psbt" value="psbt" {% if mode == 'psbt' %}checked{% endif %} />

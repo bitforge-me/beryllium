@@ -10,6 +10,7 @@
         <h2>Broadcast PSBT</h2>
         <p>Broadcast a signed PSBT.</p>
         <form id="form" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="form-group">
                 <label for="psbt" class="form-label mt-4">Signed PSBT</label>
                 <textarea class="form-control" aria-required=true placeholder="Paste signed PSBT here." name="psbt" id="psbt" rows="3" required></textarea>

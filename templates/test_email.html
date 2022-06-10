@@ -6,6 +6,7 @@
         <div class="card-body">
             <h5 class="card-title">Send email</h5>
             <form id="general-form" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="form-group">
                     <label for="subject">Subject</label>
                     <input type="text" class="form-control" id="subject" name="subject" aria-describedby="subjectHelp" value="{{subject}}" />
