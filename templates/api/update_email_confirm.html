@@ -8,6 +8,7 @@
                 <div class="card-body">
                     <h5 class="card-title">Update Email Request</h5>
                     <form method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <h6>Old Email:</h6>
                         <span>{{req.user.email | e}}</span>
                         <br/>
@@ -18,7 +19,6 @@
                         <br/>
                         {% if current_user.tf_primary_method  %}
                             <div class="form-group">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                 <input type="text" id="tf_code" name="tf_code" value="" />
                                 <label for="tf_code">Two Factor Authentication Code</label>
                             </div>
