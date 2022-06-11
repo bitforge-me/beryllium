@@ -68,8 +68,8 @@ def _check_request_status(req):
         logger.error(req.text)
         raise e
     jsn = req.json()
-    if not jsn['status']:
-        logger.error(jsn['msg'])
+    if not jsn['status'] and jsn['msg']:
+        logger.error('failure message: %s', jsn['msg'])
         raise Exception()
 
 def user_from_deposit(db_session: Session, txn: CrownTx) -> User | None:

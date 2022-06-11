@@ -12,6 +12,7 @@ from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFProtect
+from dotenv import load_dotenv
 
 SERVER_VERSION = 10
 CLIENT_VERSION_DEPLOYED = 8
@@ -24,6 +25,9 @@ class MyJSONEncoder(flask.json.JSONEncoder):
             # Convert decimal instances to strings.
             return str(o)
         return super().default(o)
+
+# take environment variables from .env file if present
+load_dotenv()
 
 # Create Flask application
 app = Flask(__name__)
