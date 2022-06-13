@@ -16,7 +16,8 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential gettext librsync-dev gnupg-agent
+        sudo apt-get install -y build-essential gettext librsync-dev gnupg-agent npm
+        npm install --save-dev eslint eslint-config-standard @eladavron/eslint-plugin-jinja eslint-plugin-html
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements_lint.txt

@@ -142,7 +142,7 @@ def pay_invoice():
     if request.method == 'POST':
         invoice = request.form['invoice']
         try:
-            result = LnRpc().send_invoice(invoice)
+            result = LnRpc().pay(invoice)
             flash(f'Invoice paid: {result}', 'success')
         except Exception as e:
             flash(f'Error paying invoice: {e}', 'danger')

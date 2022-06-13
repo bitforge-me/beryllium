@@ -1,8 +1,5 @@
-
 {% extends "payments/payout_layout.html" %}
-
 {% block payout_content %}
-
     <div class="container">
         <div class="row">
             {% if suspended %}
@@ -10,22 +7,37 @@
             {% else %}
                 <a class="btn btn-secondary" href="/payments/payouts?suspended=true"><i class="glyphicon glyphicon-chevron-right"></i> Show suspended</a>
             {% endif %}
-            <br/><br/>
+            <br/>
+            <br/>
             <table class="table">
                 <tr>
-                    <th>Token</th><th>Status</th><th>Date</th><th>Recipient</th><th>Account</th>
-                    <th>Reference</th><th>Code</th><th>Amount</th>
+                    <th>Token</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Recipient</th>
+                    <th>Account</th>
+                    <th>Reference</th>
+                    <th>Code</th>
+                    <th>Amount</th>
                 </tr>
                 {% for req in payout_requests %}
                     {% include "payments/payout_request.html" %}
                 {% endfor %}
             </table>
             {% if not suspended %}
-                <form action="/payments/payout_group_create" method="post" id="submit_form_group_create">
-                    <input type="button" value="Create payout group" data-action="create a payout group" data-form="submit_form_group_create" data-toggle="modal" data-target="#confirm_submit" class="btn btn-primary submit_button" />
+                <form action="/payments/payout_group_create"
+                      method="post"
+                      id="submit_form_group_create">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <input type="button"
+                           value="Create payout group"
+                           data-action="create a payout group"
+                           data-form="submit_form_group_create"
+                           data-toggle="modal"
+                           data-target="#confirm_submit"
+                           class="btn btn-primary submit_button"/>
                 </form>
             {% endif %}
         </div>
     </div>
-
 {% endblock %}

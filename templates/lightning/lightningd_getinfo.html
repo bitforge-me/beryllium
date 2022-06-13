@@ -1,7 +1,5 @@
 {% extends "lightning/layout.html" %}
-
 {% block title %}Lightningd GetInfo{% endblock %}
-
 {% block content %}
     <div class="alert alert-dismissible alert-info">
         <h2>Lightning Node Information</h2>
@@ -9,8 +7,8 @@
         <table class="table table-striped table-hover">
             {% for key in info %}
                 <tr>
-                    <th scope="row">{{ key }}: </th>
-                    <td> {{ info[key] }}</td>
+                    <th scope="row">{{ key }}:</th>
+                    <td>{{ info[key] }}</td>
                 </tr>
             {% endfor %}
         </table>

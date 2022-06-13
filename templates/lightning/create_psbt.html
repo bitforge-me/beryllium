@@ -1,7 +1,5 @@
 {% extends "lightning/layout.html" %}
-
 {% block title %}Create PSBT/Withdrawal{% endblock %}
-
 {% block content %}
     <div class="alert alert-dismissible alert-success">
         <strong>on-chain balance:</strong> {{ onchain }} <strong>BTC</strong> <b>|</b> {{ onchain_sats }} <strong>SAT</strong>
@@ -11,44 +9,83 @@
             <h2>PSBT Created</h2>
             <div class="form-group">
                 <label for="created_psbt" class="form-label mt-4">PSBT Data</label>
-                <textarea class="form-control" id="created_psbt" rows="3" placeholder="{{ psbt }}" readonly></textarea>
+                <textarea class="form-control"
+                          id="created_psbt"
+                          rows="3"
+                          placeholder="{{ psbt }}"
+                          readonly></textarea>
             </div>
             <button id="copy-psbt" type="button" class="btn btn-primary">Copy PSBT</button>
             <br/>
             <br/>
             <br/>
         {% endif %}
-
         <h2>Create PSBT/Withdrawal</h2>
         <form id="form" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="payment-fields">
                 <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" name="mode" id="psbt" value="psbt" {% if mode == 'psbt' %}checked{% endif %} />
+                    <input class="form-check-input"
+                           type="radio"
+                           name="mode"
+                           id="psbt"
+                           value="psbt"
+                           {% if mode == 'psbt' %}checked{% endif %}/>
                     <label class="form-check-label" for="psbt">Create PSBT</label>
                 </div>
                 <div class="form-check form-check-inline">
-                    <input class="form-check-input" type="radio" name="mode" id="withdraw" value="withdraw" {% if mode == 'withdraw' %}checked{% endif %} />
+                    <input class="form-check-input"
+                           type="radio"
+                           name="mode"
+                           id="withdraw"
+                           value="withdraw"
+                           {% if mode == 'withdraw' %}checked{% endif %}/>
                     <label class="form-check-label" for="withdraw">Create Withdrawal</label>
                 </div>
                 <br />
                 <div class="alert alert-dismissible alert-warning">
                     Unit:
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="unit" id="btc" value="btc" {% if unit == 'btc' %}checked{% endif %} required />
-                        <label class="form-check-label" for="btc"><strong>BTC</strong></label>
+                        <input class="form-check-input"
+                               type="radio"
+                               name="unit"
+                               id="btc"
+                               value="btc"
+                               {% if unit == 'btc' %}checked{% endif %}
+                               required/>
+                        <label class="form-check-label" for="btc">
+                            <strong>BTC</strong>
+                        </label>
                     </div>
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" name="unit" id="sat" value="sat" checked />
-                        <label class="form-check-label" for="sat"><strong>SAT</strong></label>
+                        <input class="form-check-input"
+                               type="radio"
+                               name="unit"
+                               id="sat"
+                               value="sat"
+                               checked/>
+                        <label class="form-check-label" for="sat">
+                            <strong>SAT</strong>
+                        </label>
                     </div>
                 </div>
                 <div class="form-group">
                     <label for="address" class="form-label">Recipient Address</label>
-                    <input type="text" id="address" name="address" class="payment form-control" placeholder="Recipient Address" required />
+                    <input type="text"
+                           id="address"
+                           name="address"
+                           class="payment form-control"
+                           placeholder="Recipient Address"
+                           required/>
                 </div>
                 <label for="amount" class="form-label">Amount</label>
                 <div class="input-group">
-                    <input type="text" id="amount" name="amount" class="payment form-control" placeholder="Amount" required />
+                    <input type="text"
+                           id="amount"
+                           name="amount"
+                           class="payment form-control"
+                           placeholder="Amount"
+                           required/>
                     <div class="input-group-append">
                         <button class="btn btn-outline-secondary" type="button" id="max">Max</button>
                     </div>
@@ -64,11 +101,10 @@
         </form>
     </div>
 {% endblock %}
-
 {% block scripts %}
     <script>
-        function confirm(form_class, outputs, totalBtc, action, unit) {
-            if (!document.querySelector(form_class).reportValidity()) {
+        function confirm(formclass, outputs, totalBtc, action, unit) {
+            if (!document.querySelector(formclass).reportValidity()) {
                 return;
             }
             if (isNaN(totalBtc) || totalBtc <= 0) {
@@ -88,16 +124,16 @@
                         className: 'btn-danger'
                     }
                 },
-                callback: function (result) {
+                callback: function(result) {
                     if (result) {
-                        $(form_class).submit();
+                        $(formclass).submit();
                     }
                 }
             });
         }
 
         function addOutput(addr, amount) {
-            document.querySelector(".payment-fields").insertAdjacentHTML("afterend",
+            document.querySelector('.payment-fields').insertAdjacentHTML('afterend',
                 `
             <div class="payment-fields">
                 <hr>
@@ -116,29 +152,29 @@
 
         $(document).ready(function() {
             $('#copy-psbt').click(function() {
-                navigator.clipboard.writeText("{{ psbt }}");
+                navigator.clipboard.writeText('{{ psbt }}');
             });
 
             $('#max').click(function() {
-                var ele = $('#max').parent().prev();
+                const ele = $('#max').parent().prev();
                 console.log(ele);
                 const unit = document.querySelector('input[name="unit"]:checked').value;
-                if(unit == 'btc')
-                return ele.val('{{ onchain }}');
-                else if(unit == 'sat')
-                return ele.val('{{ onchain_sats }}');
-                else
-                return
+                if (unit === 'btc') {
+                    return ele.val('{{ onchain }}');
+                } else if (unit === 'sat') {
+                    return ele.val('{{ onchain_sats }}');
+                }
             });
 
             $('#form-remove-output').hide();
             $('#form-remove-output').click(function() {
-                var ele = $('.payment-fields').last();
+                const ele = $('.payment-fields').last();
                 console.log(ele);
                 ele.remove();
-                if ($('.payment-fields').length == 1)
-                $('#form-remove-output').hide();
-                return false
+                if ($('.payment-fields').length === 1) {
+                    $('#form-remove-output').hide();
+                }
+                return false;
             });
 
             $('#form-add-output').click(function() {
@@ -147,40 +183,40 @@
             });
 
             $('#form-submit').click(function() {
-                var outputs = [];
-                var paymentFields = document.getElementsByClassName('payment');
-                var totalBtc = 0;
-                for (var i = 0; i < paymentFields.length; i += 2) {
-                    var output = {sats: paymentFields[i].value, btc: paymentFields[i + 1].value};
+                const outputs = [];
+                const paymentFields = document.getElementsByClassName('payment');
+                let totalBtc = 0;
+                for (let i = 0; i < paymentFields.length; i += 2) {
+                    const output = {sats: paymentFields[i].value, btc: paymentFields[i + 1].value};
                     outputs.push(output);
                     totalBtc += parseFloat(output.btc);
                 }
                 totalBtc = Math.round(totalBtc * 100000000) / 100000000;
                 const mode = document.querySelector('input[name="mode"]:checked').value;
                 const unit = document.querySelector('input[name="unit"]:checked').value;
-                var action = '!ERR!';
-                if (mode == 'psbt')
-                action = 'PSBT';
-                else if (mode == 'withdraw')
-                action = 'Withdrawal Transaction';
-                else
-                return;
+                let action = '!ERR!';
+                if (mode === 'psbt') {
+                    action = 'PSBT';
+                } else if (mode === 'withdraw') {
+                    action = 'Withdrawal Transaction';
+                } else {
+                    return;
+                }
                 confirm('#form', outputs, totalBtc, action, unit);
                 return false;
             });
 
             // load initial values
-            var addrs = {{ addrs | safe }};
-            var amounts = {{ amounts | safe }};
-            for (var i = 0; i < addrs.length; i++) {
-                if (i == 0) {
+            const addrs = {{ addrs | safe }};
+            const amounts = {{ amounts | safe }};
+            for (let i = 0; i < addrs.length; i++) {
+                if (i === 0) {
                     $('#address').val(addrs[i]);
                     $('#amount').val(amounts[i]);
                 } else {
                     addOutput(addrs[i], amounts[i]);
                 }
             }
-
         });
     </script>
 {% endblock %}

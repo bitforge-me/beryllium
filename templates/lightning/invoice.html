@@ -1,7 +1,5 @@
 {% extends "lightning/layout.html" %}
-
 {% block title %}Create Invoice{% endblock %}
-
 {% block content %}
     <div class="alert alert-dismissible alert-success">
         <strong>ln-channel balance:</strong> {{ funds_dict.sats_channels }} <strong>SAT</strong>
@@ -12,7 +10,11 @@
             {{ qrcode_svg | safe }}
             <div class="form-group">
                 <label for="readonlytextarea" class="form-label mt-4">Invoice Data</label>
-                <textarea class="form-control" id="readonlytextarea" rows="3" placeholder="{{ bolt11 }}" readonly></textarea>
+                <textarea class="form-control"
+                          id="readonlytextarea"
+                          rows="3"
+                          placeholder="{{ bolt11 }}"
+                          readonly></textarea>
             </div>
             <button id="copy-invoice" type="button" class="btn btn-primary">Copy Invoice</button>
             <br/>
@@ -22,29 +24,44 @@
         <h2>Create Invoice</h2>
         <p>Create a lightning network invoice.</p>
         <form id="form" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="form-group">
                 <label class="col-form-label mt-4" for="amount">Amount (sats)</label>
-                <input type="number" class="form-control" aria-required="true" placeholder="Enter amount here in satoshi." name="amount" id="amount" required />
+                <input type="number"
+                       class="form-control"
+                       aria-required="true"
+                       placeholder="Enter amount here in satoshi."
+                       name="amount"
+                       id="amount"
+                       required/>
             </div>
             <div class="form-group">
                 <label for="message" class="form-label mt-4">Message</label>
-                <textarea class="form-control" aria-required="true" placeholder="Enter message here." name="message" id="message" rows="3" required></textarea>
+                <textarea class="form-control"
+                          aria-required="true"
+                          placeholder="Enter message here."
+                          name="message"
+                          id="message"
+                          rows="3"
+                          required></textarea>
             </div>
             <button id="form-submit" type="submit" class="btn btn-primary">Submit</button>
         </form>
     </div>
 {% endblock %}
-
 {% block scripts %}
     <script>
+        /* global io */
+
         function socketOpen(label) {
-            var socket = io('/events', {transports: ['websocket']});
+            const socket = io('/events', {transports: ['websocket']});
             console.log('socket.io protocol:', socket.protocol);
             socket.on('connect', function() {
                 console.log('connected');
                 // subscribe to invoice events
-                if (label.length > 0)
-                socket.emit('ln_invoice', label, (response) => console.log(`sent invoice label: ${label}`));
+                if (label.length > 0) {
+                    socket.emit('ln_invoice', label, (response) => console.log(`sent invoice label: ${label}`));
+                }
             });
             socket.on('info', function(msg) {
                 console.log(`info: ${msg}`);
@@ -55,18 +72,18 @@
             socket.on('ln_invoice_paid', function(msg) {
                 console.log('invoice paid:', msg);
                 msg = JSON.parse(msg);
-                var bolt11 = msg['bolt11'];
+                const bolt11 = msg.bolt11;
                 console.log(bolt11);
-                var shortenedBolt11 = bolt11.slice(0,15) + '.....' + bolt11.slice(-15);
+                const shortenedBolt11 = bolt11.slice(0, 15) + '.....' + bolt11.slice(-15);
                 bootbox.alert({
                     title: 'Invoice Paid',
-                    message: shortenedBolt11,
+                    message: shortenedBolt11
                 });
             });
         }
 
-        function confirm(form_class, amount) {
-            if (!document.querySelector(form_class).reportValidity()) {
+        function confirm(formclass, amount) {
+            if (!document.querySelector(formclass).reportValidity()) {
                 return;
             }
             if (isNaN(amount) || amount <= 0) {
@@ -85,23 +102,24 @@
                         className: 'btn-danger'
                     }
                 },
-                callback: function (result) {
-                    if (result)
-                    $(form_class).submit();
+                callback: function(result) {
+                    if (result) {
+                        $(formclass).submit();
+                    }
                 }
             });
         }
 
         $(document).ready(function() {
-            var label = '{{ label if label }}';
+            const label = '{{ label if label }}';
             socketOpen(label);
 
             $('#copy-invoice').click(function() {
-                navigator.clipboard.writeText("{{ bolt11 }}");
+                navigator.clipboard.writeText('{{ bolt11 }}');
             });
 
             $('#form-submit').click(function() {
-                var amount = $('#amount').val();
+                const amount = $('#amount').val();
                 confirm('#form', amount);
                 return false;
             });

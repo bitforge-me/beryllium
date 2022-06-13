@@ -1,8 +1,5 @@
 {% extends "layout.html" %}
-{% block head_css %}
-    {{ super() }}
-{% endblock %}
-
+{% block head_css %}{{ super() }}{% endblock %}
 {% block content %}
     <div class="some-page-wrapper">
         <div class="row">
@@ -10,21 +7,15 @@
                 <div class="column">
                     <div class="operations_account_column text_color">
                         <b>{{ balance.name }}</b>
-                        <div class="report-row report-row-sm blue text_color">
-                            Available: {{ balance.available }} {{ balance.symbol }}
-                        </div>
-                        <div class="report-row report-row-sm blue text_color">
-                            Total: {{ balance.total }} {{ balance.symbol }}
-                        </div>
+                        <div class="report-row report-row-sm blue text_color">Available: {{ balance.available }} {{ balance.symbol }}</div>
+                        <div class="report-row report-row-sm blue text_color">Total: {{ balance.total }} {{ balance.symbol }}</div>
                     </div>
-            {% endfor %}
+                {% endfor %}
+            </div>
         </div>
-    </div>
-
-    <hr />
-    {% if config["USE_REFERRALS"] %}
-        {% include "referral_settings.html" %}
-    {% endif %}
-
+        <hr />
+        {% if config["USE_REFERRALS"] %}
+            {% include "referral_settings.html" %}
+        {% endif %}
     </div>
 {% endblock %}

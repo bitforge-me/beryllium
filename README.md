@@ -11,3 +11,53 @@ Note: The first migration file was taken when the DB was at git revision `8acb5f
 `./app-cli.sh add_user <EMAIL> <PASSWORD` create a new user
 
 `./app-cli.sh add_role <EMAIL> <ROLE` grant a role to a user
+
+## C Lightning database replica
+
+We use the `--wallet` flag (https://lightning.readthedocs.io/BACKUP.html#sqlite3-wallet-main-backup-and-remote-nfs-mount) in order to make a replica of the database. We can use sshfs to make the replica offsite.
+
+### Setup
+
+ - add `LIGHTNINGD_REPLICA=1` to the `.env` file
+ - add the beryllium server ssh pubkey to the backup server authorized ssh keys (`~/.ssh/authorized_keys`)
+ - install sshfs on the beryllium server (`apt install sshfs`)
+
+### Test mounting the offsite directory
+
+First setup the mount:
+```
+BE_SERVER_NAME=`hostname --fqdn`
+LOCAL_REPLICA_DIR=`realpath lightningd/replica/`
+# this needs to be an absolute directory
+REMOTE_REPLICA_DIR={remote_user_home_dir}/$BE_SERVER_NAME
+ssh {remote_user}@{backup_server} mkdir $REMOTE_REPLICA_DIR
+sshfs -o allow_other,default_permissions {remote_user}@{backup_server}:$REMOTE_REPLICA_DIR $LOCAL_REPLICA_DIR
+```
+
+Now restart the lightning container:
+```
+docker stop lightningd
+docker compose up -d
+```
+
+Now check the replica exists locally and remote and have the same size and modified date:
+```
+# local
+ls -l lightningd/replica/lightningd.sqlite3
+# remote
+ssh {remote_user}@{backup_server} ls -l $REMOTE_REPLICA_DIR/lightnind.sqlite3
+```
+
+### Make the mount permanent
+
+Add the following to `/etc/fstab`:
+
+```
+{remote_user}@{backup_server}:{remote_replica_dir} {local_replica_dir} fuse.sshfs noauto,x-systemd.automount,_netdev,reconnect,identityfile=/{user_home_dir}/.ssh/id_rsa,allow_other,default_permissions 0 0
+```
+
+You can test the permenent mount by rebooting
+
+### More info
+
+https://www.digitalocean.com/community/tutorials/how-to-use-sshfs-to-mount-remote-file-systems-over-ssh

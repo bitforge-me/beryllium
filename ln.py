@@ -1,7 +1,10 @@
+from decimal import Decimal
 import os
 import datetime
 
 from pyln.client import LightningRpc
+
+import assets
 
 def _msat_to_sat(msats):
     return int(int(msats) / 1000)
@@ -41,7 +44,11 @@ class LnRpc():
 
     def pay(self, bolt11: str) -> dict:
         # pay a bolt11 invoice
-        return self.instance.pay(bolt11)
+        assert assets.BTCLN.withdraw_fee_fixed is False
+        max_fee_percent = str(assets.BTCLN.withdraw_fee * Decimal(100))
+        result = self.instance.pay(bolt11, maxfeepercent=max_fee_percent)
+        result["sats_sent"] = _msat_to_sat(result["msatoshi_sent"])
+        return result
 
     def pay_status(self, bolt11: str) -> list:
         # show the status of a specific paid bolt11 invoice
@@ -228,12 +235,6 @@ class LnRpc():
 
     def prepare_psbt(self, outputs: dict[str, str]):
         return self.instance.txprepare(outputs)
-
-    def send_invoice(self, bolt11: str):
-        # pay a bolt11 invoice
-        invoice_result = self.instance.pay(bolt11)
-        invoice_result["sats_sent"] = _msat_to_sat(invoice_result["msatoshi_sent"])
-        return invoice_result
 
     def sign_psbt(self, unsigned_psbt: str):
         return self.instance.signpsbt(unsigned_psbt)

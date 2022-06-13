@@ -3,20 +3,32 @@
     <head>
         <!-- Required meta tags -->
         <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-
+        <meta name="viewport"
+              content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
         <!-- Bootstrap CSS -->
-        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous" />
+        <link rel="stylesheet"
+              href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css"
+              integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk"
+              crossorigin="anonymous"/>
         <!-- Font Awesome CSS -->
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+        <link rel="stylesheet"
+              href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+              integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ=="
+              crossorigin="anonymous"
+              referrerpolicy="no-referrer"/>
         <!-- Custom CSS -->
-        <link rel="stylesheet" href="{{ url_for('static', filename='css/custom_reporting.css') }}"crossorigin="anonymous"/>
+        <link rel="stylesheet"
+              href="{{ url_for('static', filename='css/custom_reporting.css') }}"
+              crossorigin="anonymous"/>
         {% if config['CSS_THEME'] %}
-            <link rel="stylesheet" href="{{ url_for('static', filename=config['CSS_THEME']) }}"crossorigin="anonymous"/>
+            <link rel="stylesheet"
+                  href="{{ url_for('static', filename=config['CSS_THEME']) }}"
+                  crossorigin="anonymous"/>
         {% endif %}
         {% block header %}{% endblock %}
-
-        <title>{% block title %}{% endblock %}</title>
+        <title>
+            {% block title %}{% endblock %}
+        </title>
         <nav class="navbar navbar-expand-lg navbar-{{ config['CSS_THEME_INTENSITY'] }} bg-{{ config['CSS_THEME_INTENSITY'] }}">
             <a class="navbar-brand" href="/">
                 <img src="{{ config['LOGO_URL_SRC'] }}" alt="" height="40" />
@@ -25,12 +37,16 @@
                 <ul class="navbar-nav">
                     {% if request.blueprint == "ln_wallet" %}
                         {% if request.endpoint != "ln_wallet.ln_index" %}
-                            <a class={% if request.endpoint == "ln_wallet.ln_index" %}"btn btn-primary"{% else %}"btn btn-secondary"{% endif %}href="/ln_wallet"><i class="glyphicon glyphicon-chevron-left"></i>Lightning Home</a>&nbsp
+                            <a class="btn {% if request.endpoint == 'ln_wallet.ln_index' %}btn-primary{% else %}btn-secondary{% endif %}"
+                               href="/ln_wallet"><i class="glyphicon glyphicon-chevron-left"></i>Lightning Home</a>&nbsp
                         {% endif %}
                     {% elif request.blueprint == "reporting" %}
-                        <a class={% if request.endpoint == "reporting.dashboard_general" %}"btn btn-primary" {% else %}"btn btn-secondary"{% endif %}href="dashboard_general"><i class="glyphicon glyphicon-chevron-left"></i>General</a>&nbsp
-                        <a class={% if request.endpoint == "reporting.dashboard_user" %}"btn btn-primary"{% else %}"btn btn-secondary"{% endif %}href="dashboard_user"><i class="glyphicon glyphicon-chevron-left"></i>Users</a>&nbsp
-                        <a class={% if request.endpoint == "reporting.dashboard_report_broker_user" %}"btn btn-primary" {% else %}"btn btn-secondary"{% endif %}href="dashboard_report_broker_order"><i class="glyphicon glyphicon-chevron-left"></i>Broker Orders</a>&nbsp
+                        <a class="btn {% if request.endpoint == 'reporting.dashboard_general' %}btn-primary{% else %}btn-secondary{% endif %}"
+                           href="dashboard_general"><i class="glyphicon glyphicon-chevron-left"></i>General</a>&nbsp
+                        <a class="btn {% if request.endpoint == 'reporting.dashboard_user' %}btn-primary{% else %}btn-secondary{% endif %}"
+                           href="dashboard_user"><i class="glyphicon glyphicon-chevron-left"></i>Users</a>&nbsp
+                        <a class="btn {% if request.endpoint == 'reporting.dashboard_report_broker_user' %}btn-primary{% else %}btn-secondary{% endif %}"
+                           href="dashboard_report_broker_order"><i class="glyphicon glyphicon-chevron-left"></i>Broker Orders</a>&nbsp
                     {% endif %}
                 </ul>
             </div>
@@ -38,56 +54,57 @@
                 <span class="navbar-text">
                     {{ current_user.email }}
                     <a href="{{ url_for('security.two_factor_setup') }}"
-                        {% if not current_user.tf_primary_method  %}
-                            title="Two Factor Authentication not setup!">
-                                <i class="fas fa-exclamation-triangle text-danger"></i>
-                        {% else %}
-                            title="Two Factor Authentication">
-                            <i class="fas fa-shield-alt text-success"></i>
-                        {% endif %}
-                    </a>
-                    &nbsp
-                </span>
-                <button class="btn btn-primary" type="button" onclick="window.location.href='{{ url_for('security.logout') }}'"/>Logout</button>
-            {% else %}
-                <button class="btn btn-primary" type="button" onclick="window.location.href='{{ url_for('security.login') }}'"/>Login</button>
-            {% endif %}
-        </nav>
-    </head>
-    <body>
-        <br />
-        {%- with messages = get_flashed_messages(with_categories=true) -%}
-            {% if messages %}
-                <div id="flashes" class="container-sm">
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category }}" role="alert">
-                            {{ message }}
-                        </div>
-                    {% endfor %}
-                </div>
-                <br />
-            {% endif %}
-        {%- endwith %}
-        <div id="navigation" class="container-sm">
-            {% block navigation %}
-            {% endblock %}
-        </div>
-        <div id="content" class="container-sm">
-            {% block content %}
-            {% endblock %}
-        </div>
-        <div id="footer" class="container">
-            {% block footer %}
-            {% endblock %}
-        </div>
-
-        <!-- Optional JavaScript -->
-        <!-- jQuery first, then Popper.js, then Bootstrap JS, then Bootbox -->
-        <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
-        <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
-        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js" integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI" crossorigin="anonymous"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/bootbox.js/5.5.2/bootbox.min.js" integrity="sha384-x8yg1bbOwuqjTf+DF/Sc3v14Tfzp2C61ThwPbDgflWBra3aBH4/vrB4z1WH3WwpP" crossorigin="anonymous"></script>
-        {% block scripts %}
-        {% endblock %}
-    </body>
+                       {% if not current_user.tf_primary_method  %}
+                       title="Two Factor Authentication not setup!">
+                        <i class="fas fa-exclamation-triangle text-danger"></i>
+                    {% else %}
+                        title="Two Factor Authentication">
+                        <i class="fas fa-shield-alt text-success"></i>
+                    {% endif %}
+                </a>
+                &nbsp
+            </span>
+            <button class="btn btn-primary"
+                    type="button"
+                    onclick="window.location.href='{{ url_for('security.logout') }}'"/>
+            Logout
+        </button>
+    {% else %}
+        <button class="btn btn-primary"
+                type="button"
+                onclick="window.location.href='{{ url_for('security.login') }}'"/>
+        Login
+    </button>
+{% endif %}
+</nav>
+</head>
+<body>
+    <br />
+    {%- with messages = get_flashed_messages(with_categories=true) -%}
+        {% if messages %}
+            <div id="flashes" class="container-sm">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
+                {% endfor %}
+            </div>
+            <br />
+        {% endif %}
+    {%- endwith %}
+    <div id="navigation" class="container-sm">
+        {% block navigation %}{% endblock %}
+    </div>
+    <div id="content" class="container-sm">
+        {% block content %}{% endblock %}
+    </div>
+    <div id="footer" class="container">
+        {% block footer %}{% endblock %}
+    </div>
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS, then Bootbox -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js" integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootbox.js/5.5.2/bootbox.min.js" integrity="sha384-x8yg1bbOwuqjTf+DF/Sc3v14Tfzp2C61ThwPbDgflWBra3aBH4/vrB4z1WH3WwpP" crossorigin="anonymous"></script>
+    {% block scripts %}{% endblock %}
+</body>
 </html>

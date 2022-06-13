@@ -13,7 +13,7 @@ from web_utils import bad_request, get_json_params, auth_request, auth_request_g
 import utils
 import email_utils
 from models import CryptoWithdrawal, FiatDbTransaction, FiatDepositCode, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, FiatDeposit, FiatWithdrawal, CryptoAddress, CryptoDeposit, DassetSubaccount
-from app_core import app, db, limiter, SERVER_VERSION, CLIENT_VERSION_DEPLOYED
+from app_core import app, db, limiter, csrf, SERVER_VERSION, CLIENT_VERSION_DEPLOYED
 from security import tf_enabled_check, tf_method, tf_code_send, tf_method_set, tf_method_unset, tf_secret_init, tf_code_validate, user_datastore
 import payouts_core
 import windcave
@@ -31,6 +31,7 @@ import tripwire
 logger = logging.getLogger(__name__)
 api = Blueprint('api', __name__, template_folder='templates')
 limiter.limit('100/minute')(api)
+csrf.exempt(api)
 
 def _user_subaccount_get_or_create(db_session, user):
     # create subaccount for user
@@ -593,9 +594,8 @@ def _validate_crypto_asset_withdraw(asset: str, l2_network: str | None, recipien
 
 def _create_withdrawal(user: User, asset: str, l2_network: str | None, amount_dec: decimal.Decimal, recipient: str):
     with coordinator.lock:
-        amount_plus_fee_dec = amount_dec + assets.asset_withdraw_fee(asset, None)
-        if wallet.withdrawals_supported(asset, l2_network):
-            amount_plus_fee_dec = amount_dec + assets.asset_withdraw_fee(asset, l2_network)
+        assert wallet.withdrawals_supported(asset, l2_network)
+        amount_plus_fee_dec = amount_dec + assets.asset_withdraw_fee(asset, l2_network, amount_dec)
         logger.info('amount plus withdraw fee: %s', amount_plus_fee_dec)
         if not fiatdb_core.funds_available_user(db.session, user, asset, amount_plus_fee_dec):
             return None, bad_request(web_utils.INSUFFICIENT_BALANCE)
@@ -789,7 +789,7 @@ def fiat_withdrawal_create_req():
         entry = AddressBook(api_key.user, asset, recipient, recipient_description, account_name, account_addr_01, account_addr_02, account_addr_country)
     db.session.add(entry)
     with coordinator.lock:
-        amount_plus_fee_dec = amount_dec + assets.asset_withdraw_fee(asset, None)
+        amount_plus_fee_dec = amount_dec + assets.asset_withdraw_fee(asset, None, amount_dec)
         balance = fiatdb_core.user_balance(db.session, asset, api_key.user)
         balance_dec = assets.asset_int_to_dec(asset, balance)
         if balance_dec < amount_plus_fee_dec:
