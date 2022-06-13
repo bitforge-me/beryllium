@@ -26,6 +26,11 @@ class MyJSONEncoder(flask.json.JSONEncoder):
             return str(o)
         return super().default(o)
 
+def boolify(val):
+    if isinstance(val, str):
+        return val.lower() in ('true', 't', '1', 'yes', 'y')
+    return bool(val)
+
 # take environment variables from .env file if present
 load_dotenv()
 
@@ -42,7 +47,7 @@ if os.getenv("DEBUG"):
 app.config.from_pyfile("flask_config.py")
 
 app.config["JSONIFY_PRETTYPRINT_REGULAR"] = True
-app.config["TESTNET"] = bool(os.getenv("TESTNET"))
+app.config["TESTNET"] = boolify(os.getenv("TESTNET"))
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
 
 app.config["LOGO_URL_SRC"] = os.getenv("LOGO_URL_SRC", "/static/assets/img/logo.png")
@@ -51,7 +56,7 @@ app.config["LOGO_EMAIL_SRC"] = os.getenv("LOGO_EMAIL_SRC", f"http://{os.getenv('
 app.config["APPLE_APP_STORE_URL"] = os.getenv("APPLE_APP_STORE_URL", "https://apps.apple.com/nz/app/zap/XXX")
 app.config["GOOGLE_PLAY_STORE_URL"] = os.getenv("GOOGLE_PLAY_STORE_URL", "https://play.google.com/store/apps/details?id=XXX")
 
-app.config["USE_REFERRALS"] = bool(os.getenv("USE_REFERRALS"))
+app.config["USE_REFERRALS"] = boolify(os.getenv("USE_REFERRALS"))
 app.config["REFERRAL_REWARD_TYPE_SENDER"] = os.getenv("REFERRAL_REWARD_TYPE_SENDER", "fixed")
 app.config["REFERRAL_REWARD_SENDER"] = int(os.getenv("REFERRAL_REWARD_SENDER", 1000))
 app.config["REFERRAL_REWARD_TYPE_RECIPIENT"] = os.getenv("REFERRAL_REWARD_TYPE_RECIPIENT", "fixed")
@@ -63,9 +68,9 @@ app.config["REFERRAL_SPEND_ASSET"] = os.getenv("REFERRAL_SPEND_ASSET", "NZD")
 
 app.config["BROKER_ORDER_FEE"] = os.getenv("BROKER_ORDER_FEE", "2.5")
 
-app.config['EXCHANGE_ACCOUNT_MOCK'] = bool(os.getenv('EXCHANGE_ACCOUNT_MOCK'))
+app.config['EXCHANGE_ACCOUNT_MOCK'] = boolify(os.getenv('EXCHANGE_ACCOUNT_MOCK'))
 
-app.config['SECURITY_REGISTERABLE'] = bool(not os.getenv('REGISTRATION_DISABLE'))
+app.config['SECURITY_REGISTERABLE'] = not boolify(os.getenv('REGISTRATION_DISABLE'))
 
 app.config["FLASK_ADMIN_SWATCH"] = os.getenv("FLASK_ADMIN_SWATCH", "default")
 if os.getenv("FLASK_ADMIN_SWATCH") == "slate":
