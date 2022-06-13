@@ -30,7 +30,8 @@ BE_SERVER_NAME=`hostname --fqdn`
 LOCAL_REPLICA_DIR=`realpath lightningd/replica/`
 # this needs to be an absolute directory
 REMOTE_REPLICA_DIR={remote_user_home_dir}/$BE_SERVER_NAME
-sshfs -o allow_other,default_permissions {remote_user}@{backup_server}:$REMOTE_REPLICA_DIR $REPLICA_DIR
+ssh {remote_user}@{backup_server} mkdir $REMOTE_REPLICA_DIR
+sshfs -o allow_other,default_permissions {remote_user}@{backup_server}:$REMOTE_REPLICA_DIR $LOCAL_REPLICA_DIR
 ```
 
 Now restart the lightning container:
@@ -52,7 +53,7 @@ ssh {remote_user}@{backup_server} ls -l $REMOTE_REPLICA_DIR/lightnind.sqlite3
 Add the following to `/etc/fstab`:
 
 ```
-{remote_user}@{backup_server}:{remote_replica_dir} {replica_dir} fuse.sshfs noauto,x-systemd.automount,_netdev,reconnect,identityfile=/{user_home_dir}/.ssh/id_rsa,allow_other,default_permissions 0 0
+{remote_user}@{backup_server}:{remote_replica_dir} {local_replica_dir} fuse.sshfs noauto,x-systemd.automount,_netdev,reconnect,identityfile=/{user_home_dir}/.ssh/id_rsa,allow_other,default_permissions 0 0
 ```
 
 You can test the permenent mount by rebooting
