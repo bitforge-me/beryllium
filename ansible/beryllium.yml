@@ -8,11 +8,9 @@
 
     - name: get beryllium code
       ansible.builtin.git:
-        repo: 'https://github.com/eoliveros/beryllium.git'
-        #repo: 'https://github.com/zap-me/beryllium.git'
+        repo: 'https://github.com/zap-me/beryllium.git'
         dest: /opt/beryllium
-        version: issue_137
-        #version: master
+        version: master
         force: yes
 
     - name: get alloy code
