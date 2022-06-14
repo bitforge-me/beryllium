@@ -53,6 +53,7 @@ LTC = Asset(symbol='LTC', name='Litecoin', decimals=8, withdraw_fee=Dec('0.01'),
 WAVES = Asset(symbol='WAVES', name='Waves', decimals=8, withdraw_fee=Dec('0.001'), withdraw_fee_fixed=True, min_withdraw=Dec('0.003'), is_crypto=True, l2_network=None,
               deposit_instr=None, withdraw_instr=None)
 ASSETS = dict(NZD=NZD, BTC=BTC, USDT=USDT, USDC=USDC, ETH=ETH, DOGE=DOGE, LTC=LTC, WAVES=WAVES)
+ASSETS = dict(NZD=NZD, BTC=BTC) # switch off other assets
 MARKETS = {'BTC-NZD': Market(base_asset=BTC, quote_asset=NZD),
            'BTC-USDT': Market(base_asset=BTC, quote_asset=USDT),
            'BTC-USDC': Market(base_asset=BTC, quote_asset=USDC),
@@ -60,6 +61,7 @@ MARKETS = {'BTC-NZD': Market(base_asset=BTC, quote_asset=NZD),
            'DOGE-NZD': Market(base_asset=DOGE, quote_asset=NZD),
            'LTC-NZD': Market(base_asset=LTC, quote_asset=NZD),
            'WAVES-BTC': Market(base_asset=WAVES, quote_asset=BTC)}
+MARKETS = {'BTC-NZD': Market(base_asset=BTC, quote_asset=NZD)} # switch off other markets
 
 class MarketSide(Enum):
     BID = 'bid'
