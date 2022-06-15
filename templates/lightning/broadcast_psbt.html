@@ -25,47 +25,6 @@
     </div>
 {% endblock %}
 {% block scripts %}
-    <script src="{{ url_for('static',filename='assets/lightning/utils.js') }}"></script>
-    <script>
-        /* globals decodePsbt, formatOutputs */
-
-        async function confirm(formclass, signedPsbt) {
-            if (!document.querySelector(formclass).reportValidity()) {
-                return;
-            }
-            const data = await decodePsbt(signedPsbt);
-            if (data == null) {
-                return;
-            }
-            let message = 'Do you want to broadcast?<br/>';
-            message = message + formatOutputs(data.fee, data.outputs);
-            bootbox.confirm({
-                title: 'Confirm Broadcast',
-                message,
-                buttons: {
-                    confirm: {
-                        label: 'Yes',
-                        className: 'btn-success'
-                    },
-                    cancel: {
-                        label: 'No',
-                        className: 'btn-danger'
-                    }
-                },
-                callback: function(result) {
-                    if (result) {
-                        $(formclass).submit();
-                    }
-                }
-            });
-        }
-
-        $(document).ready(function() {
-            $('#form-submit').click(function() {
-                const signedPsbt = $('#psbt').val();
-                confirm('#form', signedPsbt);
-                return false;
-            });
-        });
-    </script>
+    <script src="{{ url_for('static',filename='assets/js_custom/utils.js') }}"></script>
+    <script src="{{ url_for('static',filename='assets/js_custom/broadcast_psbt.js') }}"></script>
 {% endblock %}

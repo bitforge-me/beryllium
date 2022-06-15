@@ -46,12 +46,12 @@
                         <div class="progress-bar bg-success"
                              role="progressbar"
                              title="Spendable: {{ total_spendable_sats }}"
-                             style="width: {{ total_spendable_sats / (total_spendable_sats + total_receivable_sats) * 100 }}%;">
+                             id="progbar-total-spendable">
                         </div>
                         <div class="progress-bar bg-info"
                              role="progressbar"
                              title="Receivable: {{ total_receivable_sats }}"
-                             style="width: {{ total_receivable_sats / (total_spendable_sats + total_receivable_sats) * 100 }}%;">
+                             id="progbar-total-receivable">
                         </div>
                     </div>
                 {% endif %}
@@ -77,7 +77,7 @@
                         <header class="d-flex justify-content-between mb-2">
                             <span class="capacity">{{ channel.total_sats }}</span>
                             <span class="state">
-                                {% if channel.peer.connected %}
+                                {% if channel.peer_connected %}
                                     active
                                 {% else %}
                                     offline
@@ -89,22 +89,22 @@
                             <div class="progress-bar bg-warning"
                                  role="progressbar"
                                  title="Our reserve: {{ channel.our_reserve_sats }} sats"
-                                 style="width: {{ channel.our_reserve_sats / channel.total_sats * 100 * ratio }}%;">
+                                 id="progbar-{{ channel.short_channel_id }}-our-reserve">
                             </div>
                             <div class="progress-bar bg-success"
                                  role="progressbar"
                                  title="Spendable: {{ channel.spendable_sats }}"
-                                 style="width: {{ channel.spendable_sats / channel.total_sats * 100 * ratio }}%;">
+                                 id="progbar-{{ channel.short_channel_id }}-spendable">
                             </div>
                             <div class="progress-bar bg-info"
                                  role="progressbar"
                                  title="Receivable: {{ channel.receivable_sats }}"
-                                 style="width: {{ channel.receivable_sats / channel.total_sats * 100 * ratio }}%;">
+                                 id="progbar-{{ channel.short_channel_id }}-receivable">
                             </div>
                             <div class="progress-bar bg-warning"
                                  role="progressbar"
                                  title="Their reserve: {{ channel.their_reserve_sats }}"
-                                 style="width: {{ channel.their_reserve_sats / channel.total_sats * 100 * ratio }}%;">
+                                 id="progbar-{{ channel.short_channel_id }}-their-reserve">
                             </div>
                         </div>
                     </button>
@@ -127,7 +127,7 @@
                                     <strong>Age:</strong> n/a
                                 </li>
                                 <li>
-                                    <strong>Peer:</strong> <small class="break-all">{{ channel.peer.id }}</small>
+                                    <strong>Peer:</strong> <small class="break-all">{{ channel.peer_id }}</small>
                                 </li>
                                 <li>
                                     {% if channel.state == "CHANNELD_NORMAL" %}
@@ -153,73 +153,5 @@
     </div>
 {% endblock %}
 {% block scripts %}
-    <script>
-        function confirmClose(form, channelShortId) {
-            bootbox.confirm({
-                title: 'Confirm Close Channel',
-                message: `Do you want to close the channel ${channelShortId}?`,
-                buttons: {
-                    confirm: {
-                        label: 'Yes',
-                        className: 'btn-success'
-                    },
-                    cancel: {
-                        label: 'No',
-                        className: 'btn-danger'
-                    }
-                },
-                callback: function(result) {
-                    if (result) {
-                        form.submit();
-                    }
-                }
-            });
-        }
-
-        function confirmRebalance(formclass, oscid, iscid, amount) {
-            if (!document.querySelector(formclass).reportValidity()) {
-                return;
-            }
-            if (isNaN(amount) || amount <= 0) {
-                bootbox.alert({message: 'Invalid amount'});
-                return;
-            }
-            bootbox.confirm({
-                title: 'Confirm Rebalance Channels',
-                message: `Moving ${amount} sats from ${oscid} to ${iscid}. Do you want to continue?`,
-                buttons: {
-                    confirm: {
-                        label: 'Yes',
-                        className: 'btn-success'
-                    },
-                    cancel: {
-                        label: 'No',
-                        className: 'btn-danger'
-                    }
-                },
-                callback: function(result) {
-                    if (result) {
-                        $(formclass).submit();
-                    }
-                }
-            });
-        }
-
-        $(document).ready(function() {
-            $('.close-channel-submit').click(function() {
-                const channelShortId = $(this).prev().val();
-                const form = $(this).parent();
-                confirmClose(form, channelShortId);
-                return false;
-            });
-
-            $('#rebalance-channel-submit').click(function() {
-                const oscid = $('#oscid').val();
-                const iscid = $('#iscid').val();
-                const amount = $('#amount').val();
-                confirmRebalance('#rebalance-channel-form', oscid, iscid, amount);
-                return false;
-            });
-        });
-    </script>
+    <script data-largest-channel-sats="{{ largest_channel_sats }}" data-channels='{{ channels | tojson }}' data-total-spendable-sats="{{ total_spendable_sats }}" data-total-receivable-sats="{{ total_receiveable_sats }}" src="{{ url_for('static',filename='assets/js_custom/channel_management.js') }}"></script>
 {% endblock %}

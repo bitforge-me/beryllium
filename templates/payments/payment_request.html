@@ -40,7 +40,7 @@
                     </ul>
                 {% else %}
                     {% if not completed and not cancelled %}
-                        <h3 style="margin-top: 40px;">Payment status: {{ req.windcave_status }}</h3>
+                        <h3 class="mt-2">Payment status: {{ req.windcave_status }}</h3>
                         {% if req.windcave_authorised != None %}<p>Authorised: {{ req.windcave_authorised }}</p>{% endif %}
                         {% if req.windcave_allow_retry != None %}<p>Allow retry: {{ req.windcave_allow_retry }}</p>{% endif %}
                         {% if req.windcave_url %}
@@ -49,10 +49,10 @@
                             </p>
                         {% endif %}
                     {% elif completed %}
-                        <h3 style="margin-top: 40px;">Payment completed</h3>
+                        <h3 class="mt-2">Payment completed</h3>
                         <p>Your payment is complete.</p>
                     {% elif cancelled %}
-                        <h3 style="margin-top: 40px;">Payment cancelled</h3>
+                        <h3 class="mt-2">Payment cancelled</h3>
                         <p>Your payment is cancelled.</p>
                     {% endif %}
                     <p>Thank-you.</p>
@@ -62,14 +62,5 @@
     </div>
 {% endblock %}
 {% block scripts %}
-    <script type="text/javascript">
-        $(document).ready(function() {
-            {% if interstitial %}
-            {% else %}
-                {% if not completed and not cancelled %}
-                    {% if req.windcave_url %}window.location.replace('{{req.windcave_url}}');{% endif %}
-                {% endif %}
-            {% endif %}
-        });
-    </script>
+    <script data-interstitial={{ interstitial | tojson }} data-completed={{ completed | tojson }} data-cancelled={{ cancelled | tojson }} data-windcave-url={{ req.windcave_url | tojson }} src="{{ url_for('static',filename='assets/js_custom/payment_request.js') }}"></script>
 {% endblock %}
