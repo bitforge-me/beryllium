@@ -26,8 +26,8 @@
 
 - import_playbook: firewall.yml
   when: full_deploy
+- import_playbook: fail2ban.yml
+  when: full_deploy
 - import_playbook: docker.yml
   when: full_deploy
 - import_playbook: beryllium.yml
-- import_playbook: fail2ban.yml
-  when: full_deploy
