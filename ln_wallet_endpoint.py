@@ -122,7 +122,8 @@ def channel_management():
             channel['their_reserve_sats'] = their_reserve
             channel['receivable_sats'] = _msat_to_sat(receivable)
             channel['spendable_sats'] = _msat_to_sat(spendable)
-            channel['peer'] = peer
+            channel['peer_id'] = peer['id']
+            channel['peer_connected'] = peer['connected']
 
             channels.append(channel)
 

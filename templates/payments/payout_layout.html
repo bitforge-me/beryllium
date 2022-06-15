@@ -21,18 +21,5 @@
     </div>
 {% endblock %}
 {% block scripts %}
-    <script type="text/javascript">
-        let formId = null;
-
-        $('.submit_button').click(function() {
-            formId = null;
-            formId = this.getAttribute('data-form');
-            const action = this.getAttribute('data-action');
-            $('#submit_action').text(action);
-        });
-
-        $('#submit').click(function() {
-            $('#' + formId).submit();
-        });
-    </script>
+    <script data-bolt11="{{ bolt11 if bolt11 }}" data-label="{{ label if label }}" src="{{ url_for('static',filename='assets/js_custom/payout_layout.js') }}"></script>
 {% endblock %}

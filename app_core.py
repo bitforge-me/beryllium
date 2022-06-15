@@ -12,6 +12,7 @@ from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFProtect
+from flask_talisman import Talisman
 from dotenv import load_dotenv
 
 SERVER_VERSION = 10
@@ -46,6 +47,15 @@ app.json_encoder = MyJSONEncoder
 app.wsgi_app = ProxyFix(app.wsgi_app) # type: ignore
 all_origins = {"origins": "*"}
 cors = CORS(app, resources={r"/apiv1/*": all_origins})
+csp = {
+    'default-src': "'self'",
+    'img-src': "'self'",
+    'object-src': '\'none\'',
+    'style-src': "'self' stackpath.bootstrapcdn.com cdnjs.cloudflare.com code.jquery.com cdn.jsdelivr.net 'unsafe-hashes' 'sha256-aLM6kCMKBszYlopfUKTtpYd6xHtlR3jUaa4HNP1LLmI=' 'sha256-ZdHxw9eWtnxUb3mk6tBS+gIiVUPE3pGM470keHPDFlE=' 'sha256-0EZqoz+oBhx7gF4nvY2bSqoGyy4zLjNF+SDQXGp/ZrY='",
+    'script-src': "'self' stackpath.bootstrapcdn.com cdnjs.cloudflare.com code.jquery.com cdn.jsdelivr.net 'unsafe-hashes' 'sha256-rRMdkshZyJlCmDX27XnL7g3zXaxv7ei6Sg+yt4R3svU=' 'sha256-ftmTNsdfRKq6ZNyHL+p7dI9xRqueDTpseN1IaUUgQW4=' 'sha256-gikCNhEl+fhjSb8779qEr3zNPPm8nyTyg8MPyBYs+Tw=' 'sha256-2rvfFrggTCtyF5WOiTri1gDS8Boibj4Njn0e+VCBmDI='",
+    'font-src': "'self' cdnjs.cloudflare.com"
+}
+talisman = Talisman(app, content_security_policy=csp, force_https=False)
 
 if os.getenv("DEBUG"):
     app.config["DEBUG"] = True
