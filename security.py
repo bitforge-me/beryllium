@@ -8,8 +8,9 @@ from flask_security.utils import config_value as cv
 from flask_security.proxies import _security
 from wtforms import StringField, SubmitField
 
-from app_core import app, db
+from app_core import app, db, limiter
 from models import User, Role
+import tripwire
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +87,11 @@ def check_verify():
             # send code didn't work
             flash(msg, "error")
 
+    # trigger all login attempts
+    if request.path == url_for('security.login') and request.method == 'POST':
+        tripwire.login_attempt()
+
+
 class SecureVerifyForm(flask_security.forms.VerifyForm):
 
     code = StringField(flask_security.forms.get_form_field_label("code"))
@@ -139,6 +145,14 @@ class SecureTwoFactorRescueForm(flask_security.forms.TwoFactorRescueForm):
 
 user_datastore = SQLAlchemyUserDatastore(db, User, Role)
 security = Security(app, user_datastore, verify_form=SecureVerifyForm, two_factor_setup_form=SecureTwoFactorSetupForm, two_factor_rescue_form=SecureTwoFactorRescueForm)
+# set rate limits for security endpoints
+limiter.limit('100/minute')(app.blueprints['security'])
+def _limit_view_function(view_name, limit_func):
+    app.view_functions[view_name] = limit_func(app.view_functions[view_name])
+_limit_view_function('security.login', limiter.limit('10/hour'))
+_limit_view_function('security.register', limiter.limit('10/hour'))
+_limit_view_function('security.forgot_password', limiter.limit('10/hour'))
+_limit_view_function('security.reset_password', limiter.limit('10/hour'))
 
 # we need to override the default handler which does not handle SECURITY_URL_PREFIX
 # see https://github.com/Flask-Middleware/flask-security/issues/526
