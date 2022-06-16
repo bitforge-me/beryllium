@@ -6,15 +6,21 @@
             <table class="table">
                 <thead>
                     <tr>
-                        <th scope="col">Key</th>
-                        <th scope="col">Value</th>
+                        <th scope="col">Event</th>
+                        <th scope="col">Attempts</th>
+                        <th scope="col">Last Attempt</th>
+                        <th scope="col">Expire Next</th>
+                        <th scope="col">OK?</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for key, value in data.items() %}
                         <tr>
                             <td>{{ key }}</td>
-                            <td>attempts: {{ value.attempts }}, last attempt: {{ value.last_attempt }}, ok: {{ value.ok }}</td>
+                            <td>{{ value.attempts }}</td>
+                            <td>{{ value.last_attempt }}</td>
+                            <td>{{ value.expire_next }}</td>
+                            <td>{{ value.ok }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>
