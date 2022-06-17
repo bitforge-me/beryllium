@@ -7,6 +7,8 @@ COPY ./requirements.txt /tmp/requirements.txt
 RUN pip3 install --upgrade pip
 RUN pip3 install -r /tmp/requirements.txt
 COPY ./rebalance.py /etc/bundledplugins/
+# copy config
+COPY ./config /root/.lightning/
 # plumbing for --wallet replica
 RUN mkdir /root/.lightning_replica
 COPY ./entrypoint-shim.sh /entrypoint-shim.sh
