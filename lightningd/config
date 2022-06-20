@@ -1,7 +1,0 @@
-bitcoin-datadir=/etc/bitcoin
-bitcoin-rpcconnect=bitcoind
-
-bind-addr=0.0.0.0:9735
-network=testnet
-alias=myawesomenode
-rpc-file=/root/.lightning/lightning-rpc
