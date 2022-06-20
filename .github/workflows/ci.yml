@@ -1,4 +1,4 @@
-name: lint and deploy
+name: lint, deploy and scan
 
 on: [push, pull_request]
 
@@ -45,3 +45,12 @@ jobs:
       run: |
         cd ansible
         echo y | ./ansible_deploy.sh test beryllium_only test
+
+  zap_scan:
+    runs-on: ubuntu-latest
+    name: Scan the web app
+    steps:
+      - name: ZAP Scan
+        uses: zaproxy/action-baseline@v0.7.0
+        with:
+          target: 'https://beryllium-test.zap.me'
