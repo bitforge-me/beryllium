@@ -10,7 +10,7 @@
       ansible.builtin.git:
         repo: 'https://github.com/zap-me/beryllium.git'
         dest: /opt/beryllium
-        version: master
+        version: '{{ deploy_branch }}'
         force: yes
 
     - name: get alloy code

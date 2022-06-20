@@ -1,10 +1,9 @@
-name: lint
+name: lint and deploy
 
 on: [push, pull_request]
 
 jobs:
-  build:
-
+  lint:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,3 +23,25 @@ jobs:
     - name: Analysing the code with linters
       run: |
         ./lint.sh
+
+  test-deploy:
+    needs: lint
+    if: github.event_name == 'push' && github.ref_name == 'test'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Install SSH key
+      uses: shimataro/ssh-key-action@v2
+      with:
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        known_hosts: ${{ secrets.KNOWN_HOSTS }}
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ansible
+    - name: Checkout source
+      uses: actions/checkout@v2
+    - name: Run deploy script
+      run: |
+        cd ansible
+        echo y | ./ansible_deploy.sh test beryllium_only test
