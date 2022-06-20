@@ -7,7 +7,6 @@ if [ -n "$LIGHTNINGD_REPLICA" ]; then
   wallet="$wallet:/root/.lightning_replica/lightningd.sqlite3"
 fi
 
-# using jinja2cli, generate the config
-jinja2 /config.j2 > /root/.lightning/config
+jinja2 /config.j2 > "${LIGHTNINGD_DATA}/config"
 
 ./entrypoint.sh --wallet "$wallet" "$@"
