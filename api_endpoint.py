@@ -409,7 +409,7 @@ def user_update_photo():
     return jsonify(dict(photo=user.photo, photo_type=user.photo_type))
 
 @api.route('/user_two_factor_enable', methods=['POST'])
-@limiter.limit('10/hour')
+@limiter.limit('60/hour')
 def user_two_factor_enable():
     code, api_key, err_response = auth_request_get_single_param(db, 'code')
     if err_response:
@@ -453,7 +453,7 @@ def user_two_factor_disable():
     return jsonify(dict(method=tf_method(), setup=None))
 
 @api.route('/user_two_factor_send', methods=['POST'])
-@limiter.limit('10/hour')
+@limiter.limit('60/hour')
 def user_two_factor_send():
     api_key, err_response = auth_request(db)
     if err_response:
