@@ -7,7 +7,6 @@ COPY ./requirements.txt /tmp/requirements.txt
 RUN pip3 install --upgrade pip
 RUN pip3 install -r /tmp/requirements.txt
 COPY ./rebalance.py /etc/bundledplugins/
-# copy config.j2 file to the root directory
 COPY ./config.j2 /config.j2
 # plumbing for --wallet replica
 RUN mkdir /root/.lightning_replica
