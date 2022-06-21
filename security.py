@@ -106,7 +106,7 @@ class SecureVerifyForm(flask_security.forms.VerifyForm):
 class SecureTwoFactorSetupForm(flask_security.forms.TwoFactorSetupForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if current_user.tf_primary_method:
+        if hasattr(current_user, 'tf_primary_method') and current_user.tf_primary_method:
             # only have the 'disable' option
             self.setup.choices = self.setup.choices[-1]
         else:
