@@ -476,7 +476,7 @@ def markets_req():
     _, err_response = auth_request(db)
     if err_response:
         return err_response
-    return jsonify(markets=dasset.markets_req())
+    return jsonify(markets=dasset.markets_req(use_cache=True))
 
 @api.route('/order_book', methods=['POST'])
 def order_book_req():
@@ -488,7 +488,7 @@ def order_book_req():
     base_asset, quote_asset = assets.assets_from_market(market)
     base_asset_withdraw_fee = assets.asset_withdraw_fee(base_asset, None)
     quote_asset_withdraw_fee = assets.asset_withdraw_fee(quote_asset, None)
-    order_book, broker_fee = dasset.order_book_req(market)
+    order_book, broker_fee = dasset.order_book_req(market, use_cache=True)
     return jsonify(bids=order_book.bids, asks=order_book.asks, base_asset_withdraw_fee=str(base_asset_withdraw_fee), quote_asset_withdraw_fee=str(quote_asset_withdraw_fee), broker_fee=str(broker_fee))
 
 @api.route('/balances', methods=['POST'])
@@ -843,7 +843,7 @@ def address_book_req():
     entries = [entry.to_json() for entry in entries]
     return jsonify(entries=entries, asset=asset)
 
-def _broker_order_validate(user, market, side, amount_dec):
+def _broker_order_validate(user, market, side, amount_dec, use_cache=False):
     def return_error(err_response):
         return err_response, None
     if market not in assets.MARKETS:
@@ -853,9 +853,9 @@ def _broker_order_validate(user, market, side, amount_dec):
         return return_error(bad_request(web_utils.INVALID_SIDE))
     amount_dec = decimal.Decimal(amount_dec)
     if market_side_is(side, MarketSide.BID):
-        quote_amount_dec, err = dasset.bid_quote_amount(market, amount_dec)
+        quote_amount_dec, err = dasset.bid_quote_amount(market, amount_dec, use_cache)
     else:
-        quote_amount_dec, err = dasset.ask_quote_amount(market, amount_dec)
+        quote_amount_dec, err = dasset.ask_quote_amount(market, amount_dec, use_cache)
     if err == dasset.QuoteResult.INSUFFICIENT_LIQUIDITY:
         return return_error(bad_request(web_utils.INSUFFICIENT_LIQUIDITY))
     if err == dasset.QuoteResult.AMOUNT_TOO_LOW:
@@ -881,7 +881,7 @@ def broker_order_validate():
     if err_response:
         return err_response
     market, side, amount_dec = params
-    err_response, order = _broker_order_validate(api_key.user, market, side, amount_dec)
+    err_response, order = _broker_order_validate(api_key.user, market, side, amount_dec, use_cache=True)
     if err_response:
         return err_response
     return jsonify(broker_order=order.to_json())
@@ -894,7 +894,7 @@ def broker_order_create():
     market, side, amount_dec = params
     if not api_key.user.kyc_validated():
         return bad_request(web_utils.KYC_NOT_VALIDATED)
-    err_response, order = _broker_order_validate(api_key.user, market, side, amount_dec)
+    err_response, order = _broker_order_validate(api_key.user, market, side, amount_dec, use_cache=False)
     if err_response:
         return err_response
     db.session.add(order)
