@@ -2,6 +2,8 @@ import logging
 import decimal
 import json
 from enum import Enum
+import time
+from typing import Dict
 
 import requests
 from munch import Munch
@@ -24,6 +26,10 @@ URL_BASE_SUBACCOUNT = 'https://api.dassetx.com/prod/api'
 CRYPTO_WITHDRAWAL_STATUS_COMPLETED = 'completed'
 CRYPTO_WITHDRAWAL_STATUS_2FA = '2fa'
 CRYPTO_WITHDRAWAL_STATUS_UNKNOWN = 'unknown'
+
+_cache: Dict[str, Dict] = {}
+MARKETS_KEY = 'markets'
+CACHE_EXPIRY = 30
 
 class QuoteResult(Enum):
     OK = 0
@@ -89,7 +95,7 @@ def _parse_withdrawal(item):
 # Dasset API Requests
 #
 
-def _req_get(endpoint, params=None, subaccount_id=None, noapi_in_path=False):
+def _req_get(endpoint, params=None, subaccount_id=None, noapi_in_path=False, quiet=False):
     url = URL_BASE + endpoint
     if noapi_in_path:
         url = URL_BASE_NOAPI + endpoint
@@ -99,9 +105,10 @@ def _req_get(endpoint, params=None, subaccount_id=None, noapi_in_path=False):
     if subaccount_id:
         headers['x-subaccount-id'] = subaccount_id
     r = requests.get(url, headers=headers, params=params)
-    logger.info('GET - %s', url)
-    headers['x-api-key'] = 'xxxxx'
-    logger.info('HEADERS - %s', headers)
+    if not quiet:
+        logger.info('GET - %s', url)
+        headers['x-api-key'] = 'xxxxx'
+        logger.info('HEADERS - %s', headers)
     return r
 
 def _req_post(endpoint, params, subaccount_id=None, noapi_in_path=False):
@@ -139,28 +146,69 @@ def assets_req(asset=None):
     logger.error('request failed: %d, %s', r.status_code, r.content)
     return None
 
-def markets_req():
+def markets_refresh_cache(margin: int):
+    if MARKETS_KEY in _cache:
+        timestamp, _ = _cache[MARKETS_KEY]
+        if timestamp + CACHE_EXPIRY - margin > time.time():
+            return
+    #logger.info('refresh cache for %s', MARKETS_KEY)
+    markets_req(quiet=True)
+
+def markets_req(use_cache=False, quiet=False):
+    if use_cache:
+        # see if we have a cached version to return
+        if MARKETS_KEY in _cache:
+            timestamp, markets = _cache[MARKETS_KEY]
+            # if timestamp + cache expiry is greater then current timestamp then cache still valid
+            if timestamp + CACHE_EXPIRY > time.time():
+                return markets
+            logger.error('cache hit failed, ts: %f, time: %f', timestamp, time.time())
     endpoint = '/markets'
-    r = _req_get(endpoint)
+    r = _req_get(endpoint, quiet=quiet)
     if r.status_code == 200:
+        # save to the cache with timestamp
         markets = r.json()
         markets = [_parse_market(m) for m in markets if m['symbol'] in assets.MARKETS]
+        _cache[MARKETS_KEY] = time.time(), markets
+        # return result to caller
         return markets
     logger.error('request failed: %d, %s', r.status_code, r.content)
     return None
 
-def market_req(name):
-    markets = markets_req()
+def market_req(name, use_cache=False):
+    markets = markets_req(use_cache)
     for market in markets:
         if market.symbol == name:
             return market
     return None
 
-def order_book_req(symbol):
+def order_book_refresh_cache(margin: int):
+    for symbol in assets.MARKETS:
+        if symbol in _cache:
+            timestamp, _ = _cache[symbol]
+            if timestamp + CACHE_EXPIRY - margin > time.time():
+                continue
+        #logger.info('refresh cache for %s', symbol)
+        order_book_req(symbol, quiet=True)
+
+def order_book_req(symbol, use_cache=False, quiet=False):
+    if use_cache:
+        # see if we have a cached version to return
+        if symbol in _cache:
+            timestamp, book = _cache[symbol]
+            # if timestamp + cache expiry is greater then current timestamp then cache still valid
+            if timestamp + CACHE_EXPIRY > time.time():
+                return book, BROKER_ORDER_FEE
+            logger.error('cache hit failed, ts: %f, time: %f', timestamp, time.time())
+    # request the current data from dasset
     endpoint = f'/markets/{symbol}/orderbook'
-    r = _req_get(endpoint)
+    r = _req_get(endpoint, quiet=quiet)
     if r.status_code == 200:
-        return _parse_order_book(r.json()[0]), BROKER_ORDER_FEE
+        # save to the cache with timestamp
+        book = _parse_order_book(r.json()[0])
+        _cache[symbol] = time.time(), book
+        # return result to caller
+        return book, BROKER_ORDER_FEE
     logger.error('request failed: %d, %s', r.status_code, r.content)
     return None
 
@@ -318,16 +366,16 @@ def crypto_deposit_completed(deposit):
 # Public functions that rely on an exchange request
 #
 
-def bid_quote_amount(market, amount):
+def bid_quote_amount(market, amount, use_cache=False):
     assert isinstance(amount, decimal.Decimal)
-    dasset_market = market_req(market)
+    dasset_market = market_req(market, use_cache=use_cache)
     if not dasset_market:
         return decimal.Decimal(-1), QuoteResult.MARKET_API_FAIL
     min_trade = decimal.Decimal(dasset_market.min_trade)
     if amount < min_trade:
         return decimal.Decimal(-1), QuoteResult.AMOUNT_TOO_LOW
 
-    order_book_result = order_book_req(market)
+    order_book_result = order_book_req(market, use_cache=use_cache)
     if not order_book_result:
         return QuoteResult.MARKET_API_FAIL
     order_book, broker_fee = order_book_result
@@ -351,16 +399,16 @@ def bid_quote_amount(market, amount):
 
     return decimal.Decimal(-1), QuoteResult.INSUFFICIENT_LIQUIDITY
 
-def ask_quote_amount(market, amount):
+def ask_quote_amount(market, amount, use_cache=False):
     assert isinstance(amount, decimal.Decimal)
-    dasset_market = market_req(market)
+    dasset_market = market_req(market, use_cache=use_cache)
     if not dasset_market:
         return decimal.Decimal(-1), QuoteResult.MARKET_API_FAIL
     min_trade = decimal.Decimal(dasset_market.min_trade)
     if amount < min_trade:
         return decimal.Decimal(-1), QuoteResult.AMOUNT_TOO_LOW
 
-    order_book_result = order_book_req(market)
+    order_book_result = order_book_req(market, use_cache=use_cache)
     if not order_book_result:
         return QuoteResult.MARKET_API_FAIL
     order_book, broker_fee = order_book_result

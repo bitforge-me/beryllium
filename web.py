@@ -83,6 +83,12 @@ def process_btc_tx_index():
         logger.info('process btc tx index..')
         wallet.btc_transactions_index()
 
+def process_dasset_cache():
+    with app.app_context():
+        #logger.info('process dasset cache..')
+        dasset.order_book_refresh_cache(10)
+        dasset.markets_refresh_cache(10)
+
 #
 # Flask views
 #
@@ -411,6 +417,7 @@ class WebGreenlet():
             if current - btc_tx_index_timer_last > 3600:
                 gevent.spawn(process_btc_tx_index)
                 btc_tx_index_timer_last += 3600
+            gevent.spawn(process_dasset_cache)
             gevent.sleep(5)
 
     def _process_ln_invoices_loop(self):
