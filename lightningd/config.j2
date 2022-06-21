@@ -1,0 +1,10 @@
+{% if environ('LIGHTNINGD_OPT') %}
+{{ environ('LIGHTNINGD_OPT' ) }}
+{% else %}
+bitcoin-datadir=/etc/bitcoin
+bitcoin-rpcconnect=bitcoind
+{% endif %}
+bind-addr=0.0.0.0:{{ environ('LIGHTNINGD_PORT') | default('9735') }}
+network={{ environ('LIGHTNINGD_NETWORK') | default('testnet') }}
+alias={{ environ('LIGHTNINGD_ALIAS') | default('mynode') }}
+rpc-file={{ environ('LIGHTNINGD_DATA') | default('/root/.lightning') }}/lightning-rpc
