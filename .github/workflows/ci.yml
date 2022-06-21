@@ -1,4 +1,4 @@
-name: lint, deploy and scan
+name: CI
 
 on: [push, pull_request]
 
@@ -46,12 +46,24 @@ jobs:
         cd ansible
         echo y | ./ansible_deploy.sh test beryllium_only test
 
-  test-zap-scan:
+  test-scan:
     needs: test-deploy
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      # setup our zaproxy context file with the secred username and password
+      - name: Context Setup
+        env:
+          CTX_USERNAME: ${{secrets.BE_USERNAME_BASE64}}
+          CTX_PASSWORD: ${{secrets.BE_PASSWORD_BASE64}}
+        run: |
+          sed -ie "s/{{USERNAME}}/${CTX_USERNAME}/g" $GITHUB_WORKSPACE/web/zaproxy/zaproxy.context
+          sed -ie "s/{{PASSWORD}}/${CTX_PASSWORD}/" $GITHUB_WORKSPACE/web/zaproxy/zaproxy.context
       - name: ZAP Scan
         uses: zaproxy/action-baseline@v0.7.0
         with:
           target: 'https://beryllium-test.zap.me'
+          # select our context file (the zaproxy docker image mounts the `GITHUB_WORKSPACE` to `/zap/wrk`)
+          cmd_options: -U ${{secrets.BE_USERNAME}} -n /zap/wrk/web/zaproxy/zaproxy.context
