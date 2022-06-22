@@ -150,7 +150,8 @@ limiter.limit('100/minute')(app.blueprints['security'])
 def _limit_view_function(view_name, limit_func):
     app.view_functions[view_name] = limit_func(app.view_functions[view_name])
 _limit_view_function('security.login', limiter.limit('10/hour'))
-_limit_view_function('security.register', limiter.limit('10/hour'))
+if app.config['SECURITY_REGISTERABLE']:
+    _limit_view_function('security.register', limiter.limit('10/hour'))
 _limit_view_function('security.forgot_password', limiter.limit('10/hour'))
 _limit_view_function('security.reset_password', limiter.limit('10/hour'))
 
