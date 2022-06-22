@@ -124,22 +124,22 @@ services:
     links:
       - bitcoind
 
-  spark:
-    image: shesek/spark-wallet:0.2.9-standalone
-    container_name: spark
-    restart: unless-stopped
-    environment:
-      NETWORK: ${BITCOIN_NETWORK:?BITCOIN_NETWORK not set}
-      # SPARK_LOGIN format `<USER>:<PASS>`
-      # TODO - ensure only admin users can access spark
-      SPARK_OPT: --no-tls -C /data/.cookie --login ${SPARK_LOGIN:?SPARK_LOGIN not set}
-    volumes:
-      - "lightning_datadir:/etc/lightning"
-      - "spark:/data"
-    links:
-      - lightningd
-    expose:
-      - "9737"
+#  spark:
+#    image: shesek/spark-wallet:0.2.9-standalone
+#    container_name: spark
+#    restart: unless-stopped
+#    environment:
+#      NETWORK: ${BITCOIN_NETWORK:?BITCOIN_NETWORK not set}
+#      # SPARK_LOGIN format `<USER>:<PASS>`
+#      # TODO - ensure only admin users can access spark
+#      SPARK_OPT: --no-tls -C /data/.cookie --login ${SPARK_LOGIN:?SPARK_LOGIN not set}
+#    volumes:
+#      - "lightning_datadir:/etc/lightning"
+#      - "spark:/data"
+#    links:
+#      - lightningd
+#    expose:
+#      - "9737"
 
 volumes:
   pgdata:
@@ -154,4 +154,4 @@ volumes:
       type: 'none'
       o: 'bind'
       device: '${LN_DATA_DEVICE:?LN_DATA_DEVICE not set}'
-  spark:
+#  spark:
