@@ -16,8 +16,11 @@ import wallet
 import tripwire
 import utils
 import crown_financial
+from app_core import app
 
 logger = logging.getLogger(__name__)
+
+CROWN_ACCOUNT_EMAIL = app.config['CROWN_ACCOUNT_EMAIL']
 
 def _fiat_deposit_update(db_session: scoped_session, fiat_deposit: FiatDeposit):
     logger.info('processing fiat deposit %s (%s)..', fiat_deposit.token, fiat_deposit.status)
@@ -77,6 +80,9 @@ def _fiat_deposit_email(fiat_deposit: FiatDeposit):
         email_utils.send_email(logger, 'Deposit Expired', _fiat_deposit_email_msg(fiat_deposit, ''), fiat_deposit.user.email)
 
 def _crown_check_new_desposits(db_session: scoped_session):
+    if not utils.is_email(CROWN_ACCOUNT_EMAIL):
+        logger.error('invalid CROWN_ACCOUNT_EMAIL %s', CROWN_ACCOUNT_EMAIL)
+        return
     txs = crown_financial.transactions_filtered_type(crown_financial.CrownTx.TYPE_DEPOSIT, datetime.now() - timedelta(days=7), datetime.now())
     for tx in txs:
         if tx.currency == crown_financial.CURRENCY and not CrownPayment.from_crown_txn_id(db_session, tx.crown_txn_id):
