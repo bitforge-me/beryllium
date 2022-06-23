@@ -4,7 +4,7 @@ import base64
 import logging
 
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm.scoping import scoped_session
+from sqlalchemy.orm.session import Session
 from flask import jsonify, request
 from flask.wrappers import Response
 
@@ -103,7 +103,7 @@ def check_hmac_auth(api_key: ApiKey, nonce: int, sig: str, body: str | bytes) ->
         return True, ""
     return False, AUTH_FAILED
 
-def check_auth(session: scoped_session, api_key_token: str, nonce: int, sig: str, body: str | bytes) -> tuple[bool, str, ApiKey | None]:
+def check_auth(session: Session, api_key_token: str, nonce: int, sig: str, body: str | bytes) -> tuple[bool, str, ApiKey | None]:
     api_key = ApiKey.from_token(session, api_key_token)
     if not api_key:
         return False, AUTH_FAILED, None

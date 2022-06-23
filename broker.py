@@ -1,6 +1,8 @@
 import datetime
 import logging
 
+from sqlalchemy.orm.session import Session
+
 import fiatdb_core
 import dasset
 import assets
@@ -18,7 +20,7 @@ logger = logging.getLogger(__name__)
 # Helper functions (public)
 #
 
-def order_refund(db_session, order, side):
+def order_refund(db_session: Session, order: BrokerOrder, side: str):
     side = MarketSide.parse(order.side)
     # refund users account
     if side is MarketSide.BID:
@@ -29,13 +31,13 @@ def order_refund(db_session, order, side):
         amount_int = order.base_amount
     return fiatdb_core.tx_create(db_session, order.user, FiatDbTransaction.ACTION_CREDIT, asset, amount_int, f'broker order refund: {order.token}')
 
-def order_required_asset(order, side):
+def order_required_asset(order: BrokerOrder, side: MarketSide):
     assert isinstance(side, MarketSide)
     if side is MarketSide.BID:
         return order.quote_asset, order.quote_amount
     return order.base_asset, order.base_amount
 
-def order_check_funds(db_session, order, check_user=True):
+def order_check_funds(db_session: Session, order: BrokerOrder, check_user: bool = True):
     side = MarketSide.parse(order.side)
     if not side:
         return web_utils.INVALID_SIDE
@@ -53,7 +55,7 @@ def order_check_funds(db_session, order, check_user=True):
 # Helper functions (private)
 #
 
-def _broker_order_action(db_session, broker_order):
+def _broker_order_action(db_session: Session, broker_order: BrokerOrder):
     logger.info('processing broker order %s (%s)..', broker_order.token, broker_order.status)
     updated_records = []
     base_amount_dec = assets.asset_int_to_dec(broker_order.base_asset, broker_order.base_amount)
@@ -123,13 +125,13 @@ def _broker_order_action(db_session, broker_order):
             return updated_records
     return updated_records
 
-def _email_msg(broker_order, msg):
+def _email_msg(broker_order: BrokerOrder, msg: str):
     side = assets.market_side_nice(broker_order.side)
-    amount = assets.asset_int_to_dec(broker_order.base_asset, broker_order.base_amount)
-    amount = assets.asset_dec_to_str(broker_order.base_asset, amount)
-    return f'Your order {broker_order.token} ({side} {amount} {broker_order.base_asset}) is now {broker_order.status}. \n\n{msg}'
+    amount_dec = assets.asset_int_to_dec(broker_order.base_asset, broker_order.base_amount)
+    amount_str = assets.asset_dec_to_str(broker_order.base_asset, amount_dec)
+    return f'Your order {broker_order.token} ({side} {amount_str} {broker_order.base_asset}) is now {broker_order.status}. \n\n{msg}'
 
-def _broker_order_email(broker_order):
+def _broker_order_email(broker_order: BrokerOrder):
     if broker_order.status == broker_order.STATUS_FAILED:
         email_utils.send_email(logger, 'Order Failed', _email_msg(broker_order, ''), broker_order.user.email)
     if broker_order.status == broker_order.STATUS_CANCELLED:
@@ -143,7 +145,10 @@ def _broker_order_email(broker_order):
 # Public functions
 #
 
-def broker_order_update_and_commit(db_session, broker_order):
+def broker_order_update_and_commit(db_session: Session, broker_order: BrokerOrder):
+    if broker_order.market not in assets.MARKETS:
+        logger.error('broker order (%s) market (%s) is not valid', broker_order.token, broker_order.market)
+        return
     while True:
         with coordinator.lock:
             updated_records = _broker_order_action(db_session, broker_order)
@@ -157,7 +162,7 @@ def broker_order_update_and_commit(db_session, broker_order):
             _broker_order_email(broker_order)
             websocket.broker_order_update_event(broker_order)
 
-def broker_orders_update(db_session):
+def broker_orders_update(db_session: Session):
     orders = BrokerOrder.all_active(db_session)
     logger.info('num orders: %d', len(orders))
     for broker_order in orders:
