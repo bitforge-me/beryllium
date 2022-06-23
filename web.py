@@ -6,7 +6,7 @@ import math
 import time
 
 import gevent
-from flask import render_template, request, flash, jsonify, Response
+from flask import redirect, render_template, request, flash, jsonify, Response
 from flask_security import roles_accepted
 
 from app_core import app, db, socketio
@@ -64,7 +64,7 @@ def process_email_alerts():
                     msg = f"Available {balance.symbol} Balance needs to be replenished in the dasset account.<br/><br/>Available {balance.symbol} balance is: ${balance_format}"
                     email_utils.email_notification_alert(logger, subject, msg, app.config["ADMIN_EMAIL"])
 
-def _process_deposits_and_broker_orders():
+def _process_depwith_and_broker_orders():
     logger.info('process deposits..')
     depwith.fiat_deposits_update(db.session)
     depwith.crypto_deposits_check(db.session)
@@ -74,9 +74,9 @@ def _process_deposits_and_broker_orders():
     logger.info('process broker orders..')
     broker.broker_orders_update(db.session)
 
-def process_deposits_and_broker_orders():
+def process_depwith_and_broker_orders():
     with app.app_context():
-        _process_deposits_and_broker_orders()
+        _process_depwith_and_broker_orders()
 
 def process_btc_tx_index():
     with app.app_context():
@@ -374,8 +374,9 @@ def config():
 @app.route('/process_depwith_and_broker', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
 def process_depwith_broker():
-    _process_deposits_and_broker_orders()
-    return 'ok'
+    _process_depwith_and_broker_orders()
+    flash('processed deposits/withdrawals and orders')
+    return redirect('/')
 
 @app.route('/tripwire', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
