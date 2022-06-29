@@ -12,7 +12,7 @@ import web_utils
 from web_utils import bad_request, get_json_params, auth_request, auth_request_get_single_param, auth_request_get_params
 import utils
 import email_utils
-from models import CryptoWithdrawal, FiatDbTransaction, FiatDepositCode, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, FiatDeposit, FiatWithdrawal, CryptoAddress, CryptoDeposit, DassetSubaccount
+from models import CryptoWithdrawal, FiatDbTransaction, FiatDepositCode, Role, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, FiatDeposit, FiatWithdrawal, CryptoAddress, CryptoDeposit, DassetSubaccount
 from app_core import app, db, limiter, csrf, SERVER_VERSION, CLIENT_VERSION_DEPLOYED
 from security import tf_enabled_check, tf_method, tf_code_send, tf_method_set, tf_method_unset, tf_secret_init, tf_code_validate, user_datastore
 import payouts_core
@@ -273,6 +273,9 @@ def user_info():
         email = email.lower()
     user = User.from_email(db.session, email)
     if not user:
+        time.sleep(5)
+        return bad_request(web_utils.AUTH_FAILED)
+    if user.email != api_key.user.email and not api_key.user.has_role(Role.ROLE_ADMIN):
         time.sleep(5)
         return bad_request(web_utils.AUTH_FAILED)
     return jsonify(websocket.user_info_dict(api_key, user is api_key.user))
