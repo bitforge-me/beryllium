@@ -14,11 +14,11 @@ COPY ./ /app
 WORKDIR /app
 
 # install cron entry
-RUN chmod +x backup_cron.sh
-RUN chmod +x payout_cron.sh
-RUN (crontab -l; echo '0 15 * * * /app/backup_cron.sh >> /var/log/backup_cron.log 2>&1') | crontab -
-RUN (crontab -l; echo '0 16 * * * /app/payout_cron.sh >> /var/log/payout_cron.log 2>&1') | crontab -
+RUN chmod +x cron/backup_cron.sh
+RUN chmod +x cron/payout_cron.sh
+RUN (crontab -l; echo '0 15 * * * /app/cron/backup_cron.sh >> /var/log/backup_cron.log 2>&1') | crontab -
+RUN (crontab -l; echo '0 16 * * * /app/cron/payout_cron.sh >> /var/log/payout_cron.log 2>&1') | crontab -
 
 # start cron and app
-CMD service cron start && python3 app.py
+CMD service cron start && python3 src/app.py
 EXPOSE 5000
