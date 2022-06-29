@@ -6,4 +6,4 @@
 date_format=$(date "+%Y%m%dT%H%M%s")
 
 echo $date_format - payouts_notification_create
-python3 /app/app.py payouts_notification_create
+python3 /app/src/app.py payouts_notification_create

@@ -1,3 +1,3 @@
 #!/bin/bash
 
-docker exec be_app flask "$@"
+docker exec -it -e FLASK_APP=src/app.py be_app flask "$@"
