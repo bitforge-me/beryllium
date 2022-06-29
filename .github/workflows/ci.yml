@@ -46,7 +46,7 @@ jobs:
         cd ansible
         echo y | ./ansible_deploy.sh test beryllium_only test
 
-  test-scan:
+  test-scan-baseline:
     needs: test-deploy
     runs-on: ubuntu-latest
 
@@ -61,9 +61,21 @@ jobs:
         run: |
           sed -ie "s/{{USERNAME}}/${CTX_USERNAME}/g" $GITHUB_WORKSPACE/web/zaproxy/zaproxy.context
           sed -ie "s/{{PASSWORD}}/${CTX_PASSWORD}/" $GITHUB_WORKSPACE/web/zaproxy/zaproxy.context
-      - name: ZAP Scan
+      - name: ZAP Scan Baseline
         uses: zaproxy/action-baseline@v0.7.0
         with:
           target: 'https://beryllium-test.zap.me'
           # select our context file (the zaproxy docker image mounts the `GITHUB_WORKSPACE` to `/zap/wrk`)
           cmd_options: -U ${{secrets.BE_USERNAME}} -n /zap/wrk/web/zaproxy/zaproxy.context
+
+  test-scan-api:
+    needs: test-deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: ZAP Scan Api
+        uses: zaproxy/action-baseline@v0.7.0
+        with:
+          target: 'https://dev.bitforge.me/openapi.yaml'
