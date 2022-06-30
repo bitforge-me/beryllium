@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="row justify-content-center">
+        <div class="col-sm-6">
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="card-title">Withdrawal Confirmation</h4>
+                    <form method="POST">
+                        <h5>Recipient:</h5>
+                        <span><pre>{{ conf.recipient() }}</pre></span>
+                        <h5>Amount:</h5>
+                        <span>{{ formatted_amount }}</span>
+                        <br/>
+                        <br/>
+                        <button type="submit" class="btn btn-primary" name="confirm" value="true">Approve Withdrawal</button>
+                        <button type="submit" class="btn btn-primary" name="confirm" value="false">Cancel</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

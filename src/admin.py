@@ -11,7 +11,7 @@ from flask_security import current_user
 from markupsafe import Markup
 
 from app_core import app, db
-from models import Role, User, ApiKey, Topic, PushNotificationLocation, Referral, BrokerOrder, ExchangeOrder, CryptoWithdrawal, CryptoDeposit, CryptoAddress, KycRequest, AplyId, FiatDbTransaction, FiatDeposit, FiatWithdrawal, WindcavePaymentRequest, PayoutRequest, CrownPayment
+from models import Role, User, ApiKey, Topic, PushNotificationLocation, Referral, BrokerOrder, ExchangeOrder, CryptoWithdrawal, CryptoDeposit, CryptoAddress, KycRequest, AplyId, FiatDbTransaction, FiatDeposit, FiatWithdrawal, WindcavePaymentRequest, PayoutRequest, CrownPayment, WithdrawalConfirmation
 from security import security
 
 # helper functions/classes
@@ -593,6 +593,13 @@ class FiatDbTransactionModelView(RestrictedModelView):
                       FilterSmallerFiatDbTransactionAmount(FiatDbTransaction.amount, 'Search Amount'),
                       FilterByFiatDbTransactionUserSearch(FiatDbTransaction.user_id, 'Search User')]
 
+class WithdrawalConfirmationView(RestrictedModelView):
+    can_create = False
+    can_delete = False
+    can_edit = False
+
+    column_filters = [DateBetweenFilter(WithdrawalConfirmation.date, 'Search Date')]
+
 #
 # Create admin
 #
@@ -621,6 +628,7 @@ admin.add_view(RestrictedModelView(WindcavePaymentRequest, db.session, category=
 admin.add_view(RestrictedModelView(CrownPayment, db.session, category='Admin'))
 admin.add_view(PayoutRequestModelView(PayoutRequest, db.session, category='Admin'))
 admin.add_view(FiatDbTransactionModelView(FiatDbTransaction, db.session, category='Admin'))
+admin.add_view(WithdrawalConfirmationView(WithdrawalConfirmation, db.session, category='Admin'))
 admin.add_view(RestrictedModelView(KycRequest, db.session, category='Admin'))
 admin.add_view(RestrictedModelView(AplyId, db.session, category='Admin'))
 admin.add_view(ApiKeyModelView(ApiKey, db.session, category='User'))

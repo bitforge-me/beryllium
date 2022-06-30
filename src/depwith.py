@@ -16,6 +16,7 @@ import wallet
 import tripwire
 import utils
 import crown_financial
+import payouts_core
 
 logger = logging.getLogger(__name__)
 
@@ -118,18 +119,34 @@ def fiat_deposits_update(db_session: Session):
 
 def _fiat_withdrawal_update(fiat_withdrawal: FiatWithdrawal):
     logger.info('processing fiat withdrawal %s (%s)..', fiat_withdrawal.token, fiat_withdrawal.status)
-    updated_record = None
+    updated_records: list = []
     # check withdrawals enabled
     if not tripwire.WITHDRAWAL.ok:
-        return updated_record
-    # check payout
+        return updated_records
+    # check status
     if fiat_withdrawal.status == fiat_withdrawal.STATUS_CREATED:
+        if not fiat_withdrawal.withdrawal_confirmation or not fiat_withdrawal.withdrawal_confirmation.confirmed:
+            return updated_records
+        if not fiat_withdrawal.payout_request:
+            assert fiat_withdrawal.withdrawal_confirmation
+            address_book = fiat_withdrawal.withdrawal_confirmation.address_book
+            assert address_book
+            payout_request = payouts_core.payout_create(fiat_withdrawal.amount, crown_financial.CROWN_WITHDRAW_NAME, fiat_withdrawal.token, address_book)
+            if not payout_request:
+                logger.error('payouts_core.payout_create failed')
+                return updated_records
+            fiat_withdrawal.payout_request = payout_request
+            updated_records.append(payout_request)
+        fiat_withdrawal.status = fiat_withdrawal.STATUS_AUTHORIZED
+        updated_records.append(fiat_withdrawal)
+        return updated_records
+    if fiat_withdrawal.status == fiat_withdrawal.STATUS_AUTHORIZED:
         if fiat_withdrawal.payout_request:
             payout_request = fiat_withdrawal.payout_request
             if payout_request.status == payout_request.STATUS_COMPLETED:
                 fiat_withdrawal.status = fiat_withdrawal.STATUS_COMPLETED
-                updated_record = fiat_withdrawal
-    return updated_record
+                updated_records.append(fiat_withdrawal)
+    return updated_records
 
 def _fiat_withdrawal_email_msg(fiat_withdrawal: FiatWithdrawal, msg: str):
     amount = assets.asset_int_to_dec(fiat_withdrawal.asset, fiat_withdrawal.amount)
@@ -146,11 +163,12 @@ def fiat_withdrawal_update_and_commit(db_session: Session, withdrawal: FiatWithd
         return
     while True:
         with coordinator.lock:
-            updated_record = _fiat_withdrawal_update(withdrawal)
+            updated_records = _fiat_withdrawal_update(withdrawal)
             # commit db if record updated
-            if not updated_record:
+            if not updated_records:
                 return
-            db_session.add(updated_record)
+            for updated_record in updated_records:
+                db_session.add(updated_record)
             db_session.commit()
         # send updates
         _fiat_withdrawal_email(withdrawal)
@@ -302,8 +320,42 @@ def _crypto_withdrawal_update(crypto_withdrawal: CryptoWithdrawal):
     # check withdrawals enabled
     if not tripwire.WITHDRAWAL.ok:
         return updated_records
-    # check payout
+    # check status
     if crypto_withdrawal.status == crypto_withdrawal.STATUS_CREATED:
+        if not crypto_withdrawal.withdrawal_confirmation or not crypto_withdrawal.withdrawal_confirmation.confirmed:
+            return updated_records
+        if not crypto_withdrawal.wallet_reference and not crypto_withdrawal.exchange_reference:
+            asset = crypto_withdrawal.asset
+            l2_network = crypto_withdrawal.l2_network
+            amount_dec = assets.asset_int_to_dec(asset, crypto_withdrawal.amount)
+            recipient = crypto_withdrawal.recipient
+            # create wallet/exchange withdrawal
+            exchange_reference = None
+            wallet_reference = None
+            if wallet.withdrawals_supported(asset, l2_network):
+                logger.info('check local wallet has funds available')
+                if not wallet.funds_available(asset, l2_network, amount_dec):
+                    logger.error('wallet.funds_available failed')
+                    return updated_records
+                logger.info('create local wallet withdrawal')
+                wallet_reference, err_msg = wallet.withdrawal_create(asset, l2_network, amount_dec, recipient)
+                if err_msg:
+                    logger.error('wallet.withdrawal_create failed - %s', err_msg)
+                    return updated_records
+            else:
+                if not dasset.funds_available_us(asset, amount_dec):
+                    logger.error('dasset.funds_available_us failed')
+                    return updated_records
+                exchange_reference = dasset.crypto_withdrawal_create(asset, amount_dec, recipient)
+                if not exchange_reference:
+                    logger.error('dasset.crypto_withdrawal_create failed')
+                    return updated_records
+            crypto_withdrawal.wallet_reference = wallet_reference
+            crypto_withdrawal.exchange_reference = exchange_reference
+        crypto_withdrawal.status = crypto_withdrawal.STATUS_AUTHORIZED
+        updated_records.append(crypto_withdrawal)
+        return updated_records
+    if crypto_withdrawal.status == crypto_withdrawal.STATUS_AUTHORIZED:
         if crypto_withdrawal.wallet_reference:
             # check wallet withdrawal
             if wallet.withdrawal_completed(crypto_withdrawal.asset, crypto_withdrawal.l2_network, crypto_withdrawal.wallet_reference):

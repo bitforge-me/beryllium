@@ -6,7 +6,8 @@ from flask import url_for, render_template
 
 from app_core import app
 import utils
-from models import ApiKeyRequest, PayoutRequest, Referral, UserCreateRequest, UserUpdateEmailRequest
+from models import ApiKeyRequest, PayoutRequest, Referral, UserCreateRequest, UserUpdateEmailRequest, WithdrawalConfirmation
+import assets
 
 def _attachment(b64data, mime_type, filename, content_id, disposition='attachment'):
     attachment = Attachment()
@@ -39,19 +40,19 @@ def send_email(logger: Logger, subject: str, msg: str, recipient: str | None = N
 def email_exception(logger: Logger, msg: str):
     send_email(logger, "beryllium exception", msg)
 
-def email_user_create_request(logger: Logger, req: UserCreateRequest, minutes_expiry: int):
+def email_user_create_request(logger: Logger, req: UserCreateRequest):
     url = url_for("api.user_registration_confirm", token=req.token, _external=True)
-    msg = f"You have a pending user registration waiting!<br/><br/>Confirm your registration <a href='{url}'>here</a><br/><br/>Confirm within {minutes_expiry} minutes"
+    msg = f"You have a pending user registration waiting!<br/><br/>Confirm your registration <a href='{url}'>here</a><br/><br/>Confirm within {req.MINUTES_EXPIRY} minutes"
     send_email(logger, "Confirm your registration", msg, req.email)
 
-def email_user_update_email_request(logger: Logger, req: UserUpdateEmailRequest, minutes_expiry: int):
+def email_user_update_email_request(logger: Logger, req: UserUpdateEmailRequest):
     url = url_for("api.user_update_email_confirm", token=req.token, _external=True)
-    msg = f"You have a pending update email request waiting!<br/><br/>Confirm your new email <a href='{url}'>here</a><br/><br/>Confirm within {minutes_expiry} minutes"
+    msg = f"You have a pending update email request waiting!<br/><br/>Confirm your new email <a href='{url}'>here</a><br/><br/>Confirm within {req.MINUTES_EXPIRY} minutes"
     send_email(logger, "Confirm your update email request", msg, req.email)
 
-def email_api_key_request(logger: Logger, req: ApiKeyRequest, minutes_expiry: int):
+def email_api_key_request(logger: Logger, req: ApiKeyRequest):
     url = url_for("api.api_key_confirm", token=req.token, secret=req.secret, _external=True)
-    msg = f"You have a pending email login request waiting!<br/><br/>Confirm your email login <a href='{url}'>here</a><br/><br/>Confirm within {minutes_expiry} minutes"
+    msg = f"You have a pending email login request waiting!<br/><br/>Confirm your email login <a href='{url}'>here</a><br/><br/>Confirm within {req.MINUTES_EXPIRY} minutes"
     send_email(logger, "Confirm your email login request", msg, req.user.email)
 
 def email_referral(logger: Logger, referral: Referral):
@@ -91,3 +92,11 @@ def email_tripwire_notification(logger: Logger):
     subject = f'{server_name} tripwire'
     html_content = f'the tripwire at <a href="{server_name}">{server_name}</a> has triggered'
     send_email(logger, subject, html_content)
+
+def email_withdrawal_confirmation(logger: Logger, conf: WithdrawalConfirmation):
+    url = url_for("api.withdrawal_confirm", token=conf.token, secret=conf.secret, _external=True)
+    asset = conf.asset()
+    amount_dec = assets.asset_int_to_dec(asset, conf.amount())
+    amount_str = assets.asset_dec_to_str(asset, amount_dec)
+    msg = f"You have a pending withdrawal waiting!<br/><br/>Withdrawal recipient: <pre>{conf.recipient()}</pre><br/><br/>Withdrawal amount: {amount_str} {asset}<br/><br/>Confirm your withdrawal <a href='{url}'>here</a><br/><br/>Confirm within {conf.MINUTES_EXPIRY} minutes"
+    send_email(logger, "Confirm your withdrawal", msg, conf.user.email)
