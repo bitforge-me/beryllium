@@ -12,10 +12,9 @@ import web_utils
 from web_utils import bad_request, get_json_params, auth_request, auth_request_get_single_param, auth_request_get_params
 import utils
 import email_utils
-from models import CryptoWithdrawal, FiatDbTransaction, FiatDepositCode, Role, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, FiatDeposit, FiatWithdrawal, CryptoAddress, CryptoDeposit, DassetSubaccount
+from models import CryptoWithdrawal, FiatDbTransaction, FiatDepositCode, Role, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, FiatDeposit, FiatWithdrawal, CryptoAddress, CryptoDeposit, DassetSubaccount, WithdrawalConfirmation
 from app_core import app, db, limiter, csrf, SERVER_VERSION, CLIENT_VERSION_DEPLOYED
 from security import tf_enabled_check, tf_method, tf_code_send, tf_method_set, tf_method_unset, tf_secret_init, tf_code_validate, user_datastore
-import payouts_core
 import windcave
 import kyc_core
 import dasset
@@ -89,7 +88,7 @@ def user_register():
     if user:
         time.sleep(5)
         return bad_request(web_utils.USER_EXISTS)
-    email_utils.email_user_create_request(logger, req, req.MINUTES_EXPIRY)
+    email_utils.email_user_create_request(logger, req)
     db.session.add(req)
     db.session.commit()
     return 'ok'
@@ -195,7 +194,7 @@ def api_key_request():
         req = ApiKeyRequest(user, device_name)
         return jsonify(dict(token=req.token))
     req = ApiKeyRequest(user, device_name)
-    email_utils.email_api_key_request(logger, req, req.MINUTES_EXPIRY)
+    email_utils.email_api_key_request(logger, req)
     db.session.add(req)
     db.session.commit()
     tf_code_send(user)
@@ -306,7 +305,7 @@ def user_update_email():
         time.sleep(5)
         return bad_request(web_utils.USER_EXISTS)
     req = UserUpdateEmailRequest(api_key.user, email)
-    email_utils.email_user_update_email_request(logger, req, req.MINUTES_EXPIRY)
+    email_utils.email_user_update_email_request(logger, req)
     db.session.add(req)
     db.session.commit()
     tf_code_send(api_key.user)
@@ -513,6 +512,43 @@ def _validate_crypto_asset_deposit(asset: str, l2_network: str | None):
         return bad_request(web_utils.INVALID_NETWORK)
     return None
 
+@api.route('/withdrawal_confirm/<token>/<secret>', methods=['GET', 'POST'])
+@limiter.limit('20/minute')
+def withdrawal_confirm(token=None, secret=None):
+    conf = WithdrawalConfirmation.from_token(db.session, token)
+    if not conf:
+        time.sleep(5)
+        flash('Withdrawal confirmation not found.', 'danger')
+        return redirect('/')
+    if conf.secret != secret:
+        flash('Withdrawal confirmation code invalid.', 'danger')
+        return redirect('/')
+    if conf.confirmed is not None:
+        flash('Withdrawal confirmation already processed.', 'danger')
+        return redirect('/')
+    now = datetime.now()
+    if now > conf.expiry:
+        time.sleep(5)
+        flash('Withdrawal confirmation expired.', 'danger')
+        return redirect('/')
+    if request.method == 'POST':
+        confirm = request.form.get('confirm') == 'true'
+        if confirm:
+            conf.confirmed = True
+            flash('Withdrawal confirmed.', 'success')
+        else:
+            conf.confirmed = False
+            flash('Withdrawal cancelled.', 'success')
+        db.session.add(conf)
+        db.session.commit()
+        return redirect('/')
+    asset = conf.asset()
+    amount = conf.amount()
+    amount_dec = assets.asset_int_to_dec(asset, amount)
+    amount_str = assets.asset_dec_to_str(asset, amount_dec)
+    formatted_amount = f'{amount_str} {asset}'
+    return render_template('api/withdrawal_confirm.html', conf=conf, formatted_amount=formatted_amount)
+
 @api.route('/crypto_deposit_recipient', methods=['POST'])
 def crypto_deposit_recipient_req():
     params, api_key, err_response = auth_request_get_params(db, ['asset', 'l2_network', 'amount_dec'])
@@ -602,12 +638,10 @@ def _create_withdrawal(user: User, asset: str, l2_network: str | None, amount_de
         logger.info('amount plus withdraw fee: %s', amount_plus_fee_dec)
         if not fiatdb_core.funds_available_user(db.session, user, asset, amount_plus_fee_dec):
             return None, bad_request(web_utils.INSUFFICIENT_BALANCE)
-        exchange_reference = None
-        wallet_reference = None
         # step 1) create CryptoWithdrawal and ftx and commit so that users balance is updated
         amount_int = assets.asset_dec_to_int(asset, amount_dec)
         amount_plus_fee_int = assets.asset_dec_to_int(asset, amount_plus_fee_dec)
-        crypto_withdrawal = CryptoWithdrawal(user, asset, l2_network, amount_int, recipient, exchange_reference, wallet_reference)
+        crypto_withdrawal = CryptoWithdrawal(user, asset, l2_network, amount_int, recipient)
         ftx = fiatdb_core.tx_create(db.session, user, FiatDbTransaction.ACTION_DEBIT, asset, amount_plus_fee_int, f'crypto withdrawal: {crypto_withdrawal.token}')
         if not ftx:
             logger.error('failed to create fiatdb transaction for crypto withdrawal %s', crypto_withdrawal.token)
@@ -615,25 +649,10 @@ def _create_withdrawal(user: User, asset: str, l2_network: str | None, amount_de
         db.session.add(crypto_withdrawal)
         db.session.add(ftx)
         db.session.commit()
-        # step 2) make withdrawal
-        if wallet.withdrawals_supported(asset, l2_network):
-            logger.info('check local wallet has funds available')
-            if not wallet.funds_available(asset, l2_network, amount_dec):
-                return None, bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
-            logger.info('create local wallet withdrawal')
-            wallet_reference, err_msg = wallet.withdrawal_create(asset, l2_network, amount_dec, recipient)
-            if err_msg:
-                return None, bad_request(f'{web_utils.FAILED_PAYMENT_CREATE} - {err_msg}')
-        else:
-            if not dasset.funds_available_us(asset, amount_dec):
-                return None, bad_request(web_utils.INSUFFICIENT_LIQUIDITY)
-            exchange_reference = dasset.crypto_withdrawal_create(asset, amount_dec, recipient)
-            if not exchange_reference:
-                return None, bad_request(web_utils.FAILED_EXCHANGE)
-        # step 3) update cryptowithdrawal with exchange/wallet reference
-        crypto_withdrawal.wallet_reference = wallet_reference
-        crypto_withdrawal.exchange_reference = exchange_reference
-        db.session.add(crypto_withdrawal)
+        # step 2) create / send withdrawal confirmation
+        conf = WithdrawalConfirmation(crypto_withdrawal.user, crypto_withdrawal=crypto_withdrawal)
+        email_utils.email_withdrawal_confirmation(db.session, conf)
+        db.session.add(conf)
         db.session.commit()
         return crypto_withdrawal, None
 
@@ -675,6 +694,7 @@ def crypto_withdrawal_create_req():
     crypto_withdrawal, err_response = _create_withdrawal(api_key.user, asset, l2_network, amount_dec, recipient)
     if err_response:
         return err_response
+    # update user
     websocket.crypto_withdrawal_new_event(crypto_withdrawal)
     return jsonify(withdrawal=crypto_withdrawal.to_json())
 
@@ -797,22 +817,23 @@ def fiat_withdrawal_create_req():
         balance_dec = assets.asset_int_to_dec(asset, balance)
         if balance_dec < amount_plus_fee_dec:
             return bad_request(web_utils.INSUFFICIENT_BALANCE)
+        # step 1) create FiatWithdrawal and ftx and commit so that users balance is updated
         amount_int = assets.asset_dec_to_int(asset, amount_dec)
         amount_plus_fee_int = assets.asset_dec_to_int(asset, amount_plus_fee_dec)
         fiat_withdrawal = FiatWithdrawal(api_key.user, asset, amount_int, recipient)
-        app_name = app.config['CROWN_WITHDRAW_NAME']
-        payout_request = payouts_core.payout_create(amount_int, app_name, fiat_withdrawal.token, entry)
-        if not payout_request:
-            return bad_request(web_utils.FAILED_PAYMENT_CREATE)
-        fiat_withdrawal.payout_request = payout_request
         ftx = fiatdb_core.tx_create(db.session, api_key.user, FiatDbTransaction.ACTION_DEBIT, asset, amount_plus_fee_int, f'fiat withdrawal: {fiat_withdrawal.token}')
         if not ftx:
             logger.error('failed to create fiatdb transaction for fiat withdrawal %s', fiat_withdrawal.token)
             return bad_request(web_utils.FAILED_PAYMENT_CREATE)
         db.session.add(fiat_withdrawal)
-        db.session.add(payout_request)
         db.session.add(ftx)
         db.session.commit()
+        # step 2) create / send withdrawal confimation
+        conf = WithdrawalConfirmation(fiat_withdrawal.user, fiat_withdrawal=fiat_withdrawal, address_book_entry=entry)
+        email_utils.email_withdrawal_confirmation(db.session, conf)
+        db.session.add(conf)
+        db.session.commit()
+    # update user
     websocket.fiat_withdrawal_new_event(fiat_withdrawal)
     return jsonify(withdrawal=fiat_withdrawal.to_json())
 

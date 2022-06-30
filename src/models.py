@@ -479,6 +479,7 @@ class CryptoWithdrawalSchema(Schema):
 
 class CryptoWithdrawal(db.Model, FromUserMixin, OfAssetMixin):
     STATUS_CREATED = 'created'
+    STATUS_AUTHORIZED = 'authorized'
     STATUS_COMPLETED = 'completed'
     STATUS_CANCELLED = 'cancelled'
 
@@ -496,7 +497,7 @@ class CryptoWithdrawal(db.Model, FromUserMixin, OfAssetMixin):
     txid = db.Column(db.String)
     status = db.Column(db.String, nullable=False)
 
-    def __init__(self, user, asset, l2_network, amount, recipient, exchange_reference, wallet_reference):
+    def __init__(self, user, asset, l2_network, amount, recipient):
         self.token = generate_key()
         self.user = user
         self.date = datetime.now()
@@ -504,8 +505,8 @@ class CryptoWithdrawal(db.Model, FromUserMixin, OfAssetMixin):
         self.l2_network = l2_network
         self.amount = amount
         self.recipient = recipient
-        self.exchange_reference = exchange_reference
-        self.wallet_reference = wallet_reference
+        self.exchange_reference = None
+        self.wallet_reference = None
         self.status = self.STATUS_CREATED
 
     def to_json(self):
@@ -1011,6 +1012,7 @@ class FiatWithdrawalSchema(Schema):
 
 class FiatWithdrawal(db.Model, FromUserMixin, FromTokenMixin):
     STATUS_CREATED = 'created'
+    STATUS_AUTHORIZED = 'authorized'
     STATUS_COMPLETED = 'completed'
     STATUS_CANCELLED = 'cancelled'
 
@@ -1078,6 +1080,48 @@ class CryptoAddress(db.Model, FromUserMixin):
     def need_to_be_checked(cls, session) -> list[CryptoAddress]:
         now = datetime.timestamp(datetime.now())
         return session.query(cls).filter(now - cls.checked_at > (cls.checked_at - cls.viewed_at) * 2).all()
+
+class WithdrawalConfirmation(db.Model, FromTokenMixin):
+    MINUTES_EXPIRY = 30
+
+    id = db.Column(db.Integer, primary_key=True)
+    token = db.Column(db.String(255), unique=True, nullable=False)
+    secret = db.Column(db.String(255), unique=True, nullable=False)
+    date = db.Column(db.DateTime(), nullable=False)
+    expiry = db.Column(db.DateTime(), nullable=False)
+    confirmed = db.Column(db.Boolean)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    user = db.relationship('User')
+    crypto_withdrawal_id = db.Column(db.Integer, db.ForeignKey('crypto_withdrawal.id'))
+    crypto_withdrawal = db.relationship('CryptoWithdrawal', backref=db.backref('withdrawal_confirmation', uselist=False))
+    fiat_withdrawal_id = db.Column(db.Integer, db.ForeignKey('fiat_withdrawal.id'))
+    fiat_withdrawal = db.relationship('FiatWithdrawal', backref=db.backref('withdrawal_confirmation', uselist=False))
+    address_book_id = db.Column(db.Integer, db.ForeignKey('address_book.id'))
+    address_book = db.relationship('AddressBook')
+
+    def __init__(self, user: User, crypto_withdrawal: CryptoWithdrawal = None, fiat_withdrawal: FiatWithdrawal = None, address_book: AddressBook = None):
+        assert crypto_withdrawal is not None or fiat_withdrawal is not None
+        assert crypto_withdrawal is None or fiat_withdrawal is None
+        if fiat_withdrawal:
+            assert address_book
+        self.token = generate_key()
+        self.secret = generate_key(20)
+        self.date = datetime.now()
+        self.expiry = self.date + timedelta(minutes=self.MINUTES_EXPIRY)
+        self.confirmed = None
+        self.user = user
+        self.crypto_withdrawal = crypto_withdrawal
+        self.fiat_withdrawal = fiat_withdrawal
+        self.address_book = address_book
+
+    def recipient(self):
+        return self.crypto_withdrawal.recipient if self.crypto_withdrawal else self.fiat_withdrawal.recipient
+
+    def asset(self):
+        return self.crypto_withdrawal.asset if self.crypto_withdrawal else self.fiat_withdrawal.asset
+
+    def amount(self):
+        return self.crypto_withdrawal.amount if self.crypto_withdrawal else self.fiat_withdrawal.amount
 
 class BtcTxIndex(db.Model):
     id = db.Column(db.Integer, primary_key=True)
