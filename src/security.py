@@ -85,7 +85,7 @@ def check_verify():
         )
         if msg:
             # send code didn't work
-            flash(msg, "error")
+            flash(msg, "danger")
 
     # trigger all login attempts
     if request.path == url_for('security.login') and request.method == 'POST':

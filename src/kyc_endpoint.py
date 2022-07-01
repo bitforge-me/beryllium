@@ -45,7 +45,7 @@ def request_start(token=None):
 def aplyid_pdf(token=None):
     req = KycRequest.from_token(db.session, token)
     if not req:
-        flash('sorry, request not found')
+        flash('sorry, request not found', category='danger')
         return redirect('/')
     pdf = kyc_core.download_pdf_backup(token)
     if not pdf:

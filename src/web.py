@@ -291,7 +291,7 @@ def user_balance():
             balances = fiatdb_core.user_balances(db.session, user)
             for key, val in balances.items():
                 balances[key] = assets.asset_int_to_dec(key, val)
-            flash(balances)
+            flash(balances, 'primary')
         elif action in (USER_BALANCE_CREDIT, USER_BALANCE_DEBIT):
             if asset not in asset_names:
                 return return_response('Invalid asset')
@@ -304,7 +304,7 @@ def user_balance():
             amount_int = assets.asset_dec_to_int(asset, amount_dec)
             balance = fiatdb_core.user_balance(db.session, asset, user)
             balance = assets.asset_int_to_dec(asset, balance)
-            flash(f'current balance: {balance} {asset}')
+            flash(f'current balance: {balance} {asset}', 'primary')
             fiatdb_action = FiatDbTransaction.ACTION_CREDIT if action == USER_BALANCE_CREDIT else FiatDbTransaction.ACTION_DEBIT
             ftx = fiatdb_core.tx_create(db.session, user, fiatdb_action, asset, amount_int, desc)
             if not ftx:
@@ -313,7 +313,7 @@ def user_balance():
             db.session.commit()
             balance = fiatdb_core.user_balance(db.session, asset, user)
             balance = assets.asset_int_to_dec(asset, balance)
-            flash(f'new balance: {balance} {asset}')
+            flash(f'new balance: {balance} {asset}', 'success')
         elif action == USER_BALANCE_SWEEP:
             if not user.dasset_subaccount:
                 return return_response('user does not have dasset subaccount')
@@ -324,9 +324,9 @@ def user_balance():
                 if balance.available > decimal.Decimal(0):
                     if not dasset.transfer(None, user.dasset_subaccount.subaccount_id, balance.symbol, balance.available):
                         return return_response(f'failed to transfer {balance.symbol} funds from {email} subaccount to master')
-                    flash(f'transfered {balance.available} of {balance.total} {balance.symbol} to master account')
+                    flash(f'transfered {balance.available} of {balance.total} {balance.symbol} to master account', 'success')
                 else:
-                    flash(f'no available balance of {balance.total} {balance.symbol} to transfer')
+                    flash(f'no available balance of {balance.total} {balance.symbol} to transfer', 'warning')
     return return_response()
 
 @app.route('/user_order', methods=['GET', 'POST'])
@@ -350,7 +350,7 @@ def user_order():
         if not order:
             return return_response('Order not found')
         if action == USER_ORDER_SHOW:
-            flash(f'order: {order.to_json()}')
+            flash(f'order: {order.to_json()}', 'primary')
         elif action == USER_ORDER_CANCEL:
             if order.status not in (order.STATUS_READY,):
                 return return_response('invalid order status')
@@ -363,7 +363,7 @@ def user_order():
                 db.session.add(ftx)
                 db.session.add(order)
                 db.session.commit()
-            flash(f'canceled and refunded order {token}')
+            flash(f'canceled and refunded order {token}', 'success')
     return return_response()
 
 @app.route('/config', methods=['GET'])
@@ -375,7 +375,7 @@ def config():
 @roles_accepted(Role.ROLE_ADMIN)
 def process_depwith_broker():
     _process_depwith_and_broker_orders()
-    flash('processed deposits/withdrawals and orders')
+    flash('processed deposits/withdrawals and orders', 'success')
     return redirect('/')
 
 @app.route('/tripwire', methods=['GET'])

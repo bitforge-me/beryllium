@@ -102,7 +102,7 @@ def payout_group_process_all():
         balance = crown_financial.balance()
         total += crown_financial.CROWN_WITHDRAW_FEE_INT * count
         if balance < total:
-            flash('Sorry, crown balance is not sufficient')
+            flash('Sorry, crown balance is not sufficient', category='danger')
         else:
             for req in group.requests:
                 # ignore suspended or completed
