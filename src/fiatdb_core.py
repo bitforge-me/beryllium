@@ -51,17 +51,9 @@ def balance_total(session: Session, asset: str):
     with _lock:
         return __balance_total(session, asset)
 
-def tx_create(session: Session, user: User, action: str, asset: str, amount: int, attachment: str):
+def tx_create(user: User, action: str, asset: str, amount: int, attachment: str):
     logger.info('%s: %s: %s, %s, %s', user.email, action, asset, amount, attachment)
+    assert amount > 0
+    assert action in (FiatDbTransaction.ACTION_CREDIT, FiatDbTransaction.ACTION_DEBIT)
     with _lock:
-        error = ''
-        if not user.is_active:
-            error = f'{action}: {user.email} is not active'
-        elif amount <= 0:
-            error = f'{action}: amount ({amount}) is less then or equal to zero'
-        elif action not in (FiatDbTransaction.ACTION_CREDIT, FiatDbTransaction.ACTION_DEBIT):
-            error = 'invalid action'
-        if error:
-            logger.error(error)
-            return None
         return FiatDbTransaction(user, action, asset, amount, attachment)

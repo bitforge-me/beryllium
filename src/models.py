@@ -19,27 +19,45 @@ logger = logging.getLogger(__name__)
 # Define beryllium models
 #
 
+class WithdrawStatusMixin():
+    STATUS_CREATED = 'created'
+    STATUS_AUTHORIZED = 'authorized'
+    STATUS_WITHDRAW = 'withdraw'
+    STATUS_COMPLETED = 'completed'
+    STATUS_CANCELLED = 'cancelled'
+
+
 class FromTokenMixin():
+    token: db.Column
+
     @classmethod
-    def from_token(cls, session, token):
+    def from_token(cls, session: Session, token: str):
         return session.query(cls).filter(cls.token == token).first()
 
 class FromUserMixin():
+    id: db.Column
+    user_id: db.Column
+
     @classmethod
-    def from_user(cls, session, user, offset, limit):
+    def from_user(cls, session: Session, user: User, offset: int, limit: int):
         return session.query(cls).filter(cls.user_id == user.id).order_by(cls.id.desc()).offset(offset).limit(limit)
 
     @classmethod
-    def total_for_user(cls, session, user):
+    def total_for_user(cls, session: Session, user: User):
         return session.query(cls).filter(cls.user_id == user.id).count()
 
 class OfAssetMixin():
+    id: db.Column
+    asset: db.Column
+    l2_network: db.Column
+    user_id: db.Column
+
     @classmethod
-    def of_asset(cls, session, user, asset, l2_network, offset, limit):
+    def of_asset(cls, session: Session, user: User, asset: str, l2_network: str | None, offset: int, limit: int):
         return session.query(cls).filter(and_(cls.user_id == user.id, and_(cls.asset == asset, cls.l2_network == l2_network))).order_by(cls.id.desc()).offset(offset).limit(limit)
 
     @classmethod
-    def total_of_asset(cls, session, user, asset, l2_network):
+    def total_of_asset(cls, session: Session, user: User, asset: str, l2_network: str | None):
         return session.query(cls).filter(and_(cls.user_id == user.id, and_(cls.asset == asset, cls.l2_network == l2_network))).count()
 
 roles_users = db.Table(
@@ -477,12 +495,7 @@ class CryptoWithdrawalSchema(Schema):
     def get_amount_dec(self, obj):
         return str(assets.asset_int_to_dec(obj.asset, obj.amount))
 
-class CryptoWithdrawal(db.Model, FromUserMixin, OfAssetMixin):
-    STATUS_CREATED = 'created'
-    STATUS_AUTHORIZED = 'authorized'
-    STATUS_COMPLETED = 'completed'
-    STATUS_CANCELLED = 'cancelled'
-
+class CryptoWithdrawal(db.Model, FromUserMixin, FromTokenMixin, OfAssetMixin, WithdrawStatusMixin):
     id = db.Column(db.Integer, primary_key=True)
     token = db.Column(db.String(255), unique=True, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -1010,14 +1023,8 @@ class FiatWithdrawalSchema(Schema):
     def get_amount_dec(self, obj):
         return str(assets.asset_int_to_dec(obj.asset, obj.amount))
 
-class FiatWithdrawal(db.Model, FromUserMixin, FromTokenMixin):
-    STATUS_CREATED = 'created'
-    STATUS_AUTHORIZED = 'authorized'
-    STATUS_COMPLETED = 'completed'
-    STATUS_CANCELLED = 'cancelled'
-
+class FiatWithdrawal(db.Model, FromUserMixin, FromTokenMixin, WithdrawStatusMixin):
     id = db.Column(db.Integer, primary_key=True)
-
     token = db.Column(db.String(255), unique=True, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     user = db.relationship('User', backref=db.backref('fiat_withdrawals', lazy='dynamic'))
@@ -1114,14 +1121,24 @@ class WithdrawalConfirmation(db.Model, FromTokenMixin):
         self.fiat_withdrawal = fiat_withdrawal
         self.address_book = address_book
 
+    def expired(self):
+        return datetime.now() > self.expiry
+
+    def withdrawal(self):
+        assert self.crypto_withdrawal is not None or self.fiat_withdrawal is not None
+        return self.crypto_withdrawal if self.crypto_withdrawal else self.fiat_withdrawal
+
     def recipient(self):
-        return self.crypto_withdrawal.recipient if self.crypto_withdrawal else self.fiat_withdrawal.recipient
+        return self.withdrawal().recipient
 
     def asset(self):
-        return self.crypto_withdrawal.asset if self.crypto_withdrawal else self.fiat_withdrawal.asset
+        return self.withdrawal().asset
 
     def amount(self):
-        return self.crypto_withdrawal.amount if self.crypto_withdrawal else self.fiat_withdrawal.amount
+        return self.withdrawal().amount
+
+    def status_is_created(self):
+        return self.withdrawal().status == self.withdrawal().STATUS_CREATED
 
 class BtcTxIndex(db.Model):
     id = db.Column(db.Integer, primary_key=True)

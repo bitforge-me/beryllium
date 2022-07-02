@@ -10,7 +10,8 @@ from flask import redirect, render_template, request, flash, jsonify, Response
 from flask_security import roles_accepted
 
 from app_core import app, db, socketio
-from models import User, Role, Topic, PushNotificationLocation, BrokerOrder, CryptoDeposit, FiatDeposit, KycRequest, FiatDbTransaction
+from crown_financial import withdrawal
+from models import CryptoWithdrawal, FiatWithdrawal, User, Role, Topic, PushNotificationLocation, BrokerOrder, CryptoDeposit, FiatDeposit, KycRequest, FiatDbTransaction
 import email_utils
 from fcm import FCM
 from web_utils import bad_request, get_json_params, get_json_params_optional
@@ -37,6 +38,12 @@ USER_BALANCE_SHOW = 'show balance'
 USER_BALANCE_CREDIT = 'credit'
 USER_BALANCE_DEBIT = 'debit'
 USER_BALANCE_SWEEP = 'sweep'
+
+USER_WITHDRAWAL_SHOW = 'show'
+USER_WITHDRAWAL_CANCEL = 'cancel'
+
+WITHDRAWAL_TYPE_CRYPTO = 'crypto'
+WITHDRAWAL_TYPE_FIAT = 'fiat'
 
 USER_ORDER_SHOW = 'show'
 USER_ORDER_CANCEL = 'cancel'
@@ -306,9 +313,7 @@ def user_balance():
             balance = assets.asset_int_to_dec(asset, balance)
             flash(f'current balance: {balance} {asset}', 'primary')
             fiatdb_action = FiatDbTransaction.ACTION_CREDIT if action == USER_BALANCE_CREDIT else FiatDbTransaction.ACTION_DEBIT
-            ftx = fiatdb_core.tx_create(db.session, user, fiatdb_action, asset, amount_int, desc)
-            if not ftx:
-                return return_response('failed to create transaction')
+            ftx = fiatdb_core.tx_create(user, fiatdb_action, asset, amount_int, desc)
             db.session.add(ftx)
             db.session.commit()
             balance = fiatdb_core.user_balance(db.session, asset, user)
@@ -327,6 +332,46 @@ def user_balance():
                     flash(f'transfered {balance.available} of {balance.total} {balance.symbol} to master account', 'success')
                 else:
                     flash(f'no available balance of {balance.total} {balance.symbol} to transfer', 'warning')
+    return return_response()
+
+@app.route('/user_withdrawal', methods=['GET', 'POST'])
+@roles_accepted(Role.ROLE_ADMIN)
+def user_withdrawal():
+    actions = (USER_WITHDRAWAL_SHOW, USER_WITHDRAWAL_CANCEL)
+    types = (WITHDRAWAL_TYPE_CRYPTO, WITHDRAWAL_TYPE_FIAT)
+    action = type_ = token = ''
+
+    def return_response(err_msg=None):
+        if err_msg:
+            flash(err_msg, 'danger')
+        return render_template('user_withdrawal.html', actions=actions, types=types, type=type_, action=action, token=token)
+    if request.method == 'POST':
+        action = request.form['action']
+        type_ = request.form['type']
+        token = request.form['token']
+        if action not in actions:
+            return return_response('invalid action')
+        if type_ not in types:
+            return return_response('invalid type')
+        if not token:
+            return return_response('please enter a token')
+        if type_ == WITHDRAWAL_TYPE_CRYPTO:
+            withdrawal = CryptoWithdrawal.from_token(db.session, token)
+        else:
+            withdrawal = FiatWithdrawal.from_token(db.session, token)
+        if not withdrawal:
+            return return_response('Withdrawal not found')
+        if action == USER_WITHDRAWAL_SHOW:
+            flash(withdrawal.to_json(), 'primary')
+        elif action == USER_WITHDRAWAL_CANCEL:
+            with coordinator.lock:
+                if withdrawal.status not in (withdrawal.STATUS_CREATED, withdrawal.STATUS_AUTHORIZED):
+                    return return_response(f'invalid withdrawal status - {withdrawal.status}')
+                ftx = depwith.withdrawal_cancel(withdrawal, 'admin')
+                db.session.add(withdrawal)
+                db.session.add(ftx)
+                db.session.commit()
+                flash(f'{type_} withdrawal {token} {action} completed', 'success')
     return return_response()
 
 @app.route('/user_order', methods=['GET', 'POST'])

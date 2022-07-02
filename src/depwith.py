@@ -7,7 +7,7 @@ from sqlalchemy.orm.session import Session
 import windcave
 import dasset
 import assets
-from models import CryptoAddress, CryptoDeposit, CryptoWithdrawal, FiatDbTransaction, FiatDeposit, FiatWithdrawal, User, CrownPayment
+from models import CryptoAddress, CryptoDeposit, CryptoWithdrawal, FiatDbTransaction, FiatDeposit, FiatWithdrawal, User, CrownPayment, WithdrawalConfirmation
 import websocket
 import email_utils
 import fiatdb_core
@@ -20,7 +20,28 @@ import payouts_core
 
 logger = logging.getLogger(__name__)
 
-def _fiat_deposit_update(db_session: Session, fiat_deposit: FiatDeposit):
+#
+# Helper functions (public)
+#
+
+def withdrawal_authorize(withdrawal: CryptoWithdrawal | FiatWithdrawal, reason: str):
+    # cancel withdrawal
+    assert withdrawal.status == withdrawal.STATUS_CREATED
+    withdrawal.status = withdrawal.STATUS_AUTHORIZED
+
+def withdrawal_cancel(withdrawal: CryptoWithdrawal | FiatWithdrawal, reason: str):
+    # cancel withdrawal
+    assert withdrawal.status in (withdrawal.STATUS_CREATED, withdrawal.STATUS_AUTHORIZED)
+    withdrawal.status = withdrawal.STATUS_CANCELLED
+    # refund user
+    type_ = 'crypto' if isinstance(withdrawal, CryptoWithdrawal) else 'fiat'
+    asset = withdrawal.asset
+    amount_int = withdrawal.amount
+    return fiatdb_core.tx_create(withdrawal.user, FiatDbTransaction.ACTION_CREDIT, asset, amount_int, f'{type_} withdrawal refund - {reason}: {withdrawal.token}')
+
+# -------------
+
+def _fiat_deposit_update(fiat_deposit: FiatDeposit):
     logger.info('processing fiat deposit %s (%s)..', fiat_deposit.token, fiat_deposit.status)
     updated_records = []
     # check payment
@@ -35,13 +56,10 @@ def _fiat_deposit_update(db_session: Session, fiat_deposit: FiatDeposit):
                 return updated_records
             if payment_req.status == payment_req.STATUS_COMPLETED:
                 fiat_deposit.status = fiat_deposit.STATUS_COMPLETED
-                ftx = fiatdb_core.tx_create(db_session, fiat_deposit.user, FiatDbTransaction.ACTION_CREDIT, fiat_deposit.asset, fiat_deposit.amount, f'fiat deposit: {fiat_deposit.token}')
-                if ftx:
-                    updated_records.append(payment_req)
-                    updated_records.append(fiat_deposit)
-                    updated_records.append(ftx)
-                else:
-                    logger.error('failed to create fiatdb transaction for fiat deposit %s', fiat_deposit.token)
+                ftx = fiatdb_core.tx_create(fiat_deposit.user, FiatDbTransaction.ACTION_CREDIT, fiat_deposit.asset, fiat_deposit.amount, f'fiat deposit: {fiat_deposit.token}')
+                updated_records.append(payment_req)
+                updated_records.append(fiat_deposit)
+                updated_records.append(ftx)
                 return updated_records
         elif fiat_deposit.crown_payment:
             crown_payment = fiat_deposit.crown_payment
@@ -50,13 +68,10 @@ def _fiat_deposit_update(db_session: Session, fiat_deposit: FiatDeposit):
                 crown_payment.crown_status = tx.STATUS_ACCEPTED
                 crown_payment.status = fiat_deposit.crown_payment.STATUS_COMPLETED
                 fiat_deposit.status = fiat_deposit.STATUS_COMPLETED
-                ftx = fiatdb_core.tx_create(db_session, fiat_deposit.user, FiatDbTransaction.ACTION_CREDIT, fiat_deposit.asset, fiat_deposit.amount, f'fiat deposit: {fiat_deposit.token}')
-                if ftx:
-                    updated_records.append(crown_payment)
-                    updated_records.append(fiat_deposit)
-                    updated_records.append(ftx)
-                else:
-                    logger.error('failed to create fiatdb transaction for fiat deposit %s', fiat_deposit.token)
+                ftx = fiatdb_core.tx_create(fiat_deposit.user, FiatDbTransaction.ACTION_CREDIT, fiat_deposit.asset, fiat_deposit.amount, f'fiat deposit: {fiat_deposit.token}')
+                updated_records.append(crown_payment)
+                updated_records.append(fiat_deposit)
+                updated_records.append(ftx)
                 return updated_records
     # check expiry (for deposits via windcave)
     if fiat_deposit.status == fiat_deposit.STATUS_CREATED and fiat_deposit.windcave_payment_request:
@@ -99,7 +114,7 @@ def fiat_deposit_update_and_commit(db_session: Session, deposit: FiatDeposit):
         return
     while True:
         with coordinator.lock:
-            updated_records = _fiat_deposit_update(db_session, deposit)
+            updated_records = _fiat_deposit_update(deposit)
             # commit db if records updated
             if not updated_records:
                 return
@@ -125,8 +140,17 @@ def _fiat_withdrawal_update(fiat_withdrawal: FiatWithdrawal):
         return updated_records
     # check status
     if fiat_withdrawal.status == fiat_withdrawal.STATUS_CREATED:
-        if not fiat_withdrawal.withdrawal_confirmation or not fiat_withdrawal.withdrawal_confirmation.confirmed:
+        conf: WithdrawalConfirmation = fiat_withdrawal.withdrawal_confirmation
+        if not conf:
+            logger.error('fiat withdrawal (%s) does not have a confirmation record', fiat_withdrawal.token)
             return updated_records
+        if not conf.confirmed:
+            if conf.expired():
+                ftx = withdrawal_cancel(fiat_withdrawal, 'confirmation expiry')
+                updated_records.append(fiat_withdrawal)
+                updated_records.append(ftx)
+            return updated_records
+    if fiat_withdrawal.status == fiat_withdrawal.STATUS_AUTHORIZED:
         if not fiat_withdrawal.payout_request:
             assert fiat_withdrawal.withdrawal_confirmation
             address_book = fiat_withdrawal.withdrawal_confirmation.address_book
@@ -137,10 +161,10 @@ def _fiat_withdrawal_update(fiat_withdrawal: FiatWithdrawal):
                 return updated_records
             fiat_withdrawal.payout_request = payout_request
             updated_records.append(payout_request)
-        fiat_withdrawal.status = fiat_withdrawal.STATUS_AUTHORIZED
-        updated_records.append(fiat_withdrawal)
-        return updated_records
-    if fiat_withdrawal.status == fiat_withdrawal.STATUS_AUTHORIZED:
+            fiat_withdrawal.status = fiat_withdrawal.STATUS_WITHDRAW
+            updated_records.append(fiat_withdrawal)
+            return updated_records
+    if fiat_withdrawal.status == fiat_withdrawal.STATUS_WITHDRAW:
         if fiat_withdrawal.payout_request:
             payout_request = fiat_withdrawal.payout_request
             if payout_request.status == payout_request.STATUS_COMPLETED:
@@ -205,10 +229,7 @@ def crypto_deposits_wallet_check(db_session: Session, new_crypto_deposits: list[
                     new_crypto_deposits.append(crypto_deposit)
                 if (crypto_deposit in new_crypto_deposits or not crypto_deposit.confirmed) and completed:
                     # credit the users account
-                    ftx = fiatdb_core.tx_create(db_session, user, FiatDbTransaction.ACTION_CREDIT, asset, wallet_deposit.amount_deposited(), f'crypto deposit: {crypto_deposit.token}')
-                    if not ftx:
-                        logger.error('failed to create fiatdb transaction for crypto deposit %s', crypto_deposit.token)
-                        continue
+                    ftx = fiatdb_core.tx_create(user, FiatDbTransaction.ACTION_CREDIT, asset, wallet_deposit.amount_deposited(), f'crypto deposit: {crypto_deposit.token}')
                     db_session.add(ftx)
                     # update crypto deposit
                     crypto_deposit.confirmed = completed
@@ -242,10 +263,7 @@ def crypto_deposits_dasset_check(db_session: Session, new_crypto_deposits: list[
                     logger.error('failed to transfer funds from subaccount to master %s', dasset_deposit.id)
                     continue
                 # and credit the users account
-                ftx = fiatdb_core.tx_create(db_session, user, FiatDbTransaction.ACTION_CREDIT, asset, amount_int, f'crypto deposit: {crypto_deposit.token}')
-                if not ftx:
-                    logger.error('failed to create fiatdb transaction for crypto deposit %s', crypto_deposit.token)
-                    continue
+                ftx = fiatdb_core.tx_create(user, FiatDbTransaction.ACTION_CREDIT, asset, amount_int, f'crypto deposit: {crypto_deposit.token}')
                 db_session.add(ftx)
                 # update crypto deposit
                 crypto_deposit.confirmed = completed
@@ -290,10 +308,7 @@ def crypto_deposits_updated_wallet_check(db_session: Session, updated_crypto_dep
             elif wallet.deposit_completed(deposit.asset, deposit.l2_network, deposit.wallet_reference):
                 deposit.confirmed = True
                 # credit the users account
-                ftx = fiatdb_core.tx_create(db_session, deposit.user, FiatDbTransaction.ACTION_CREDIT, deposit.asset, deposit.amount, f'crypto deposit: {deposit.token}')
-                if not ftx:
-                    logger.error('failed to create fiatdb transaction for crypto deposit %s', deposit.token)
-                    continue
+                ftx = fiatdb_core.tx_create(deposit.user, FiatDbTransaction.ACTION_CREDIT, deposit.asset, deposit.amount, f'crypto deposit: {deposit.token}')
                 db_session.add(ftx)
                 updated_crypto_deposits.append(deposit)
             db_session.add(deposit)
@@ -322,8 +337,17 @@ def _crypto_withdrawal_update(crypto_withdrawal: CryptoWithdrawal):
         return updated_records
     # check status
     if crypto_withdrawal.status == crypto_withdrawal.STATUS_CREATED:
-        if not crypto_withdrawal.withdrawal_confirmation or not crypto_withdrawal.withdrawal_confirmation.confirmed:
+        conf: WithdrawalConfirmation = crypto_withdrawal.withdrawal_confirmation
+        if not conf:
+            logger.error('crypto withdrawal (%s) does not have a confirmation record', crypto_withdrawal.token)
             return updated_records
+        if not conf.confirmed:
+            if conf.expired():
+                ftx = withdrawal_cancel(crypto_withdrawal, 'confirmation expiry')
+                updated_records.append(crypto_withdrawal)
+                updated_records.append(ftx)
+            return updated_records
+    if crypto_withdrawal.status == crypto_withdrawal.STATUS_AUTHORIZED:
         if not crypto_withdrawal.wallet_reference and not crypto_withdrawal.exchange_reference:
             asset = crypto_withdrawal.asset
             l2_network = crypto_withdrawal.l2_network
@@ -352,10 +376,10 @@ def _crypto_withdrawal_update(crypto_withdrawal: CryptoWithdrawal):
                     return updated_records
             crypto_withdrawal.wallet_reference = wallet_reference
             crypto_withdrawal.exchange_reference = exchange_reference
-        crypto_withdrawal.status = crypto_withdrawal.STATUS_AUTHORIZED
+        crypto_withdrawal.status = crypto_withdrawal.STATUS_WITHDRAW
         updated_records.append(crypto_withdrawal)
         return updated_records
-    if crypto_withdrawal.status == crypto_withdrawal.STATUS_AUTHORIZED:
+    if crypto_withdrawal.status == crypto_withdrawal.STATUS_WITHDRAW:
         if crypto_withdrawal.wallet_reference:
             # check wallet withdrawal
             if wallet.withdrawal_completed(crypto_withdrawal.asset, crypto_withdrawal.l2_network, crypto_withdrawal.wallet_reference):

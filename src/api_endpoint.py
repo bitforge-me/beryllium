@@ -26,6 +26,7 @@ import broker
 import coordinator
 import wallet
 import tripwire
+import depwith
 
 logger = logging.getLogger(__name__)
 api = Blueprint('api', __name__, template_folder='templates')
@@ -515,7 +516,7 @@ def _validate_crypto_asset_deposit(asset: str, l2_network: str | None):
 @api.route('/withdrawal_confirm/<token>/<secret>', methods=['GET', 'POST'])
 @limiter.limit('20/minute')
 def withdrawal_confirm(token=None, secret=None):
-    conf = WithdrawalConfirmation.from_token(db.session, token)
+    conf: WithdrawalConfirmation = WithdrawalConfirmation.from_token(db.session, token)
     if not conf:
         time.sleep(5)
         flash('Withdrawal confirmation not found.', 'danger')
@@ -526,21 +527,40 @@ def withdrawal_confirm(token=None, secret=None):
     if conf.confirmed is not None:
         flash('Withdrawal confirmation already processed.', 'danger')
         return redirect('/')
-    now = datetime.now()
-    if now > conf.expiry:
+    if conf.expired():
         time.sleep(5)
         flash('Withdrawal confirmation expired.', 'danger')
         return redirect('/')
+    if not conf.status_is_created():
+        time.sleep(5)
+        flash('Withdrawal invalid.', 'danger')
+        return redirect('/')
     if request.method == 'POST':
         confirm = request.form.get('confirm') == 'true'
-        if confirm:
-            conf.confirmed = True
-            flash('Withdrawal confirmed.', 'success')
-        else:
-            conf.confirmed = False
-            flash('Withdrawal cancelled.', 'success')
-        db.session.add(conf)
-        db.session.commit()
+        withdrawal = conf.withdrawal()
+        with coordinator.lock:
+            # check withdrawal status
+            if withdrawal.status != withdrawal.STATUS_CREATED:
+                flash('withdrawal status invalid', 'danger')
+                return redirect('/')
+            # update confirmation
+            if confirm:
+                conf.confirmed = True
+                flash('Withdrawal confirmed.', 'success')
+            else:
+                conf.confirmed = False
+                flash('Withdrawal cancelled.', 'success')
+            db.session.add(conf)
+            # confirm withdrawal
+            if conf.confirmed:
+                depwith.withdrawal_authorize(withdrawal, 'user')
+            # cancel withdrawal
+            else:
+                ftx = depwith.withdrawal_cancel(withdrawal, 'user')
+                db.session.add(ftx)
+            db.session.add(withdrawal)
+            # commit changes
+            db.session.commit()
         return redirect('/')
     asset = conf.asset()
     amount = conf.amount()
@@ -642,10 +662,7 @@ def _create_withdrawal(user: User, asset: str, l2_network: str | None, amount_de
         amount_int = assets.asset_dec_to_int(asset, amount_dec)
         amount_plus_fee_int = assets.asset_dec_to_int(asset, amount_plus_fee_dec)
         crypto_withdrawal = CryptoWithdrawal(user, asset, l2_network, amount_int, recipient)
-        ftx = fiatdb_core.tx_create(db.session, user, FiatDbTransaction.ACTION_DEBIT, asset, amount_plus_fee_int, f'crypto withdrawal: {crypto_withdrawal.token}')
-        if not ftx:
-            logger.error('failed to create fiatdb transaction for crypto withdrawal %s', crypto_withdrawal.token)
-            return None, bad_request(web_utils.FAILED_PAYMENT_CREATE)
+        ftx = fiatdb_core.tx_create(user, FiatDbTransaction.ACTION_DEBIT, asset, amount_plus_fee_int, f'crypto withdrawal: {crypto_withdrawal.token}')
         db.session.add(crypto_withdrawal)
         db.session.add(ftx)
         db.session.commit()
@@ -821,15 +838,12 @@ def fiat_withdrawal_create_req():
         amount_int = assets.asset_dec_to_int(asset, amount_dec)
         amount_plus_fee_int = assets.asset_dec_to_int(asset, amount_plus_fee_dec)
         fiat_withdrawal = FiatWithdrawal(api_key.user, asset, amount_int, recipient)
-        ftx = fiatdb_core.tx_create(db.session, api_key.user, FiatDbTransaction.ACTION_DEBIT, asset, amount_plus_fee_int, f'fiat withdrawal: {fiat_withdrawal.token}')
-        if not ftx:
-            logger.error('failed to create fiatdb transaction for fiat withdrawal %s', fiat_withdrawal.token)
-            return bad_request(web_utils.FAILED_PAYMENT_CREATE)
+        ftx = fiatdb_core.tx_create(api_key.user, FiatDbTransaction.ACTION_DEBIT, asset, amount_plus_fee_int, f'fiat withdrawal: {fiat_withdrawal.token}')
         db.session.add(fiat_withdrawal)
         db.session.add(ftx)
         db.session.commit()
         # step 2) create / send withdrawal confimation
-        conf = WithdrawalConfirmation(fiat_withdrawal.user, fiat_withdrawal=fiat_withdrawal, address_book_entry=entry)
+        conf = WithdrawalConfirmation(fiat_withdrawal.user, fiat_withdrawal=fiat_withdrawal, address_book=entry)
         email_utils.email_withdrawal_confirmation(db.session, conf)
         db.session.add(conf)
         db.session.commit()
@@ -964,10 +978,7 @@ def broker_order_accept():
         else:
             asset = broker_order.base_asset
             amount_int = broker_order.base_amount
-        ftx = fiatdb_core.tx_create(db.session, broker_order.user, FiatDbTransaction.ACTION_DEBIT, asset, amount_int, f'broker order: {broker_order.token}')
-        if not ftx:
-            logger.error('failed to create fiatdb transaction for broker order %s', broker_order.token)
-            return bad_request(web_utils.FAILED_PAYMENT_CREATE)
+        ftx = fiatdb_core.tx_create(broker_order.user, FiatDbTransaction.ACTION_DEBIT, asset, amount_int, f'broker order: {broker_order.token}')
         # update status
         broker_order.status = broker_order.STATUS_READY
         db.session.add(broker_order)

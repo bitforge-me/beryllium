@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # Helper functions (public)
 #
 
-def order_refund(db_session: Session, order: BrokerOrder, side: str):
+def order_refund(order: BrokerOrder, side: str):
     side = MarketSide.parse(order.side)
     # refund users account
     if side is MarketSide.BID:
@@ -29,7 +29,7 @@ def order_refund(db_session: Session, order: BrokerOrder, side: str):
     else:
         asset = order.base_asset
         amount_int = order.base_amount
-    return fiatdb_core.tx_create(db_session, order.user, FiatDbTransaction.ACTION_CREDIT, asset, amount_int, f'broker order refund: {order.token}')
+    return fiatdb_core.tx_create(order.user, FiatDbTransaction.ACTION_CREDIT, asset, amount_int, f'broker order refund: {order.token}')
 
 def order_required_asset(order: BrokerOrder, side: MarketSide):
     assert isinstance(side, MarketSide)
@@ -76,7 +76,7 @@ def _broker_order_action(db_session: Session, broker_order: BrokerOrder):
             logger.error('"%s" for broker order %s', err_msg, broker_order.token)
             broker_order.status = broker_order.STATUS_FAILED
             updated_records.append(broker_order)
-            ftx = order_refund(db_session, broker_order, side)
+            ftx = order_refund(broker_order, side)
             if not ftx:
                 logger.error('failed to create fiatdb transaction for broker order %s', broker_order.token)
                 return updated_records
@@ -105,10 +105,7 @@ def _broker_order_action(db_session: Session, broker_order: BrokerOrder):
             else:
                 asset = broker_order.base_asset
                 amount_int = broker_order.base_amount
-            ftx = fiatdb_core.tx_create(db_session, broker_order.user, FiatDbTransaction.ACTION_CREDIT, asset, amount_int, f'broker order completed: {broker_order.token}')
-            if not ftx:
-                logger.error('failed to create fiatdb transaction for broker order %s', broker_order.token)
-                return updated_records
+            ftx = fiatdb_core.tx_create(broker_order.user, FiatDbTransaction.ACTION_CREDIT, asset, amount_int, f'broker order completed: {broker_order.token}')
             updated_records.append(ftx)
             broker_order.status = broker_order.STATUS_COMPLETED
             updated_records.append(broker_order)
