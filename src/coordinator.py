@@ -1,3 +1,3 @@
-import threading
+from gevent.lock import Semaphore
 
-lock = threading.Lock()
+lock = Semaphore()

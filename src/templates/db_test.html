@@ -1,0 +1,53 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">DB Test</h5>
+            <form id="form" method="POST">
+                <input type="hidden"
+                       id="csrfToken"
+                       name="csrf_token"
+                       value="{{ csrf_token() }}"/>
+                <div class="form-group">
+                    <label for="token">Read Delay Before</label>
+                    <input type="number"
+                           class="form-control"
+                           id="delayBefore"
+                           name="delayBefore"
+                           aria-describedby="delayBeforeHelp"
+                           value="0"
+                           required/>
+                    <small id="delayBeforeHelp" class="form-text text-muted">The number of seconds to delay before retrieving the DB object</small>
+                </div>
+                <div class="form-group">
+                    <label for="token">Read Delay After</label>
+                    <input type="number"
+                           class="form-control"
+                           id="delayAfter"
+                           name="delayAfter"
+                           aria-describedby="delayAfterHelp"
+                           value="5"
+                           required/>
+                    <small id="delayAfterHelp" class="form-text text-muted">The number of seconds to delay after retrieving the DB object</small>
+                </div>
+                <div class="form-group">
+                    <label for="token">Use coordination lock</label>
+                    <input type="checkbox"
+                           class="form-control"
+                           id="coordLock"
+                           name="coordLock"
+                           aria-describedby="coordLockHelp"/>
+                    <small id="coordLockHelp" class="form-text text-muted">Use the coordination lock</small>
+                </div>
+                <button id="form-submit" type="submit" class="btn btn-primary">Submit</button>
+            </form>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">DB Test Result</h5>
+            <div id="result"></div>
+        </div>
+    </div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static',filename='assets/js_custom/db_test.js') }}"></script>{% endblock %}

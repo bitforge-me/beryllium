@@ -1,6 +1,6 @@
 from decimal import Decimal
 import logging
-import threading
+from gevent.lock import Semaphore
 
 from sqlalchemy.orm.session import Session
 from sqlalchemy.sql import func
@@ -9,7 +9,7 @@ from models import User, FiatDbTransaction
 from assets import ASSETS, asset_int_to_dec
 
 logger = logging.getLogger(__name__)
-_lock = threading.Lock()
+_lock = Semaphore()
 
 def __balance(session: Session, asset: str, user: User | None):
     # !assumes lock is held!
