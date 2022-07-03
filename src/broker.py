@@ -142,25 +142,25 @@ def _broker_order_email(broker_order: BrokerOrder):
 # Public functions
 #
 
-def broker_order_update_and_commit(db_session: Session, broker_order: BrokerOrder):
+def _broker_order_update_and_commit(db_session: Session, broker_order: BrokerOrder):
     if broker_order.market not in assets.MARKETS:
         logger.error('broker order (%s) market (%s) is not valid', broker_order.token, broker_order.market)
         return
     while True:
-        with coordinator.lock:
-            updated_records = _broker_order_action(db_session, broker_order)
-            # commit db if records updated
-            if not updated_records:
-                return
-            for rec in updated_records:
-                db_session.add(rec)
-            db_session.commit()
-            # send updates
-            _broker_order_email(broker_order)
-            websocket.broker_order_update_event(broker_order)
+        updated_records = _broker_order_action(db_session, broker_order)
+        # commit db if records updated
+        if not updated_records:
+            return
+        for rec in updated_records:
+            db_session.add(rec)
+        db_session.commit()
+        # send updates
+        _broker_order_email(broker_order)
+        websocket.broker_order_update_event(broker_order)
 
 def broker_orders_update(db_session: Session):
-    orders = BrokerOrder.all_active(db_session)
-    logger.info('num orders: %d', len(orders))
-    for broker_order in orders:
-        broker_order_update_and_commit(db_session, broker_order)
+    with coordinator.lock:
+        orders = BrokerOrder.all_active(db_session)
+        logger.info('num orders: %d', len(orders))
+        for broker_order in orders:
+            _broker_order_update_and_commit(db_session, broker_order)

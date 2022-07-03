@@ -9,7 +9,7 @@ import gevent
 from flask import redirect, render_template, request, flash, jsonify, Response
 from flask_security import roles_accepted
 
-from app_core import app, db, socketio
+from app_core import app, boolify, db, socketio, csrf
 from crown_financial import withdrawal
 from models import CryptoWithdrawal, FiatWithdrawal, User, Role, Topic, PushNotificationLocation, BrokerOrder, CryptoDeposit, FiatDeposit, KycRequest, FiatDbTransaction
 import email_utils
@@ -33,6 +33,7 @@ import coordinator
 from ln import LnRpc, _msat_to_sat
 import wallet
 import tripwire
+import db_settings
 
 USER_BALANCE_SHOW = 'show balance'
 USER_BALANCE_CREDIT = 'credit'
@@ -74,10 +75,14 @@ def process_email_alerts():
 def _process_depwith_and_broker_orders():
     logger.info('process deposits..')
     depwith.fiat_deposits_update(db.session)
+    gevent.sleep()
     depwith.crypto_deposits_check(db.session)
+    gevent.sleep()
     logger.info('process withdrawals..')
     depwith.fiat_withdrawals_update(db.session)
+    gevent.sleep()
     depwith.crypto_withdrawals_update(db.session)
+    gevent.sleep()
     logger.info('process broker orders..')
     broker.broker_orders_update(db.session)
 
@@ -355,16 +360,16 @@ def user_withdrawal():
             return return_response('invalid type')
         if not token:
             return return_response('please enter a token')
-        if type_ == WITHDRAWAL_TYPE_CRYPTO:
-            withdrawal = CryptoWithdrawal.from_token(db.session, token)
-        else:
-            withdrawal = FiatWithdrawal.from_token(db.session, token)
-        if not withdrawal:
-            return return_response('Withdrawal not found')
-        if action == USER_WITHDRAWAL_SHOW:
-            flash(withdrawal.to_json(), 'primary')
-        elif action == USER_WITHDRAWAL_CANCEL:
-            with coordinator.lock:
+        with coordinator.lock:
+            if type_ == WITHDRAWAL_TYPE_CRYPTO:
+                withdrawal = CryptoWithdrawal.from_token(db.session, token)
+            else:
+                withdrawal = FiatWithdrawal.from_token(db.session, token)
+            if not withdrawal:
+                return return_response('Withdrawal not found')
+            if action == USER_WITHDRAWAL_SHOW:
+                flash(withdrawal.to_json(), 'primary')
+            elif action == USER_WITHDRAWAL_CANCEL:
                 if withdrawal.status not in (withdrawal.STATUS_CREATED, withdrawal.STATUS_AUTHORIZED):
                     return return_response(f'invalid withdrawal status - {withdrawal.status}')
                 ftx = depwith.withdrawal_cancel(withdrawal, 'admin')
@@ -391,15 +396,15 @@ def user_order():
             return return_response('invalid action')
         if not token:
             return return_response('please enter a order token')
-        order = BrokerOrder.from_token(db.session, token)
-        if not order:
-            return return_response('Order not found')
-        if action == USER_ORDER_SHOW:
-            flash(f'order: {order.to_json()}', 'primary')
-        elif action == USER_ORDER_CANCEL:
-            if order.status not in (order.STATUS_READY,):
-                return return_response('invalid order status')
-            with coordinator.lock:
+        with coordinator.lock:
+            order = BrokerOrder.from_token(db.session, token)
+            if not order:
+                return return_response('Order not found')
+            if action == USER_ORDER_SHOW:
+                flash(f'order: {order.to_json()}', 'primary')
+            elif action == USER_ORDER_CANCEL:
+                if order.status not in (order.STATUS_READY,):
+                    return return_response('invalid order status')
                 side = assets.MarketSide.parse(order.side)
                 ftx = broker.order_refund(db.session, order, side)
                 if not ftx:
@@ -408,7 +413,7 @@ def user_order():
                 db.session.add(ftx)
                 db.session.add(order)
                 db.session.commit()
-            flash(f'canceled and refunded order {token}', 'success')
+                flash(f'canceled and refunded order {token}', 'success')
     return return_response()
 
 @app.route('/config', methods=['GET'])
@@ -427,6 +432,44 @@ def process_depwith_broker():
 @roles_accepted(Role.ROLE_ADMIN)
 def tripwire_ep():
     return render_template('tripwire.html', data=tripwire.DATA)
+
+@app.route('/db_test', methods=['GET'])
+@roles_accepted(Role.ROLE_ADMIN)
+def db_test():
+    return render_template('db_test.html')
+
+def _db_test_read(delay_before: int, delay_after: int):
+    time.sleep(delay_before)
+    setting = db_settings.get('db_test')
+    gevent.sleep(delay_after)
+    if setting:
+        return setting.value
+    return ''
+
+def _db_test_write(value: str):
+    db_settings.set_value(db.session, 'db_test', value)
+    db.session.commit()
+
+@app.route('/db_test_action', methods=['POST'])
+@roles_accepted(Role.ROLE_ADMIN)
+def db_test_action():
+    coordlock = boolify(request.form['coordlock'])
+    action = request.form['action']
+    if action == 'read':
+        read_delay_before = int(request.form['read_delay_before'])
+        read_delay_after = int(request.form['read_delay_after'])
+        if coordlock:
+            with coordinator.lock:
+                return _db_test_read(read_delay_before, read_delay_after)
+        return _db_test_read(read_delay_before, read_delay_after)
+    elif action == 'write':
+        value = request.form['value']
+        if coordlock:
+            with coordinator.lock:
+                _db_test_write(value)
+        else:
+            _db_test_write(value)
+        return 'ok'
 
 #
 # gevent class
