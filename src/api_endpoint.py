@@ -606,6 +606,7 @@ def crypto_deposit_recipient_req():
         crypto_deposit.wallet_reference = wallet_reference
         db.session.add(crypto_deposit)
         db.session.commit()
+        websocket.crypto_deposit_new_event(crypto_deposit)
         return jsonify(recipient=wallet_reference, asset=asset, l2_network=l2_network, amount_dec=amount_dec)
 
     # otherwise use dasset
