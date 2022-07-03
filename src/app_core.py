@@ -7,6 +7,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_mail_sendgrid import MailSendGrid
+from flask_mail import Mail
 from flask_socketio import SocketIO
 from flask_cors import CORS
 from flask_limiter import Limiter
@@ -106,6 +107,12 @@ if app.config["TESTNET"]:
 else:
     app.config["BITCOIN_EXPLORER"] = "https://blockstream.info/"
 
+if os.getenv("MAIL_SERVER"):
+    app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER")
+
+if os.getenv("MAIL_PORT"):
+    app.config["MAIL_PORT"] = os.getenv("MAIL_PORT")
+
 def set_vital_setting(env_name, setting_name=None, acceptable_values=None, custom_handler=None):
     global MISSING_VITAL_SETTING
     if not setting_name:
@@ -159,6 +166,7 @@ set_vital_setting("BITCOIN_RPCCONNECT")
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 mail = MailSendGrid(app)
+mail_postfix = Mail(app)
 socketio = SocketIO(app, cors_allowed_origins='*')
 limiter = Limiter(app, key_func=get_remote_address, headers_enabled=True, default_limits=["3000 per minute"])
 csrf = CSRFProtect(app)
