@@ -197,6 +197,12 @@ def _fiat_withdrawal_update_and_commit(db_session: Session, withdrawal: FiatWith
         _fiat_withdrawal_email(withdrawal)
         websocket.fiat_withdrawal_update_event(withdrawal)
 
+def fiat_withdrawal_update(db_session: Session, token: str):
+    with coordinator.lock:
+        withdrawal = FiatWithdrawal.from_token(db_session, token)
+        if withdrawal:
+            _fiat_withdrawal_update_and_commit(db_session, withdrawal)
+
 def fiat_withdrawals_update(db_session: Session):
     with coordinator.lock:
         withdrawals = FiatWithdrawal.all_active(db_session)
@@ -311,11 +317,21 @@ def _crypto_deposits_updated_wallet_check(db_session: Session, updated_crypto_de
         db_session.add(deposit)
         db_session.commit()
 
+def crypto_wallet_deposits_check(db_session: Session):
+    updated_crypto_deposits: list[CryptoDeposit] = []
+    with coordinator.lock:
+        # check crypto deposits in our wallet
+        _crypto_deposits_updated_wallet_check(db_session, updated_crypto_deposits)
+    # send updates
+    for deposit in updated_crypto_deposits:
+        _crypto_deposit_email(deposit)
+        websocket.crypto_deposit_update_event(deposit)
+
 def crypto_deposits_check(db_session: Session):
     new_crypto_deposits: list[CryptoDeposit] = []
     updated_crypto_deposits: list[CryptoDeposit] = []
     with coordinator.lock:
-        # check crypto deposits from addresses that are due to be checked
+        # check crypto deposits from addresses that are due to be checked (from dasset or our wallet)
         _crypto_deposits_address_check(db_session, new_crypto_deposits, updated_crypto_deposits)
         # check crypto deposits in our wallet
         _crypto_deposits_updated_wallet_check(db_session, updated_crypto_deposits)
@@ -421,6 +437,12 @@ def _crypto_withdrawal_update_and_commit(db_session: Session, withdrawal: Crypto
         # send updates
         _crypto_withdrawal_email(withdrawal)
         websocket.crypto_withdrawal_update_event(withdrawal)
+
+def crypto_withdrawal_update(db_session: Session, token: str):
+    with coordinator.lock:
+        withdrawal = CryptoWithdrawal.from_token(db_session, token)
+        if withdrawal:
+            _crypto_withdrawal_update_and_commit(db_session, withdrawal)
 
 def crypto_withdrawals_update(db_session: Session):
     with coordinator.lock:

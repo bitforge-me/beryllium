@@ -27,6 +27,7 @@ import coordinator
 import wallet
 import tripwire
 import depwith
+import tasks
 
 logger = logging.getLogger(__name__)
 api = Blueprint('api', __name__, template_folder='templates')
@@ -561,6 +562,8 @@ def withdrawal_confirm(token=None, secret=None):
             db.session.add(withdrawal)
             # commit changes
             db.session.commit()
+            # update withdrawal asap
+            tasks.task_manager.one_off('update withdrawal', tasks.update_withdrawal, [withdrawal.asset, withdrawal.token])
         return redirect('/')
     asset = conf.asset()
     amount = conf.amount()
