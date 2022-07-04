@@ -8,9 +8,9 @@ import time
 import gevent
 from flask import redirect, render_template, request, flash, jsonify, Response
 from flask_security import roles_accepted
+import greenlet
 
-from app_core import app, boolify, db, socketio, csrf
-from crown_financial import withdrawal
+from app_core import app, boolify, db, socketio
 from models import CryptoWithdrawal, FiatWithdrawal, User, Role, Topic, PushNotificationLocation, BrokerOrder, CryptoDeposit, FiatDeposit, KycRequest, FiatDbTransaction
 import email_utils
 from fcm import FCM
@@ -24,16 +24,15 @@ from payments_endpoint import payments
 from kyc_endpoint import kyc
 from ln_wallet_endpoint import ln_wallet
 import websocket
-import admin
+import admin # import to register flask admin endpoints
 import dasset
 import assets
 import kyc_core
 import fiatdb_core
 import coordinator
-from ln import LnRpc, _msat_to_sat
-import wallet
 import tripwire
 import db_settings
+import tasks
 
 USER_BALANCE_SHOW = 'show balance'
 USER_BALANCE_CREDIT = 'credit'
@@ -60,46 +59,6 @@ app.register_blueprint(reporting, url_prefix='/reporting')
 app.register_blueprint(payments, url_prefix='/payments')
 app.register_blueprint(kyc, url_prefix='/kyc')
 app.register_blueprint(ln_wallet, url_prefix='/ln_wallet')
-
-def process_email_alerts():
-    with app.app_context():
-        data = dasset.account_balances()
-        for balance in data:
-            if balance.symbol == 'NZD':
-                if balance.available < app.config["MIN_AVAILABLE_NZD_BALANCE"]:
-                    balance_format = assets.asset_dec_to_str(balance.symbol, balance.available)
-                    subject = f"Available {balance.symbol} Balance below the minimum threshold"
-                    msg = f"Available {balance.symbol} Balance needs to be replenished in the dasset account.<br/><br/>Available {balance.symbol} balance is: ${balance_format}"
-                    email_utils.email_notification_alert(logger, subject, msg, app.config["ADMIN_EMAIL"])
-
-def _process_depwith_and_broker_orders():
-    logger.info('process deposits..')
-    depwith.fiat_deposits_update(db.session)
-    gevent.sleep()
-    depwith.crypto_deposits_check(db.session)
-    gevent.sleep()
-    logger.info('process withdrawals..')
-    depwith.fiat_withdrawals_update(db.session)
-    gevent.sleep()
-    depwith.crypto_withdrawals_update(db.session)
-    gevent.sleep()
-    logger.info('process broker orders..')
-    broker.broker_orders_update(db.session)
-
-def process_depwith_and_broker_orders():
-    with app.app_context():
-        _process_depwith_and_broker_orders()
-
-def process_btc_tx_index():
-    with app.app_context():
-        logger.info('process btc tx index..')
-        wallet.btc_transactions_index()
-
-def process_dasset_cache():
-    with app.app_context():
-        #logger.info('process dasset cache..')
-        dasset.order_book_refresh_cache(10)
-        dasset.markets_refresh_cache(10)
 
 #
 # Flask views
@@ -424,7 +383,7 @@ def config():
 @app.route('/process_depwith_and_broker', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
 def process_depwith_broker():
-    _process_depwith_and_broker_orders()
+    tasks.process_depwith_and_broker_orders()
     flash('processed deposits/withdrawals and orders', 'success')
     return redirect('/')
 
@@ -481,8 +440,6 @@ class WebGreenlet():
         self.addr = addr
         self.port = port
         self.runloop_greenlet = None
-        self.process_periodic_events_greenlet = None
-        self.ln_invoice_greenlet = None
         self.exception_func = exception_func
 
     def _runloop(self):
@@ -490,66 +447,14 @@ class WebGreenlet():
         logger.info("WebGreenlet webserver starting (addr: %s, port: %d)", self.addr, self.port)
         socketio.run(app, host=self.addr, port=self.port)
 
-    def _process_periodic_events_loop(self):
-        current = int(time.time())
-        email_alerts_timer_last = current
-        deposits_and_orders_timer_last = current
-        btc_tx_index_timer_last = current
-        while True:
-            current = time.time()
-            if current - email_alerts_timer_last > 1800:
-                gevent.spawn(process_email_alerts)
-                email_alerts_timer_last += 1800
-            if current - deposits_and_orders_timer_last > 300:
-                gevent.spawn(process_depwith_and_broker_orders)
-                deposits_and_orders_timer_last += 300
-            if current - btc_tx_index_timer_last > 3600:
-                gevent.spawn(process_btc_tx_index)
-                btc_tx_index_timer_last += 3600
-            gevent.spawn(process_dasset_cache)
-            gevent.sleep(5)
-
-    def _process_ln_invoices_loop(self):
-        gevent.sleep(10, False) # HACK: wait for the webserver to start
-        lastpay_index = 0
-        while True:
-            try:
-                if lastpay_index == 0:
-                    lastpay_index = LnRpc().lastpay_index()
-                pay, err = wallet.ln_any_deposit_completed(lastpay_index)
-                if err:
-                    logger.debug('wait_any_invoice failed: "%s"', err)
-                    gevent.sleep(2, False) # probably timeout so we wait a short time before polling again
-                else:
-                    logger.info('wait_any_invoice: %s', pay)
-                    if pay['status'] == 'paid':
-                        label = pay['label']
-                        payment_hash = pay['payment_hash']
-                        bolt11 = pay['bolt11']
-                        lastpay_index = pay['pay_index']
-                        description = pay['description']
-                        msat = pay['msatoshi']
-                        sat = _msat_to_sat(msat)
-                        deposit = CryptoDeposit.from_wallet_reference(db.session, bolt11)
-                        email = None
-                        if deposit:
-                            email = deposit.user.email
-                        websocket.ln_invoice_paid_event(label, payment_hash, bolt11, email, description, sat)
-            except ConnectionError as e:
-                gevent.sleep(5, False)
-                logger.error('wait_any_invoice error: %s', e)
-
     def start(self):
         def start_greenlets():
             logger.info("starting WebGreenlet runloop...")
             self.runloop_greenlet.start()
-            self.process_periodic_events_greenlet.start()
-            self.ln_invoice_greenlet.start()
+            tasks.task_manager.start()
 
         # create greenlets
         self.runloop_greenlet = gevent.Greenlet(self._runloop)
-        self.process_periodic_events_greenlet = gevent.Greenlet(self._process_periodic_events_loop)
-        self.ln_invoice_greenlet = gevent.Greenlet(self._process_ln_invoices_loop)
         if self.exception_func:
             self.runloop_greenlet.link_exception(self.exception_func)
         # start greenlets
@@ -557,9 +462,9 @@ class WebGreenlet():
 
     def stop(self):
         self.runloop_greenlet.kill()
-        self.process_periodic_events_greenlet.kill()
-        self.ln_invoice_greenlet.kill()
-        gevent.joinall([self.runloop_greenlet, self.process_periodic_events_greenlet, self.ln_invoice_greenlet])
+        greenlets = tasks.task_manager.kill()
+        greenlets.append(self.runloop_greenlet)
+        gevent.joinall(greenlets)
 
 def run():
     # setup logging
