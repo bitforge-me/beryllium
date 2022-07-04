@@ -124,6 +124,12 @@ def _fiat_deposit_update_and_commit(db_session: Session, deposit: FiatDeposit):
         _fiat_deposit_email(deposit)
         websocket.fiat_deposit_update_event(deposit)
 
+def fiat_deposit_update(db_session: Session, token: str):
+    with coordinator.lock:
+        deposit = FiatDeposit.from_token(db_session, token)
+        if deposit:
+            _fiat_deposit_update_and_commit(db_session, deposit)
+
 def fiat_deposits_update(db_session: Session):
     with coordinator.lock:
         deposits = FiatDeposit.all_active(db_session)
@@ -267,7 +273,7 @@ def _crypto_deposits_dasset_check(db_session: Session, new_crypto_deposits: list
                 logger.error('failed to transfer funds from subaccount to master %s', dasset_deposit.id)
                 continue
             # and credit the users account
-            ftx = fiatdb_core.tx_create(user, FiatDbTransaction.ACTION_CREDIT, asset, amount_int, f'crypto deposit: {crypto_deposit.token}')
+            ftx = fiatdb_core.tx_create(user, FiatDbTransaction.ACTION_CREDIT, asset, crypto_deposit.amount, f'crypto deposit: {crypto_deposit.token}')
             db_session.add(ftx)
             # update crypto deposit
             crypto_deposit.confirmed = completed

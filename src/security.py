@@ -1,7 +1,7 @@
 import logging
 
 from flask import redirect, url_for, request, flash
-from flask_security import Security, SQLAlchemyUserDatastore, current_user
+from flask_security import Security, SQLAlchemyUserDatastore, current_user # pyright: ignore [reportPrivateImportUsage, reportGeneralTypeIssues]
 import flask_security.forms
 import flask_security.utils
 from flask_security.utils import config_value as cv
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 def tf_method() -> str:
     methods = cv("TWO_FACTOR_ENABLED_METHODS")
-    assert len(methods) == 1
+    assert methods and len(methods) == 1
     return methods[0]
 
 def tf_enabled_check(user: User) -> bool:
@@ -58,7 +58,7 @@ def tf_code_validate(user: User, code: str) -> bool:
         return False
 
     # verify entered token with user's totp secret
-    if not _security._totp_factory.verify_totp(
+    if not window or not _security._totp_factory.verify_totp(
         token=code,
         totp_secret=user.tf_totp_secret,
         user=user,
@@ -100,7 +100,8 @@ class SecureVerifyForm(flask_security.forms.VerifyForm):
     def validate(self):
         if not super().validate():
             return False
-
+        if not self.user:
+            return False
         return tf_code_validate(self.user, self.code.data)
 
 class SecureTwoFactorSetupForm(flask_security.forms.TwoFactorSetupForm):

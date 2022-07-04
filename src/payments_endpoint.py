@@ -1,7 +1,7 @@
 import logging
 
 from flask import Blueprint, request, render_template, flash, redirect, url_for
-from flask_security import roles_accepted
+from flask_security import roles_accepted # pyright: ignore [reportPrivateImportUsage]
 
 from app_core import db, limiter
 from models import PayoutRequest, PayoutGroup, WindcavePaymentRequest, Role
@@ -21,6 +21,9 @@ limiter.limit("100/minute")(payments)
 
 @payments.route('/payment/<token>', methods=['GET'])
 def payment_interstitial(token=None):
+    if not token:
+        flash('Sorry payment request', category='danger')
+        return redirect('/')
     req = WindcavePaymentRequest.from_token(db.session, token)
     if not req:
         flash('Sorry payment request not found', category='danger')
@@ -28,13 +31,16 @@ def payment_interstitial(token=None):
     if req.status != req.STATUS_CREATED:
         return redirect(url_for('payments.payment', token=token))
     if req.fiat_deposit:
-        depwith.fiat_deposit_update_and_commit(db.session, req.fiat_deposit)
+        depwith.fiat_deposit_update(db.session, req.fiat_deposit.token)
     if req.status != req.STATUS_CREATED:
         return redirect(url_for('payments.payment', token=token))
     return render_template('payments/payment_request.html', token=token, interstitial=True, mock=windcave.mock())
 
 @payments.route('/payment/mock/<token>', methods=['GET'])
 def payment_mock_confirm(token=None):
+    if not token:
+        flash('Sorry invalid payment request', category='danger')
+        return redirect('/')
     if not windcave.mock():
         return web_utils.bad_request('not found', code=404)
     req = WindcavePaymentRequest.from_token(db.session, token)
@@ -43,11 +49,14 @@ def payment_mock_confirm(token=None):
         return redirect('/')
     windcave.payment_request_mock_confirm(req)
     if req.fiat_deposit:
-        depwith.fiat_deposit_update_and_commit(db.session, req.fiat_deposit)
+        depwith.fiat_deposit_update(db.session, req.fiat_deposit.token)
     return redirect(url_for('payments.payment', token=token))
 
 @payments.route('/payment/x/<token>', methods=['GET'])
 def payment(token=None):
+    if not token:
+        flash('Sorry invalid payment request', category='danger')
+        return redirect('/')
     req = WindcavePaymentRequest.from_token(db.session, token)
     if not req:
         flash('Sorry payment request not found', category='danger')
@@ -70,6 +79,9 @@ def payouts():
 @payments.route('/payout_group/<token>', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def payout_group(token=None):
+    if not token:
+        flash('Sorry invalid group', category='danger')
+        return redirect('/')
     group = PayoutGroup.from_token(db.session, token)
     if not group:
         flash('Sorry group not found', category='danger')

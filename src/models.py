@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import logging
 
 from flask import url_for
-from flask_security import UserMixin, RoleMixin
+from flask_security import UserMixin, RoleMixin # pyright: ignore [reportPrivateImportUsage]
 from marshmallow import Schema, fields
 from sqlalchemy import and_
 from sqlalchemy.orm.session import Session
@@ -304,7 +304,7 @@ class PushNotificationLocation(db.Model, FromTokenMixin):
         self.date = datetime.now()
 
     @classmethod
-    def tokens_at_location(cls, session, latitude, max_lat_delta, longitude, max_long_delta, max_age_minutes) -> 'PushNotificationLocation' | None:
+    def tokens_at_location(cls, session, latitude, max_lat_delta, longitude, max_long_delta, max_age_minutes) -> list['PushNotificationLocation']:
         since = datetime.now() - timedelta(minutes=max_age_minutes)
         return session.query(cls).filter(and_(cls.date >= since, and_(and_(cls.latitude <= latitude + max_lat_delta, cls.latitude >= latitude - max_lat_delta), and_(cls.longitude <= longitude + max_long_delta, cls.longitude >= longitude - max_long_delta)))).all()
 
@@ -1106,7 +1106,7 @@ class WithdrawalConfirmation(db.Model, FromTokenMixin):
     address_book_id = db.Column(db.Integer, db.ForeignKey('address_book.id'))
     address_book = db.relationship('AddressBook')
 
-    def __init__(self, user: User, crypto_withdrawal: CryptoWithdrawal = None, fiat_withdrawal: FiatWithdrawal = None, address_book: AddressBook = None):
+    def __init__(self, user: User, crypto_withdrawal: CryptoWithdrawal | None = None, fiat_withdrawal: FiatWithdrawal | None = None, address_book: AddressBook | None = None):
         assert crypto_withdrawal is not None or fiat_withdrawal is not None
         assert crypto_withdrawal is None or fiat_withdrawal is None
         if fiat_withdrawal:
@@ -1125,8 +1125,10 @@ class WithdrawalConfirmation(db.Model, FromTokenMixin):
         return datetime.now() > self.expiry
 
     def withdrawal(self):
-        assert self.crypto_withdrawal is not None or self.fiat_withdrawal is not None
-        return self.crypto_withdrawal if self.crypto_withdrawal else self.fiat_withdrawal
+        if self.crypto_withdrawal:
+            return self.crypto_withdrawal
+        assert self.fiat_withdrawal
+        return self.fiat_withdrawal
 
     def recipient(self):
         return self.withdrawal().recipient

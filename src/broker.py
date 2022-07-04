@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # Helper functions (public)
 #
 
-def order_refund(order: BrokerOrder, side: str):
+def order_refund(order: BrokerOrder):
     side = MarketSide.parse(order.side)
     # refund users account
     if side is MarketSide.BID:
@@ -76,7 +76,7 @@ def _broker_order_action(db_session: Session, broker_order: BrokerOrder):
             logger.error('"%s" for broker order %s', err_msg, broker_order.token)
             broker_order.status = broker_order.STATUS_FAILED
             updated_records.append(broker_order)
-            ftx = order_refund(broker_order, side)
+            ftx = order_refund(broker_order)
             if not ftx:
                 logger.error('failed to create fiatdb transaction for broker order %s', broker_order.token)
                 return updated_records

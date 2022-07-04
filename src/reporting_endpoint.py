@@ -4,7 +4,7 @@ from dateutil.relativedelta import relativedelta
 from sqlalchemy import func, and_
 
 from flask import Blueprint, render_template, redirect
-from flask_security import roles_accepted
+from flask_security import roles_accepted # pyright: ignore [reportPrivateImportUsage]
 
 from models import Role, User, BrokerOrder
 import dasset

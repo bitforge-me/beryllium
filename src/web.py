@@ -6,9 +6,8 @@ import math
 import time
 
 import gevent
-from flask import redirect, render_template, request, flash, jsonify, Response
-from flask_security import roles_accepted
-import greenlet
+from flask import redirect, render_template, request, flash, jsonify, Response # pyright: ignore [reportPrivateImportUsage]
+from flask_security import roles_accepted # pyright: ignore [reportPrivateImportUsage]
 
 from app_core import app, boolify, db, socketio
 from models import CryptoWithdrawal, FiatWithdrawal, User, Role, Topic, PushNotificationLocation, BrokerOrder, CryptoDeposit, FiatDeposit, KycRequest, FiatDbTransaction
@@ -262,7 +261,7 @@ def user_balance():
             balances = fiatdb_core.user_balances(db.session, user)
             for key, val in balances.items():
                 balances[key] = assets.asset_int_to_dec(key, val)
-            flash(balances, 'primary')
+            flash(str(balances), 'primary')
         elif action in (USER_BALANCE_CREDIT, USER_BALANCE_DEBIT):
             if asset not in asset_names:
                 return return_response('Invalid asset')
@@ -327,7 +326,7 @@ def user_withdrawal():
             if not withdrawal:
                 return return_response('Withdrawal not found')
             if action == USER_WITHDRAWAL_SHOW:
-                flash(withdrawal.to_json(), 'primary')
+                flash(str(withdrawal.to_json()), 'primary')
             elif action == USER_WITHDRAWAL_CANCEL:
                 if withdrawal.status not in (withdrawal.STATUS_CREATED, withdrawal.STATUS_AUTHORIZED):
                     return return_response(f'invalid withdrawal status - {withdrawal.status}')
@@ -364,8 +363,7 @@ def user_order():
             elif action == USER_ORDER_CANCEL:
                 if order.status not in (order.STATUS_READY,):
                     return return_response('invalid order status')
-                side = assets.MarketSide.parse(order.side)
-                ftx = broker.order_refund(db.session, order, side)
+                ftx = broker.order_refund(order)
                 if not ftx:
                     return return_response('failed to create refund')
                 order.status = order.STATUS_CANCELLED
@@ -439,8 +437,11 @@ class WebGreenlet():
     def __init__(self, exception_func, addr="0.0.0.0", port=5000):
         self.addr = addr
         self.port = port
-        self.runloop_greenlet = None
+        # create greenlets
+        self.runloop_greenlet = gevent.Greenlet(self._runloop)
         self.exception_func = exception_func
+        if self.exception_func:
+            self.runloop_greenlet.link_exception(self.exception_func)
 
     def _runloop(self):
         logger.info("WebGreenlet runloop started")
@@ -448,17 +449,10 @@ class WebGreenlet():
         socketio.run(app, host=self.addr, port=self.port)
 
     def start(self):
-        def start_greenlets():
-            logger.info("starting WebGreenlet runloop...")
-            self.runloop_greenlet.start()
-            tasks.task_manager.start()
-
-        # create greenlets
-        self.runloop_greenlet = gevent.Greenlet(self._runloop)
-        if self.exception_func:
-            self.runloop_greenlet.link_exception(self.exception_func)
+        logger.info("starting WebGreenlet runloop...")
         # start greenlets
-        gevent.spawn(start_greenlets)
+        self.runloop_greenlet.start()
+        tasks.task_manager.start()
 
     def stop(self):
         self.runloop_greenlet.kill()

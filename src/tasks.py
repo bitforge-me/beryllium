@@ -21,6 +21,9 @@ logger = logging.getLogger(__name__)
 
 def process_email_alerts():
     data = dasset.account_balances()
+    if not data:
+        logger.error('failed to get dasset account balances')
+        return
     for balance in data:
         if balance.symbol == 'NZD':
             if balance.available < app.config["MIN_AVAILABLE_NZD_BALANCE"]:
@@ -79,7 +82,7 @@ def _process_ln_invoices_loop():
             else:
                 logger.info('wait_any_invoice: %s', pay)
                 with app.app_context():
-                    if pay['status'] == 'paid':
+                    if pay and pay['status'] == 'paid':
                         label = pay['label']
                         payment_hash = pay['payment_hash']
                         bolt11 = pay['bolt11']

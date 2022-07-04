@@ -162,6 +162,7 @@ def req(endpoint, params=None, api_key_token=None, api_key_secret=None):
         headers = {'Content-type': 'application/json'}
         body = json.dumps(params)
         if api_key_token:
+            assert api_key_secret
             headers['X-Signature'] = create_hmac_sig(api_key_secret, body)
         print('   POST - ' + url)
         r = requests.post(url, headers=headers, data=body)

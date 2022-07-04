@@ -98,6 +98,9 @@ def user_register():
 @api.route('/user_registration_confirm/<token>', methods=['GET'])
 @limiter.limit('20/minute')
 def user_registration_confirm(token=None):
+    if not token:
+        flash('Invalid request', 'danger')
+        return redirect('/')
     if not app.config['SECURITY_REGISTERABLE']:
         return bad_request(web_utils.NOT_AVAILABLE)
     req = UserCreateRequest.from_token(db.session, token)
@@ -140,7 +143,7 @@ def user_two_factor_enabled_check():
     if not user:
         time.sleep(5)
         return bad_request(web_utils.AUTH_FAILED)
-    if not flask_security.verify_password(password, user.password):
+    if not flask_security.verify_password(password, user.password): # pyright: ignore [reportPrivateImportUsage]
         time.sleep(5)
         return bad_request(web_utils.AUTH_FAILED)
     tf_code_send(user)
@@ -164,7 +167,7 @@ def api_key_create():
     if not user:
         time.sleep(5)
         return bad_request(web_utils.AUTH_FAILED)
-    if not flask_security.verify_password(password, user.password):
+    if not flask_security.verify_password(password, user.password): # pyright: ignore [reportPrivateImportUsage]
         time.sleep(5)
         return bad_request(web_utils.AUTH_FAILED)
     if tf_enabled_check(user) and not tf_code_validate(user, tf_code):
@@ -213,7 +216,7 @@ def api_key_claim():
         return err_response
     token, = params
     req = ApiKeyRequest.from_token(db.session, token)
-    if not token:
+    if not req:
         time.sleep(5)
         return bad_request(web_utils.NOT_FOUND)
     if not req.created_api_key:
@@ -227,6 +230,9 @@ def api_key_claim():
 @api.route('/api_key_confirm/<token>/<secret>', methods=['GET', 'POST'])
 @limiter.limit('20/minute')
 def api_key_confirm(token=None, secret=None):
+    if not token or not secret:
+        flash('Invalid request', 'danger')
+        return redirect('/')
     req = ApiKeyRequest.from_token(db.session, token)
     if not req:
         time.sleep(5)
@@ -248,7 +254,7 @@ def api_key_confirm(token=None, secret=None):
             flash('Email login cancelled.', 'success')
             return redirect('/')
         tf_code = request.form.get('tf_code')
-        if tf_enabled_check(req.user) and not tf_code_validate(req.user, tf_code):
+        if tf_enabled_check(req.user) and (not tf_code or not tf_code_validate(req.user, tf_code)):
             return bad_request(web_utils.AUTH_FAILED)
         perms = request.form.getlist('perms')
         api_key = ApiKey(req.user, req.device_name)
@@ -268,6 +274,7 @@ def user_info():
     email, api_key, err_response = auth_request_get_single_param(db, "email")
     if err_response:
         return err_response
+    assert api_key
     if not email:
         email = api_key.user.email
     else:
@@ -288,6 +295,7 @@ def user_reset_password():
     api_key, err_response = auth_request(db)
     if err_response:
         return err_response
+    assert api_key
     user = api_key.user
     send_reset_password_instructions(user)
     return 'ok'
@@ -299,6 +307,7 @@ def user_update_email():
     email, api_key, err_response = auth_request_get_single_param(db, "email")
     if err_response:
         return err_response
+    assert api_key
     if not email:
         return bad_request(web_utils.INVALID_EMAIL)
     email = email.lower()
@@ -316,6 +325,9 @@ def user_update_email():
 @api.route('/user_update_email_confirm/<token>', methods=['GET', 'POST'])
 @limiter.limit('10/hour')
 def user_update_email_confirm(token=None):
+    if not token:
+        flash('Invalid request', 'danger')
+        return redirect('/')
     req = UserUpdateEmailRequest.from_token(db.session, token)
     if not req:
         flash('User update email request not found.', 'danger')
@@ -336,7 +348,7 @@ def user_update_email_confirm(token=None):
             flash('Email update cancelled.', 'success')
             return redirect('/')
         tf_code = request.form.get('tf_code')
-        if tf_enabled_check(req.user) and not tf_code_validate(req.user, tf_code):
+        if tf_enabled_check(req.user) and (not tf_code or not tf_code_validate(req.user, tf_code)):
             return bad_request(web_utils.AUTH_FAILED)
         user = req.user
         old_email = user.email
@@ -355,13 +367,14 @@ def user_update_password():
     params, api_key, err_response = auth_request_get_params(db, ["current_password", "new_password"])
     if err_response:
         return err_response
+    assert params and api_key
     current_password, new_password = params
     user = api_key.user
     verified_password = verify_password(current_password, user.password)
     if not verified_password:
         return bad_request(web_utils.INCORRECT_PASSWORD)
     # set the new_password:
-    if flask_security.password_length_validator(new_password) or flask_security.password_complexity_validator(new_password, True) or flask_security.password_breached_validator(new_password):
+    if flask_security.password_length_validator(new_password) or flask_security.password_complexity_validator(new_password, True) or flask_security.password_breached_validator(new_password): # pyright: ignore [reportPrivateImportUsage]
         return bad_request(web_utils.WEAK_PASSWORD)
     user.password = encrypt_password(new_password)
     db.session.add(user)
@@ -374,6 +387,7 @@ def user_kyc_request_create():
     api_key, err_response = auth_request(db)
     if err_response:
         return err_response
+    assert api_key
     if list(api_key.user.kyc_requests):
         return bad_request(web_utils.KYC_REQUEST_EXISTS)
     user = api_key.user
@@ -389,6 +403,7 @@ def user_kyc_request_send_mobile_number():
     mobile_number, api_key, err_response = auth_request_get_single_param(db, "mobile_number")
     if err_response:
         return err_response
+    assert mobile_number is not None and api_key
     if not list(api_key.user.kyc_requests):
         return bad_request(web_utils.KYC_REQUEST_NOT_EXISTS)
     req = api_key.user.kyc_requests[0]
@@ -403,6 +418,7 @@ def user_update_photo():
     params, api_key, err_response = auth_request_get_params(db, ["photo", "photo_type"])
     if err_response:
         return err_response
+    assert params and api_key
     photo, photo_type = params
     user = api_key.user
     user.photo = photo
@@ -418,6 +434,7 @@ def user_two_factor_enable():
     code, api_key, err_response = auth_request_get_single_param(db, 'code')
     if err_response:
         return err_response
+    assert api_key
     user = api_key.user
     if tf_enabled_check(user):
         return bad_request(web_utils.TWO_FACTOR_ENABLED)
@@ -441,6 +458,7 @@ def user_two_factor_disable():
     code, api_key, err_response = auth_request_get_single_param(db, 'code')
     if err_response:
         return err_response
+    assert api_key
     user = api_key.user
     if not tf_enabled_check(user):
         return bad_request(web_utils.TWO_FACTOR_DISABLED)
@@ -462,6 +480,7 @@ def user_two_factor_send():
     api_key, err_response = auth_request(db)
     if err_response:
         return err_response
+    assert api_key
     user = api_key.user
     if tf_enabled_check(user):
         if not tf_code_send(user):
@@ -487,12 +506,15 @@ def order_book_req():
     market, _, err_response = auth_request_get_single_param(db, 'market')
     if err_response:
         return err_response
-    if market not in assets.MARKETS:
+    if not market or market not in assets.MARKETS:
         return bad_request(web_utils.INVALID_MARKET)
     base_asset, quote_asset = assets.assets_from_market(market)
     base_asset_withdraw_fee = assets.asset_withdraw_fee(base_asset, None)
     quote_asset_withdraw_fee = assets.asset_withdraw_fee(quote_asset, None)
-    order_book, broker_fee = dasset.order_book_req(market, use_cache=True)
+    order_book_resp = dasset.order_book_req(market, use_cache=True)
+    if not order_book_resp:
+        return bad_request(web_utils.FAILED_EXCHANGE)
+    order_book, broker_fee = order_book_resp
     return jsonify(bids=order_book.bids, asks=order_book.asks, base_asset_withdraw_fee=str(base_asset_withdraw_fee), quote_asset_withdraw_fee=str(quote_asset_withdraw_fee), broker_fee=str(broker_fee))
 
 @api.route('/balances', methods=['POST'])
@@ -500,6 +522,7 @@ def balances_req():
     api_key, err_response = auth_request(db)
     if err_response:
         return err_response
+    assert api_key is not None
     balances = fiatdb_core.user_balances(db.session, api_key.user)
     balances_formatted = {}
     for asset, balance in balances.items():
@@ -517,7 +540,10 @@ def _validate_crypto_asset_deposit(asset: str, l2_network: str | None):
 @api.route('/withdrawal_confirm/<token>/<secret>', methods=['GET', 'POST'])
 @limiter.limit('20/minute')
 def withdrawal_confirm(token=None, secret=None):
-    conf: WithdrawalConfirmation = WithdrawalConfirmation.from_token(db.session, token)
+    if not token or not secret:
+        flash('Invalid request.', 'danger')
+        return redirect('/')
+    conf = WithdrawalConfirmation.from_token(db.session, token)
     if not conf:
         time.sleep(5)
         flash('Withdrawal confirmation not found.', 'danger')
@@ -577,6 +603,7 @@ def crypto_deposit_recipient_req():
     params, api_key, err_response = auth_request_get_params(db, ['asset', 'l2_network', 'amount_dec'])
     if err_response:
         return err_response
+    assert params and api_key
     asset, l2_network, amount_dec = params
     err_response = _validate_crypto_asset_deposit(asset, l2_network)
     if err_response:
@@ -638,6 +665,7 @@ def crypto_deposits_req():
     params, api_key, err_response = auth_request_get_params(db, ['asset', 'l2_network', 'offset', 'limit'])
     if err_response:
         return err_response
+    assert params and api_key
     asset, l2_network, offset, limit = params
     if not assets.asset_is_crypto(asset):
         return bad_request(web_utils.INVALID_ASSET)
@@ -682,6 +710,7 @@ def crypto_withdrawal_create_req():
     params, api_key, err_response = auth_request_get_params(db, ['asset', 'l2_network', 'amount_dec', 'recipient', 'save_recipient', 'recipient_description', 'tf_code'])
     if err_response:
         return err_response
+    assert params and api_key
     asset, l2_network, amount_dec, recipient, save_recipient, recipient_description, tf_code = params
     logger.info('crypto withdrawal: %s, %s, %s, %s', asset, l2_network, amount_dec, recipient)
     err_response = _tf_check_withdrawal(api_key.user, tf_code)
@@ -715,6 +744,7 @@ def crypto_withdrawal_create_req():
     crypto_withdrawal, err_response = _create_withdrawal(api_key.user, asset, l2_network, amount_dec, recipient)
     if err_response:
         return err_response
+    assert crypto_withdrawal
     # update user
     websocket.crypto_withdrawal_new_event(crypto_withdrawal)
     return jsonify(withdrawal=crypto_withdrawal.to_json())
@@ -724,6 +754,7 @@ def crypto_withdrawals_req():
     params, api_key, err_response = auth_request_get_params(db, ['asset', 'l2_network', 'offset', 'limit'])
     if err_response:
         return err_response
+    assert params and api_key
     asset, l2_network, offset, limit = params
     err_response = _validate_crypto_asset_withdraw(asset, l2_network, None)
     if err_response:
@@ -744,6 +775,7 @@ def fiat_deposit_windcave_req():
     params, api_key, err_response = auth_request_get_params(db, ['asset', 'amount_dec'])
     if err_response:
         return err_response
+    assert params and api_key
     asset, amount_dec = params
     if not assets.asset_is_fiat(asset):
         return bad_request(web_utils.INVALID_ASSET)
@@ -765,6 +797,7 @@ def fiat_deposit_windcave_req():
 @api.route('/fiat_deposit_direct', methods=['POST'])
 def fiat_deposit_direct_req():
     asset, api_key, err_response = auth_request_get_single_param(db, 'asset')
+    assert asset is not None and api_key
     if err_response:
         return err_response
     if not assets.asset_is_fiat(asset):
@@ -786,6 +819,7 @@ def fiat_deposits_req():
     params, api_key, err_response = auth_request_get_params(db, ['asset', 'offset', 'limit'])
     if err_response:
         return err_response
+    assert params and api_key
     asset, offset, limit = params
     if not assets.asset_is_fiat(asset):
         return bad_request(web_utils.INVALID_ASSET)
@@ -805,6 +839,7 @@ def fiat_withdrawal_create_req():
     params, api_key, err_response = auth_request_get_params(db, ['asset', 'amount_dec', 'recipient', 'recipient_description', 'account_name', 'account_addr_01', 'account_addr_02', 'account_addr_country', 'tf_code'])
     if err_response:
         return err_response
+    assert params and api_key
     asset, amount_dec, recipient, recipient_description, account_name, account_addr_01, account_addr_02, account_addr_country, tf_code = params
     err_response = _tf_check_withdrawal(api_key.user, tf_code)
     if err_response:
@@ -860,6 +895,7 @@ def fiat_withdrawals_req():
     params, api_key, err_response = auth_request_get_params(db, ['asset', 'offset', 'limit'])
     if err_response:
         return err_response
+    assert params and api_key
     asset, offset, limit = params
     if not assets.asset_is_fiat(asset):
         return bad_request(web_utils.INVALID_ASSET)
@@ -879,6 +915,7 @@ def address_book_req():
     asset, api_key, err_response = auth_request_get_single_param(db, 'asset')
     if err_response:
         return err_response
+    assert api_key
     if asset not in assets.ASSETS:
         return bad_request(web_utils.INVALID_ASSET)
     entries = AddressBook.of_asset(db.session, api_key.user, asset)
@@ -922,6 +959,7 @@ def broker_order_validate():
     params, api_key, err_response = auth_request_get_params(db, ["market", "side", "amount_dec"])
     if err_response:
         return err_response
+    assert params and api_key
     market, side, amount_dec = params
     err_response, order = _broker_order_validate(api_key.user, market, side, amount_dec, use_cache=True)
     if err_response:
@@ -933,6 +971,7 @@ def broker_order_create():
     params, api_key, err_response = auth_request_get_params(db, ["market", "side", "amount_dec"])
     if err_response:
         return err_response
+    assert params and api_key
     market, side, amount_dec = params
     if not api_key.user.kyc_validated():
         return bad_request(web_utils.KYC_NOT_VALIDATED)
@@ -949,6 +988,7 @@ def broker_order_status():
     token, api_key, err_response = auth_request_get_single_param(db, 'token')
     if err_response:
         return err_response
+    assert token is not None and api_key
     broker_order = BrokerOrder.from_token(db.session, token)
     if not broker_order or broker_order.user != api_key.user:
         return bad_request(web_utils.NOT_FOUND)
@@ -959,6 +999,7 @@ def broker_order_accept():
     token, api_key, err_response = auth_request_get_single_param(db, 'token')
     if err_response:
         return err_response
+    assert token and api_key
     broker_order = BrokerOrder.from_token(db.session, token)
     if not broker_order or broker_order.user != api_key.user:
         return bad_request(web_utils.NOT_FOUND)
@@ -996,6 +1037,7 @@ def broker_orders():
     params, api_key, err_response = auth_request_get_params(db, ["offset", "limit"])
     if err_response:
         return err_response
+    assert params and api_key
     offset, limit = params
     if not isinstance(offset, int):
         return bad_request(web_utils.INVALID_PARAMETER)

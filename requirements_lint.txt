@@ -4,3 +4,4 @@ mypy
 sqlalchemy-stubs
 types-requests
 types-python-dateutil
+pyright

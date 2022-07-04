@@ -30,4 +30,8 @@ if [[ "$what" =~ ^(all|python)$ ]]; then
 	echo '# linting python files with mypy..'
 	mypy --version
 	mypy src/app.py --ignore-missing-imports
+
+	echo '# linting python files with pyright..'
+	pyright --version
+	pyright
 fi
