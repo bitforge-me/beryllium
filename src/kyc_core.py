@@ -45,15 +45,17 @@ def aplyid_request_init(req, mobile_number):
     return None
 
 def aplyid_download_pdf(transaction_id):
+    r = None
     try:
         headers = {'Aply-API-Key': APLYID_API_KEY, 'Aply-Secret': APLYID_API_SECRET}
         r = requests.get(APLYID_BASE_URL + f'/biometric/pdf/{transaction_id}.pdf', headers=headers)
         r.raise_for_status()
         return BytesIO(r.content)
     except Exception as ex:
-        print('failed to get pdf')
-        print(ex)
-        print(r.text)
+        logger.error('failed to get pdf')
+        logger.error(ex)
+        if r:
+            logger.error(r.text)
     return None
 
 def backup_aplyid_pdf(token, transaction_id, pdf):

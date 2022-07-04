@@ -42,6 +42,8 @@ def referral_create():
     recipient, api_key, err_response = auth_request_get_single_param(db, "recipient")
     if err_response:
         return err_response
+    if not recipient or not api_key:
+        return bad_request(web_utils.INVALID_PARAMETER)
     if not utils.is_email(recipient):
         return bad_request(web_utils.INVALID_EMAIL)
     recipient = recipient.lower()
@@ -67,6 +69,8 @@ def referral_remind():
     token, api_key, err_response = auth_request_get_single_param(db, "token")
     if err_response:
         return err_response
+    if not token or not api_key:
+        return bad_request(web_utils.INVALID_PARAMETER)
     ref = Referral.from_token_user(db.session, token, api_key.user)
     if not ref:
         return bad_request(web_utils.NOT_FOUND)
@@ -82,7 +86,11 @@ def referral_list():
     params, api_key, err_response = auth_request_get_params(db, ['offset', 'limit'])
     if err_response:
         return err_response
+    if not params or not api_key:
+        return bad_request(web_utils.INVALID_PARAMETER)
     offset, limit = params
+    if not isinstance(offset, int) or not isinstance(limit, int):
+        return bad_request(web_utils.INVALID_PARAMETER)
     refs = Referral.from_user(db.session, api_key.user, offset, limit)
     refs = [ref.to_json() for ref in refs]
     total = Referral.total_for_user(db.session, api_key.user)
@@ -95,6 +103,8 @@ def referral_validate():
     token, api_key, err_response = auth_request_get_single_param(db, "token")
     if err_response:
         return err_response
+    if not token or not api_key:
+        return bad_request(web_utils.INVALID_PARAMETER)
     if not api_key.user.has_role(Role.ROLE_ADMIN) and not api_key.user.has_role(Role.ROLE_REFERRAL_CLAIMER):
         return bad_request(web_utils.UNAUTHORIZED)
     ref = Referral.from_token(db.session, token)
@@ -111,6 +121,8 @@ def referral_claim():
     token, api_key, err_response = auth_request_get_single_param(db, "token")
     if err_response:
         return err_response
+    if not token or not api_key:
+        return bad_request(web_utils.INVALID_PARAMETER)
     if not api_key.user.has_role(Role.ROLE_ADMIN) and not api_key.user.has_role(Role.ROLE_REFERRAL_CLAIMER):
         return bad_request(web_utils.UNAUTHORIZED)
     ref = Referral.from_token(db.session, token)

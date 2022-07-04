@@ -3,7 +3,6 @@ import decimal
 import json
 from enum import Enum
 import time
-from typing import Dict
 
 import requests
 from munch import Munch
@@ -27,7 +26,7 @@ CRYPTO_WITHDRAWAL_STATUS_COMPLETED = 'completed'
 CRYPTO_WITHDRAWAL_STATUS_2FA = '2fa'
 CRYPTO_WITHDRAWAL_STATUS_UNKNOWN = 'unknown'
 
-_cache: Dict[str, Dict] = {}
+_cache: dict[str, Munch] = {}
 MARKETS_KEY = 'markets'
 CACHE_EXPIRY = 30
 
@@ -177,9 +176,10 @@ def markets_req(use_cache=False, quiet=False):
 
 def market_req(name, use_cache=False):
     markets = markets_req(use_cache)
-    for market in markets:
-        if market.symbol == name:
-            return market
+    if markets:
+        for market in markets:
+            if market.symbol == name:
+                return market
     return None
 
 def order_book_refresh_cache(margin: int):
@@ -525,7 +525,9 @@ def transfer(to_subaccount_id, from_subaccount_id, asset, amount):
 
 def funds_available_us(asset, amount):
     assert isinstance(amount, decimal.Decimal)
-    for balance in account_balances(asset):
-        if balance.symbol == asset:
-            return balance.available >= amount
+    balances = account_balances(asset)
+    if balances:
+        for balance in balances:
+            if balance.symbol == asset:
+                return balance.available >= amount
     return False

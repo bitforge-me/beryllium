@@ -1,8 +1,8 @@
 import logging
 import secrets
 
-from flask import Blueprint, render_template, request, flash, Markup, jsonify
-from flask_security import roles_accepted
+from flask import Blueprint, render_template, request, flash, Markup, jsonify # pyright: ignore [reportPrivateImportUsage]
+from flask_security import roles_accepted # pyright: ignore [reportPrivateImportUsage]
 
 from utils import qrcode_svg_create
 from web_utils import bad_request
@@ -48,8 +48,11 @@ def new_address_ep():
     qrcode_svg = None
     if request.method == 'POST':
         address_type = request.form.get('address_type')
-        address = LnRpc().new_address(address_type)
-        qrcode_svg = qrcode_svg_create(address[address_type], 10)
+        if not address_type:
+            flash('invalid address type', 'danger')
+        else:
+            address = LnRpc().new_address(address_type)
+            qrcode_svg = qrcode_svg_create(address[address_type], 10)
     return render_template("lightning/new_address.html", address=address, qrcode_svg=qrcode_svg)
 
 @ln_wallet.route('/list_txs')
@@ -83,7 +86,7 @@ def channel_management():
         if request.form['form-name'] == 'rebalance_channel_form':
             oscid = request.form['oscid']
             iscid = request.form['iscid']
-            amount = request.form['amount']
+            amount = int(request.form['amount'])
             try:
                 LnRpc().rebalance_channel(oscid, iscid, amount)
                 flash(Markup(f'successfully moved {amount} sats from {oscid} to {iscid}'), 'success')
@@ -212,7 +215,7 @@ def create_psbt():
         amounts = request.form.getlist('amount')
         mode = request.form['mode']
         unit = request.form['unit']
-        outputs = []
+        outputs: list[dict[str, str]] = []
         for addr, amount in zip(addrs, amounts):
             outputs.append({addr: f'{amount}{unit}'})
         if mode == 'psbt':

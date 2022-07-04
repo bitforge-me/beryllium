@@ -19,6 +19,9 @@ APLYID_WEBHOOK_BEARER_TOKEN = app.config['APLYID_WEBHOOK_BEARER_TOKEN']
 
 @kyc.route('/request/<token>', methods=['GET', 'POST'])
 def request_start(token=None):
+    if not token:
+        flash('Sorry invalid request', category='danger')
+        return redirect('/')
     req = KycRequest.from_token(db.session, token)
     if not req:
         flash('Sorry kyc request not found', category='danger')
@@ -43,6 +46,9 @@ def request_start(token=None):
 
 @kyc.route('/aplyid_pdf/<token>', methods=['GET'])
 def aplyid_pdf(token=None):
+    if not token:
+        flash('Sorry invalid request', category='danger')
+        return redirect('/')
     req = KycRequest.from_token(db.session, token)
     if not req:
         flash('sorry, request not found', category='danger')

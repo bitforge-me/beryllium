@@ -116,8 +116,10 @@ def check_auth(session: Session, api_key_token: str, nonce: int, sig: str, body:
     session.commit()
     return True, "", api_key
 
-def auth_request(db: SQLAlchemy) -> tuple[ApiKey | None, Response | None]:
+def auth_request(db: SQLAlchemy):
     sig = request_get_signature()
+    if not sig:
+        return None, bad_request(AUTH_FAILED)
     content = request.get_json(force=True)
     if content is None:
         return None, bad_request(INVALID_JSON)
@@ -128,10 +130,13 @@ def auth_request(db: SQLAlchemy) -> tuple[ApiKey | None, Response | None]:
     res, reason, api_key = check_auth(db.session, api_key, nonce, sig, request.data)
     if not res:
         return None, bad_request(reason)
+    assert api_key
     return api_key, None
 
-def auth_request_get_single_param(db: SQLAlchemy, param_name: str) -> tuple[str | None, ApiKey | None, Response | None]:
+def auth_request_get_single_param(db: SQLAlchemy, param_name: str):
     sig = request_get_signature()
+    if not sig:
+        return None, None, bad_request(AUTH_FAILED)
     content = request.get_json(force=True)
     if content is None:
         return None, None, bad_request(INVALID_JSON)
@@ -142,10 +147,13 @@ def auth_request_get_single_param(db: SQLAlchemy, param_name: str) -> tuple[str 
     res, reason, api_key = check_auth(db.session, api_key, nonce, sig, request.data)
     if not res:
         return None, None, bad_request(reason)
+    assert api_key
     return param, api_key, None
 
-def auth_request_get_params(db: SQLAlchemy, param_names: list[str]) -> tuple[list[str] | None, ApiKey | None, Response | None]:
+def auth_request_get_params(db: SQLAlchemy, param_names: list[str]):
     sig = request_get_signature()
+    if not sig:
+        return None, None, bad_request(AUTH_FAILED)
     content = request.get_json(force=True)
     if content is None:
         return None, None, bad_request(INVALID_JSON)
@@ -156,4 +164,5 @@ def auth_request_get_params(db: SQLAlchemy, param_names: list[str]) -> tuple[lis
     res, reason, api_key = check_auth(db.session, api_key, nonce, sig, request.data)
     if not res:
         return None, None, bad_request(reason)
+    assert api_key
     return params[2:], api_key, None

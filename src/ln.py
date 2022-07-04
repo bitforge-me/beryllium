@@ -173,7 +173,7 @@ class LnRpc():
     # Onchain
     #
 
-    def list_funds(self):
+    def list_funds(self) -> dict:
         funds = self.instance.listfunds()
         msats_largest_channel = 0
         msats_channels = 0
@@ -233,7 +233,7 @@ class LnRpc():
         # outputs is in form {"address" : amount}
         return self.instance.multiwithdraw(outputs)
 
-    def prepare_psbt(self, outputs: dict[str, str]):
+    def prepare_psbt(self, outputs: list[dict[str, str]]):
         return self.instance.txprepare(outputs)
 
     def sign_psbt(self, unsigned_psbt: str):

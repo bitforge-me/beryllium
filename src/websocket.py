@@ -122,7 +122,7 @@ class EventsNamespace(Namespace):
         logger.error(err)
 
     def on_connect(self):
-        logger.info("connect sid: %s", request.sid)
+        logger.info("connect sid: %s", request.sid) # pyright: ignore [reportGeneralTypeIssues]
         emit('version', json.dumps(dict(server_version=SERVER_VERSION, client_version_deployed=CLIENT_VERSION_DEPLOYED)), json=True, namespace=NS)
 
     def on_auth(self, auth: dict | str):
@@ -163,12 +163,13 @@ class EventsNamespace(Namespace):
         emit("info", f"joined room for invoice label ({label})", namespace=NS)
 
     def on_disconnect(self):
-        logger.info("disconnect sid: %s", request.sid)
-        if request.sid in ws_sids:
+        sid = request.sid # pyright: ignore [reportGeneralTypeIssues]
+        logger.info("disconnect sid: %s", sid)
+        if sid in ws_sids:
             # remove sid -> email map
-            email = ws_sids[request.sid]
+            email = ws_sids[sid]
             logger.info("leave room for email: %s", email)
             leave_room(email)
-            del ws_sids[request.sid]
+            del ws_sids[sid]
 
 socketio.on_namespace(EventsNamespace(NS))
