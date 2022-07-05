@@ -98,5 +98,11 @@ def email_withdrawal_confirmation(logger: Logger, conf: WithdrawalConfirmation):
     asset = conf.asset()
     amount_dec = assets.asset_int_to_dec(asset, conf.amount())
     amount_str = assets.asset_dec_to_str(asset, amount_dec)
-    msg = f"You have a pending withdrawal waiting!<br/><br/>Withdrawal recipient: <pre>{conf.recipient()}</pre><br/><br/>Withdrawal amount: {amount_str} {asset}<br/><br/>Confirm your withdrawal <a href='{url}'>here</a><br/><br/>Confirm within {conf.MINUTES_EXPIRY} minutes"
+    recipient = f'<span style="word-wrap:anywhere;word-break:break-all;"><span style="font-family:monospace">{conf.recipient()}</span></span>'
+    msg = f'''You have a pending withdrawal waiting!<br/><br/>
+    Withdrawal recipient:
+    {recipient}<br/><br/>
+    Withdrawal amount: {amount_str} {asset}<br/><br/>
+    Confirm your withdrawal <a href='{url}'>here</a><br/><br/>
+    Confirm within {conf.MINUTES_EXPIRY} minutes'''
     send_email(logger, "Confirm your withdrawal", msg, conf.user.email)
