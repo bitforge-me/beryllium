@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 EMAIL = app.config['CROWN_ACCOUNT_EMAIL']
 API_KEY = app.config['CROWN_API_KEY']
-API_PASSWORD = app.config['CROWN_API_PASSWORD']
+API_SECRET = app.config['CROWN_API_SECRET']
 CROWN_ACCOUNT_CODE = app.config['CROWN_ACCOUNT_CODE']
 CROWN_WITHDRAW_FEE_INT = int(app.config['CROWN_WITHDRAW_FEE_INT'])
 CROWN_WITHDRAW_NAME = app.config['CROWN_WITHDRAW_NAME']
@@ -53,7 +53,7 @@ def _parse_tx(json_tx):
 
 def _req(endpoint, data=None):
     url = URL_BASE + endpoint
-    authorizing_key = base64.b64encode(f'{EMAIL}:{API_PASSWORD}'.encode('utf-8')).decode()
+    authorizing_key = base64.b64encode(f'{EMAIL}:{API_SECRET}'.encode('utf-8')).decode()
     headers = {'Authorization': f'Basic {authorizing_key}', 'APIKEY': f'{API_KEY}'}
     if data:
         logger.info('   POST - %s', url)
