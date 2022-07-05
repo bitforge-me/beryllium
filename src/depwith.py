@@ -20,15 +20,6 @@ import payouts_core
 
 logger = logging.getLogger(__name__)
 
-#
-# Helper functions (public)
-#
-
-def withdrawal_authorize(withdrawal: CryptoWithdrawal | FiatWithdrawal, reason: str):
-    # cancel withdrawal
-    assert withdrawal.status == withdrawal.STATUS_CREATED
-    withdrawal.status = withdrawal.STATUS_AUTHORIZED
-
 def withdrawal_cancel(withdrawal: CryptoWithdrawal | FiatWithdrawal, reason: str):
     # cancel withdrawal
     assert withdrawal.status in (withdrawal.STATUS_CREATED, withdrawal.STATUS_AUTHORIZED)
@@ -150,12 +141,19 @@ def _fiat_withdrawal_update(fiat_withdrawal: FiatWithdrawal):
         if not conf:
             logger.error('fiat withdrawal (%s) does not have a confirmation record', fiat_withdrawal.token)
             return updated_records
-        if not conf.confirmed:
+        elif conf.confirmed is None:
             if conf.expired():
                 ftx = withdrawal_cancel(fiat_withdrawal, 'confirmation expiry')
                 updated_records.append(fiat_withdrawal)
                 updated_records.append(ftx)
-            return updated_records
+        elif conf.confirmed:
+            fiat_withdrawal.status = fiat_withdrawal.STATUS_AUTHORIZED
+            updated_records.append(fiat_withdrawal)
+        else:
+            ftx = withdrawal_cancel(fiat_withdrawal, 'user')
+            updated_records.append(fiat_withdrawal)
+            updated_records.append(ftx)
+        return updated_records
     if fiat_withdrawal.status == fiat_withdrawal.STATUS_AUTHORIZED:
         if not fiat_withdrawal.payout_request:
             assert fiat_withdrawal.withdrawal_confirmation
@@ -360,13 +358,19 @@ def _crypto_withdrawal_update(crypto_withdrawal: CryptoWithdrawal):
         conf: WithdrawalConfirmation = crypto_withdrawal.withdrawal_confirmation
         if not conf:
             logger.error('crypto withdrawal (%s) does not have a confirmation record', crypto_withdrawal.token)
-            return updated_records
-        if not conf.confirmed:
+        elif conf.confirmed is None:
             if conf.expired():
                 ftx = withdrawal_cancel(crypto_withdrawal, 'confirmation expiry')
                 updated_records.append(crypto_withdrawal)
                 updated_records.append(ftx)
-            return updated_records
+        elif conf.confirmed:
+            crypto_withdrawal.status = crypto_withdrawal.STATUS_AUTHORIZED
+            updated_records.append(crypto_withdrawal)
+        else:
+            ftx = withdrawal_cancel(crypto_withdrawal, 'user')
+            updated_records.append(crypto_withdrawal)
+            updated_records.append(ftx)
+        return updated_records
     if crypto_withdrawal.status == crypto_withdrawal.STATUS_AUTHORIZED:
         if not crypto_withdrawal.wallet_reference and not crypto_withdrawal.exchange_reference:
             asset = crypto_withdrawal.asset

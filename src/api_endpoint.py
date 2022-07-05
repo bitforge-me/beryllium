@@ -580,14 +580,6 @@ def withdrawal_confirm(token=None, secret=None):
                 conf.confirmed = False
                 flash('Withdrawal cancelled.', 'success')
             db.session.add(conf)
-            # confirm withdrawal
-            if conf.confirmed:
-                depwith.withdrawal_authorize(withdrawal, 'user')
-            # cancel withdrawal
-            else:
-                ftx = depwith.withdrawal_cancel(withdrawal, 'user')
-                db.session.add(ftx)
-            db.session.add(withdrawal)
             # commit changes
             db.session.commit()
             # update withdrawal asap
