@@ -39,6 +39,10 @@
                     </a>
                     <a href="{{ url_for('payments.payouts') }}">
                         <div class="dashboard">
+                            <img src="static/assets/img/index_img/bank.jpg"
+                                 width="100"
+                                 height="100"
+                                 alt="bank logo"/>
                             <p>
                                 <center>Payouts</center>
                             </p>
@@ -46,6 +50,10 @@
                     </a>
                     <a href="{{ url_for('test_email') }}">
                         <div class="dashboard">
+                            <img src="static/assets/img/index_img/email.jpg"
+                                 width="100"
+                                 height="100"
+                                 alt="email logo"/>
                             <p>
                                 <center>Test Email</center>
                             </p>
@@ -53,6 +61,10 @@
                     </a>
                     <a href="{{ url_for('test_ws') }}">
                         <div class="dashboard">
+                            <img src="static/assets/img/index_img/socketio.svg"
+                                 width="100"
+                                 height="100"
+                                 alt="socketio logo"/>
                             <p>
                                 <center>Test Websocket</center>
                             </p>
@@ -60,6 +72,10 @@
                     </a>
                     <a href="{{ url_for('user_kyc') }}">
                         <div class="dashboard">
+                            <img src="static/assets/img/index_img/kyc.jpg"
+                                 width="100"
+                                 height="100"
+                                 alt="kyc logo"/>
                             <p>
                                 <center>User KYC</center>
                             </p>
@@ -69,6 +85,10 @@
                 {% if current_user.has_role("admin") %}
                     <a href="{{ url_for('user_balance') }}">
                         <div class="dashboard">
+                            <img src="static/assets/img/index_img/tokens.png"
+                                 width="100"
+                                 height="100"
+                                 alt="tokens logo"/>
                             <p>
                                 <center>User Balance</center>
                             </p>
@@ -76,6 +96,10 @@
                     </a>
                     <a href="{{ url_for('user_withdrawal') }}">
                         <div class="dashboard">
+                            <img src="static/assets/img/index_img/withdraw.png"
+                                 width="100"
+                                 height="100"
+                                 alt="withdraw logo"/>
                             <p>
                                 <center>User Withdrawal</center>
                             </p>
@@ -83,6 +107,10 @@
                     </a>
                     <a href="{{ url_for('user_order') }}">
                         <div class="dashboard">
+                            <img src="static/assets/img/index_img/order.png"
+                                 width="100"
+                                 height="100"
+                                 alt="order logo"/>
                             <p>
                                 <center>User Order</center>
                             </p>
@@ -90,6 +118,10 @@
                     </a>
                     <a href="{{ url_for('ln_wallet.ln_index') }}">
                         <div class="dashboard">
+                            <img src="static/assets/img/index_img/lightning.jpg"
+                                 width="100"
+                                 height="100"
+                                 alt="lightning logo"/>
                             <p>
                                 <center>Lightning</center>
                             </p>
@@ -97,6 +129,10 @@
                     </a>
                     <a href="{{ url_for('config') }}">
                         <div class="dashboard">
+                            <img src="static/assets/img/index_img/config.png"
+                                 width="100"
+                                 height="100"
+                                 alt="config logo"/>
                             <p>
                                 <center>Config</center>
                             </p>
@@ -104,13 +140,21 @@
                     </a>
                     <a href="{{ url_for('process_depwith_broker') }}">
                         <div class="dashboard">
+                            <img src="static/assets/img/index_img/process.png"
+                                 width="100"
+                                 height="100"
+                                 alt="process logo"/>
                             <p>
-                                <center>Process deposits/­withdrawals and broker orders</center>
+                                <center>Process deposits, withdrawals and orders</center>
                             </p>
                         </div>
                     </a>
                     <a href="{{ url_for('tripwire_ep') }}">
                         <div class="dashboard">
+                            <img src="static/assets/img/index_img/tripwire.png"
+                                 width="100"
+                                 height="100"
+                                 alt="tripwire logo"/>
                             <p>
                                 <center>Tripwire</center>
                             </p>
@@ -118,6 +162,10 @@
                     </a>
                     <a href="{{ url_for('db_test') }}">
                         <div class="dashboard">
+                            <img src="static/assets/img/index_img/database.png"
+                                 width="100"
+                                 height="100"
+                                 alt="database logo"/>
                             <p>
                                 <center>DB Test</center>
                             </p>
