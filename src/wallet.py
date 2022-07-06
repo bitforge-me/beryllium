@@ -121,6 +121,12 @@ def funds_available(asset: str, l2_network: str | None, amount_dec: Decimal) -> 
 def withdrawals_supported(asset: str, l2_network: str | None):
     return _is_ln(asset, l2_network) or _is_btc_chain(asset, l2_network)
 
+def withdrawal_l2_recipient_exists(asset: str, l2_network: str | None, recipient: str):
+    if _is_ln(asset, l2_network):
+        result = LnRpc().pay_status(recipient)
+        return len(result['pays']) > 0
+    return False
+
 def withdrawal_create(asset: str, l2_network: str | None, amount_dec: Decimal, recipient: str):
     assert withdrawals_supported(asset, l2_network)
     rpc = LnRpc()

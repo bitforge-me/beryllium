@@ -50,7 +50,7 @@ class LnRpc():
         result["sats_sent"] = _msat_to_sat(result["msatoshi_sent"])
         return result
 
-    def pay_status(self, bolt11: str) -> list:
+    def pay_status(self, bolt11: str) -> dict:
         # show the status of a specific paid bolt11 invoice
         return self.instance.listpays(bolt11=bolt11)
 

@@ -680,6 +680,14 @@ def _validate_crypto_asset_withdraw(asset: str, l2_network: str | None, recipien
 def _create_withdrawal(user: User, asset: str, l2_network: str | None, amount_dec: decimal.Decimal, recipient: str):
     with coordinator.lock:
         assert wallet.withdrawals_supported(asset, l2_network)
+        # check for any pre-existing withdrawals that might conflict
+        if wallet.withdrawal_l2_recipient_exists(asset, l2_network, recipient):
+            return None, bad_request(web_utils.RECIPIENT_EXISTS)
+        withdrawals = CryptoWithdrawal.where_active_with_recipient(db.session, recipient)
+        for withdrawal in withdrawals:
+            if withdrawal.asset == asset and withdrawal.l2_network == l2_network:
+                return None, bad_request(web_utils.RECIPIENT_EXISTS)
+        # check funds available
         amount_plus_fee_dec = amount_dec + assets.asset_withdraw_fee(asset, l2_network, amount_dec)
         logger.info('amount plus withdraw fee: %s', amount_plus_fee_dec)
         if not fiatdb_core.funds_available_user(db.session, user, asset, amount_plus_fee_dec):
