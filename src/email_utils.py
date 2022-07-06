@@ -1,11 +1,12 @@
 from logging import Logger
+import os
 
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, From, Attachment, FileContent, FileName, FileType, Disposition, ContentId
 from flask import url_for, render_template
 from flask_mail import Message
 
-from app_core import app, mail_postfix
+from app_core import app, mail
 import utils
 from models import ApiKeyRequest, PayoutRequest, Referral, UserCreateRequest, UserUpdateEmailRequest
 
@@ -22,15 +23,19 @@ def _attachment_inline(b64data, mime_type, filename, content_id):
     return _attachment(b64data, mime_type, filename, content_id, 'inline')
 
 def send_email(logger: Logger, subject: str, msg: str, recipient: str | None = None, attachment: str | None = None) -> bool:
+    if not recipient:
+        recipient = app.config["ADMIN_EMAIL"]
     if attachment:
         attachment = attachment
     else:
         attachment = None
-    if app.config["TESTNET"] == 1:
-        #logger.info("This is for sendgrid")
+    if os.getenv("USE_SENDGRID") and os.getenv("USE_SENDGRID") == "true":
+        log_msg = f"This is for sendgrid"
+        logger.info(log_msg)
         result = send_email_sendgrid(subject, msg, recipient, attachment)
     else:
-        #logger.info("This is for postfix")
+        log_msg = f"This is for postfix"
+        logger.info(log_msg)
         result = send_email_postfix(subject, msg, recipient, attachment)
     return result
 
@@ -59,7 +64,7 @@ def send_email_postfix(logger: Logger, subject: str, msg: str, recipient: str | 
     if attachment:
         message.attachments = attachment
     try:
-        mail_postfix.send(message)
+        mail.send(message)
         return True
     except Exception as ex:
         logger.error(f"email '{subject}': {ex}")

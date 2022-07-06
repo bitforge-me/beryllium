@@ -69,6 +69,7 @@ app.config["JSONIFY_PRETTYPRINT_REGULAR"] = True
 
 app.config["DEBUG"] = boolify(os.getenv("DEBUG"))
 app.config["TESTNET"] = boolify(os.getenv("TESTNET"))
+app.config["USE_SENGRID"] = boolify(os.getenv("USE_SENDGRID"))
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
 
 app.config["LOGO_URL_SRC"] = strdef("LOGO_URL_SRC", "/static/assets/img/logo.png")
@@ -112,6 +113,9 @@ if os.getenv("MAIL_SERVER"):
 
 if os.getenv("MAIL_PORT"):
     app.config["MAIL_PORT"] = os.getenv("MAIL_PORT")
+
+#if os.getenv("USE_SENDGRID"):
+#    app.config["USE_SENGRID"] = boolify(os.getenv("USE_SENDGRID"))
 
 def set_vital_setting(env_name, setting_name=None, acceptable_values=None, custom_handler=None):
     global MISSING_VITAL_SETTING
@@ -165,8 +169,12 @@ set_vital_setting("BITCOIN_RPCCONNECT")
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
-mail = MailSendGrid(app)
-mail_postfix = Mail(app)
+#if os.getenv("USE_SENDGRID"):
+#if os.getenv("USE_SENDGRID") == 1:
+if os.getenv("USE_SENDGRID") and os.getenv("USE_SENDGRID") == "true":
+    mail = MailSendGrid(app)
+else:
+    mail = Mail(app)
 socketio = SocketIO(app, cors_allowed_origins='*')
 limiter = Limiter(app, key_func=get_remote_address, headers_enabled=True, default_limits=["3000 per minute"])
 csrf = CSRFProtect(app)

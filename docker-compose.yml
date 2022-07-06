@@ -53,6 +53,7 @@ services:
       CROWN_WITHDRAW_NAME: ${CROWN_WITHDRAW_NAME:? CROWN_WITHDRAW_NAME not set}
       MAIL_SERVER: ${MAIL_SERVER:? MAIL_SERVER not set}
       MAIL_PORT: ${MAIL_PORT:? MAIL_PORT not set}
+      USE_SENDGRID: ${USE_SENDGRID}
     volumes:
       - "lightning_datadir:/etc/lightning"
       - "bitcoin_datadir:/etc/bitcoin"
