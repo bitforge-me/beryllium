@@ -70,7 +70,11 @@ app.config["JSONIFY_PRETTYPRINT_REGULAR"] = True
 app.config["DEBUG"] = boolify(os.getenv("DEBUG"))
 app.config["TESTNET"] = boolify(os.getenv("TESTNET"))
 app.config["MAIL_SENDGRID_API_KEY"] = os.getenv("SENDGRID_API_KEY")
-app.config["USE_SENDGRID"] = boolify(os.getenv("SENDGRID_API_KEY"))
+if os.getenv("SENDGRID_API_KEY"):
+    app.config["USE_SENDGRID"] = True
+else:
+    app.config["USE_SENDGRID"] = False
+#app.config["USE_SENDGRID"] = boolify(os.getenv("SENDGRID_API_KEY"))
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
 
 app.config["LOGO_URL_SRC"] = strdef("LOGO_URL_SRC", "/static/assets/img/logo.png")
