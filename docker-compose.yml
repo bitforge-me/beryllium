@@ -51,8 +51,6 @@ services:
       CROWN_API_PASSWORD: ${CROWN_API_PASSWORD:? CROWN_API_PASSWORD not set}
       CROWN_WITHDRAW_FEE_INT: ${CROWN_WITHDRAW_FEE_INT:? CROWN_WITHDRAW_FEE_INT not set}
       CROWN_WITHDRAW_NAME: ${CROWN_WITHDRAW_NAME:? CROWN_WITHDRAW_NAME not set}
-      MAIL_SERVER: ${MAIL_SERVER:? MAIL_SERVER not set}
-      MAIL_PORT: ${MAIL_PORT:? MAIL_PORT not set}
       USE_SENDGRID: ${USE_SENDGRID}
     volumes:
       - "lightning_datadir:/etc/lightning"

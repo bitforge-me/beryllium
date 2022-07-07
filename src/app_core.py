@@ -108,11 +108,8 @@ if app.config["TESTNET"]:
 else:
     app.config["BITCOIN_EXPLORER"] = "https://blockstream.info/"
 
-if os.getenv("MAIL_SERVER"):
-    app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER")
-
-if os.getenv("MAIL_PORT"):
-    app.config["MAIL_PORT"] = os.getenv("MAIL_PORT")
+app.config["MAIL_SERVER"] = "mail"
+app.config["MAIL_PORT"] = 587
 
 #if os.getenv("USE_SENDGRID"):
 #    app.config["USE_SENGRID"] = boolify(os.getenv("USE_SENDGRID"))
