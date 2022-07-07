@@ -1,7 +1,9 @@
 import os
 from decimal import Decimal
 import logging
+import time
 from dataclasses import dataclass
+
 from pyln.client.lightning import RpcError
 from bitcoin.rpc import Proxy
 import requests
@@ -96,6 +98,21 @@ def _is_ln(asset: str, l2_network: str | None) -> bool:
 
 def _is_btc_chain(asset: str, l2_network: str | None) -> bool:
     return asset == assets.BTC.symbol and l2_network is None
+
+def recipient_expired(asset: str, l2_network: str | None, recipient: str) -> bool:
+    rpc = LnRpc()
+    if _is_ln(asset, l2_network):
+        result = rpc.decode_bolt11(recipient)
+        if not result:
+            logger.error('unable to decode invoice')
+            return False
+        created_at: int = result['created_at']
+        expiry: int = result['expiry']
+        if time.time() >= created_at + expiry:
+            return True
+    if _is_btc_chain(asset, l2_network):
+        return False
+    return False
 
 def incoming_available(asset: str, l2_network: str | None, amount_dec: Decimal) -> bool:
     if _is_ln(asset, l2_network):
