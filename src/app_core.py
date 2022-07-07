@@ -74,7 +74,6 @@ if os.getenv("SENDGRID_API_KEY"):
     app.config["USE_SENDGRID"] = True
 else:
     app.config["USE_SENDGRID"] = False
-#app.config["USE_SENDGRID"] = boolify(os.getenv("SENDGRID_API_KEY"))
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
 
 app.config["LOGO_URL_SRC"] = strdef("LOGO_URL_SRC", "/static/assets/img/logo.png")

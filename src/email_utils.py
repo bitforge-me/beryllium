@@ -26,8 +26,8 @@ def send_email(logger: Logger, subject: str, msg: str, recipient: str | None = N
     if not recipient:
         recipient = app.config["ADMIN_EMAIL"]
     if app.config["USE_SENDGRID"] is True:
-        return send_email_sendgrid(logger, subject, msg, recipient, attachment)
-    return send_email_postfix(logger, subject, msg, recipient, attachment)
+        return send_email_sendgrid(logger, subject, msg, recipient, attachment) # pyright: ignore [reportGeneralTypeIssues]
+    return send_email_postfix(logger, subject, msg, recipient, attachment) # pyright: ignore [reportGeneralTypeIssues]
 
 def send_email_sendgrid(logger: Logger, subject: str, msg: str, recipient: str, attachment: str | None = None) -> bool:
     from_email = From(app.config["FROM_EMAIL"], app.config["FROM_NAME"])
