@@ -69,7 +69,8 @@ app.config["JSONIFY_PRETTYPRINT_REGULAR"] = True
 
 app.config["DEBUG"] = boolify(os.getenv("DEBUG"))
 app.config["TESTNET"] = boolify(os.getenv("TESTNET"))
-app.config["USE_SENGRID"] = boolify(os.getenv("USE_SENDGRID"))
+app.config["MAIL_SENDGRID_API_KEY"] = os.getenv("SENDGRID_API_KEY")
+app.config["USE_SENDGRID"] = boolify(os.getenv("SENDGRID_API_KEY"))
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
 
 app.config["LOGO_URL_SRC"] = strdef("LOGO_URL_SRC", "/static/assets/img/logo.png")
@@ -138,7 +139,6 @@ set_vital_setting("SESSION_KEY", "SECRET_KEY")
 def set_totp_secret(name, val):
     app.config["SECURITY_TOTP_SECRETS"] = {'1': val}
 set_vital_setting("PASSWORD_SALT", "SECURITY_PASSWORD_SALT", custom_handler=set_totp_secret)
-set_vital_setting("SENDGRID_API_KEY", "MAIL_SENDGRID_API_KEY")
 set_vital_setting("SERVER_NAME")
 set_vital_setting("FIREBASE_CREDENTIALS")
 set_vital_setting("DASSET_API_SECRET")
@@ -166,9 +166,7 @@ set_vital_setting("BITCOIN_RPCCONNECT")
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
-#if os.getenv("USE_SENDGRID"):
-#if os.getenv("USE_SENDGRID") == 1:
-if os.getenv("USE_SENDGRID") and os.getenv("USE_SENDGRID") == "true":
+if app.config["USE_SENDGRID"]:
     mail = MailSendGrid(app)
 else:
     mail = Mail(app)
