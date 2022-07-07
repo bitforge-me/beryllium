@@ -26,14 +26,10 @@ def send_email(logger: Logger, subject: str, msg: str, recipient: str | None = N
     if not recipient:
         recipient = app.config["ADMIN_EMAIL"]
     if app.config["USE_SENDGRID"] is True:
-        #log_msg = f"Sending email via sendgrid"
-        #logger.info(log_msg)
         return send_email_sendgrid(logger, subject, msg, recipient, attachment)
-    #log_msg = f"Sending email via postfix"
-    #logger.info(log_msg)
     return send_email_postfix(logger, subject, msg, recipient, attachment)
 
-def send_email_sendgrid(logger: Logger, subject: str, msg: str, recipient: str | None = None, attachment: str | None = None) -> bool:
+def send_email_sendgrid(logger: Logger, subject: str, msg: str, recipient: str, attachment: str | None = None) -> bool:
     from_email = From(app.config["FROM_EMAIL"], app.config["FROM_NAME"])
     html = render_template('email.html', content=msg)
     message = Mail(from_email=from_email, to_emails=recipient, subject=subject, html_content=html)
@@ -47,7 +43,7 @@ def send_email_sendgrid(logger: Logger, subject: str, msg: str, recipient: str |
         logger.error(f"email '{subject}': {ex}")
     return False
 
-def send_email_postfix(logger: Logger, subject: str, msg: str, recipient: str | None = None, attachment: str | None = None) -> bool:
+def send_email_postfix(logger: Logger, subject: str, msg: str, recipient: str, attachment: str | None = None) -> bool:
     from_email = app.config["FROM_EMAIL"]
     html = render_template('email.html', content=msg)
     message = Message(sender=from_email, recipients=[recipient], subject=subject, body=html)

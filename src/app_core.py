@@ -116,9 +116,6 @@ else:
 app.config["MAIL_SERVER"] = "mail"
 app.config["MAIL_PORT"] = 587
 
-#if os.getenv("USE_SENDGRID"):
-#    app.config["USE_SENGRID"] = boolify(os.getenv("USE_SENDGRID"))
-
 def set_vital_setting(env_name, setting_name=None, acceptable_values=None, custom_handler=None):
     global MISSING_VITAL_SETTING
     if not setting_name:
