@@ -1,10 +1,12 @@
 from logging import Logger
+import os
 
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, From, Attachment, FileContent, FileName, FileType, Disposition, ContentId
 from flask import url_for, render_template
+from flask_mail import Message
 
-from app_core import app
+from app_core import app, mail
 import utils
 from models import ApiKeyRequest, PayoutRequest, Referral, UserCreateRequest, UserUpdateEmailRequest, WithdrawalConfirmation
 import assets
@@ -24,6 +26,12 @@ def _attachment_inline(b64data, mime_type, filename, content_id):
 def send_email(logger: Logger, subject: str, msg: str, recipient: str | None = None, attachment: str | None = None) -> bool:
     if not recipient:
         recipient = app.config["ADMIN_EMAIL"]
+    assert recipient # shouldnt need this because of the above statement setting recipient, but oh well
+    if app.config["USE_SENDGRID"]:
+        return send_email_sendgrid(logger, subject, msg, recipient, attachment)
+    return send_email_postfix(logger, subject, msg, recipient, attachment)
+
+def send_email_sendgrid(logger: Logger, subject: str, msg: str, recipient: str, attachment: str | None = None) -> bool:
     from_email = From(app.config["FROM_EMAIL"], app.config["FROM_NAME"])
     html = render_template('email.html', content=msg)
     message = Mail(from_email=from_email, to_emails=recipient, subject=subject, html_content=html)
@@ -32,6 +40,19 @@ def send_email(logger: Logger, subject: str, msg: str, recipient: str | None = N
     try:
         sg = SendGridAPIClient(app.config["MAIL_SENDGRID_API_KEY"])
         sg.send(message)
+        return True
+    except Exception as ex:
+        logger.error(f"email '{subject}': {ex}")
+    return False
+
+def send_email_postfix(logger: Logger, subject: str, msg: str, recipient: str, attachment: str | None = None) -> bool:
+    from_email = app.config["FROM_EMAIL"]
+    html = render_template('email.html', content=msg)
+    message = Message(sender=from_email, recipients=[recipient], subject=subject, html=html)
+    if attachment:
+        message.attachments = attachment
+    try:
+        mail.send(message)
         return True
     except Exception as ex:
         logger.error(f"email '{subject}': {ex}")

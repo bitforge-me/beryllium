@@ -7,6 +7,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_mail_sendgrid import MailSendGrid
+from flask_mail import Mail
 from flask_socketio import SocketIO
 from flask_cors import CORS
 from flask_limiter import Limiter
@@ -68,6 +69,8 @@ app.config["JSONIFY_PRETTYPRINT_REGULAR"] = True
 
 app.config["DEBUG"] = boolify(os.getenv("DEBUG"))
 app.config["TESTNET"] = boolify(os.getenv("TESTNET"))
+app.config["MAIL_SENDGRID_API_KEY"] = os.getenv("SENDGRID_API_KEY")
+app.config["USE_SENDGRID"] = bool(app.config["MAIL_SENDGRID_API_KEY"])
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
 
 app.config["LOGO_URL_SRC"] = strdef("LOGO_URL_SRC", "/static/assets/img/logo.png")
@@ -106,6 +109,9 @@ if app.config["TESTNET"]:
 else:
     app.config["BITCOIN_EXPLORER"] = "https://blockstream.info/"
 
+app.config["MAIL_SERVER"] = "mail"
+app.config["MAIL_PORT"] = 587
+
 def set_vital_setting(env_name, setting_name=None, acceptable_values=None, custom_handler=None):
     global MISSING_VITAL_SETTING
     if not setting_name:
@@ -130,7 +136,6 @@ set_vital_setting("SESSION_KEY", "SECRET_KEY")
 def set_totp_secret(name, val):
     app.config["SECURITY_TOTP_SECRETS"] = {'1': val}
 set_vital_setting("PASSWORD_SALT", "SECURITY_PASSWORD_SALT", custom_handler=set_totp_secret)
-set_vital_setting("SENDGRID_API_KEY", "MAIL_SENDGRID_API_KEY")
 set_vital_setting("SERVER_NAME")
 set_vital_setting("FIREBASE_CREDENTIALS")
 set_vital_setting("DASSET_API_SECRET")
@@ -157,7 +162,10 @@ set_vital_setting("BITCOIN_RPCCONNECT")
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
-mail = MailSendGrid(app)
+if app.config["USE_SENDGRID"]:
+    mail = MailSendGrid(app)
+else:
+    mail = Mail(app)
 socketio = SocketIO(app, cors_allowed_origins='*')
 limiter = Limiter(app, key_func=get_remote_address, headers_enabled=True, default_limits=["3000 per minute"])
 csrf = CSRFProtect(app)
