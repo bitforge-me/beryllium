@@ -47,7 +47,7 @@ def send_email_sendgrid(logger: Logger, subject: str, msg: str, recipient: str, 
 def send_email_postfix(logger: Logger, subject: str, msg: str, recipient: str, attachment: str | None = None) -> bool:
     from_email = app.config["FROM_EMAIL"]
     html = render_template('email.html', content=msg)
-    message = Message(sender=from_email, recipients=[recipient], subject=subject, body=html)
+    message = Message(sender=from_email, recipients=[recipient], subject=subject, html=html)
     if attachment:
         message.attachments = attachment
     try:
