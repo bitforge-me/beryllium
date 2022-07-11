@@ -10,6 +10,7 @@ from app_core import app, limiter, db
 from models import BtcTxIndex, Role
 from ln import LnRpc, _msat_to_sat
 from wallet import bitcoind_rpc, btc_txs_load
+from tasks import rebalance_channels, task_manager
 
 logger = logging.getLogger(__name__)
 ln_wallet = Blueprint('ln_wallet', __name__, template_folder='templates')
@@ -88,7 +89,7 @@ def channel_management():
             iscid = request.form['iscid']
             amount = int(request.form['amount'])
             try:
-                LnRpc().rebalance_channel(oscid, iscid, amount)
+                task_manager.one_off('rebalance_channel', rebalance_channels, [oscid, iscid, amount])
                 flash(Markup(f'successfully moved {amount} sats from {oscid} to {iscid}'), 'success')
             except Exception as e:
                 flash(Markup(e.args[0]), 'danger')
