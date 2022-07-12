@@ -71,7 +71,6 @@ class OfAssetMixin():
 
 roles_users = Table(
     'roles_users',
-    BaseModel.metadata,
     Column('user_id', Integer(), ForeignKey('user.id')), # pyright: ignore [reportGeneralTypeIssues]
     Column('role_id', Integer(), ForeignKey('role.id'))
 )
@@ -203,7 +202,6 @@ class UserUpdateEmailRequest(BaseModel, FromTokenMixin):
 
 permissions_api_keys = Table(
     'permissions_api_keys',
-    BaseModel.metadata,
     Column('api_key_id', Integer(), ForeignKey('api_key.id')), # pyright: ignore [reportGeneralTypeIssues]
     Column('permission_id', Integer(), ForeignKey('permission.id'))
 )
