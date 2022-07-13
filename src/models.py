@@ -5,9 +5,23 @@ import logging
 from typing_extensions import reveal_type
 
 from flask import url_for
-from flask_security import UserMixin, RoleMixin  # pyright: ignore [reportPrivateImportUsage]
+from flask_security.core import (
+    UserMixin,
+    RoleMixin,
+)
 from marshmallow import Schema, fields
-from sqlalchemy import and_, Column, Integer, String, DateTime, Boolean, BigInteger, Float, ForeignKey, Table
+from sqlalchemy import (
+    and_,
+    Column,
+    Integer,
+    String,
+    DateTime,
+    Boolean,
+    BigInteger,
+    Float,
+    ForeignKey,
+    Table,
+)
 from sqlalchemy.orm import relationship, backref, RelationshipProperty
 from sqlalchemy.orm.session import Session
 
@@ -20,6 +34,7 @@ logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from sqlalchemy.ext.declarative import declarative_base
     from flask_sqlalchemy.model import Model
+
     BaseModel = declarative_base(Model)
 else:
     BaseModel = db.Model
@@ -28,7 +43,8 @@ else:
 # Define beryllium models
 #
 
-class WithdrawStatusMixin():
+
+class WithdrawStatusMixin:
     STATUS_CREATED = 'created'
     STATUS_AUTHORIZED = 'authorized'
     STATUS_WITHDRAW = 'withdraw'
@@ -36,45 +52,87 @@ class WithdrawStatusMixin():
     STATUS_CANCELLED = 'cancelled'
 
 
-class FromTokenMixin():
+class FromTokenMixin:
     token: str | Column[str]
 
     @classmethod
     def from_token(cls, session: Session, token: str):
         return session.query(cls).filter(cls.token == token).first()
 
-class FromUserMixin():
+
+class FromUserMixin:
     id: Column[int]
     user_id: Column[int]
 
     @classmethod
     def from_user(cls, session: Session, user: User, offset: int, limit: int):
-        return session.query(cls).filter(cls.user_id == user.id).order_by(cls.id.desc()).offset(offset).limit(limit)
+        return (
+            session.query(cls)
+            .filter(cls.user_id == user.id)
+            .order_by(cls.id.desc())
+            .offset(offset)
+            .limit(limit)
+        )
 
     @classmethod
     def total_for_user(cls, session: Session, user: User):
         return session.query(cls).filter(cls.user_id == user.id).count()
 
-class OfAssetMixin():
+
+class OfAssetMixin:
     id: Column[int]
     asset: Column[str]
     l2_network: Column[str]
     user_id: Column[int]
 
     @classmethod
-    def of_asset(cls, session: Session, user: User, asset: str, l2_network: str | None, offset: int, limit: int):
-        return session.query(cls).filter(and_(cls.user_id == user.id, and_(cls.asset == asset, cls.l2_network == l2_network))).order_by(cls.id.desc()).offset(offset).limit(limit)
+    def of_asset(
+        cls,
+        session: Session,
+        user: User,
+        asset: str,
+        l2_network: str | None,
+        offset: int,
+        limit: int,
+    ):
+        return (
+            session.query(cls)
+            .filter(
+                and_(
+                    cls.user_id == user.id,
+                    and_(cls.asset == asset, cls.l2_network == l2_network),
+                )
+            )
+            .order_by(cls.id.desc())
+            .offset(offset)
+            .limit(limit)
+        )
 
     @classmethod
-    def total_of_asset(cls, session: Session, user: User, asset: str, l2_network: str | None):
-        return session.query(cls).filter(and_(cls.user_id == user.id, and_(cls.asset == asset, cls.l2_network == l2_network))).count()
+    def total_of_asset(
+        cls, session: Session, user: User, asset: str, l2_network: str | None
+    ):
+        return (
+            session.query(cls)
+            .filter(
+                and_(
+                    cls.user_id == user.id,
+                    and_(cls.asset == asset, cls.l2_network == l2_network),
+                )
+            )
+            .count()
+        )
+
 
 roles_users = Table(
     'roles_users',
     BaseModel.metadata,
-    Column('user_id', Integer(), ForeignKey('user.id')),  # pyright: ignore [reportGeneralTypeIssues]
-    Column('role_id', Integer(), ForeignKey('role.id'))
+    Column(
+        'user_id', Integer(), ForeignKey('user.id')
+    ),  # pyright: ignore [reportGeneralTypeIssues]
+    Column('role_id', Integer(), ForeignKey('role.id')),
 )
+
 
 class Role(BaseModel, RoleMixin):
     ROLE_ADMIN = 'admin'
@@ -91,6 +149,7 @@ class Role(BaseModel, RoleMixin):
 
     def __str__(self):
         return f'{self.name}'
+
 
 class User(BaseModel, UserMixin):
     id = Column(Integer, primary_key=True)
@@ -112,11 +171,15 @@ class User(BaseModel, UserMixin):
     tf_totp_secret: str | None | Column[str] = Column(String(255))
     tf_primary_method: str | None | Column[str] = Column(String(255))
     tf_phone_number = Column(String(255))
-    roles: RelationshipProperty[list[Role]] = relationship('Role', secondary=roles_users, backref=backref('users', lazy='dynamic'))
+    roles: RelationshipProperty[list[Role]] = relationship(
+        'Role', secondary=roles_users, backref=backref('users', lazy='dynamic')
+    )
     photo = Column(String())
     photo_type = Column(String(255))
 
-    dasset_subaccount = relationship('DassetSubaccount', uselist=False, back_populates='user')
+    dasset_subaccount = relationship(
+        'DassetSubaccount', uselist=False, back_populates='user'
+    )
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -142,6 +205,7 @@ class User(BaseModel, UserMixin):
     def __str__(self):
         return f'{self.email}'
 
+
 class UserCreateRequest(BaseModel, FromTokenMixin):
 
     MINUTES_EXPIRY = 30
@@ -158,7 +222,17 @@ class UserCreateRequest(BaseModel, FromTokenMixin):
     password = Column(String(255))
     expiry = Column(DateTime())
 
-    def __init__(self, first_name, last_name, email, mobile_number, address, photo, photo_type, password):
+    def __init__(
+        self,
+        first_name,
+        last_name,
+        email,
+        mobile_number,
+        address,
+        photo,
+        photo_type,
+        password,
+    ):
         self.token = generate_key()
         self.first_name = first_name
         self.last_name = last_name
@@ -177,6 +251,7 @@ class UserCreateRequest(BaseModel, FromTokenMixin):
     def __str__(self):
         return self.email
 
+
 class UserUpdateEmailRequest(BaseModel, FromTokenMixin):
 
     MINUTES_EXPIRY = 30
@@ -185,7 +260,9 @@ class UserUpdateEmailRequest(BaseModel, FromTokenMixin):
     token = Column(String(255), unique=True, nullable=False)
     email = Column(String(255))
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
-    user: RelationshipProperty[User] = relationship('User', backref=backref('update_email_requests', lazy='dynamic'))
+    user: RelationshipProperty[User] = relationship(
+        'User', backref=backref('update_email_requests', lazy='dynamic')
+    )
     expiry = Column(DateTime())
 
     def __init__(self, user, email):
@@ -201,12 +278,16 @@ class UserUpdateEmailRequest(BaseModel, FromTokenMixin):
     def __str__(self):
         return self.email
 
+
 permissions_api_keys = Table(
     'permissions_api_keys',
     BaseModel.metadata,
-    Column('api_key_id', Integer(), ForeignKey('api_key.id')),  # pyright: ignore [reportGeneralTypeIssues]
-    Column('permission_id', Integer(), ForeignKey('permission.id'))
+    Column(
+        'api_key_id', Integer(), ForeignKey('api_key.id')
+    ),  # pyright: ignore [reportGeneralTypeIssues]
+    Column('permission_id', Integer(), ForeignKey('permission.id')),
 )
+
 
 class Permission(BaseModel):
     PERMISSION_RECIEVE = 'receive'
@@ -214,7 +295,13 @@ class Permission(BaseModel):
     PERMISSION_HISTORY = 'history'
     PERMISSION_TRANSFER = 'transfer'
     PERMISSION_ISSUE = 'issue'
-    PERMS_ALL = [PERMISSION_BALANCE, PERMISSION_HISTORY, PERMISSION_ISSUE, PERMISSION_RECIEVE, PERMISSION_TRANSFER]
+    PERMS_ALL = [
+        PERMISSION_BALANCE,
+        PERMISSION_HISTORY,
+        PERMISSION_ISSUE,
+        PERMISSION_RECIEVE,
+        PERMISSION_TRANSFER,
+    ]
 
     id = Column(Integer(), primary_key=True)
     name = Column(String(80), unique=True)
@@ -227,6 +314,7 @@ class Permission(BaseModel):
     def __str__(self):
         return f'{self.name}'
 
+
 class ApiKey(BaseModel, FromTokenMixin):
     MINUTES_EXPIRY = 30
 
@@ -235,10 +323,16 @@ class ApiKey(BaseModel, FromTokenMixin):
     secret = Column(String(255), nullable=False)
     nonce = Column(BigInteger, nullable=False)
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
-    user: RelationshipProperty[User] = relationship('User', backref=backref('api_keys', lazy='dynamic'))
+    user: RelationshipProperty[User] = relationship(
+        'User', backref=backref('api_keys', lazy='dynamic')
+    )
     device_name = Column(String(255))
     expiry = Column(DateTime())
-    permissions: RelationshipProperty[list[Permission]] = relationship('Permission', secondary=permissions_api_keys, backref=backref('api_keys', lazy='dynamic'))
+    permissions: RelationshipProperty[list[Permission]] = relationship(
+        'Permission',
+        secondary=permissions_api_keys,
+        backref=backref('api_keys', lazy='dynamic'),
+    )
 
     def __init__(self, user, device_name):
         self.user_id = user.id
@@ -254,6 +348,7 @@ class ApiKey(BaseModel, FromTokenMixin):
             return perm in self.permissions
         return False
 
+
 class ApiKeyRequest(BaseModel, FromTokenMixin):
     MINUTES_EXPIRY = 30
 
@@ -261,7 +356,9 @@ class ApiKeyRequest(BaseModel, FromTokenMixin):
     token = Column(String(255), unique=True, nullable=False)
     secret = Column(String(255), unique=True, nullable=False)
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
-    user: RelationshipProperty[User] = relationship('User', backref=backref('api_key_requests', lazy='dynamic'))
+    user: RelationshipProperty[User] = relationship(
+        'User', backref=backref('api_key_requests', lazy='dynamic')
+    )
     device_name = Column(String(255))
     expiry = Column(DateTime())
     created_api_key_id = Column(Integer, ForeignKey('api_key.id'))
@@ -276,6 +373,7 @@ class ApiKeyRequest(BaseModel, FromTokenMixin):
 
     def __str__(self):
         return self.token
+
 
 class Topic(BaseModel):
     __tablename__ = 'topics'
@@ -296,6 +394,7 @@ class Topic(BaseModel):
     def __repr__(self):
         return f'<Topic {self.topic}>'
 
+
 class PushNotificationLocation(BaseModel, FromTokenMixin):
     id = Column(Integer, primary_key=True)
     fcm_registration_token = Column(String, nullable=False)
@@ -313,9 +412,36 @@ class PushNotificationLocation(BaseModel, FromTokenMixin):
         self.date = datetime.now()
 
     @classmethod
-    def tokens_at_location(cls, session, latitude, max_lat_delta, longitude, max_long_delta, max_age_minutes) -> list['PushNotificationLocation']:
+    def tokens_at_location(
+        cls,
+        session,
+        latitude,
+        max_lat_delta,
+        longitude,
+        max_long_delta,
+        max_age_minutes,
+    ) -> list['PushNotificationLocation']:
         since = datetime.now() - timedelta(minutes=max_age_minutes)
-        return session.query(cls).filter(and_(cls.date >= since, and_(and_(cls.latitude <= latitude + max_lat_delta, cls.latitude >= latitude - max_lat_delta), and_(cls.longitude <= longitude + max_long_delta, cls.longitude >= longitude - max_long_delta)))).all()
+        return (
+            session.query(cls)
+            .filter(
+                and_(
+                    cls.date >= since,
+                    and_(
+                        and_(
+                            cls.latitude <= latitude + max_lat_delta,
+                            cls.latitude >= latitude - max_lat_delta,
+                        ),
+                        and_(
+                            cls.longitude <= longitude + max_long_delta,
+                            cls.longitude >= longitude - max_long_delta,
+                        ),
+                    ),
+                )
+            )
+            .all()
+        )
+
 
 class Setting(BaseModel):
     __tablename__ = 'settings'
@@ -330,6 +456,7 @@ class Setting(BaseModel):
     def __repr__(self):
         return f'<Setting {self.key} {self.value}>'
 
+
 class ReferralSchema(Schema):
     token = fields.String()
     date = fields.Date()
@@ -340,6 +467,7 @@ class ReferralSchema(Schema):
     reward_recipient = fields.Integer()
     recipient_min_spend = fields.Integer()
     status = fields.String()
+
 
 class Referral(BaseModel, FromTokenMixin, FromUserMixin):
     STATUS_CREATED = 'created'
@@ -354,7 +482,9 @@ class Referral(BaseModel, FromTokenMixin, FromUserMixin):
 
     token = Column(String(255), unique=True, nullable=False)
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
-    user: RelationshipProperty[User] = relationship('User', backref=backref('referrals', lazy='dynamic'))
+    user: RelationshipProperty[User] = relationship(
+        'User', backref=backref('referrals', lazy='dynamic')
+    )
     date = Column(DateTime(), nullable=False)
     recipient = Column(String, nullable=False)
     reward_sender_type = Column(String(255), nullable=False)
@@ -364,7 +494,16 @@ class Referral(BaseModel, FromTokenMixin, FromUserMixin):
     recipient_min_spend = Column(Integer, nullable=False)
     status = Column(String, nullable=False)
 
-    def __init__(self, user, recipient, reward_sender_type, reward_sender, reward_recipient_type, reward_recipient, recipient_min_spend):
+    def __init__(
+        self,
+        user,
+        recipient,
+        reward_sender_type,
+        reward_sender,
+        reward_recipient_type,
+        reward_recipient,
+        recipient_min_spend,
+    ):
         assert reward_sender_type == self.REWARD_TYPE_FIXED
         assert reward_recipient_type in self.REWARD_TYPES_ALL
         self.token = generate_key()
@@ -384,7 +523,12 @@ class Referral(BaseModel, FromTokenMixin, FromUserMixin):
 
     @classmethod
     def from_token_user(cls, session, token, user) -> Referral | None:
-        return session.query(cls).filter(and_(cls.token == token, cls.user_id == user.id)).first()
+        return (
+            session.query(cls)
+            .filter(and_(cls.token == token, cls.user_id == user.id))
+            .first()
+        )
+
 
 class BrokerOrderSchema(Schema):
     token = fields.String()
@@ -406,6 +550,7 @@ class BrokerOrderSchema(Schema):
     def get_quote_amount_dec(self, obj):
         return str(assets.asset_int_to_dec(obj.quote_asset, obj.quote_amount))
 
+
 class BrokerOrder(BaseModel, FromUserMixin, FromTokenMixin):
     STATUS_CREATED = 'created'
     STATUS_READY = 'ready'
@@ -421,7 +566,9 @@ class BrokerOrder(BaseModel, FromUserMixin, FromTokenMixin):
 
     token = Column(String(255), unique=True, nullable=False)
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
-    user: RelationshipProperty[User] = relationship('User', backref=backref('orders', lazy='dynamic'))
+    user: RelationshipProperty[User] = relationship(
+        'User', backref=backref('orders', lazy='dynamic')
+    )
     date = Column(DateTime(), nullable=False)
     expiry = Column(DateTime(), nullable=False)
     market = Column(String, nullable=False)
@@ -431,11 +578,15 @@ class BrokerOrder(BaseModel, FromUserMixin, FromTokenMixin):
     base_amount = Column(BigInteger, nullable=False)
     quote_amount = Column(BigInteger, nullable=False)
     exchange_order_id = Column(Integer, ForeignKey('exchange_order.id'))
-    exchange_order: RelationshipProperty['ExchangeOrder' | None] = relationship('ExchangeOrder')
+    exchange_order: RelationshipProperty['ExchangeOrder' | None] = relationship(
+        'ExchangeOrder'
+    )
 
     status = Column(String, nullable=False)
 
-    def __init__(self, user, market, side, base_asset, quote_asset, base_amount, quote_amount):
+    def __init__(
+        self, user, market, side, base_asset, quote_asset, base_amount, quote_amount
+    ):
         self.token = generate_key()
         self.user = user
         self.date = datetime.now()
@@ -454,14 +605,32 @@ class BrokerOrder(BaseModel, FromUserMixin, FromTokenMixin):
 
     @classmethod
     def all_active(cls, session) -> list[BrokerOrder]:
-        return session.query(cls).filter(and_(cls.status != cls.STATUS_COMPLETED, and_(cls.status != cls.STATUS_EXPIRED, and_(cls.status != cls.STATUS_FAILED, cls.status != cls.STATUS_CANCELLED)))).all()
+        return (
+            session.query(cls)
+            .filter(
+                and_(
+                    cls.status != cls.STATUS_COMPLETED,
+                    and_(
+                        cls.status != cls.STATUS_EXPIRED,
+                        and_(
+                            cls.status != cls.STATUS_FAILED,
+                            cls.status != cls.STATUS_CANCELLED,
+                        ),
+                    ),
+                )
+            )
+            .all()
+        )
+
 
 class DassetSubaccount(BaseModel):
     id = Column(Integer, primary_key=True)
     date = Column(DateTime(), nullable=False, unique=False)
     subaccount_id = Column(String, nullable=False)
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
-    user: RelationshipProperty[User] = relationship('User', uselist=False, back_populates='dasset_subaccount')
+    user: RelationshipProperty[User] = relationship(
+        'User', uselist=False, back_populates='dasset_subaccount'
+    )
 
     def __init__(self, user, subaccount_id):
         self.user = user
@@ -479,6 +648,7 @@ class DassetSubaccount(BaseModel):
     def __repr__(self):
         return f'<DassetSubaccount {self.subaccount_id}>'
 
+
 class ExchangeOrder(BaseModel):
     id = Column(Integer, primary_key=True)
     token = Column(String(255), unique=True, nullable=False)
@@ -489,6 +659,7 @@ class ExchangeOrder(BaseModel):
         self.token = generate_key()
         self.date = datetime.now()
         self.exchange_reference = exchange_reference
+
 
 class CryptoWithdrawalSchema(Schema):
     token = fields.String()
@@ -504,11 +675,16 @@ class CryptoWithdrawalSchema(Schema):
     def get_amount_dec(self, obj):
         return str(assets.asset_int_to_dec(obj.asset, obj.amount))
 
-class CryptoWithdrawal(BaseModel, FromUserMixin, FromTokenMixin, OfAssetMixin, WithdrawStatusMixin):
+
+class CryptoWithdrawal(
+    BaseModel, FromUserMixin, FromTokenMixin, OfAssetMixin, WithdrawStatusMixin
+):
     id = Column(Integer, primary_key=True)
     token = Column(String(255), unique=True, nullable=False)
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
-    user: RelationshipProperty[User] = relationship('User', backref=backref('crypto_withdrawals', lazy='dynamic'))
+    user: RelationshipProperty[User] = relationship(
+        'User', backref=backref('crypto_withdrawals', lazy='dynamic')
+    )
     date = Column(DateTime(), nullable=False)
     asset = Column(String, nullable=False)
     l2_network = Column(String)
@@ -537,11 +713,35 @@ class CryptoWithdrawal(BaseModel, FromUserMixin, FromTokenMixin, OfAssetMixin, W
 
     @classmethod
     def all_active(cls, session) -> list[CryptoWithdrawal]:
-        return session.query(cls).filter(and_(cls.status != cls.STATUS_COMPLETED, cls.status != cls.STATUS_CANCELLED)).all()
+        return (
+            session.query(cls)
+            .filter(
+                and_(
+                    cls.status != cls.STATUS_COMPLETED,
+                    cls.status != cls.STATUS_CANCELLED,
+                )
+            )
+            .all()
+        )
 
     @classmethod
-    def where_active_with_recipient(cls, session, recipient: str) -> list[CryptoWithdrawal]:
-        return session.query(cls).filter(and_(and_(cls.status != cls.STATUS_COMPLETED, cls.status != cls.STATUS_CANCELLED), cls.recipient == recipient)).all()
+    def where_active_with_recipient(
+        cls, session, recipient: str
+    ) -> list[CryptoWithdrawal]:
+        return (
+            session.query(cls)
+            .filter(
+                and_(
+                    and_(
+                        cls.status != cls.STATUS_COMPLETED,
+                        cls.status != cls.STATUS_CANCELLED,
+                    ),
+                    cls.recipient == recipient,
+                )
+            )
+            .all()
+        )
+
 
 class CryptoDepositSchema(Schema):
     token = fields.String()
@@ -564,13 +764,18 @@ class CryptoDepositSchema(Schema):
             return obj.wallet_reference
         return None
 
+
 class CryptoDeposit(BaseModel, FromUserMixin, OfAssetMixin):
     id = Column(Integer, primary_key=True)
     token = Column(String(255), unique=True, nullable=False)
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
-    user: RelationshipProperty[User] = relationship('User', backref=backref('crypto_deposits', lazy='dynamic'))
+    user: RelationshipProperty[User] = relationship(
+        'User', backref=backref('crypto_deposits', lazy='dynamic')
+    )
     crypto_address_id = Column(Integer, ForeignKey('crypto_address.id'))
-    crypto_address: RelationshipProperty['CryptoAddress' | None] = relationship('CryptoAddress', backref=backref('crypto_deposits', lazy='dynamic'))
+    crypto_address: RelationshipProperty['CryptoAddress' | None] = relationship(
+        'CryptoAddress', backref=backref('crypto_deposits', lazy='dynamic')
+    )
     date = Column(DateTime(), nullable=False)
     asset = Column(String, nullable=False)
     l2_network = Column(String)
@@ -581,7 +786,18 @@ class CryptoDeposit(BaseModel, FromUserMixin, OfAssetMixin):
     confirmed = Column(Boolean, nullable=False)
     expired = Column(Boolean, nullable=False)
 
-    def __init__(self, user, asset, l2_network, amount, exchange_reference, wallet_reference, txid, confirmed, expired):
+    def __init__(
+        self,
+        user,
+        asset,
+        l2_network,
+        amount,
+        exchange_reference,
+        wallet_reference,
+        txid,
+        confirmed,
+        expired,
+    ):
         self.token = generate_key()
         self.user = user
         self.date = datetime.now()
@@ -604,11 +820,20 @@ class CryptoDeposit(BaseModel, FromUserMixin, OfAssetMixin):
 
     @classmethod
     def of_wallet(cls, session, confirmed, expired) -> list[CryptoDeposit]:
-        return session.query(cls).filter(cls.wallet_reference is not None).filter(cls.confirmed == confirmed).filter(cls.expired == expired).all()
+        return (
+            session.query(cls)
+            .filter(cls.wallet_reference is not None)
+            .filter(cls.confirmed == confirmed)
+            .filter(cls.expired == expired)
+            .all()
+        )
 
     @classmethod
     def from_wallet_reference(cls, session, wallet_reference) -> CryptoDeposit | None:
-        return session.query(cls).filter(cls.wallet_reference == wallet_reference).first()
+        return (
+            session.query(cls).filter(cls.wallet_reference == wallet_reference).first()
+        )
+
 
 class WindcavePaymentRequestSchema(Schema):
     date = fields.DateTime()
@@ -620,6 +845,7 @@ class WindcavePaymentRequestSchema(Schema):
     windcave_authorised = fields.Boolean()
     windcave_allow_retry = fields.Boolean()
     status = fields.String()
+
 
 class WindcavePaymentRequest(BaseModel, FromTokenMixin):
     STATUS_CREATED = 'created'
@@ -657,6 +883,7 @@ class WindcavePaymentRequest(BaseModel, FromTokenMixin):
         schema = WindcavePaymentRequestSchema()
         return schema.dump(self)
 
+
 class CrownPayment(BaseModel, FromTokenMixin):
     STATUS_CREATED = 'created'
     STATUS_COMPLETED = 'completed'
@@ -691,13 +918,16 @@ class CrownPayment(BaseModel, FromTokenMixin):
     def __repr__(self):
         return f'<CrownPayment {self.token}>'
 
+
 class FiatDepositCode(BaseModel, FromTokenMixin):
     id = Column(Integer, primary_key=True)
     date = Column(DateTime(), nullable=False, unique=False)
     token = Column(String, nullable=False, unique=True)
     autobuy_asset = Column(String)
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
-    user: RelationshipProperty[User] = relationship('User', backref=backref('fiat_deposit_codes', lazy='dynamic'))
+    user: RelationshipProperty[User] = relationship(
+        'User', backref=backref('fiat_deposit_codes', lazy='dynamic')
+    )
 
     def __init__(self, user: User, autobuy_asset: str | None):
         self.date = datetime.now()
@@ -705,13 +935,17 @@ class FiatDepositCode(BaseModel, FromTokenMixin):
         self.token = generate_key(8, True)
         self.autobuy_asset = autobuy_asset
 
+
 class PayoutGroupRequest(BaseModel):
     payout_group_id = Column(Integer, ForeignKey('payout_group.id'), primary_key=True)
-    payout_request_id = Column(Integer, ForeignKey('payout_request.id'), primary_key=True)
+    payout_request_id = Column(
+        Integer, ForeignKey('payout_request.id'), primary_key=True
+    )
 
     def __init__(self, group, req):
         self.payout_group_id = group.id
         self.payout_request_id = req.id
+
 
 class PayoutRequestSchema(Schema):
     date = fields.DateTime()
@@ -731,6 +965,7 @@ class PayoutRequestSchema(Schema):
     email_sent = fields.Boolean()
     status = fields.String()
 
+
 class PayoutRequest(BaseModel, FromTokenMixin):
     STATUS_CREATED = 'created'
     STATUS_COMPLETED = 'completed'
@@ -746,9 +981,13 @@ class PayoutRequest(BaseModel, FromTokenMixin):
     email = Column(String, nullable=False)
     email_sent = Column(Boolean)
     status = Column(String)
-    groups: RelationshipProperty[list['PayoutGroup']] = relationship('PayoutGroup', secondary='payout_group_request', back_populates='requests')
+    groups: RelationshipProperty[list['PayoutGroup']] = relationship(
+        'PayoutGroup', secondary='payout_group_request', back_populates='requests'
+    )
     address_book_id = Column(Integer, ForeignKey('address_book.id'))
-    address_book: RelationshipProperty['AddressBook' | None] = relationship("AddressBook")
+    address_book: RelationshipProperty['AddressBook' | None] = relationship(
+        'AddressBook'
+    )
 
     def __init__(self, asset, amount, reference, code, email, email_sent, address_book):
         self.date = datetime.now()
@@ -785,11 +1024,14 @@ class PayoutRequest(BaseModel, FromTokenMixin):
         schema = PayoutRequestSchema()
         return schema.dump(self)
 
+
 class PayoutGroup(BaseModel, FromTokenMixin):
     id = Column(Integer, primary_key=True)
     token = Column(String, nullable=False, unique=True)
     expired = Column(Boolean, nullable=False)
-    requests: RelationshipProperty[list[PayoutRequest]] = relationship('PayoutRequest', secondary='payout_group_request', back_populates='groups')
+    requests: RelationshipProperty[list[PayoutRequest]] = relationship(
+        'PayoutRequest', secondary='payout_group_request', back_populates='groups'
+    )
 
     def __init__(self):
         self.token = generate_key()
@@ -811,22 +1053,27 @@ class PayoutGroup(BaseModel, FromTokenMixin):
 
     @classmethod
     def expire_all_but(cls, session, group):
-        session.query(cls).filter(cls.id != group.id).update({"expired": True})
+        session.query(cls).filter(cls.id != group.id).update({'expired': True})
+
 
 class AplyId(BaseModel):
     id = Column(Integer, primary_key=True)
     transaction_id = Column(String, nullable=False, unique=True)
     kyc_request_id = Column(Integer, ForeignKey('kyc_request.id'))
-    kyc_request: RelationshipProperty['KycRequest' | None] = relationship("KycRequest", back_populates="aplyid")
+    kyc_request: RelationshipProperty['KycRequest' | None] = relationship(
+        'KycRequest', back_populates='aplyid'
+    )
 
     def __init__(self, kyc_request, transaction_id):
         self.kyc_request = kyc_request
         self.transaction_id = transaction_id
 
+
 class KycRequestSchema(Schema):
     date = fields.DateTime()
     token = fields.String()
     status = fields.String()
+
 
 class KycRequest(BaseModel, FromTokenMixin):
     STATUS_CREATED = 'created'
@@ -837,8 +1084,12 @@ class KycRequest(BaseModel, FromTokenMixin):
     token = Column(String, nullable=False, unique=True)
     status = Column(String)
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
-    user: RelationshipProperty[User] = relationship('User', backref=backref('kyc_requests', lazy='dynamic'))
-    aplyid: RelationshipProperty[AplyId | None] = relationship("AplyId", uselist=False, back_populates="kyc_request")
+    user: RelationshipProperty[User] = relationship(
+        'User', backref=backref('kyc_requests', lazy='dynamic')
+    )
+    aplyid: RelationshipProperty[AplyId | None] = relationship(
+        'AplyId', uselist=False, back_populates='kyc_request'
+    )
 
     def __init__(self, user):
         self.user = user
@@ -867,6 +1118,7 @@ class KycRequest(BaseModel, FromTokenMixin):
         schema = KycRequestSchema()
         return schema.dump(self)
 
+
 class AddressBookSchema(Schema):
     date = fields.DateTime()
     token = fields.String()
@@ -877,6 +1129,7 @@ class AddressBookSchema(Schema):
     account_addr_01 = fields.String()
     account_addr_02 = fields.String()
     account_addr_country = fields.String()
+
 
 class AddressBook(BaseModel, FromTokenMixin):
     id = Column(Integer, primary_key=True)
@@ -890,9 +1143,21 @@ class AddressBook(BaseModel, FromTokenMixin):
     account_addr_02 = Column(String)
     account_addr_country = Column(String)
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
-    user: RelationshipProperty[User] = relationship('User', backref=backref('address_book_entries', lazy='dynamic'))
+    user: RelationshipProperty[User] = relationship(
+        'User', backref=backref('address_book_entries', lazy='dynamic')
+    )
 
-    def __init__(self, user, asset, recipient, description, account_name, account_addr_01, account_addr_02, account_addr_country):
+    def __init__(
+        self,
+        user,
+        asset,
+        recipient,
+        description,
+        account_name,
+        account_addr_01,
+        account_addr_02,
+        account_addr_country,
+    ):
         self.user = user
         self.date = datetime.now()
         self.token = generate_key()
@@ -910,15 +1175,29 @@ class AddressBook(BaseModel, FromTokenMixin):
 
     @classmethod
     def from_recipient(cls, session, user, asset, recipient) -> AddressBook | None:
-        return session.query(cls).filter(and_(cls.user_id == user.id, and_(cls.asset == asset, cls.recipient == recipient))).first()
+        return (
+            session.query(cls)
+            .filter(
+                and_(
+                    cls.user_id == user.id,
+                    and_(cls.asset == asset, cls.recipient == recipient),
+                )
+            )
+            .first()
+        )
 
     @classmethod
     def of_asset(cls, session, user, asset) -> list[AddressBook]:
-        return session.query(cls).filter(and_(cls.user_id == user.id, cls.asset == asset)).all()
+        return (
+            session.query(cls)
+            .filter(and_(cls.user_id == user.id, cls.asset == asset))
+            .all()
+        )
 
     def to_json(self):
         schema = AddressBookSchema()
         return schema.dump(self)
+
 
 class FiatDbTransactionSchema(Schema):
     user = fields.String()
@@ -930,13 +1209,16 @@ class FiatDbTransactionSchema(Schema):
     amount = fields.Integer()
     attachment = fields.String()
 
+
 class FiatDbTransaction(BaseModel, FromTokenMixin):
     ACTION_CREDIT = 'credit'
     ACTION_DEBIT = 'debit'
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
-    user: RelationshipProperty[User] = relationship('User', backref=backref('fiatdb_transactions', lazy='dynamic'))
+    user: RelationshipProperty[User] = relationship(
+        'User', backref=backref('fiatdb_transactions', lazy='dynamic')
+    )
     token = Column(String(255), unique=True, nullable=False)
     date = Column(DateTime())
     action = Column(String(255), nullable=False)
@@ -964,6 +1246,7 @@ class FiatDbTransaction(BaseModel, FromTokenMixin):
         tx_schema = FiatDbTransactionSchema()
         return tx_schema.dump(self)
 
+
 class FiatDepositSchema(Schema):
     token = fields.String()
     date = fields.DateTime()
@@ -980,8 +1263,13 @@ class FiatDepositSchema(Schema):
     def get_payment_url(self, obj):
         payment_url = None
         if obj.windcave_payment_request:
-            payment_url = url_for('payments.payment_interstitial', token=obj.windcave_payment_request.token, _external=True)
+            payment_url = url_for(
+                'payments.payment_interstitial',
+                token=obj.windcave_payment_request.token,
+                _external=True,
+            )
         return payment_url
+
 
 class FiatDeposit(BaseModel, FromUserMixin, FromTokenMixin):
     STATUS_CREATED = 'created'
@@ -995,15 +1283,25 @@ class FiatDeposit(BaseModel, FromUserMixin, FromTokenMixin):
 
     token = Column(String(255), unique=True, nullable=False)
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
-    user: RelationshipProperty[User] = relationship('User', backref=backref('fiat_deposits', lazy='dynamic'))
+    user: RelationshipProperty[User] = relationship(
+        'User', backref=backref('fiat_deposits', lazy='dynamic')
+    )
     date = Column(DateTime(), nullable=False)
     expiry = Column(DateTime(), nullable=False)
     asset = Column(String, nullable=False)
     amount = Column(BigInteger, nullable=False)
-    windcave_payment_request_id = Column(Integer, ForeignKey('windcave_payment_request.id'))
-    windcave_payment_request: RelationshipProperty[WindcavePaymentRequest | None] = relationship('WindcavePaymentRequest', backref=backref('fiat_deposit', uselist=False))
+    windcave_payment_request_id = Column(
+        Integer, ForeignKey('windcave_payment_request.id')
+    )
+    windcave_payment_request: RelationshipProperty[
+        WindcavePaymentRequest | None
+    ] = relationship(
+        'WindcavePaymentRequest', backref=backref('fiat_deposit', uselist=False)
+    )
     crown_payment_id = Column(Integer, ForeignKey('crown_payment.id'))
-    crown_payment: RelationshipProperty[CrownPayment | None] = relationship('CrownPayment', backref=backref('fiat_deposit', uselist=False))
+    crown_payment: RelationshipProperty[CrownPayment | None] = relationship(
+        'CrownPayment', backref=backref('fiat_deposit', uselist=False)
+    )
 
     status = Column(String, nullable=False)
 
@@ -1022,7 +1320,20 @@ class FiatDeposit(BaseModel, FromUserMixin, FromTokenMixin):
 
     @classmethod
     def all_active(cls, session) -> list[FiatDeposit]:
-        return session.query(cls).filter(and_(cls.status != cls.STATUS_COMPLETED, and_(cls.status != cls.STATUS_EXPIRED, cls.status != cls.STATUS_CANCELLED))).all()
+        return (
+            session.query(cls)
+            .filter(
+                and_(
+                    cls.status != cls.STATUS_COMPLETED,
+                    and_(
+                        cls.status != cls.STATUS_EXPIRED,
+                        cls.status != cls.STATUS_CANCELLED,
+                    ),
+                )
+            )
+            .all()
+        )
+
 
 class FiatWithdrawalSchema(Schema):
     token = fields.String()
@@ -1036,17 +1347,22 @@ class FiatWithdrawalSchema(Schema):
     def get_amount_dec(self, obj):
         return str(assets.asset_int_to_dec(obj.asset, obj.amount))
 
+
 class FiatWithdrawal(BaseModel, FromUserMixin, FromTokenMixin, WithdrawStatusMixin):
     id = Column(Integer, primary_key=True)
     token = Column(String(255), unique=True, nullable=False)
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
-    user: RelationshipProperty[User] = relationship('User', backref=backref('fiat_withdrawals', lazy='dynamic'))
+    user: RelationshipProperty[User] = relationship(
+        'User', backref=backref('fiat_withdrawals', lazy='dynamic')
+    )
     date = Column(DateTime(), nullable=False)
     asset = Column(String, nullable=False)
     amount = Column(BigInteger, nullable=False)
     recipient = Column(String, nullable=False)
     payout_request_id = Column(Integer, ForeignKey('payout_request.id'))
-    payout_request: RelationshipProperty[PayoutRequest | None] = relationship('PayoutRequest', backref=backref('fiat_withdrawal', uselist=False))
+    payout_request: RelationshipProperty[PayoutRequest | None] = relationship(
+        'PayoutRequest', backref=backref('fiat_withdrawal', uselist=False)
+    )
 
     status = Column(String, nullable=False)
 
@@ -1065,14 +1381,26 @@ class FiatWithdrawal(BaseModel, FromUserMixin, FromTokenMixin, WithdrawStatusMix
 
     @classmethod
     def all_active(cls, session) -> list[FiatWithdrawal]:
-        return session.query(cls).filter(and_(cls.status != cls.STATUS_COMPLETED, cls.status != cls.STATUS_CANCELLED)).all()
+        return (
+            session.query(cls)
+            .filter(
+                and_(
+                    cls.status != cls.STATUS_COMPLETED,
+                    cls.status != cls.STATUS_CANCELLED,
+                )
+            )
+            .all()
+        )
+
 
 class CryptoAddress(BaseModel, FromUserMixin):
 
     id = Column(Integer, primary_key=True)
 
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
-    user: RelationshipProperty[User] = relationship('User', backref=backref('crypto_addresses', lazy='dynamic'))
+    user: RelationshipProperty[User] = relationship(
+        'User', backref=backref('crypto_addresses', lazy='dynamic')
+    )
     asset = Column(String(255), nullable=False)
     address = Column(String(255), unique=True, nullable=False)
     date = Column(DateTime(), nullable=False)
@@ -1090,7 +1418,11 @@ class CryptoAddress(BaseModel, FromUserMixin):
 
     @classmethod
     def from_asset(cls, session, user, asset) -> CryptoAddress | None:
-        return session.query(cls).filter(and_(cls.user_id == user.id, cls.asset == asset)).first()
+        return (
+            session.query(cls)
+            .filter(and_(cls.user_id == user.id, cls.asset == asset))
+            .first()
+        )
 
     @classmethod
     def from_addr(cls, session, addr) -> CryptoAddress | None:
@@ -1099,7 +1431,12 @@ class CryptoAddress(BaseModel, FromUserMixin):
     @classmethod
     def need_to_be_checked(cls, session) -> list[CryptoAddress]:
         now = datetime.timestamp(datetime.now())
-        return session.query(cls).filter(now - cls.checked_at > (cls.checked_at - cls.viewed_at) * 2).all()
+        return (
+            session.query(cls)
+            .filter(now - cls.checked_at > (cls.checked_at - cls.viewed_at) * 2)
+            .all()
+        )
+
 
 class WithdrawalConfirmation(BaseModel, FromTokenMixin):
     MINUTES_EXPIRY = 30
@@ -1113,13 +1450,23 @@ class WithdrawalConfirmation(BaseModel, FromTokenMixin):
     user_id = Column(Integer, ForeignKey('user.id'))
     user: RelationshipProperty[User] = relationship('User')
     crypto_withdrawal_id = Column(Integer, ForeignKey('crypto_withdrawal.id'))
-    crypto_withdrawal: RelationshipProperty[CryptoWithdrawal | None] = relationship('CryptoWithdrawal', backref=backref('withdrawal_confirmation', uselist=False))
+    crypto_withdrawal: RelationshipProperty[CryptoWithdrawal | None] = relationship(
+        'CryptoWithdrawal', backref=backref('withdrawal_confirmation', uselist=False)
+    )
     fiat_withdrawal_id = Column(Integer, ForeignKey('fiat_withdrawal.id'))
-    fiat_withdrawal: RelationshipProperty[FiatWithdrawal | None] = relationship('FiatWithdrawal', backref=backref('withdrawal_confirmation', uselist=False))
+    fiat_withdrawal: RelationshipProperty[FiatWithdrawal | None] = relationship(
+        'FiatWithdrawal', backref=backref('withdrawal_confirmation', uselist=False)
+    )
     address_book_id = Column(Integer, ForeignKey('address_book.id'))
     address_book: RelationshipProperty[AddressBook | None] = relationship('AddressBook')
 
-    def __init__(self, user: User, crypto_withdrawal: CryptoWithdrawal | None = None, fiat_withdrawal: FiatWithdrawal | None = None, address_book: AddressBook | None = None):
+    def __init__(
+        self,
+        user: User,
+        crypto_withdrawal: CryptoWithdrawal | None = None,
+        fiat_withdrawal: FiatWithdrawal | None = None,
+        address_book: AddressBook | None = None,
+    ):
         assert crypto_withdrawal is not None or fiat_withdrawal is not None
         assert crypto_withdrawal is None or fiat_withdrawal is None
         if fiat_withdrawal:
@@ -1158,6 +1505,7 @@ class WithdrawalConfirmation(BaseModel, FromTokenMixin):
     def status_is_created(self):
         return self.withdrawal().status == self.withdrawal().STATUS_CREATED
 
+
 class BtcTxIndex(BaseModel):
     id = Column(Integer, primary_key=True)
     txid = Column(String(255), nullable=False)
@@ -1165,7 +1513,9 @@ class BtcTxIndex(BaseModel):
     blockheight = Column(Integer)
     blockhash = Column(String(255))
 
-    def __init__(self, txid: str, hex: str, blockheight: int | None, blockhash: str | None):
+    def __init__(
+        self, txid: str, hex: str, blockheight: int | None, blockhash: str | None
+    ):
         self.txid = txid
         self.hex = hex
         self.blockheight = blockheight

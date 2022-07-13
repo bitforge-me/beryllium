@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 # Task classes
 #
 
+
 class Task:
     _name: str
     _func: Callable
@@ -58,6 +59,7 @@ class TaskNonTerminating:
 
     def greenlet(self):
         return self._greenlet
+
 
 class TaskManager:
     _repeated_tasks: list[Task] = []

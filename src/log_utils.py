@@ -1,9 +1,11 @@
 import logging
 from importlib.metadata import version
 
+
 def log_socketio_version(logger):
     logger.info('python-socketio version: %s', version('python-socketio'))
     logger.info('python-engineio version: %s', version('python-engineio'))
+
 
 def setup_logging(logger, level):
     # clear loggers set by any imported modules

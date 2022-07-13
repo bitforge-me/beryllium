@@ -21,11 +21,9 @@ if [[ "$what" =~ ^(all|js)$ ]]; then
 fi
 
 if [[ "$what" =~ ^(all|python)$ ]]; then 
-	# see https://www.flake8rules.com/ for description of rules
-	echo '# linting python files with pycodestyle..'
-	pycodestyle --version
-	# TODO review and remove some ignores
-	(cd src && pycodestyle --statistics --ignore E265,E501,E302,E305,W504 `ls|grep .py$|xargs`)
+	echo '# linting python files with axblack..'
+	black --version
+	black --check src
 
 	#echo '# linting python files with mypy..'
 	#mypy --version
