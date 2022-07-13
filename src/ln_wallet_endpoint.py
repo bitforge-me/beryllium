@@ -1,8 +1,8 @@
 import logging
 import secrets
 
-from flask import Blueprint, render_template, request, flash, Markup, jsonify # pyright: ignore [reportPrivateImportUsage]
-from flask_security import roles_accepted # pyright: ignore [reportPrivateImportUsage]
+from flask import Blueprint, render_template, request, flash, Markup, jsonify  # pyright: ignore [reportPrivateImportUsage]
+from flask_security import roles_accepted  # pyright: ignore [reportPrivateImportUsage]
 
 from utils import qrcode_svg_create
 from web_utils import bad_request
