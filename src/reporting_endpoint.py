@@ -85,7 +85,13 @@ def dashboard():
 @reporting.route("/dashboard_general")
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def dashboard_general():
-    return render_template('reporting/dashboard_general.html', dasset_balances=dasset.account_balances())
+    balances = dasset.account_balances()
+    balances_formatted = []
+    if balances:
+        for balance in balances:
+            balance_formatted = dict(symbol=balance.symbol, available=assets.asset_dec_to_str(balance.symbol, balance.available), total=assets.asset_dec_to_str(balance.symbol, balance.total))
+            balances_formatted.append(balance_formatted)
+    return render_template('reporting/dashboard_general.html', dasset_balances=balances_formatted)
 
 @reporting.route("/dashboard_user")
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
