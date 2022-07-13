@@ -152,7 +152,7 @@ def _parse_withdrawal_2fa(item):
 def _parse_withdrawal(item):
     try:
         return _parse_withdrawal_full(item)
-    except:
+    except Exception:
         return _parse_withdrawal_2fa(item)
 
 #

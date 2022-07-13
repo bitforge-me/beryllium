@@ -71,7 +71,7 @@ class MarketSide(Enum):
     def parse(cls, val: str):
         try:
             return cls(val)
-        except:
+        except Exception:
             return None
 
 #
@@ -190,7 +190,7 @@ def asset_recipient_validate(asset: str, l2_network: str | None, recipient: str)
         try:
             bitcoin.wallet.CBitcoinAddress(recipient)
             result = True
-        except:
+        except Exception:
             pass
     elif asset in (USDT.symbol, USDC.symbol, ETH.symbol):
         result = web3.Web3.isAddress(recipient)
