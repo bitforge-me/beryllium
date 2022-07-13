@@ -260,7 +260,8 @@ def user_balance():
         if action == USER_BALANCE_SHOW:
             balances = fiatdb_core.user_balances(db.session, user)
             for key, val in balances.items():
-                balances[key] = assets.asset_int_to_dec(key, val)
+                val = assets.asset_int_to_dec(key, val)
+                balances[key] = assets.asset_dec_to_str(key, val)
             flash(str(balances), 'primary')
         elif action in (USER_BALANCE_CREDIT, USER_BALANCE_DEBIT):
             if asset not in asset_names:
@@ -274,6 +275,7 @@ def user_balance():
             amount_int = assets.asset_dec_to_int(asset, amount_dec)
             balance = fiatdb_core.user_balance(db.session, asset, user)
             balance = assets.asset_int_to_dec(asset, balance)
+            balance = assets.asset_dec_to_str(asset, balance)
             flash(f'current balance: {balance} {asset}', 'primary')
             fiatdb_action = FiatDbTransaction.ACTION_CREDIT if action == USER_BALANCE_CREDIT else FiatDbTransaction.ACTION_DEBIT
             ftx = fiatdb_core.tx_create(user, fiatdb_action, asset, amount_int, desc)
@@ -281,6 +283,7 @@ def user_balance():
             db.session.commit()
             balance = fiatdb_core.user_balance(db.session, asset, user)
             balance = assets.asset_int_to_dec(asset, balance)
+            balance = assets.asset_dec_to_str(asset, balance)
             flash(f'new balance: {balance} {asset}', 'success')
         elif action == USER_BALANCE_SWEEP:
             if not user.dasset_subaccount:
