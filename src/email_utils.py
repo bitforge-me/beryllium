@@ -26,7 +26,7 @@ def _attachment_inline(b64data, mime_type, filename, content_id):
 def send_email(logger: Logger, subject: str, msg: str, recipient: str | None = None, attachment: str | None = None) -> bool:
     if not recipient:
         recipient = app.config["ADMIN_EMAIL"]
-    assert recipient # shouldnt need this because of the above statement setting recipient, but oh well
+    assert recipient  # shouldnt need this because of the above statement setting recipient, but oh well
     if app.config["USE_SENDGRID"]:
         return send_email_sendgrid(logger, subject, msg, recipient, attachment)
     return send_email_postfix(logger, subject, msg, recipient, attachment)

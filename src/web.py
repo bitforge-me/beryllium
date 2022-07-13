@@ -6,8 +6,8 @@ import math
 import time
 
 import gevent
-from flask import redirect, render_template, request, flash, jsonify, Response # pyright: ignore [reportPrivateImportUsage]
-from flask_security import roles_accepted # pyright: ignore [reportPrivateImportUsage]
+from flask import redirect, render_template, request, flash, jsonify, Response  # pyright: ignore [reportPrivateImportUsage]
+from flask_security import roles_accepted  # pyright: ignore [reportPrivateImportUsage]
 
 from app_core import app, boolify, db, socketio
 from models import CryptoWithdrawal, FiatWithdrawal, User, Role, Topic, PushNotificationLocation, BrokerOrder, CryptoDeposit, FiatDeposit, KycRequest, FiatDbTransaction
@@ -23,7 +23,7 @@ from payments_endpoint import payments
 from kyc_endpoint import kyc
 from ln_wallet_endpoint import ln_wallet
 import websocket
-import admin # import to register flask admin endpoints
+import admin  # import to register flask admin endpoints
 import dasset
 import assets
 import kyc_core
@@ -268,7 +268,7 @@ def user_balance():
                 return return_response('Invalid asset')
             try:
                 amount_dec = decimal.Decimal(amount)
-            except:
+            except Exception:
                 amount_dec = decimal.Decimal(0)
             if amount_dec <= decimal.Decimal(0):
                 return return_response('Invalid amount')
