@@ -1,8 +1,15 @@
 import logging
 import secrets
 
-from flask import Blueprint, render_template, request, flash, Markup, jsonify # pyright: ignore [reportPrivateImportUsage]
-from flask_security import roles_accepted # pyright: ignore [reportPrivateImportUsage]
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    flash,
+    Markup,  # pyright: ignore [reportPrivateImportUsage]
+    jsonify,
+)
+from flask_security import roles_accepted  # pyright: ignore [reportPrivateImportUsage]
 
 from utils import qrcode_svg_create
 from web_utils import bad_request
@@ -13,8 +20,9 @@ from wallet import bitcoind_rpc, btc_txs_load
 
 logger = logging.getLogger(__name__)
 ln_wallet = Blueprint('ln_wallet', __name__, template_folder='templates')
-limiter.limit("100/minute")(ln_wallet)
-BITCOIN_EXPLORER = app.config["BITCOIN_EXPLORER"]
+limiter.limit('100/minute')(ln_wallet)
+BITCOIN_EXPLORER = app.config['BITCOIN_EXPLORER']
+
 
 @ln_wallet.before_request
 def before_request():
@@ -24,21 +32,27 @@ def before_request():
     if 'warning_lightningd_sync' in info:
         flash(info['warning_lightningd_sync'], 'danger')
 
+
 @ln_wallet.route('/')
 @roles_accepted(Role.ROLE_ADMIN)
 def ln_index():
     rpc = LnRpc()
     return render_template('lightning/index.html', funds_dict=rpc.list_funds())
 
+
 @ln_wallet.route('/getinfo')
 @roles_accepted(Role.ROLE_ADMIN)
 def lightningd_getinfo():
     return render_template('lightning/lightningd_getinfo.html', info=LnRpc().get_info())
 
+
 @ln_wallet.route('/utxos', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
 def utxos_ep():
-    return render_template("lightning/utxos.html", outputs=LnRpc().list_funds()['funds']['outputs'])
+    return render_template(
+        'lightning/utxos.html', outputs=LnRpc().list_funds()['funds']['outputs']
+    )
+
 
 @ln_wallet.route('/new_address', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
@@ -53,13 +67,21 @@ def new_address_ep():
         else:
             address = LnRpc().new_address(address_type)
             qrcode_svg = qrcode_svg_create(address[address_type], 10)
-    return render_template("lightning/new_address.html", address=address, qrcode_svg=qrcode_svg)
+    return render_template(
+        'lightning/new_address.html', address=address, qrcode_svg=qrcode_svg
+    )
+
 
 @ln_wallet.route('/list_txs')
 @roles_accepted(Role.ROLE_ADMIN)
 def list_txs():
     """ Returns template of on-chain txs """
-    return render_template("lightning/list_transactions.html", txs=btc_txs_load(), bitcoin_explorer=BITCOIN_EXPLORER)
+    return render_template(
+        'lightning/list_transactions.html',
+        txs=btc_txs_load(),
+        bitcoin_explorer=BITCOIN_EXPLORER,
+    )
+
 
 @ln_wallet.route('/invoice', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
@@ -71,11 +93,18 @@ def ln_invoice():
     if request.method == 'POST':
         amount = request.form['amount']
         message = request.form['message']
-        label = f"lbl-{secrets.token_urlsafe(8)}"
+        label = f'lbl-{secrets.token_urlsafe(8)}'
         rpc = LnRpc()
         bolt11 = rpc.invoice(int(amount), label, message)['bolt11']
         qrcode_svg = qrcode_svg_create(bolt11, 10)
-    return render_template("lightning/invoice.html", bolt11=bolt11, label=label, qrcode_svg=qrcode_svg, funds_dict=LnRpc().list_funds())
+    return render_template(
+        'lightning/invoice.html',
+        bolt11=bolt11,
+        label=label,
+        qrcode_svg=qrcode_svg,
+        funds_dict=LnRpc().list_funds(),
+    )
+
 
 @ln_wallet.route('/channel_management', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
@@ -89,13 +118,19 @@ def channel_management():
             amount = int(request.form['amount'])
             try:
                 LnRpc().rebalance_channel(oscid, iscid, amount)
-                flash(Markup(f'successfully moved {amount} sats from {oscid} to {iscid}'), 'success')
+                flash(
+                    Markup(f'successfully moved {amount} sats from {oscid} to {iscid}'),
+                    'success',
+                )
             except Exception as e:
                 flash(Markup(e.args[0]), 'danger')
         elif request.form['form-name'] == 'close_channel_form':
             try:
                 LnRpc().close_channel(request.form['channel_id'])
-                flash(Markup(f'successfully closed channel {request.form["channel_id"]}'), 'success')
+                flash(
+                    Markup(f'successfully closed channel {request.form["channel_id"]}'),
+                    'success',
+                )
             except Exception as e:
                 flash(Markup(e.args[0]), 'danger')
     peers = rpc.list_peers()['peers']
@@ -130,13 +165,21 @@ def channel_management():
 
             channels.append(channel)
 
-    return render_template('lightning/channel_management.html', channels=channels, total_spendable_sats=_msat_to_sat(total_spendable), total_receivable_sats=_msat_to_sat(total_receivable), largest_channel_sats=largest_channel_sats)
+    return render_template(
+        'lightning/channel_management.html',
+        channels=channels,
+        total_spendable_sats=_msat_to_sat(total_spendable),
+        total_receivable_sats=_msat_to_sat(total_receivable),
+        largest_channel_sats=largest_channel_sats,
+    )
+
 
 @ln_wallet.route('/list_forwards')
 @roles_accepted(Role.ROLE_ADMIN)
 def list_forwards():
     rpc = LnRpc()
     return rpc.list_forwards()
+
 
 @ln_wallet.route('/pay_invoice', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
@@ -150,7 +193,10 @@ def pay_invoice():
             flash(f'Invoice paid: {result}', 'success')
         except Exception as e:
             flash(f'Error paying invoice: {e}', 'danger')
-    return render_template("lightning/pay_invoice.html", invoice=invoice, funds_dict=LnRpc().list_funds())
+    return render_template(
+        'lightning/pay_invoice.html', invoice=invoice, funds_dict=LnRpc().list_funds()
+    )
+
 
 @ln_wallet.route('/lightning_transactions', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
@@ -168,9 +214,15 @@ def lightning_transactions():
         unsorted_list_dict.append(unsorted_dict)
     for unsorted_dict in dict_txs[1]:
         unsorted_list_dict.append(unsorted_dict)
-    sorted_txs = sorted(unsorted_list_dict, key=lambda d: d["paid_at"], reverse=True)
+    sorted_txs = sorted(unsorted_list_dict, key=lambda d: d['paid_at'], reverse=True)
     record_no = str(len(sorted_txs))
-    return render_template("lightning/lightning_transactions.html", funds_dict=funds_dict, sorted_txs=sorted_txs, record_no=record_no)
+    return render_template(
+        'lightning/lightning_transactions.html',
+        funds_dict=funds_dict,
+        sorted_txs=sorted_txs,
+        record_no=record_no,
+    )
+
 
 @ln_wallet.route('/decode_bolt11/<bolt11>', strict_slashes=False)
 @roles_accepted(Role.ROLE_ADMIN)
@@ -183,21 +235,30 @@ def decode_bolt11(bolt11=None):
     except Exception as e:
         return bad_request(str(e))
 
+
 @ln_wallet.route('/channel_opener', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def channel_opener():
     if request.method == 'POST':
-        amount = request.form["amount"]
-        nodeid = request.form["nodeid"]
+        amount = request.form['amount']
+        nodeid = request.form['nodeid']
         try:
             rpc = LnRpc()
             rpc.connect_node(nodeid)
-            node_id = nodeid.split("@")
+            node_id = nodeid.split('@')
             rpc.fund_channel(node_id[0], amount)
-            flash(Markup(f'successfully added node id: {node_id[0]} with the amount: {amount}'), 'success')
+            flash(
+                Markup(
+                    f'successfully added node id: {node_id[0]} with the amount: {amount}'
+                ),
+                'success',
+            )
         except Exception as e:
             flash(Markup(e.args[0]), 'danger')
-    return render_template('lightning/channel_opener.html', funds_dict=LnRpc().list_funds())
+    return render_template(
+        'lightning/channel_opener.html', funds_dict=LnRpc().list_funds()
+    )
+
 
 @ln_wallet.route('/peer_management', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
@@ -223,12 +284,13 @@ def peer_management():
     peers = rpc.list_peers()['peers']
     return render_template('lightning/peer_management.html', peers=peers)
 
+
 @ln_wallet.route('/create_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def create_psbt():
     """ Returns template for creating a PSBT """
     rpc = LnRpc()
-    onchain_sats = int(rpc.list_funds()["sats_onchain"])
+    onchain_sats = int(rpc.list_funds()['sats_onchain'])
     onchain = onchain_sats / 100000000
     addrs = []
     amounts = []
@@ -261,17 +323,25 @@ def create_psbt():
         else:
             flash(f'Unknown mode: {mode}', 'danger')
     return render_template(
-        'lightning/create_psbt.html', onchain=onchain, addrs=addrs, amounts=amounts, mode=mode, psbt=psbt, onchain_sats=onchain_sats)
+        'lightning/create_psbt.html',
+        onchain=onchain,
+        addrs=addrs,
+        amounts=amounts,
+        mode=mode,
+        psbt=psbt,
+        onchain_sats=onchain_sats,
+    )
+
 
 @ln_wallet.route('/sign_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def sign_psbt():
     rpc = LnRpc()
-    onchain_sats = int(rpc.list_funds()["sats_onchain"])
+    onchain_sats = int(rpc.list_funds()['sats_onchain'])
     onchain = onchain_sats / 100000000
     signed_psbt = None
     if request.method == 'POST':
-        psbt = request.form["psbt"]
+        psbt = request.form['psbt']
         try:
             rpc = LnRpc()
             res = rpc.sign_psbt(psbt)
@@ -279,16 +349,22 @@ def sign_psbt():
             flash('Sign successful', 'success')
         except Exception as e:
             flash(f'Sign failed: {e}', 'danger')
-    return render_template('lightning/sign_psbt.html', signed_psbt=signed_psbt, onchain=onchain, onchain_sats=onchain_sats)
+    return render_template(
+        'lightning/sign_psbt.html',
+        signed_psbt=signed_psbt,
+        onchain=onchain,
+        onchain_sats=onchain_sats,
+    )
+
 
 @ln_wallet.route('/broadcast_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def broadcast():
     rpc = LnRpc()
-    onchain_sats = int(rpc.list_funds()["sats_onchain"])
+    onchain_sats = int(rpc.list_funds()['sats_onchain'])
     onchain = onchain_sats / 100000000
     if request.method == 'POST':
-        psbt = request.form["psbt"]
+        psbt = request.form['psbt']
         try:
             rpc = LnRpc()
             res = rpc.send_psbt(psbt)
@@ -296,7 +372,10 @@ def broadcast():
             flash(f'Broadcast successful, TXID: {txid}', 'success')
         except Exception as e:
             flash(f'Broadcast failed: {e}', 'danger')
-    return render_template('lightning/broadcast_psbt.html', onchain=onchain, onchain_sats=onchain_sats)
+    return render_template(
+        'lightning/broadcast_psbt.html', onchain=onchain, onchain_sats=onchain_sats
+    )
+
 
 @ln_wallet.route('/decode_psbt')
 @roles_accepted(Role.ROLE_ADMIN)
@@ -311,6 +390,7 @@ def decode_psbt():
     except Exception as e:
         return bad_request(str(e))
 
+
 @ln_wallet.route('/address', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
 def address_ep():
@@ -319,7 +399,13 @@ def address_ep():
         txs = btc_txs_load(address)
     else:
         txs = []
-    return render_template("lightning/address.html", address=address, txs=txs, bitcoin_explorer=BITCOIN_EXPLORER)
+    return render_template(
+        'lightning/address.html',
+        address=address,
+        txs=txs,
+        bitcoin_explorer=BITCOIN_EXPLORER,
+    )
+
 
 @ln_wallet.route('/addr_raw/<addr>', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
@@ -333,6 +419,7 @@ def addr_raw(addr):
             return jsonify(a)
     return jsonify(dict(msg='address not found'))
 
+
 @ln_wallet.route('/tx_raw/<txid>', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
 def tx_raw(txid):
@@ -345,6 +432,7 @@ def tx_raw(txid):
             tx = bitcoind_rpc('decoderawtransaction', tx['rawtx'])
             return jsonify(tx)
     return jsonify(dict(msg='tx not found'))
+
 
 @ln_wallet.route('/btc_tx_index_clear', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)

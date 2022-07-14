@@ -33,6 +33,7 @@ WS_URL = f'{WS_SCHEMA}://{SERVER_NAME}/'
 
 EXIT_NO_COMMAND = 1
 
+
 def construct_parser():
     # construct argument parser
     parser = argparse.ArgumentParser()
@@ -42,114 +43,276 @@ def construct_parser():
     # General
 
     parser_sign = subparsers.add_parser('sign', help='Sign an arbritrary message')
-    parser_sign.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
-    parser_sign.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
+    parser_sign.add_argument(
+        'api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token'
+    )
+    parser_sign.add_argument(
+        'api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret'
+    )
     parser_sign.add_argument('message', metavar='MESSAGE', type=str, help='the message')
 
     # Websocket
 
     parser_ws = subparsers.add_parser('websocket', help='Listen to a websocket')
-    parser_ws.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
-    parser_ws.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
+    parser_ws.add_argument(
+        'api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token'
+    )
+    parser_ws.add_argument(
+        'api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret'
+    )
 
     # REST commands
 
-    parser_api_key_create = subparsers.add_parser('api_key_create', help='Create an api key with your username and password')
+    parser_api_key_create = subparsers.add_parser(
+        'api_key_create', help='Create an api key with your username and password'
+    )
     parser_api_key_create.add_argument('email', metavar='EMAIL', type=str, help='email')
-    parser_api_key_create.add_argument('password', metavar='PASSWORD', type=str, help='password')
-    parser_api_key_create.add_argument('device_name', metavar='DEVICE_NAME', type=str, help='the device name for the api key')
+    parser_api_key_create.add_argument(
+        'password', metavar='PASSWORD', type=str, help='password'
+    )
+    parser_api_key_create.add_argument(
+        'device_name',
+        metavar='DEVICE_NAME',
+        type=str,
+        help='the device name for the api key',
+    )
 
     parser_user_info = subparsers.add_parser('user_info', help='Get the user info')
-    parser_user_info.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
-    parser_user_info.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
+    parser_user_info.add_argument(
+        'api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token'
+    )
+    parser_user_info.add_argument(
+        'api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret'
+    )
 
-    parser_user_reset_password = subparsers.add_parser('user_reset_password', help='Reset password instruction')
-    parser_user_reset_password.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
-    parser_user_reset_password.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
+    parser_user_reset_password = subparsers.add_parser(
+        'user_reset_password', help='Reset password instruction'
+    )
+    parser_user_reset_password.add_argument(
+        'api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token'
+    )
+    parser_user_reset_password.add_argument(
+        'api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret'
+    )
 
-    parser_user_update_email = subparsers.add_parser('user_update_email', help='Update user email')
-    parser_user_update_email.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
-    parser_user_update_email.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
-    parser_user_update_email.add_argument('email', metavar='EMAIL', type=str, help='the email address to change to')
+    parser_user_update_email = subparsers.add_parser(
+        'user_update_email', help='Update user email'
+    )
+    parser_user_update_email.add_argument(
+        'api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token'
+    )
+    parser_user_update_email.add_argument(
+        'api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret'
+    )
+    parser_user_update_email.add_argument(
+        'email', metavar='EMAIL', type=str, help='the email address to change to'
+    )
 
-    parser_user_update_password = subparsers.add_parser('user_update_password', help='Update user password')
-    parser_user_update_password.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
-    parser_user_update_password.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
-    parser_user_update_password.add_argument('current_password', metavar='CURRENT_PASSWORD', type=str, help='current user password')
-    parser_user_update_password.add_argument('new_password', metavar='NEW_PASSWORD', type=str, help='new user password')
+    parser_user_update_password = subparsers.add_parser(
+        'user_update_password', help='Update user password'
+    )
+    parser_user_update_password.add_argument(
+        'api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token'
+    )
+    parser_user_update_password.add_argument(
+        'api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret'
+    )
+    parser_user_update_password.add_argument(
+        'current_password',
+        metavar='CURRENT_PASSWORD',
+        type=str,
+        help='current user password',
+    )
+    parser_user_update_password.add_argument(
+        'new_password', metavar='NEW_PASSWORD', type=str, help='new user password'
+    )
 
-    parser_user_update_photo = subparsers.add_parser('user_update_photo', help='Update user photo and photo_type')
-    parser_user_update_photo.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
-    parser_user_update_photo.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
-    parser_user_update_photo.add_argument('photo', metavar='PHOTO', type=str, help='user photo')
-    parser_user_update_photo.add_argument('photo_type', metavar='PHOTO_TYPE', type=str, help='type of photo')
+    parser_user_update_photo = subparsers.add_parser(
+        'user_update_photo', help='Update user photo and photo_type'
+    )
+    parser_user_update_photo.add_argument(
+        'api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token'
+    )
+    parser_user_update_photo.add_argument(
+        'api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret'
+    )
+    parser_user_update_photo.add_argument(
+        'photo', metavar='PHOTO', type=str, help='user photo'
+    )
+    parser_user_update_photo.add_argument(
+        'photo_type', metavar='PHOTO_TYPE', type=str, help='type of photo'
+    )
 
     parser_assets = subparsers.add_parser('assets', help='Get list of assets')
-    parser_assets.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
-    parser_assets.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
+    parser_assets.add_argument(
+        'api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token'
+    )
+    parser_assets.add_argument(
+        'api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret'
+    )
 
     parser_markets = subparsers.add_parser('markets', help='Get list of markets')
-    parser_markets.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
-    parser_markets.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
+    parser_markets.add_argument(
+        'api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token'
+    )
+    parser_markets.add_argument(
+        'api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret'
+    )
 
-    parser_order_book = subparsers.add_parser('order_book', help='Get a market order book')
-    parser_order_book.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
-    parser_order_book.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
-    parser_order_book.add_argument('market', metavar='MARKET', type=str, help='the market')
+    parser_order_book = subparsers.add_parser(
+        'order_book', help='Get a market order book'
+    )
+    parser_order_book.add_argument(
+        'api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token'
+    )
+    parser_order_book.add_argument(
+        'api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret'
+    )
+    parser_order_book.add_argument(
+        'market', metavar='MARKET', type=str, help='the market'
+    )
 
-    parser_broker_order_create = subparsers.add_parser('broker_order_create', help='Create a broker order')
-    parser_broker_order_create.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
-    parser_broker_order_create.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
-    parser_broker_order_create.add_argument('market', metavar='MARKET', type=str, help='the market')
-    parser_broker_order_create.add_argument('side', metavar='SIDE', type=str, help='the market side (bid/ask)')
-    parser_broker_order_create.add_argument('amount', metavar='AMOUNT', type=str, help='the amount to buy or sell')
-    parser_broker_order_create.add_argument('recipient', metavar='RECIPIENT', type=str, help='the of the funds')
+    parser_broker_order_create = subparsers.add_parser(
+        'broker_order_create', help='Create a broker order'
+    )
+    parser_broker_order_create.add_argument(
+        'api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token'
+    )
+    parser_broker_order_create.add_argument(
+        'api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret'
+    )
+    parser_broker_order_create.add_argument(
+        'market', metavar='MARKET', type=str, help='the market'
+    )
+    parser_broker_order_create.add_argument(
+        'side', metavar='SIDE', type=str, help='the market side (bid/ask)'
+    )
+    parser_broker_order_create.add_argument(
+        'amount', metavar='AMOUNT', type=str, help='the amount to buy or sell'
+    )
+    parser_broker_order_create.add_argument(
+        'recipient', metavar='RECIPIENT', type=str, help='the of the funds'
+    )
 
-    parser_broker_order_status = subparsers.add_parser('broker_order_status', help='Get the status of a broker order')
-    parser_broker_order_status.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
-    parser_broker_order_status.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
-    parser_broker_order_status.add_argument('token', metavar='TOKEN', type=str, help='the broker order token')
+    parser_broker_order_status = subparsers.add_parser(
+        'broker_order_status', help='Get the status of a broker order'
+    )
+    parser_broker_order_status.add_argument(
+        'api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token'
+    )
+    parser_broker_order_status.add_argument(
+        'api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret'
+    )
+    parser_broker_order_status.add_argument(
+        'token', metavar='TOKEN', type=str, help='the broker order token'
+    )
 
-    parser_broker_order_accept = subparsers.add_parser('broker_order_accept', help='Accept a broker order')
-    parser_broker_order_accept.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
-    parser_broker_order_accept.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
-    parser_broker_order_accept.add_argument('token', metavar='TOKEN', type=str, help='the broker order token')
+    parser_broker_order_accept = subparsers.add_parser(
+        'broker_order_accept', help='Accept a broker order'
+    )
+    parser_broker_order_accept.add_argument(
+        'api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token'
+    )
+    parser_broker_order_accept.add_argument(
+        'api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret'
+    )
+    parser_broker_order_accept.add_argument(
+        'token', metavar='TOKEN', type=str, help='the broker order token'
+    )
 
-    parser_broker_orders = subparsers.add_parser('broker_orders', help='Get the list of broker orders')
-    parser_broker_orders.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
-    parser_broker_orders.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
-    parser_broker_orders.add_argument('offset', metavar='OFFSET', type=int, help='the limit')
-    parser_broker_orders.add_argument('limit', metavar='LIMIT', type=int, help='the offset')
+    parser_broker_orders = subparsers.add_parser(
+        'broker_orders', help='Get the list of broker orders'
+    )
+    parser_broker_orders.add_argument(
+        'api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token'
+    )
+    parser_broker_orders.add_argument(
+        'api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret'
+    )
+    parser_broker_orders.add_argument(
+        'offset', metavar='OFFSET', type=int, help='the limit'
+    )
+    parser_broker_orders.add_argument(
+        'limit', metavar='LIMIT', type=int, help='the offset'
+    )
 
-    parser_referral_config = subparsers.add_parser('referral_config', help='Get the beryllium referral config')
-    parser_referral_config.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
-    parser_referral_config.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
+    parser_referral_config = subparsers.add_parser(
+        'referral_config', help='Get the beryllium referral config'
+    )
+    parser_referral_config.add_argument(
+        'api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token'
+    )
+    parser_referral_config.add_argument(
+        'api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret'
+    )
 
-    parser_referral_create = subparsers.add_parser('referral_create', help='Create a beryllium referral')
-    parser_referral_create.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
-    parser_referral_create.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
-    parser_referral_create.add_argument('recipient', metavar='RECIPIENT', type=str, help='the referral recipient (email)')
+    parser_referral_create = subparsers.add_parser(
+        'referral_create', help='Create a beryllium referral'
+    )
+    parser_referral_create.add_argument(
+        'api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token'
+    )
+    parser_referral_create.add_argument(
+        'api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret'
+    )
+    parser_referral_create.add_argument(
+        'recipient',
+        metavar='RECIPIENT',
+        type=str,
+        help='the referral recipient (email)',
+    )
 
-    parser_referral_remind = subparsers.add_parser('referral_remind', help='Remind the recipient of a beryllium referral')
-    parser_referral_remind.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
-    parser_referral_remind.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
-    parser_referral_remind.add_argument('token', metavar='TOKEN', type=str, help='the referral unique token')
+    parser_referral_remind = subparsers.add_parser(
+        'referral_remind', help='Remind the recipient of a beryllium referral'
+    )
+    parser_referral_remind.add_argument(
+        'api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token'
+    )
+    parser_referral_remind.add_argument(
+        'api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret'
+    )
+    parser_referral_remind.add_argument(
+        'token', metavar='TOKEN', type=str, help='the referral unique token'
+    )
 
-    parser_referral_list = subparsers.add_parser('referral_list', help='List a users referrals')
-    parser_referral_list.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
-    parser_referral_list.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
+    parser_referral_list = subparsers.add_parser(
+        'referral_list', help='List a users referrals'
+    )
+    parser_referral_list.add_argument(
+        'api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token'
+    )
+    parser_referral_list.add_argument(
+        'api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret'
+    )
 
-    parser_referral_validate = subparsers.add_parser('referral_validate', help='Validate a beryllium referral')
-    parser_referral_validate.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
-    parser_referral_validate.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
-    parser_referral_validate.add_argument('token', metavar='TOKEN', type=str, help='the referral unique token')
+    parser_referral_validate = subparsers.add_parser(
+        'referral_validate', help='Validate a beryllium referral'
+    )
+    parser_referral_validate.add_argument(
+        'api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token'
+    )
+    parser_referral_validate.add_argument(
+        'api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret'
+    )
+    parser_referral_validate.add_argument(
+        'token', metavar='TOKEN', type=str, help='the referral unique token'
+    )
 
-    parser_referral_claim = subparsers.add_parser('referral_claim', help='Claim a beryllium referral')
-    parser_referral_claim.add_argument('api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token')
-    parser_referral_claim.add_argument('api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret')
-    parser_referral_claim.add_argument('token', metavar='TOKEN', type=str, help='the referral unique token')
+    parser_referral_claim = subparsers.add_parser(
+        'referral_claim', help='Claim a beryllium referral'
+    )
+    parser_referral_claim.add_argument(
+        'api_key_token', metavar='API_KEY_TOKEN', type=str, help='the API KEY token'
+    )
+    parser_referral_claim.add_argument(
+        'api_key_secret', metavar='API_KEY_SECRET', type=str, help='the API KEY secret'
+    )
+    parser_referral_claim.add_argument(
+        'token', metavar='TOKEN', type=str, help='the referral unique token'
+    )
 
     return parser
+
 
 def req(endpoint, params=None, api_key_token=None, api_key_secret=None):
     if api_key_token:
@@ -171,11 +334,14 @@ def req(endpoint, params=None, api_key_token=None, api_key_secret=None):
         r = requests.get(url)
     return r
 
+
 def api_req(endpoint, params=None, api_key_token=None, api_key_secret=None):
     return req('apiv1/' + endpoint, params, api_key_token, api_key_secret)
 
+
 def reward_req(endpoint, params=None, api_key_token=None, api_key_secret=None):
     return req('reward/' + endpoint, params, api_key_token, api_key_secret)
+
 
 def check_request_status(r):
     try:
@@ -186,10 +352,12 @@ def check_request_status(r):
         print(r.text)
         raise e
 
+
 def sign(args):
     print(':: signing message')
     sig = create_hmac_sig(args.api_key_secret, args.message)
     print('Signature: ', sig)
+
 
 def websocket(args):
     print(':: calling websocket..')
@@ -231,11 +399,20 @@ def websocket(args):
     sio.connect(WS_URL, namespaces=[ns])
     sio.wait()
 
+
 def api_key_create(args):
     print(':: calling api_key_create..')
-    r = api_req('api_key_create', {'email': args.email, 'password': args.password, 'device_name': args.device_name})
+    r = api_req(
+        'api_key_create',
+        {
+            'email': args.email,
+            'password': args.password,
+            'device_name': args.device_name,
+        },
+    )
     check_request_status(r)
     print(r.text)
+
 
 def user_info(args):
     print(':: calling user_info..')
@@ -243,29 +420,51 @@ def user_info(args):
     check_request_status(r)
     print(r.text)
 
+
 def user_reset_password(args):
     print(':: calling user_reset_password..')
-    r = api_req('user_reset_password', {'email': None}, args.api_key_token, args.api_key_secret)
+    r = api_req(
+        'user_reset_password', {'email': None}, args.api_key_token, args.api_key_secret
+    )
     check_request_status(r)
     print(r.text)
+
 
 def user_update_email(args):
     print(':: calling user_update_email..')
-    r = api_req('user_update_email', {'email': args.email}, args.api_key_token, args.api_key_secret)
+    r = api_req(
+        'user_update_email',
+        {'email': args.email},
+        args.api_key_token,
+        args.api_key_secret,
+    )
     check_request_status(r)
     print(r.text)
+
 
 def user_update_password(args):
     print(':: calling user_update_password..')
-    r = api_req('user_update_password', {'current_password': args.current_password, 'new_password': args.new_password}, args.api_key_token, args.api_key_secret)
+    r = api_req(
+        'user_update_password',
+        {'current_password': args.current_password, 'new_password': args.new_password},
+        args.api_key_token,
+        args.api_key_secret,
+    )
     check_request_status(r)
     print(r.text)
 
+
 def user_update_photo(args):
     print(':: calling user_update_photo..')
-    r = api_req('user_update_photo', {'photo': args.photo, 'photo_type': args.photo_type}, args.api_key_token, args.api_key_secret)
+    r = api_req(
+        'user_update_photo',
+        {'photo': args.photo, 'photo_type': args.photo_type},
+        args.api_key_token,
+        args.api_key_secret,
+    )
     check_request_status(r)
     print(r.text)
+
 
 def assets(args):
     print(':: calling assets..')
@@ -273,41 +472,75 @@ def assets(args):
     check_request_status(r)
     print(r.text)
 
+
 def markets(args):
     print(':: calling markets..')
     r = api_req('markets', {}, args.api_key_token, args.api_key_secret)
     check_request_status(r)
     print(r.text)
 
+
 def order_book(args):
     print(':: calling order_book..')
-    r = api_req('order_book', {'market': args.market}, args.api_key_token, args.api_key_secret)
+    r = api_req(
+        'order_book', {'market': args.market}, args.api_key_token, args.api_key_secret
+    )
     check_request_status(r)
     print(r.text)
+
 
 def broker_order_create(args):
     print(':: calling broker_order_create..')
-    r = api_req('broker_order_create', {'market': args.market, 'side': args.side, 'amount_dec': args.amount, 'recipient': args.recipient}, args.api_key_token, args.api_key_secret)
+    r = api_req(
+        'broker_order_create',
+        {
+            'market': args.market,
+            'side': args.side,
+            'amount_dec': args.amount,
+            'recipient': args.recipient,
+        },
+        args.api_key_token,
+        args.api_key_secret,
+    )
     check_request_status(r)
     print(r.text)
+
 
 def broker_order_status(args):
     print(':: calling broker_order_status..')
-    r = api_req('broker_order_status', {'token': args.token}, args.api_key_token, args.api_key_secret)
+    r = api_req(
+        'broker_order_status',
+        {'token': args.token},
+        args.api_key_token,
+        args.api_key_secret,
+    )
     check_request_status(r)
     print(r.text)
+
 
 def broker_order_accept(args):
     print(':: calling broker_order_accept..')
-    r = api_req('broker_order_accept', {'token': args.token}, args.api_key_token, args.api_key_secret)
+    r = api_req(
+        'broker_order_accept',
+        {'token': args.token},
+        args.api_key_token,
+        args.api_key_secret,
+    )
     check_request_status(r)
     print(r.text)
 
+
 def broker_orders(args):
     print(':: calling broker_orders..')
-    r = api_req('broker_orders', {'offset': args.offset, 'limit': args.limit}, args.api_key_token, args.api_key_secret)
+    r = api_req(
+        'broker_orders',
+        {'offset': args.offset, 'limit': args.limit},
+        args.api_key_token,
+        args.api_key_secret,
+    )
     check_request_status(r)
     print(r.text)
+
 
 def referral_config(args):
     print(':: calling referral_config..')
@@ -315,17 +548,30 @@ def referral_config(args):
     check_request_status(r)
     print(r.text)
 
+
 def referral_create(args):
     print(':: calling referral_create..')
-    r = reward_req('referral_create', {'recipient': args.recipient}, args.api_key_token, args.api_key_secret)
+    r = reward_req(
+        'referral_create',
+        {'recipient': args.recipient},
+        args.api_key_token,
+        args.api_key_secret,
+    )
     check_request_status(r)
     print(r.text)
 
+
 def referral_remind(args):
     print(':: calling referral_remind..')
-    r = reward_req('referral_remind', {'token': args.token}, args.api_key_token, args.api_key_secret)
+    r = reward_req(
+        'referral_remind',
+        {'token': args.token},
+        args.api_key_token,
+        args.api_key_secret,
+    )
     check_request_status(r)
     print(r.text)
+
 
 def referral_list(args):
     print(':: calling referral_list..')
@@ -333,17 +579,27 @@ def referral_list(args):
     check_request_status(r)
     print(r.text)
 
+
 def referral_validate(args):
     print(':: calling referral_validate..')
-    r = reward_req('referral_validate', {'token': args.token}, args.api_key_token, args.api_key_secret)
+    r = reward_req(
+        'referral_validate',
+        {'token': args.token},
+        args.api_key_token,
+        args.api_key_secret,
+    )
     check_request_status(r)
     print(r.text)
 
+
 def referral_claim(args):
     print(':: calling referral_claim..')
-    r = reward_req('referral_claim', {'token': args.token}, args.api_key_token, args.api_key_secret)
+    r = reward_req(
+        'referral_claim', {'token': args.token}, args.api_key_token, args.api_key_secret
+    )
     check_request_status(r)
     print(r.text)
+
 
 def run_parser():
     # parse arguments
@@ -400,6 +656,7 @@ def run_parser():
 
     if function:
         function(args)
+
 
 if __name__ == '__main__':
     setup_logging(logger, logging.DEBUG)

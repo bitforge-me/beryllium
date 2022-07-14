@@ -1,7 +1,7 @@
 import logging
 
 from flask import Blueprint, request, render_template, flash, redirect, url_for
-from flask_security import roles_accepted # pyright: ignore [reportPrivateImportUsage]
+from flask_security import roles_accepted  # pyright: ignore [reportPrivateImportUsage]
 
 from app_core import db, limiter
 from models import PayoutRequest, PayoutGroup, WindcavePaymentRequest, Role
@@ -13,11 +13,12 @@ import depwith
 
 logger = logging.getLogger(__name__)
 payments = Blueprint('payments', __name__, template_folder='templates')
-limiter.limit("100/minute")(payments)
+limiter.limit('100/minute')(payments)
 
 #
 # Public payments endpoints
 #
+
 
 @payments.route('/payment/<token>', methods=['GET'])
 def payment_interstitial(token=None):
@@ -34,7 +35,13 @@ def payment_interstitial(token=None):
         depwith.fiat_deposit_update(db.session, req.fiat_deposit.token)
     if req.status != req.STATUS_CREATED:
         return redirect(url_for('payments.payment', token=token))
-    return render_template('payments/payment_request.html', token=token, interstitial=True, mock=windcave.mock())
+    return render_template(
+        'payments/payment_request.html',
+        token=token,
+        interstitial=True,
+        mock=windcave.mock(),
+    )
+
 
 @payments.route('/payment/mock/<token>', methods=['GET'])
 def payment_mock_confirm(token=None):
@@ -52,6 +59,7 @@ def payment_mock_confirm(token=None):
         depwith.fiat_deposit_update(db.session, req.fiat_deposit.token)
     return redirect(url_for('payments.payment', token=token))
 
+
 @payments.route('/payment/x/<token>', methods=['GET'])
 def payment(token=None):
     if not token:
@@ -64,7 +72,14 @@ def payment(token=None):
     windcave.payment_request_status_update(req)
     completed = req.status == req.STATUS_COMPLETED
     cancelled = req.status == req.STATUS_CANCELLED
-    return render_template('payments/payment_request.html', token=token, completed=completed, cancelled=cancelled, req=req)
+    return render_template(
+        'payments/payment_request.html',
+        token=token,
+        completed=completed,
+        cancelled=cancelled,
+        req=req,
+    )
+
 
 @payments.route('/payouts')
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
@@ -74,7 +89,10 @@ def payouts():
         reqs = PayoutRequest.where_status_suspended(db.session)
     else:
         reqs = PayoutRequest.where_status_created(db.session)
-    return render_template('payments/payouts.html', payout_requests=reqs, suspended=suspended)
+    return render_template(
+        'payments/payouts.html', payout_requests=reqs, suspended=suspended
+    )
+
 
 @payments.route('/payout_group/<token>', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
@@ -89,7 +107,13 @@ def payout_group(token=None):
     if group.expired:
         flash('Sorry group is expired', category='danger')
         return redirect('/')
-    return render_template('payments/payout_group.html', token=token, group=group, payout_requests=group.requests)
+    return render_template(
+        'payments/payout_group.html',
+        token=token,
+        group=group,
+        payout_requests=group.requests,
+    )
+
 
 @payments.route('/payout_group_create', methods=['POST'])
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
@@ -100,6 +124,7 @@ def payout_group_create():
         return redirect(f'/payments/payout_group/{group.token}')
     flash('Sorry group not created', category='danger')
     return redirect('/')
+
 
 @payments.route('/payout_group_process_all', methods=['POST'])
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
@@ -122,15 +147,28 @@ def payout_group_process_all():
                     continue
                 address_book = req.address_book
                 if not address_book:
-                    logger.error('unable to create withdrawal for payout without address_book (%s)', req.token)
+                    logger.error(
+                        'unable to create withdrawal for payout without address_book (%s)',
+                        req.token,
+                    )
                     continue
-                crown_txn_id = crown_financial.withdrawal(req.amount, req.reference, req.code, address_book.recipient, address_book.account_name, address_book.account_addr_01, address_book.account_addr_02, address_book.account_addr_country)
+                crown_txn_id = crown_financial.withdrawal(
+                    req.amount,
+                    req.reference,
+                    req.code,
+                    address_book.recipient,
+                    address_book.account_name,
+                    address_book.account_addr_01,
+                    address_book.account_addr_02,
+                    address_book.account_addr_country,
+                )
                 if crown_txn_id:
                     payouts_core.set_payout_request_complete(req)
                     db.session.commit()
         return redirect(f'/payments/payout_group/{token}')
     flash('Sorry, group not found', category='danger')
     return redirect('/')
+
 
 @payments.route('/payout_request_suspend', methods=['POST'])
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
@@ -145,6 +183,7 @@ def payout_suspend():
         return redirect('/payments/payouts')
     flash('Sorry payout not found', category='danger')
     return redirect('/')
+
 
 @payments.route('/payout_request_unsuspend', methods=['POST'])
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)

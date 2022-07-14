@@ -1,6 +1,5 @@
 djlint
-pycodestyle
-mypy
+axblack
 sqlalchemy-stubs
 types-requests
 types-python-dateutil

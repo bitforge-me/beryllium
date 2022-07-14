@@ -26,11 +26,12 @@ if not WINDCAVE_API_KEY:
     logger.error('ERROR: no WINDCAVE_API_KEY')
     sys.exit(1)
 
+
 def mock():
     return WINDCAVE_MOCK
 
-def moneyfmt(value, places=2, curr='', sep=',', dpi='.',
-             pos='', neg='-', trailneg=''):
+
+def moneyfmt(value, places=2, curr='', sep=',', dpi='.', pos='', neg='-', trailneg=''):
     """Convert Decimal to a money formatted string.
 
     places:  required number of places after the decimal point
@@ -55,7 +56,7 @@ def moneyfmt(value, places=2, curr='', sep=',', dpi='.',
     '<0.02>'
 
     """
-    q = decimal.Decimal(10) ** -places      # 2 places --> '0.01'
+    q = decimal.Decimal(10) ** -places  # 2 places --> '0.01'
     sign, digits, _ = value.quantize(q).as_tuple()
     result = []
     digits = list(map(str, digits))
@@ -79,20 +80,37 @@ def moneyfmt(value, places=2, curr='', sep=',', dpi='.',
     build(neg if sign else pos)
     return ''.join(reversed(result))
 
+
 def auth_header():
     raw = bytearray(WINDCAVE_API_USER + ':' + WINDCAVE_API_KEY, 'utf-8')
     data = base64.b64encode(raw).decode('utf-8')
     return 'Basic ' + data
 
+
 def windcave_create_session(amount_cents, token, expiry):
-    body = {'type': 'purchase', 'amount': moneyfmt(decimal.Decimal(amount_cents) / decimal.Decimal(100), sep=''), 'currency': 'NZD', 'merchantReference': token}
+    body = {
+        'type': 'purchase',
+        'amount': moneyfmt(
+            decimal.Decimal(amount_cents) / decimal.Decimal(100), sep=''
+        ),
+        'currency': 'NZD',
+        'merchantReference': token,
+    }
     body['methods'] = ['account2account']
-    expiry = expiry.replace(tzinfo=tz.tzlocal()) # set time zone to local (datetime objects are 'naive' by default)
-    expiry = expiry.astimezone(tz.tzutc()) # convert to UTC
-    expiry = expiry.replace(microsecond=0) # strip microsecond to placate windcave (RFC 3339)
+    expiry = expiry.replace(
+        tzinfo=tz.tzlocal()
+    )  # set time zone to local (datetime objects are 'naive' by default)
+    expiry = expiry.astimezone(tz.tzutc())  # convert to UTC
+    expiry = expiry.replace(
+        microsecond=0
+    )  # strip microsecond to placate windcave (RFC 3339)
     body['expires'] = expiry.isoformat()
     callback_url = url_for('payments.payment', token=token, _external=True)
-    body['callbackUrls'] = {'approved': callback_url, 'declined': callback_url, 'cancelled': callback_url}
+    body['callbackUrls'] = {
+        'approved': callback_url,
+        'declined': callback_url,
+        'cancelled': callback_url,
+    }
     body['notificationUrl'] = callback_url
     logger.info(json.dumps(body))
     headers = {'Content-Type': 'application/json', 'Authorization': auth_header()}
@@ -104,14 +122,17 @@ def windcave_create_session(amount_cents, token, expiry):
         return jsn['id'], jsn['state']
     return None, None
 
+
 def windcave_get_session_status(windcave_session_id):
     headers = {'Authorization': auth_header()}
-    r = requests.get(WINDCAVE_API_URL + '/sessions/' + windcave_session_id, headers=headers)
+    r = requests.get(
+        WINDCAVE_API_URL + '/sessions/' + windcave_session_id, headers=headers
+    )
     logger.info(r.text)
     r.raise_for_status()
     jsn = r.json()
     state = jsn['state']
-    link = ""
+    link = ''
     for ln_data in jsn['links']:
         if ln_data['method'] == 'REDIRECT':
             link = ln_data['href']
@@ -123,27 +144,34 @@ def windcave_get_session_status(windcave_session_id):
             tx_state = txs[0]['authorised'], txs[0]['allowRetry']
     return state, link, tx_state
 
+
 def payment_create(amount_cents, expiry):
     token = utils.generate_key()
     req = WindcavePaymentRequest.from_token(db.session, token)
     if req:
         raise Exception('payment already exists')
-    logger.info("creating session with windcave")
+    logger.info('creating session with windcave')
     if mock():
         windcave_session_id = token
         windcave_status = 'created (mock)'
     else:
-        windcave_session_id, windcave_status = windcave_create_session(amount_cents, token, expiry)
+        windcave_session_id, windcave_status = windcave_create_session(
+            amount_cents, token, expiry
+        )
     if not windcave_session_id:
         raise Exception('failed to create windcave session')
-    logger.info("creating payment request object for %s", token)
-    req = WindcavePaymentRequest(token, 'NZD', amount_cents, windcave_session_id, windcave_status)
+    logger.info('creating payment request object for %s', token)
+    req = WindcavePaymentRequest(
+        token, 'NZD', amount_cents, windcave_session_id, windcave_status
+    )
     return req
+
 
 def payment_request_mock_confirm(req):
     assert mock()
     req.windcave_status = 'confirmed (mock)'
     req.windcave_authorised = True
+
 
 def payment_request_status_update(req):
     if mock():

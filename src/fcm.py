@@ -7,6 +7,7 @@ from firebase_admin import credentials, messaging
 
 logger = logging.getLogger(__name__)
 
+
 class FCM:
     def __init__(self, firebase_credentials):
         if firebase_credentials.endswith('.json'):

@@ -6,6 +6,7 @@ import email_utils
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class EventType:
     name: str
@@ -14,9 +15,23 @@ class EventType:
     expire_next: datetime
     ok: bool
 
-LOGIN = EventType(name='login', attempts=0, last_attempt=datetime.now(), expire_next=datetime.now(), ok=True)
-WITHDRAWAL = EventType(name='withdrawal', attempts=0, last_attempt=datetime.now(), expire_next=datetime.now(), ok=True)
+
+LOGIN = EventType(
+    name='login',
+    attempts=0,
+    last_attempt=datetime.now(),
+    expire_next=datetime.now(),
+    ok=True,
+)
+WITHDRAWAL = EventType(
+    name='withdrawal',
+    attempts=0,
+    last_attempt=datetime.now(),
+    expire_next=datetime.now(),
+    ok=True,
+)
 DATA = dict(login=LOGIN, withdrawal=WITHDRAWAL)
+
 
 def _attempt(event_type: EventType):
     if not event_type.ok:
@@ -35,8 +50,10 @@ def _attempt(event_type: EventType):
             event_type.ok = False
         email_utils.email_tripwire_notification(logger)
 
+
 def login_attempt():
     _attempt(LOGIN)
+
 
 def withdrawal_attempt():
     _attempt(WITHDRAWAL)

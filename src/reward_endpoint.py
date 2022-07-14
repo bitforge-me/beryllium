@@ -4,7 +4,12 @@ import time
 from flask import Blueprint, jsonify
 
 import web_utils
-from web_utils import auth_request_get_params, bad_request, auth_request, auth_request_get_single_param
+from web_utils import (
+    auth_request_get_params,
+    bad_request,
+    auth_request,
+    auth_request_get_single_param,
+)
 import utils
 import email_utils
 from app_core import app, db, limiter, csrf
@@ -12,13 +17,14 @@ from models import User, Role, Referral
 
 logger = logging.getLogger(__name__)
 reward = Blueprint('reward', __name__, template_folder='templates')
-limiter.limit("100/minute")(reward)
+limiter.limit('100/minute')(reward)
 csrf.exempt(reward)
-use_referrals = app.config["USE_REFERRALS"]
+use_referrals = app.config['USE_REFERRALS']
 
 #
 # Private (reward) API
 #
+
 
 @reward.route('/referral_config', methods=['POST'])
 def referral_config():
@@ -27,19 +33,29 @@ def referral_config():
     _, err_response = auth_request(db)
     if err_response:
         return err_response
-    reward_sender_type = app.config["REFERRAL_REWARD_TYPE_SENDER"]
-    reward_sender = app.config["REFERRAL_REWARD_SENDER"]
-    reward_recipient_type = app.config["REFERRAL_REWARD_TYPE_RECIPIENT"]
-    reward_recipient = app.config["REFERRAL_REWARD_RECIPIENT"]
-    recipient_min_spend = app.config["REFERRAL_RECIPIENT_MIN_SPEND"]
-    spend_asset = app.config["REFERRAL_SPEND_ASSET"]
-    return jsonify(dict(reward_sender_type=reward_sender_type, reward_sender=reward_sender, reward_recipient_type=reward_recipient_type, reward_recipient=reward_recipient, recipient_min_spend=recipient_min_spend, spend_asset=spend_asset))
+    reward_sender_type = app.config['REFERRAL_REWARD_TYPE_SENDER']
+    reward_sender = app.config['REFERRAL_REWARD_SENDER']
+    reward_recipient_type = app.config['REFERRAL_REWARD_TYPE_RECIPIENT']
+    reward_recipient = app.config['REFERRAL_REWARD_RECIPIENT']
+    recipient_min_spend = app.config['REFERRAL_RECIPIENT_MIN_SPEND']
+    spend_asset = app.config['REFERRAL_SPEND_ASSET']
+    return jsonify(
+        dict(
+            reward_sender_type=reward_sender_type,
+            reward_sender=reward_sender,
+            reward_recipient_type=reward_recipient_type,
+            reward_recipient=reward_recipient,
+            recipient_min_spend=recipient_min_spend,
+            spend_asset=spend_asset,
+        )
+    )
+
 
 @reward.route('/referral_create', methods=['POST'])
 def referral_create():
     if not use_referrals:
         return bad_request(web_utils.NOT_AVAILABLE)
-    recipient, api_key, err_response = auth_request_get_single_param(db, "recipient")
+    recipient, api_key, err_response = auth_request_get_single_param(db, 'recipient')
     if err_response:
         return err_response
     if not recipient or not api_key:
@@ -51,22 +67,31 @@ def referral_create():
     if user:
         time.sleep(5)
         return bad_request(web_utils.USER_EXISTS)
-    reward_sender_type = app.config["REFERRAL_REWARD_TYPE_SENDER"]
-    reward_sender = app.config["REFERRAL_REWARD_SENDER"]
-    reward_recipient_type = app.config["REFERRAL_REWARD_TYPE_RECIPIENT"]
-    reward_recipient = app.config["REFERRAL_REWARD_RECIPIENT"]
-    recipient_min_spend = app.config["REFERRAL_RECIPIENT_MIN_SPEND"]
-    ref = Referral(api_key.user, recipient, reward_sender_type, reward_sender, reward_recipient_type, reward_recipient, recipient_min_spend)
+    reward_sender_type = app.config['REFERRAL_REWARD_TYPE_SENDER']
+    reward_sender = app.config['REFERRAL_REWARD_SENDER']
+    reward_recipient_type = app.config['REFERRAL_REWARD_TYPE_RECIPIENT']
+    reward_recipient = app.config['REFERRAL_REWARD_RECIPIENT']
+    recipient_min_spend = app.config['REFERRAL_RECIPIENT_MIN_SPEND']
+    ref = Referral(
+        api_key.user,
+        recipient,
+        reward_sender_type,
+        reward_sender,
+        reward_recipient_type,
+        reward_recipient,
+        recipient_min_spend,
+    )
     email_utils.email_referral(logger, ref)
     db.session.add(ref)
     db.session.commit()
     return 'ok'
 
+
 @reward.route('/referral_remind', methods=['POST'])
 def referral_remind():
     if not use_referrals:
         return bad_request(web_utils.NOT_AVAILABLE)
-    token, api_key, err_response = auth_request_get_single_param(db, "token")
+    token, api_key, err_response = auth_request_get_single_param(db, 'token')
     if err_response:
         return err_response
     if not token or not api_key:
@@ -78,6 +103,7 @@ def referral_remind():
         return bad_request(web_utils.NOT_FOUND)
     email_utils.email_referral(logger, ref)
     return 'ok'
+
 
 @reward.route('/referral_list', methods=['POST'])
 def referral_list():
@@ -96,16 +122,19 @@ def referral_list():
     total = Referral.total_for_user(db.session, api_key.user)
     return jsonify(dict(referrals=refs, offset=offset, limit=limit, total=total))
 
+
 @reward.route('/referral_validate', methods=['POST'])
 def referral_validate():
     if not use_referrals:
         return bad_request(web_utils.NOT_AVAILABLE)
-    token, api_key, err_response = auth_request_get_single_param(db, "token")
+    token, api_key, err_response = auth_request_get_single_param(db, 'token')
     if err_response:
         return err_response
     if not token or not api_key:
         return bad_request(web_utils.INVALID_PARAMETER)
-    if not api_key.user.has_role(Role.ROLE_ADMIN) and not api_key.user.has_role(Role.ROLE_REFERRAL_CLAIMER):
+    if not api_key.user.has_role(Role.ROLE_ADMIN) and not api_key.user.has_role(
+        Role.ROLE_REFERRAL_CLAIMER
+    ):
         return bad_request(web_utils.UNAUTHORIZED)
     ref = Referral.from_token(db.session, token)
     if not ref:
@@ -114,16 +143,19 @@ def referral_validate():
         return bad_request(web_utils.NOT_FOUND)
     return jsonify(dict(referral=ref.to_json()))
 
+
 @reward.route('/referral_claim', methods=['POST'])
 def referral_claim():
     if not use_referrals:
         return bad_request(web_utils.NOT_AVAILABLE)
-    token, api_key, err_response = auth_request_get_single_param(db, "token")
+    token, api_key, err_response = auth_request_get_single_param(db, 'token')
     if err_response:
         return err_response
     if not token or not api_key:
         return bad_request(web_utils.INVALID_PARAMETER)
-    if not api_key.user.has_role(Role.ROLE_ADMIN) and not api_key.user.has_role(Role.ROLE_REFERRAL_CLAIMER):
+    if not api_key.user.has_role(Role.ROLE_ADMIN) and not api_key.user.has_role(
+        Role.ROLE_REFERRAL_CLAIMER
+    ):
         return bad_request(web_utils.UNAUTHORIZED)
     ref = Referral.from_token(db.session, token)
     if not ref:
@@ -131,7 +163,7 @@ def referral_claim():
     if ref.status != ref.STATUS_CREATED:
         return bad_request(web_utils.NOT_FOUND)
     # send referral rewards
-    #TODO: create/send reward
+    # TODO: create/send reward
 
     ref.status = ref.STATUS_CLAIMED
     db.session.add(ref)

@@ -6,11 +6,30 @@ import math
 import time
 
 import gevent
-from flask import redirect, render_template, request, flash, jsonify, Response # pyright: ignore [reportPrivateImportUsage]
-from flask_security import roles_accepted # pyright: ignore [reportPrivateImportUsage]
+from flask import (
+    redirect,
+    render_template,
+    request,
+    flash,
+    jsonify,
+    Response,  # pyright: ignore [reportPrivateImportUsage]
+)
+from flask_security import roles_accepted  # pyright: ignore [reportPrivateImportUsage]
 
 from app_core import app, boolify, db, socketio
-from models import CryptoWithdrawal, FiatWithdrawal, User, Role, Topic, PushNotificationLocation, BrokerOrder, CryptoDeposit, FiatDeposit, KycRequest, FiatDbTransaction
+from models import (
+    CryptoWithdrawal,
+    FiatWithdrawal,
+    User,
+    Role,
+    Topic,
+    PushNotificationLocation,
+    BrokerOrder,
+    CryptoDeposit,
+    FiatDeposit,
+    KycRequest,
+    FiatDbTransaction,
+)
 import email_utils
 from fcm import FCM
 from web_utils import bad_request, get_json_params, get_json_params_optional
@@ -23,7 +42,7 @@ from payments_endpoint import payments
 from kyc_endpoint import kyc
 from ln_wallet_endpoint import ln_wallet
 import websocket
-import admin # import to register flask admin endpoints
+import admin  # import to register flask admin endpoints
 import dasset
 import assets
 import kyc_core
@@ -47,9 +66,9 @@ WITHDRAWAL_TYPE_FIAT = 'fiat'
 USER_ORDER_SHOW = 'show'
 USER_ORDER_CANCEL = 'cancel'
 
-#jsonrpc = JSONRPC(app, "/api")
+# jsonrpc = JSONRPC(app, "/api")
 logger = logging.getLogger(__name__)
-fcm = FCM(app.config["FIREBASE_CREDENTIALS"])
+fcm = FCM(app.config['FIREBASE_CREDENTIALS'])
 
 # blueprints
 app.register_blueprint(api, url_prefix='/apiv1')
@@ -63,9 +82,11 @@ app.register_blueprint(ln_wallet, url_prefix='/ln_wallet')
 # Flask views
 #
 
-@app.route("/")
+
+@app.route('/')
 def index():
-    return render_template("index.html")
+    return render_template('index.html')
+
 
 # https://gis.stackexchange.com/a/2964
 def meters_to_lat_lon_displacement(meters, origin_latitude):
@@ -73,7 +94,8 @@ def meters_to_lat_lon_displacement(meters, origin_latitude):
     lon = meters / (111111 * math.cos(math.radians(origin_latitude)))
     return lat, lon
 
-@app.route("/push_notifications", methods=["GET", "POST"])
+
+@app.route('/push_notifications', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def push_notifications():
     type_ = ''
@@ -84,19 +106,19 @@ def push_notifications():
     html = ''
     location = ''
     registration_token = ''
-    if request.method == "POST":
-        title = request.form["title"]
-        body = request.form["body"]
-        image = request.form["image"]
-        html = request.form["html"]
+    if request.method == 'POST':
+        title = request.form['title']
+        body = request.form['body']
+        image = request.form['image']
+        html = request.form['html']
         try:
-            type_ = request.form["type"]
-            if type_ == "topic":
-                topic = request.form["topic"]
+            type_ = request.form['type']
+            if type_ == 'topic':
+                topic = request.form['topic']
                 fcm.send_to_topic(topic, title, body, image, html)
-                flash(f"sent push notification ({topic})", "success")
-            elif type_ == "location":
-                location = request.form["location"]
+                flash(f'sent push notification ({topic})', 'success')
+            elif type_ == 'location':
+                location = request.form['location']
                 parts = location.split(',')
                 if len(parts) != 4:
                     raise Exception('invalid location parameter')
@@ -105,44 +127,70 @@ def push_notifications():
                 longitude = float(longitude)
                 max_dist_meters = int(max_dist_meters)
                 max_age_minutes = int(max_age_minutes)
-                max_lat_delta, max_long_delta = meters_to_lat_lon_displacement(max_dist_meters, latitude)
-                tokens = PushNotificationLocation.tokens_at_location(db.session, latitude, max_lat_delta, longitude, max_long_delta, max_age_minutes)
+                max_lat_delta, max_long_delta = meters_to_lat_lon_displacement(
+                    max_dist_meters, latitude
+                )
+                tokens = PushNotificationLocation.tokens_at_location(
+                    db.session,
+                    latitude,
+                    max_lat_delta,
+                    longitude,
+                    max_long_delta,
+                    max_age_minutes,
+                )
                 tokens = [x.fcm_registration_token for x in tokens]
                 fcm.send_to_tokens(tokens, title, body, image, html)
                 count = len(tokens)
-                flash(f"sent push notification ({count} devices)", "success")
+                flash(f'sent push notification ({count} devices)', 'success')
             else:
-                registration_token = request.form["registration_token"]
+                registration_token = request.form['registration_token']
                 fcm.send_to_tokens([registration_token], title, body, image, html)
-                flash("sent push notification", "success")
+                flash('sent push notification', 'success')
         except Exception as e:
-            flash(str(e.args[0]), "danger")
+            flash(str(e.args[0]), 'danger')
     topics = Topic.topic_list(db.session)
-    return render_template("push_notifications.html", topics=topics, type_=type_, topic=topic, location=location, title=title, body=body, image=image, html=html, registration_token=registration_token)
+    return render_template(
+        'push_notifications.html',
+        topics=topics,
+        type_=type_,
+        topic=topic,
+        location=location,
+        title=title,
+        body=body,
+        image=image,
+        html=html,
+        registration_token=registration_token,
+    )
 
-@app.route("/push_notifications_register", methods=["POST"])
+
+@app.route('/push_notifications_register', methods=['POST'])
 def push_notifications_register():
     content = request.get_json(force=True)
     if content is None:
-        return bad_request("failed to decode JSON object")
-    params, err_response = get_json_params(content, ["registration_token"])
+        return bad_request('failed to decode JSON object')
+    params, err_response = get_json_params(content, ['registration_token'])
     if err_response:
         return err_response
-    registration_token, = params
-    latitude, longitude = get_json_params_optional(content, ["latitude", "longitude"])
+    (registration_token,) = params
+    latitude, longitude = get_json_params_optional(content, ['latitude', 'longitude'])
     topics = Topic.topic_list(db.session)
     fcm.subscribe_to_topics(registration_token, topics)
     if latitude and longitude:
         latitude = float(latitude)
         longitude = float(longitude)
-        push_location = PushNotificationLocation.from_token(db.session, registration_token)
+        push_location = PushNotificationLocation.from_token(
+            db.session, registration_token
+        )
         if push_location:
             push_location.update(latitude, longitude)
         else:
-            push_location = PushNotificationLocation(registration_token, latitude, longitude)
+            push_location = PushNotificationLocation(
+                registration_token, latitude, longitude
+            )
         db.session.add(push_location)
         db.session.commit()
-    return jsonify(dict(result="ok"))
+    return jsonify(dict(result='ok'))
+
 
 @app.route('/test_email', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
@@ -158,14 +206,25 @@ def test_email():
             flash('Email sent', 'success')
         else:
             flash('Email failed', 'danger')
-    return render_template('test_email.html', recipient=recipient, subject=subject, message=message)
+    return render_template(
+        'test_email.html', recipient=recipient, subject=subject, message=message
+    )
+
 
 @app.route('/test_ws', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def test_ws():
     recipient = ''
     event = ''
-    events = ['user_info_update', 'broker_order_update', 'broker_order_new', 'fiat_deposit_update', 'fiat_deposit_new', 'crypto_deposit_update', 'crypto_deposit_new']
+    events = [
+        'user_info_update',
+        'broker_order_update',
+        'broker_order_new',
+        'fiat_deposit_update',
+        'fiat_deposit_new',
+        'crypto_deposit_update',
+        'crypto_deposit_new',
+    ]
     if request.method == 'POST':
         recipient = request.form['recipient']
         event = request.form['event']
@@ -199,7 +258,10 @@ def test_ws():
                 flash('Order not found', 'danger')
         else:
             flash('Event not yet implemented', 'danger')
-    return render_template('test_ws.html', recipient=recipient, event=event, events=events)
+    return render_template(
+        'test_ws.html', recipient=recipient, event=event, events=events
+    )
+
 
 @app.route('/user_kyc', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
@@ -222,9 +284,11 @@ def user_kyc():
                 if pdf:
                     return Response(
                         pdf,
-                        mimetype="application/pdf",
-                        headers={"Content-disposition":
-                                 f"attachment; filename={email}.pdf"})
+                        mimetype='application/pdf',
+                        headers={
+                            'Content-disposition': f'attachment; filename={email}.pdf'
+                        },
+                    )
                 flash('failed to download pdf', 'danger')
             elif kycrequest.status == kycrequest.STATUS_CREATED:
                 flash('User KYC is created but not completed', 'danger')
@@ -232,17 +296,33 @@ def user_kyc():
             flash('User not found', 'danger')
     return render_template('user_kyc.html')
 
+
 @app.route('/user_balance', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def user_balance():
-    actions = (USER_BALANCE_SHOW, USER_BALANCE_CREDIT, USER_BALANCE_DEBIT, USER_BALANCE_SWEEP)
+    actions = (
+        USER_BALANCE_SHOW,
+        USER_BALANCE_CREDIT,
+        USER_BALANCE_DEBIT,
+        USER_BALANCE_SWEEP,
+    )
     asset_names = assets.ASSETS.keys()
     action = email = asset = amount = desc = ''
 
     def return_response(err_msg=None):
         if err_msg:
             flash(err_msg, 'danger')
-        return render_template('user_balance.html', actions=actions, assets=asset_names, action=action, email=email, asset=asset, amount=amount, desc=desc)
+        return render_template(
+            'user_balance.html',
+            actions=actions,
+            assets=asset_names,
+            action=action,
+            email=email,
+            asset=asset,
+            amount=amount,
+            desc=desc,
+        )
+
     if request.method == 'POST':
         action = request.form['action']
         email = request.form['email']
@@ -260,42 +340,65 @@ def user_balance():
         if action == USER_BALANCE_SHOW:
             balances = fiatdb_core.user_balances(db.session, user)
             for key, val in balances.items():
-                balances[key] = assets.asset_int_to_dec(key, val)
+                val = assets.asset_int_to_dec(key, val)
+                balances[key] = assets.asset_dec_to_str(key, val)
             flash(str(balances), 'primary')
         elif action in (USER_BALANCE_CREDIT, USER_BALANCE_DEBIT):
             if asset not in asset_names:
                 return return_response('Invalid asset')
             try:
                 amount_dec = decimal.Decimal(amount)
-            except:
+            except Exception:
                 amount_dec = decimal.Decimal(0)
             if amount_dec <= decimal.Decimal(0):
                 return return_response('Invalid amount')
             amount_int = assets.asset_dec_to_int(asset, amount_dec)
             balance = fiatdb_core.user_balance(db.session, asset, user)
             balance = assets.asset_int_to_dec(asset, balance)
+            balance = assets.asset_dec_to_str(asset, balance)
             flash(f'current balance: {balance} {asset}', 'primary')
-            fiatdb_action = FiatDbTransaction.ACTION_CREDIT if action == USER_BALANCE_CREDIT else FiatDbTransaction.ACTION_DEBIT
+            fiatdb_action = (
+                FiatDbTransaction.ACTION_CREDIT
+                if action == USER_BALANCE_CREDIT
+                else FiatDbTransaction.ACTION_DEBIT
+            )
             ftx = fiatdb_core.tx_create(user, fiatdb_action, asset, amount_int, desc)
             db.session.add(ftx)
             db.session.commit()
             balance = fiatdb_core.user_balance(db.session, asset, user)
             balance = assets.asset_int_to_dec(asset, balance)
+            balance = assets.asset_dec_to_str(asset, balance)
             flash(f'new balance: {balance} {asset}', 'success')
         elif action == USER_BALANCE_SWEEP:
             if not user.dasset_subaccount:
                 return return_response('user does not have dasset subaccount')
-            balances = dasset.account_balances(subaccount_id=user.dasset_subaccount.subaccount_id)
+            balances = dasset.account_balances(
+                subaccount_id=user.dasset_subaccount.subaccount_id
+            )
             if not balances:
                 return return_response('failed to retreive dasset balances')
             for balance in balances:
                 if balance.available > decimal.Decimal(0):
-                    if not dasset.transfer(None, user.dasset_subaccount.subaccount_id, balance.symbol, balance.available):
-                        return return_response(f'failed to transfer {balance.symbol} funds from {email} subaccount to master')
-                    flash(f'transfered {balance.available} of {balance.total} {balance.symbol} to master account', 'success')
+                    if not dasset.transfer(
+                        None,
+                        user.dasset_subaccount.subaccount_id,
+                        balance.symbol,
+                        balance.available,
+                    ):
+                        return return_response(
+                            f'failed to transfer {balance.symbol} funds from {email} subaccount to master'
+                        )
+                    flash(
+                        f'transfered {balance.available} of {balance.total} {balance.symbol} to master account',
+                        'success',
+                    )
                 else:
-                    flash(f'no available balance of {balance.total} {balance.symbol} to transfer', 'warning')
+                    flash(
+                        f'no available balance of {balance.total} {balance.symbol} to transfer',
+                        'warning',
+                    )
     return return_response()
+
 
 @app.route('/user_withdrawal', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
@@ -307,7 +410,15 @@ def user_withdrawal():
     def return_response(err_msg=None):
         if err_msg:
             flash(err_msg, 'danger')
-        return render_template('user_withdrawal.html', actions=actions, types=types, type=type_, action=action, token=token)
+        return render_template(
+            'user_withdrawal.html',
+            actions=actions,
+            types=types,
+            type=type_,
+            action=action,
+            token=token,
+        )
+
     if request.method == 'POST':
         action = request.form['action']
         type_ = request.form['type']
@@ -328,14 +439,20 @@ def user_withdrawal():
             if action == USER_WITHDRAWAL_SHOW:
                 flash(str(withdrawal.to_json()), 'primary')
             elif action == USER_WITHDRAWAL_CANCEL:
-                if withdrawal.status not in (withdrawal.STATUS_CREATED, withdrawal.STATUS_AUTHORIZED):
-                    return return_response(f'invalid withdrawal status - {withdrawal.status}')
+                if withdrawal.status not in (
+                    withdrawal.STATUS_CREATED,
+                    withdrawal.STATUS_AUTHORIZED,
+                ):
+                    return return_response(
+                        f'invalid withdrawal status - {withdrawal.status}'
+                    )
                 ftx = depwith.withdrawal_cancel(withdrawal, 'admin')
                 db.session.add(withdrawal)
                 db.session.add(ftx)
                 db.session.commit()
                 flash(f'{type_} withdrawal {token} {action} completed', 'success')
     return return_response()
+
 
 @app.route('/user_order', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
@@ -346,7 +463,10 @@ def user_order():
     def return_response(err_msg=None):
         if err_msg:
             flash(err_msg, 'danger')
-        return render_template('user_order.html', actions=actions, action=action, token=token)
+        return render_template(
+            'user_order.html', actions=actions, action=action, token=token
+        )
+
     if request.method == 'POST':
         action = request.form['action']
         token = request.form['token']
@@ -373,10 +493,12 @@ def user_order():
                 flash(f'canceled and refunded order {token}', 'success')
     return return_response()
 
+
 @app.route('/config', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
 def config():
     return render_template('config.html')
+
 
 @app.route('/process_depwith_and_broker', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
@@ -385,15 +507,18 @@ def process_depwith_broker():
     flash('processed deposits/withdrawals and orders', 'success')
     return redirect('/')
 
+
 @app.route('/tripwire', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
 def tripwire_ep():
     return render_template('tripwire.html', data=tripwire.DATA)
 
+
 @app.route('/db_test', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
 def db_test():
     return render_template('db_test.html')
+
 
 def _db_test_read(delay_before: int, delay_after: int):
     time.sleep(delay_before)
@@ -403,9 +528,11 @@ def _db_test_read(delay_before: int, delay_after: int):
         return setting.value
     return ''
 
+
 def _db_test_write(value: str):
     db_settings.set_value(db.session, 'db_test', value)
     db.session.commit()
+
 
 @app.route('/db_test_action', methods=['POST'])
 @roles_accepted(Role.ROLE_ADMIN)
@@ -428,13 +555,14 @@ def db_test_action():
             _db_test_write(value)
         return 'ok'
 
+
 #
 # gevent class
 #
 
-class WebGreenlet():
 
-    def __init__(self, exception_func, addr="0.0.0.0", port=5000):
+class WebGreenlet:
+    def __init__(self, exception_func, addr='0.0.0.0', port=5000):
         self.addr = addr
         self.port = port
         # create greenlets
@@ -444,12 +572,14 @@ class WebGreenlet():
             self.runloop_greenlet.link_exception(self.exception_func)
 
     def _runloop(self):
-        logger.info("WebGreenlet runloop started")
-        logger.info("WebGreenlet webserver starting (addr: %s, port: %d)", self.addr, self.port)
+        logger.info('WebGreenlet runloop started')
+        logger.info(
+            'WebGreenlet webserver starting (addr: %s, port: %d)', self.addr, self.port
+        )
         socketio.run(app, host=self.addr, port=self.port)
 
     def start(self):
-        logger.info("starting WebGreenlet runloop...")
+        logger.info('starting WebGreenlet runloop...')
         # start greenlets
         self.runloop_greenlet.start()
         tasks.task_manager.start()
@@ -459,6 +589,7 @@ class WebGreenlet():
         greenlets = tasks.task_manager.kill()
         greenlets.append(self.runloop_greenlet)
         gevent.joinall(greenlets)
+
 
 def run():
     # setup logging
@@ -478,5 +609,6 @@ def run():
 
     web_greenlet.stop()
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     run()

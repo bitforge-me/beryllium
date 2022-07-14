@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 # Task classes
 #
 
+
 class Task:
     _name: str
     _func: Callable
@@ -21,7 +22,7 @@ class Task:
 
     def __init__(self, name: str, func: Callable, interval_minutes: int, params: list):
         self._name = name
-        self._func = func # type: ignore
+        self._func = func  # type: ignore
         self._interval_minutes = interval_minutes
         self._params = params
         self._last = time.time()
@@ -47,7 +48,7 @@ class TaskNonTerminating:
 
     def __init__(self, name: str, func: Callable):
         self._name = name
-        self._func = func # type: ignore
+        self._func = func  # type: ignore
         self._greenlet = gevent.Greenlet(func)
 
     def start(self):
@@ -58,6 +59,7 @@ class TaskNonTerminating:
 
     def greenlet(self):
         return self._greenlet
+
 
 class TaskManager:
     _repeated_tasks: list[Task] = []

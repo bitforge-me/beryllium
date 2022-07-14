@@ -54,13 +54,17 @@ TWO_FACTOR_DISABLED = 'two factor disabled'
 RECIPIENT_EXISTS = 'recipient exists'
 UNKNOWN_ERROR = 'unknown error'
 
+
 def bad_request(message: str, code: int = 400) -> Response:
     logger.warning(message)
     response = jsonify({'message': message})
     response.status_code = code
     return response
 
-def get_json_params(json_content, param_names: list[str]) -> tuple[list, Response | None]:
+
+def get_json_params(
+    json_content, param_names: list[str]
+) -> tuple[list, Response | None]:
     param_values = []
     param_name = ''
     try:
@@ -73,6 +77,7 @@ def get_json_params(json_content, param_names: list[str]) -> tuple[list, Respons
         return param_values, bad_request(f"'{param_name}' not found")
     return param_values, None
 
+
 def get_json_params_optional(json_content, param_names: list[str]) -> list:
     param_values = []
     for param in param_names:
@@ -82,29 +87,40 @@ def get_json_params_optional(json_content, param_names: list[str]) -> list:
             param_values.append(None)
     return param_values
 
+
 def to_bytes(data: str | bytes | bytearray) -> bytes | bytearray:
     if not isinstance(data, (bytes, bytearray)):
-        return data.encode("utf-8")
+        return data.encode('utf-8')
     return data
 
+
 def create_hmac_sig(api_secret: str, message: str | bytes) -> str:
-    _hmac = hmac.new(to_bytes(api_secret), msg=to_bytes(message), digestmod=hashlib.sha256)
+    _hmac = hmac.new(
+        to_bytes(api_secret), msg=to_bytes(message), digestmod=hashlib.sha256
+    )
     sig_bytes = _hmac.digest()
-    return base64.b64encode(sig_bytes).decode("utf-8")
+    return base64.b64encode(sig_bytes).decode('utf-8')
+
 
 def request_get_signature():
     return request.headers.get('X-Signature')
 
-def check_hmac_auth(api_key: ApiKey, nonce: int, sig: str, body: str | bytes) -> tuple[bool, str]:
+
+def check_hmac_auth(
+    api_key: ApiKey, nonce: int, sig: str, body: str | bytes
+) -> tuple[bool, str]:
     if int(nonce) <= int(api_key.nonce):
         return False, OLD_NONCE
     our_sig = create_hmac_sig(api_key.secret, body)
     if sig == our_sig:
         api_key.nonce = nonce
-        return True, ""
+        return True, ''
     return False, AUTH_FAILED
 
-def check_auth(session: Session, api_key_token: str, nonce: int, sig: str, body: str | bytes) -> tuple[bool, str, ApiKey | None]:
+
+def check_auth(
+    session: Session, api_key_token: str, nonce: int, sig: str, body: str | bytes
+) -> tuple[bool, str, ApiKey | None]:
     api_key = ApiKey.from_token(session, api_key_token)
     if not api_key:
         return False, AUTH_FAILED, None
@@ -115,7 +131,8 @@ def check_auth(session: Session, api_key_token: str, nonce: int, sig: str, body:
         return False, reason, None
     # update api key nonce
     session.commit()
-    return True, "", api_key
+    return True, '', api_key
+
 
 def auth_request(db: SQLAlchemy):
     sig = request_get_signature()
@@ -124,7 +141,7 @@ def auth_request(db: SQLAlchemy):
     content = request.get_json(force=True)
     if content is None:
         return None, bad_request(INVALID_JSON)
-    params, err_response = get_json_params(content, ["api_key", "nonce"])
+    params, err_response = get_json_params(content, ['api_key', 'nonce'])
     if err_response:
         return None, err_response
     api_key, nonce = params
@@ -134,6 +151,7 @@ def auth_request(db: SQLAlchemy):
     assert api_key
     return api_key, None
 
+
 def auth_request_get_single_param(db: SQLAlchemy, param_name: str):
     sig = request_get_signature()
     if not sig:
@@ -141,7 +159,7 @@ def auth_request_get_single_param(db: SQLAlchemy, param_name: str):
     content = request.get_json(force=True)
     if content is None:
         return None, None, bad_request(INVALID_JSON)
-    params, err_response = get_json_params(content, ["api_key", "nonce", param_name])
+    params, err_response = get_json_params(content, ['api_key', 'nonce', param_name])
     if err_response:
         return None, None, err_response
     api_key, nonce, param = params
@@ -151,6 +169,7 @@ def auth_request_get_single_param(db: SQLAlchemy, param_name: str):
     assert api_key
     return param, api_key, None
 
+
 def auth_request_get_params(db: SQLAlchemy, param_names: list[str]):
     sig = request_get_signature()
     if not sig:
@@ -158,7 +177,7 @@ def auth_request_get_params(db: SQLAlchemy, param_names: list[str]):
     content = request.get_json(force=True)
     if content is None:
         return None, None, bad_request(INVALID_JSON)
-    params, err_response = get_json_params(content, ["api_key", "nonce"] + param_names)
+    params, err_response = get_json_params(content, ['api_key', 'nonce'] + param_names)
     if err_response:
         return None, None, err_response
     api_key, nonce, *_ = params
