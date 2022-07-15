@@ -143,7 +143,7 @@ def user_two_factor_enabled_check():
     if not user:
         time.sleep(5)
         return bad_request(web_utils.AUTH_FAILED)
-    if not flask_security.utils.verify_password(password, user.password):
+    if not verify_password(password, user.password):
         time.sleep(5)
         return bad_request(web_utils.AUTH_FAILED)
     tf_code_send(user)
@@ -167,7 +167,7 @@ def api_key_create():
     if not user:
         time.sleep(5)
         return bad_request(web_utils.AUTH_FAILED)
-    if not flask_security.utils.verify_password(password, user.password):
+    if not verify_password(password, user.password):
         time.sleep(5)
         return bad_request(web_utils.AUTH_FAILED)
     if tf_enabled_check(user) and not tf_code_validate(user, tf_code):
