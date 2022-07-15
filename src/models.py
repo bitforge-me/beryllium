@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing import List, TYPE_CHECKING
 from datetime import datetime, timedelta
 import logging
-from typing_extensions import reveal_type
 
 from flask import url_for
 from flask_security.core import UserMixin, RoleMixin
