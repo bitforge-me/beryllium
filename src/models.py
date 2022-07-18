@@ -5,7 +5,7 @@ import logging
 from typing_extensions import reveal_type
 
 from flask import url_for
-from flask_security import UserMixin, RoleMixin  # pyright: ignore [reportPrivateImportUsage]
+from flask_security.core import UserMixin, RoleMixin
 from marshmallow import Schema, fields
 from sqlalchemy import and_, Column, Integer, String, DateTime, Boolean, BigInteger, Float, ForeignKey, Table
 from sqlalchemy.orm import relationship, backref, RelationshipProperty
@@ -72,7 +72,7 @@ class OfAssetMixin():
 roles_users = Table(
     'roles_users',
     BaseModel.metadata,
-    Column('user_id', Integer(), ForeignKey('user.id')),  # pyright: ignore [reportGeneralTypeIssues]
+    Column('user_id', Integer(), ForeignKey('user.id')),
     Column('role_id', Integer(), ForeignKey('role.id'))
 )
 
@@ -204,7 +204,7 @@ class UserUpdateEmailRequest(BaseModel, FromTokenMixin):
 permissions_api_keys = Table(
     'permissions_api_keys',
     BaseModel.metadata,
-    Column('api_key_id', Integer(), ForeignKey('api_key.id')),  # pyright: ignore [reportGeneralTypeIssues]
+    Column('api_key_id', Integer(), ForeignKey('api_key.id')),
     Column('permission_id', Integer(), ForeignKey('permission.id'))
 )
 
