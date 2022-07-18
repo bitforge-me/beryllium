@@ -7,7 +7,7 @@ from flask_admin.babel import lazy_gettext
 from flask_admin.contrib import sqla
 from flask_admin.contrib.sqla.filters import BaseSQLAFilter
 from flask_admin.model import filters, typefmt
-from flask_security import current_user  # pyright: ignore [reportGeneralTypeIssues]
+from flask_login.utils import current_user
 from markupsafe import Markup
 
 from app_core import app, db
