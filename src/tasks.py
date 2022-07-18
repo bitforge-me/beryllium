@@ -107,8 +107,10 @@ def _process_ln_invoices_loop():
 def rebalance_channels(oscid: str, iscid: str, amount: int):
     gevent.sleep(10, False) # HACK: wait for the webserver to start
     LnRpc().rebalance_channel(oscid, iscid, amount)
-    email_utils.send_email(logger, 'Channel Rebalance Successful', 'Rebalanced {0} -> {1} with {2} sats'.format(oscid, iscid, amount))
+    send_email('Channel Rebalance Successful', 'Rebalanced {0} -> {1} with {2} sats'.format(oscid, iscid, amount))
 
+def send_email(title: str, msg: str):
+    email_utils.send_email(logger, title, msg)
 #
 # Init tasks
 #
