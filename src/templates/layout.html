@@ -39,7 +39,7 @@
                     {% if request.blueprint == "ln_wallet" %}
                         {% if request.endpoint != "ln_wallet.ln_index" %}
                             <a class="btn {% if request.endpoint == 'ln_wallet.ln_index' %}btn-primary{% else %}btn-secondary{% endif %}"
-                               href="/ln_wallet"><i class="glyphicon glyphicon-chevron-left"></i>Lightning Home</a>&nbsp
+                               href="/ln_wallet/"><i class="glyphicon glyphicon-chevron-left"></i>Lightning Home</a>&nbsp
                         {% endif %}
                     {% elif request.blueprint == "reporting" %}
                         <a class="btn {% if request.endpoint == 'reporting.dashboard_general' %}btn-primary{% else %}btn-secondary{% endif %}"

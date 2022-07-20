@@ -610,6 +610,7 @@ admin = flask_admin.Admin(
     'Beryllium Admin',
     base_template='my_master.html',
     template_mode='bootstrap3',
+    url='/admin/',
 )
 
 # Add model views
