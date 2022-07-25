@@ -153,6 +153,31 @@ services:
     volumes:
     - ./web/dkim/keys:/etc/opendkim/keys
 
+  telegraf:
+    image: telegraf
+    container_name: telegraf
+    restart: unless-stopped
+    environment:
+      HOST_ETC: /hostfs/etc
+      HOST_PROC: /hostfs/proc
+      HOST_SYS: /hostfs/sys
+      HOST_VAR: /hostfs/var
+      HOST_RUN: /hostfs/run
+      HOST_MOUNT_PREFIX: /hostfs
+      SERVER_NAME: ${SERVER_NAME:?SERVER_NAME unset}
+      TELEGRAF_NAME: ${TELEGRAF_NAME}
+      TELEGRAF_INFLUXDB_DB: ${TELEGRAF_INFLUXDB_DB:?TELEGRAF_INFLUXDB_DB unset}
+      TELEGRAF_INFLUXDB_URL: ${TELEGRAF_INFLUXDB_URL:?TELEGRAF_INFLUXDB_URL unset}
+      TELEGRAF_INFLUXDB_USER: ${TELEGRAF_INFLUXDB_USER:?TELEGRAF_INFLUXDB_USER unset}
+      TELEGRAF_INFLUXDB_PASS: ${TELEGRAF_INFLUXDB_PASS:? TELEGRAF_INFLUXDB_PASS unset}
+    volumes:
+      - '/:/hostfs:ro'
+      - './telegraf/telegraf_data:/etc/telegraf'
+      - './telegraf/telegraf_data/telegraf.d:/etc/telegraf/telegraf.d'
+      - './telegraf/telegraf_data/telegraf_scripts:/opt/telegraf_scripts'
+    links:
+      - app
+
 volumes:
   pgdata:
   bitcoin_datadir:

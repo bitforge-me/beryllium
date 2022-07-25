@@ -1,0 +1,50 @@
+# Global Agent Configuration
+[global_tags]
+  group = "dev"
+
+[agent]
+  hostname = "{{ environ('TELEGRAF_NAME') | default('dev') }}"
+  flush_interval = "15s"
+  interval = "15s"
+
+# Input Plugins
+[[inputs.cpu]]
+    percpu = true
+    totalcpu = true
+    collect_cpu_time = false
+    report_active = false
+[[inputs.disk]]
+    ignore_fs = ["tmpfs", "devtmpfs", "devfs"]
+[[inputs.diskio]]
+[[inputs.mem]]
+[[inputs.net]]
+[[inputs.system]]
+[[inputs.swap]]
+[[inputs.netstat]]
+[[inputs.processes]]
+[[inputs.kernel]]
+#[[inputs.logparser]]
+#  files = ["/var/log/fail2ban.log"]
+#  from_beginning = false
+#  name_override = "fail2ban_log"
+#  [inputs.logparser.grok]
+#    patterns = ["%{TS_F2B:timestamp:ts-\"2006-01-02 15:04:05.000\"} fail2ban.actions%{SPACE}\\[%{NUMBER:pid:int}\\]: NOTICE%{SPACE}\\[%{WORD:service}\\] %{ACTION:action} %{IP:ip}"]
+#    custom_patterns = '''
+#        TS_F2B %{YEAR}-%{MONTHNUM}-%{MONTHDAY} %{HOUR}:%{MINUTE}:%{SECOND},%{NUMBER}
+#        ACTION (Ban|Unban)
+#'''
+
+[[inputs.http]]
+  urls = ["http://app:5000/monitoring/info"]
+  name_override = "lightning_info"
+  data_format = "json"
+  timeout = "30s"
+  headers = {"HOST" = "{{ environ('SERVER_NAME') }}"}
+  json_string_fields = ["BTC_available", "BTC_total", "NZD_available", "NZD_total"]
+
+# Output Plugin InfluxDB
+[[outputs.influxdb]]
+  database = "{{ environ('TELEGRAF_INFLUXDB_DB') }}"
+  urls = [ "{{ environ('TELEGRAF_INFLUXDB_URL') }}" ]
+  username = "{{ environ('TELEGRAF_INFLUXDB_USER') }}"
+  password = "{{ environ('TELEGRAF_INFLUXDB_PASS') }}"

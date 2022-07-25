@@ -38,6 +38,10 @@ server {
     autoindex off;
   }
 
+  location /monitoring {
+    deny all;
+  }
+
 #  location /spark/ {
 #    rewrite /spark/(.*) /$1  break;
 #    proxy_set_header X-Real-IP $remote_addr;
