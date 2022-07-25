@@ -1,6 +1,11 @@
 import os
 import decimal
 
+# make the postgres adapter cooperative
+# we need to call this before sqlalchemy loads postgrest to ensure the lib is patched before use
+import psycogreen.gevent
+psycogreen.gevent.patch_psycopg()  # noqa
+
 from flask import Flask
 import flask.json
 from werkzeug.middleware.proxy_fix import ProxyFix

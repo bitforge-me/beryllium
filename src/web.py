@@ -445,7 +445,7 @@ def task_test():
     return render_template('task_test.html')
 
 def _task_test(name: str, action: str, work_time: int, yield_after: int):
-    assert action in ('cpu', 'io')
+    assert action in ('cpu', 'http', 'postgres')
     logger.info('starting task: %s-%s for %dms (yield after %dms)', name, action, work_time, yield_after)
     finish_time = datetime.now() + timedelta(milliseconds=work_time)
     last_yield = datetime.now()
@@ -461,9 +461,12 @@ def _task_test(name: str, action: str, work_time: int, yield_after: int):
                 utils.yield_gevent()
             # pointless calculation
             x = 999999999 * 999999999999999999999
-        else:
-            # pointless IO
+        elif action == 'http':
+            # pointless http request
             httpreq.get('https://google.com').text
+        else:
+            secs = work_time / 1000
+            db.session.execute('select pg_sleep(:secs)', {'secs': secs})
 
 @app.route('/task_test_action', methods=['POST'])
 @roles_accepted(Role.ROLE_ADMIN)
