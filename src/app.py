@@ -6,7 +6,6 @@ import signal
 import traceback
 
 import gevent
-import gevent.pool
 from flask_security.utils import encrypt_password
 
 import payouts_core

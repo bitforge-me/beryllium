@@ -2,6 +2,10 @@ from decimal import Decimal
 import os
 import datetime
 
+# make the standard socket library cooperative
+# we need to call this before pyln to ensure the socket lib is patched before use
+from gevent import monkey
+monkey.patch_socket()  # noqa
 from pyln.client import LightningRpc
 
 import assets
