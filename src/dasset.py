@@ -6,12 +6,12 @@ from enum import Enum
 import time
 from typing import Any, Tuple
 
-import requests
 import pyotp
 
-import utils
 from app_core import app
 import assets
+import utils
+import httpreq
 
 logger = logging.getLogger(__name__)
 
@@ -159,7 +159,7 @@ def _parse_withdrawal(item):
 # Dasset API Requests
 #
 
-def _req_get(endpoint: str, params=None, subaccount_id: str | None = None, noapi_in_path=False, quiet=False):
+def _req_get(endpoint: str, params: dict = {}, subaccount_id: str | None = None, noapi_in_path=False, quiet=False):
     url = URL_BASE + endpoint
     if noapi_in_path:
         url = URL_BASE_NOAPI + endpoint
@@ -168,14 +168,14 @@ def _req_get(endpoint: str, params=None, subaccount_id: str | None = None, noapi
     headers['x-account-id'] = DASSET_ACCOUNT_ID
     if subaccount_id:
         headers['x-subaccount-id'] = subaccount_id
-    r = requests.get(url, headers=headers, params=params)
+    r = httpreq.get(url, headers=headers, params=params)
     if not quiet:
         logger.info('GET - %s', url)
         headers['x-api-key'] = 'xxxxx'
         logger.info('HEADERS - %s', headers)
     return r
 
-def _req_post(endpoint: str, params, subaccount_id: str | None = None, noapi_in_path=False):
+def _req_post(endpoint: str, params: dict, subaccount_id: str | None = None, noapi_in_path=False):
     url = URL_BASE + endpoint
     if noapi_in_path:
         url = URL_BASE_NOAPI + endpoint
@@ -184,7 +184,7 @@ def _req_post(endpoint: str, params, subaccount_id: str | None = None, noapi_in_
     headers['x-account-id'] = DASSET_ACCOUNT_ID
     if subaccount_id:
         headers['x-subaccount-id'] = subaccount_id
-    r = requests.post(url, headers=headers, data=json.dumps(params))
+    r = httpreq.post(url, headers=headers, data=json.dumps(params))
     logger.info('POST - %s', url)
     headers['x-api-key'] = 'xxxxx'
     logger.info('HEADERS - %s', headers)
@@ -197,7 +197,7 @@ def _req_put(endpoint, params):
     headers['x-api-key'] = DASSET_API_SECRET
     headers['x-account-id'] = DASSET_ACCOUNT_ID
     logger.info('   POST - %s', url)
-    r = requests.put(url, headers=headers, data=json.dumps(params))
+    r = httpreq.put(url, headers=headers, data=json.dumps(params))
     return r
 
 def assets_req(asset=None):
@@ -207,7 +207,7 @@ def assets_req(asset=None):
     r = _req_get(endpoint)
     if r.status_code == 200:
         return [_parse_asset(a) for a in r.json() if a['symbol'] in assets.ASSETS]
-    logger.error('request failed: %d, %s', r.status_code, r.content)
+    logger.error('request failed: %d, %s', r.status_code, r.text[:100])
     return None
 
 def markets_refresh_cache(margin: int):
@@ -237,7 +237,7 @@ def markets_req(use_cache=False, quiet=False):
         _markets_cache = time.time(), markets
         # return result to caller
         return markets
-    logger.error('request failed: %d, %s', r.status_code, r.content)
+    logger.error('request failed: %d, %s', r.status_code, r.text[:100])
     return None
 
 def market_req(name, use_cache=False):
@@ -275,7 +275,7 @@ def order_book_req(symbol, use_cache=False, quiet=False):
         _orderbook_cache[symbol] = time.time(), book
         # return result to caller
         return book, BROKER_ORDER_FEE
-    logger.error('request failed: %d, %s', r.status_code, r.content)
+    logger.error('request failed: %d, %s', r.status_code, r.text[:100])
     return None
 
 def _balances_req(asset: str | None, subaccount_id: str | None):
@@ -287,7 +287,7 @@ def _balances_req(asset: str | None, subaccount_id: str | None):
         balances = r.json()
         balances = [_parse_balance(b) for b in balances if b['currencySymbol'] in assets.ASSETS]
         return balances
-    logger.error('request failed: %d, %s', r.status_code, r.content)
+    logger.error('request failed: %d, %s', r.status_code, r.text[:100])
     return None
 
 def _order_create_req(market: str, side: assets.MarketSide, amount: decimal.Decimal, price: decimal.Decimal):
@@ -302,7 +302,7 @@ def _order_create_req(market: str, side: assets.MarketSide, amount: decimal.Deci
     r = _req_post(endpoint, params=dict(amount=float(amount), tradingPair=market, side=dasset_side, orderType='LIMIT', timeInForce='FILL_OR_KILL', limit=float(price)))
     if r.status_code == 200:
         return r.json()[0]['order']['orderId']
-    logger.error('request failed: %d, %s', r.status_code, r.content)
+    logger.error('request failed: %d, %s', r.status_code, r.text[:100])
     return None
 
 def _orders_req(market, offset, limit):
@@ -311,7 +311,7 @@ def _orders_req(market, offset, limit):
     r = _req_get(endpoint, params=dict(marketSymbol=market, limit=limit, page=page))
     if r.status_code == 200:
         return r.json()[0]
-    logger.error('request failed: %d, %s', r.status_code, r.content)
+    logger.error('request failed: %d, %s', r.status_code, r.text[:100])
     return None
 
 def _order_status_req(order_id: str, market: str):
@@ -338,7 +338,7 @@ def _crypto_withdrawal_create_req(asset: str, amount: decimal.Decimal, address: 
     if r.status_code == 200:
         withdrawal = _parse_withdrawal(r.json()[0])
         return withdrawal.id
-    logger.error('request failed: %d, %s', r.status_code, r.content)
+    logger.error('request failed: %d, %s', r.status_code, r.text[:100])
     return None
 
 def _crypto_withdrawal_status_req(withdrawal_id: str):
@@ -346,7 +346,7 @@ def _crypto_withdrawal_status_req(withdrawal_id: str):
     r = _req_get(endpoint)
     if r.status_code == 200:
         return _parse_withdrawal(r.json()[0])
-    logger.error('request failed: %d, %s', r.status_code, r.content)
+    logger.error('request failed: %d, %s', r.status_code, r.text[:100])
     return None
 
 def _crypto_withdrawal_confirm_req(withdrawal_id: str, totp_code: str):
@@ -354,7 +354,7 @@ def _crypto_withdrawal_confirm_req(withdrawal_id: str, totp_code: str):
     r = _req_post(endpoint, params=dict(txId=withdrawal_id, token=totp_code), noapi_in_path=True)
     if r.status_code == 200:
         return True
-    logger.error('request failed: %d, %s', r.status_code, r.content)
+    logger.error('request failed: %d, %s', r.status_code, r.text[:100])
     return False
 
 def _addresses_req(asset: str, subaccount_id: str):
@@ -366,7 +366,7 @@ def _addresses_req(asset: str, subaccount_id: str):
             if item['status'] == 'PROVISIONED':
                 addrs.append(item['cryptoAddress'])
         return addrs
-    logger.error('request failed: %d, %s', r.status_code, r.content)
+    logger.error('request failed: %d, %s', r.status_code, r.text[:100])
     return None
 
 def _addresses_create_req(asset: str, subaccount_id: str):
@@ -374,7 +374,7 @@ def _addresses_create_req(asset: str, subaccount_id: str):
     r = _req_post(endpoint, params=dict(currencySymbol=asset), subaccount_id=subaccount_id)
     if r.status_code == 200:
         return r.json()[0]['status'] == 'REQUESTED'
-    logger.error('request failed: %d, %s', r.status_code, r.content)
+    logger.error('request failed: %d, %s', r.status_code, r.text[:100])
     return False
 
 def _crypto_deposits_pending_req(asset: str, subaccount_id: str):
@@ -384,7 +384,7 @@ def _crypto_deposits_pending_req(asset: str, subaccount_id: str):
         deposits = r.json()
         deposits = [_parse_deposit(d) for d in deposits]
         return deposits
-    logger.error('request failed: %d, %s', r.status_code, r.content)
+    logger.error('request failed: %d, %s', r.status_code, r.text[:100])
     return None
 
 def _crypto_deposits_closed_req(asset: str, subaccount_id: str):
@@ -394,7 +394,7 @@ def _crypto_deposits_closed_req(asset: str, subaccount_id: str):
         deposits = r.json()
         deposits = [_parse_deposit(d) for d in deposits if d['currencySymbol'] == asset]
         return deposits
-    logger.error('request failed: %d, %s', r.status_code, r.content)
+    logger.error('request failed: %d, %s', r.status_code, r.text[:100])
     return None
 
 def _crypto_deposit_status_req(deposit_id: str):
@@ -402,7 +402,7 @@ def _crypto_deposit_status_req(deposit_id: str):
     r = _req_get(endpoint)
     if r.status_code == 200:
         return _parse_deposit(r.json()[0])
-    logger.error('request failed: %d, %s', r.status_code, r.content)
+    logger.error('request failed: %d, %s', r.status_code, r.text[:100])
     return None
 
 def _subaccount_req(reference: str):
@@ -410,7 +410,7 @@ def _subaccount_req(reference: str):
     r = _req_put(endpoint, params=dict(reference=reference))
     if r.status_code == 200:
         return r.json()[0]
-    logger.error('request failed: %d, %s', r.status_code, r.content)
+    logger.error('request failed: %d, %s', r.status_code, r.text[:100])
     return None
 
 def _transfer_req(to_master: bool, from_subaccount_id: str | None, to_subaccount_id: str | None, asset: str, amount: decimal.Decimal):
@@ -418,7 +418,7 @@ def _transfer_req(to_master: bool, from_subaccount_id: str | None, to_subaccount
     r = _req_put(endpoint, params=dict(toMasterAccount=to_master, fromSubaccountId=from_subaccount_id, toSubaccountId=to_subaccount_id, symbol=asset, quantity=str(amount)))
     if r.status_code == 200:
         return True
-    logger.error('request failed: %d, %s', r.status_code, r.content)
+    logger.error('request failed: %d, %s', r.status_code, r.text[:100])
     return False
 
 #

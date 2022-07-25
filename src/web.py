@@ -10,7 +10,6 @@ import gevent
 from flask import redirect, render_template, request, flash, jsonify
 from flask.wrappers import Response
 from flask_security.decorators import roles_accepted
-import requests
 
 from app_core import app, boolify, db, socketio
 from models import User, Role, Topic, PushNotificationLocation, BrokerOrder, BalanceUpdate, KycRequest, FiatDbTransaction
@@ -36,6 +35,7 @@ import tripwire
 import db_settings
 import tasks
 import utils
+import httpreq
 
 USER_BALANCE_SHOW = 'show balance'
 USER_BALANCE_CREDIT = 'credit'
@@ -463,7 +463,7 @@ def _task_test(name: str, action: str, work_time: int, yield_after: int):
             x = 999999999 * 999999999999999999999
         else:
             # pointless IO
-            requests.get('https://google.com')
+            httpreq.get('https://google.com').text
 
 @app.route('/task_test_action', methods=['POST'])
 @roles_accepted(Role.ROLE_ADMIN)

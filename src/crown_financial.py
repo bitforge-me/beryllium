@@ -4,11 +4,11 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from sqlalchemy.orm.session import Session
-import requests
 
 from app_core import app
 from models import FiatDepositCode, User
 from log_utils import setup_logging
+import httpreq
 
 logger = logging.getLogger(__name__)
 
@@ -57,11 +57,11 @@ def _req(endpoint, data=None):
     headers = {'Authorization': f'Basic {authorizing_key}', 'APIKEY': f'{API_KEY}'}
     if data:
         logger.info('   POST - %s', url)
-        return requests.post(url, headers=headers, data=data)
+        return httpreq.post(url, headers=headers, data=data)
     logger.info('   GET - %s', url)
-    return requests.get(url, headers=headers)
+    return httpreq.get(url, headers=headers)
 
-def _check_request_status(req):
+def _check_request_status(req: httpreq.HttpReqResponse):
     try:
         req.raise_for_status()
     except Exception as e:

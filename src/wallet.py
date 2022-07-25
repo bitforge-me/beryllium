@@ -6,12 +6,12 @@ from dataclasses import dataclass
 
 from pyln.client.lightning import RpcError
 from bitcoin.rpc import Proxy
-import requests
 
 from app_core import app, db
 import assets
 from ln import LnRpc, _msat_to_sat
 from models import BtcTxIndex
+import httpreq
 
 logger = logging.getLogger(__name__)
 TESTNET = app.config['TESTNET']
@@ -298,7 +298,7 @@ def _get_raw_tx(service_url, txid, blockhash=None):
 def _get_raw_tx_using_bitaps_blockhash(service_url, txid):
     network = 'testnet/v1' if TESTNET else 'v1'
     try:
-        tx = requests.get(f'https://api.bitaps.com/btc/{network}/blockchain/transaction/{txid}').json()
+        tx = httpreq.get(f'https://api.bitaps.com/btc/{network}/blockchain/transaction/{txid}').json()
         blockhash = tx['data']['blockHash']
         return _get_raw_tx(service_url, txid, blockhash)
     except Exception:
