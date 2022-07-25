@@ -17,8 +17,11 @@
                         <option value="cpu">
                             CPU
                         </option>
-                        <option value="io">
-                            I/O
+                        <option value="http">
+                            HTTP Requests
+                        </option>
+                        <option value="postgres">
+                            Postgres DB
                         </option>
                     </select>
                     <small id="actionHelp" class="form-text text-muted">The task action</small>
@@ -41,7 +44,7 @@
                            name="yield_after"
                            value="0"
                            aria-describedby="yieldAfterHelp"/>
-                    <small id="yieldTimeHelp" class="form-text text-muted">The time interval after which to yield to other tasks (not used for I/O tasks)</small>
+                    <small id="yieldTimeHelp" class="form-text text-muted">The time interval after which to yield to other tasks (only used for CPU tasks)</small>
                 </div>
                 <button id="form-submit" type="submit" class="btn btn-primary">Submit</button>
             </form>
