@@ -1,11 +1,10 @@
 from io import BytesIO
 import logging
 
-import requests
-
 from app_core import app, db
-from models import AplyId
+from models import AplyId, KycRequest
 import b2blaze
+import httpreq
 
 logger = logging.getLogger(__name__)
 
@@ -18,11 +17,11 @@ KYC_BUCKET = app.config['KYC_BUCKET']
 # Helper functions
 #
 
-def aplyid_send_text(mobile_number, token):
+def aplyid_send_text(mobile_number: str, token: str):
     try:
         headers = {'Aply-API-Key': APLYID_API_KEY, 'Aply-Secret': APLYID_API_SECRET}
         params = {'reference': token, 'contact_phone': mobile_number}
-        r = requests.post(APLYID_BASE_URL + '/send_text', headers=headers, json=params)
+        r = httpreq.post(APLYID_BASE_URL + '/send_text', headers=headers, json=params)
         r.raise_for_status()
         return r.json()['transaction_id']
     except Exception as ex:
@@ -30,7 +29,7 @@ def aplyid_send_text(mobile_number, token):
         print(ex)
     return None
 
-def aplyid_request_init(req, mobile_number):
+def aplyid_request_init(req: KycRequest, mobile_number: str):
     transaction_id = aplyid_send_text(mobile_number, req.token)
     if transaction_id:
         logger.info('aplyid transaction_id: %s', transaction_id)
@@ -44,11 +43,11 @@ def aplyid_request_init(req, mobile_number):
         return transaction_id
     return None
 
-def aplyid_download_pdf(transaction_id):
+def aplyid_download_pdf(transaction_id: str):
     r = None
     try:
         headers = {'Aply-API-Key': APLYID_API_KEY, 'Aply-Secret': APLYID_API_SECRET}
-        r = requests.get(APLYID_BASE_URL + f'/biometric/pdf/{transaction_id}.pdf', headers=headers)
+        r = httpreq.get(APLYID_BASE_URL + f'/biometric/pdf/{transaction_id}.pdf', headers=headers)
         r.raise_for_status()
         return BytesIO(r.content)
     except Exception as ex:
@@ -58,7 +57,7 @@ def aplyid_download_pdf(transaction_id):
             logger.error(r.text)
     return None
 
-def backup_aplyid_pdf(token, transaction_id, pdf):
+def backup_aplyid_pdf(token: str, transaction_id: str, pdf: BytesIO):
     try:
         api_url, _, auth_token = b2blaze.backblaze_authorize_account()
         bucket_id = b2blaze.backblaze_get_bucket_id(api_url, auth_token, KYC_BUCKET)

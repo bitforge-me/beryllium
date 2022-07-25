@@ -6,12 +6,12 @@ import json
 import decimal
 
 from flask import url_for
-import requests
 from dateutil import tz
 
 import utils
 from app_core import db
 from models import WindcavePaymentRequest
+import httpreq
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +96,7 @@ def windcave_create_session(amount_cents, token, expiry):
     body['notificationUrl'] = callback_url
     logger.info(json.dumps(body))
     headers = {'Content-Type': 'application/json', 'Authorization': auth_header()}
-    r = requests.post(WINDCAVE_API_URL + '/sessions', headers=headers, json=body)
+    r = httpreq.post(WINDCAVE_API_URL + '/sessions', headers=headers, json=body)
     logger.info(r.text)
     r.raise_for_status()
     if r.status_code == 202:
@@ -106,7 +106,7 @@ def windcave_create_session(amount_cents, token, expiry):
 
 def windcave_get_session_status(windcave_session_id):
     headers = {'Authorization': auth_header()}
-    r = requests.get(WINDCAVE_API_URL + '/sessions/' + windcave_session_id, headers=headers)
+    r = httpreq.get(WINDCAVE_API_URL + '/sessions/' + windcave_session_id, headers=headers)
     logger.info(r.text)
     r.raise_for_status()
     jsn = r.json()

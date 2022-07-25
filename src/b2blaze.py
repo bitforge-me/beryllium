@@ -4,9 +4,8 @@ import base64
 import hashlib
 from io import BytesIO
 
-import requests
-
 from app_core import app
+import httpreq
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +20,7 @@ def backblaze_auth_headers():
 
 def backblaze_authorize_account():
     headers = backblaze_auth_headers()
-    r = requests.get('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', headers=headers)
+    r = httpreq.get('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', headers=headers)
     r.raise_for_status()
     data = r.json()
     api_url = data['apiUrl']
@@ -36,7 +35,7 @@ def backblaze_get_bucket_id(api_url, auth_token, bucket):
         account_id = B2_ACCOUNT_ID[3:][:12]
     headers = {'Authorization': auth_token}
     body = {'accountId': account_id, 'bucketName': bucket}
-    r = requests.post(api_url + '/b2api/v2/b2_list_buckets', headers=headers, json=body)
+    r = httpreq.post(api_url + '/b2api/v2/b2_list_buckets', headers=headers, json=body)
     r.raise_for_status()
     data = r.json()
     bucket_id = data['buckets'][0]['bucketId']
@@ -45,7 +44,7 @@ def backblaze_get_bucket_id(api_url, auth_token, bucket):
 def backblaze_get_upload_url(api_url, auth_token, bucket_id):
     headers = {'Authorization': auth_token}
     body = {'bucketId': bucket_id}
-    r = requests.post(api_url + '/b2api/v2/b2_get_upload_url', headers=headers, json=body)
+    r = httpreq.post(api_url + '/b2api/v2/b2_get_upload_url', headers=headers, json=body)
     r.raise_for_status()
     data = r.json()
     upload_url = data['uploadUrl']
@@ -59,13 +58,13 @@ def backblaze_upload_file(upload_url, upload_auth_token, filename, bytesio, cont
     file_sha1 = hashlib.sha1(file_content).hexdigest()
     # upload pdf
     headers = {'Authorization': upload_auth_token, 'X-Bz-File-Name': filename, 'Content-Type': content_type, 'Content-Length': file_size, 'X-Bz-Content-Sha1': file_sha1}
-    r = requests.post(upload_url, headers=headers, data=file_content)
+    r = httpreq.post(upload_url, headers=headers, data=file_content)
     r.raise_for_status()
 
 def backblaze_download_file(download_url, auth_token, bucket, filename):
     headers = {'Authorization': auth_token}
     file_url = f'{download_url}/file/{bucket}/{filename}'
-    r = requests.get(file_url, headers=headers)
+    r = httpreq.get(file_url, headers=headers)
     r.raise_for_status()
     return BytesIO(r.content)
 
