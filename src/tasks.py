@@ -39,7 +39,7 @@ def store_task_info(task: str, info: dict, task_uid: str):
     if '{0}_task_list'.format(task) not in global_dict['ongoing_tasks']:
         logger.info("calling store_task_info(), current: global_dict = {0}".format(global_dict))
         # if no list of tasks for that task exists, init a list
-        global_dict['ongoing_tasks']['{0}_task_list'.format(task)] = {task_uid : info}
+        global_dict['ongoing_tasks']['{0}_task_list'.format(task)] = {task_uid: info}
     else:
         logger.info("calling store_task_info(), current: global_dict = {0}".format(global_dict))
         # if process already exists, update info / status
@@ -81,7 +81,7 @@ def process_btc_tx_index():
     wallet.btc_transactions_index()
 
 def process_dasset_cache():
-    #logger.info('process dasset cache..')
+    # logger.info('process dasset cache..')
     dasset.order_book_refresh_cache(10)
     dasset.markets_refresh_cache(10)
 
