@@ -1,5 +1,13 @@
 #!/usr/bin/python3
 
+# make the standard socket(http) and ssl library cooperative
+# we need to patch them before any other libraries load these standard libraries
+# this will ensure our use of the 'requests' http client and 'pyln-client' dont block
+# all other greenlets
+import gevent.monkey
+gevent.monkey.patch_socket()  # noqa
+gevent.monkey.patch_ssl()  # noqa
+
 import sys
 import logging
 import signal
