@@ -123,4 +123,3 @@ def email_withdrawal_confirmation(logger: Logger, conf: WithdrawalConfirmation):
     Confirm your withdrawal <a href='{url}'>here</a><br/><br/>
     Confirm within {conf.MINUTES_EXPIRY} minutes'''
     send_email("Confirm your withdrawal", msg, conf.user.email)
-
