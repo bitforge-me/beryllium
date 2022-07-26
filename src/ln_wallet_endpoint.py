@@ -10,6 +10,7 @@ from app_core import app, limiter, db
 from models import BtcTxIndex, Role
 from ln import LnRpc, _msat_to_sat
 from wallet import bitcoind_rpc, btc_txs_load
+import tasks
 
 logger = logging.getLogger(__name__)
 ln_wallet = Blueprint('ln_wallet', __name__, template_folder='templates')
@@ -81,6 +82,12 @@ def ln_invoice():
 @roles_accepted(Role.ROLE_ADMIN)
 def channel_management():
     """ Returns a template listing all connected LN peers """
+    rebalance_tasks = tasks.get_task_info('rebalance_channels')
+    if len(rebalance_tasks) > 0:
+        flash('Rebalance tasks in progress: {0}'.format(rebalance_tasks), 'success')
+        for task_uid in rebalance_tasks:
+            if rebalance_tasks[task_uid][0] == "error" or rebalance_tasks[task_uid][0] == "success":
+                tasks.clear_task_info(task_uid, 'rebalance_channels')
     rpc = LnRpc()
     if request.method == 'POST':
         if request.form['form-name'] == 'rebalance_channel_form':
@@ -88,7 +95,7 @@ def channel_management():
             iscid = request.form['iscid']
             amount = int(request.form['amount'])
             try:
-                LnRpc().rebalance_channel(oscid, iscid, amount)
+                tasks.task_manager.one_off('rebalance_channels', tasks.rebalance_channels, [oscid, iscid, amount])
                 flash(Markup(f'successfully moved {amount} sats from {oscid} to {iscid}'), 'success')
             except Exception as e:
                 flash(Markup(e.args[0]), 'danger')
@@ -142,11 +149,17 @@ def list_forwards():
 @roles_accepted(Role.ROLE_ADMIN)
 def pay_invoice():
     """Returns template for paying LN invoices"""
+    pay_tasks = tasks.get_task_info('pay_to_invoice')
+    if len(pay_tasks) > 0:
+        flash('Pay to invoice tasks in progress: {0}'.format(pay_tasks), 'success')
+        for task_uid in pay_tasks:
+            if pay_tasks[task_uid][0] == "error" or pay_tasks[task_uid][0] == "success":
+                tasks.clear_task_info(task_uid, 'pay_to_invoice')
     invoice = ''
     if request.method == 'POST':
         invoice = request.form['invoice']
         try:
-            result = LnRpc().pay(invoice)
+            result = tasks.task_manager.one_off('pay_to_invoice', tasks.pay_to_invoice, [invoice])
             flash(f'Invoice paid: {result}', 'success')
         except Exception as e:
             flash(f'Error paying invoice: {e}', 'danger')
@@ -198,6 +211,30 @@ def channel_opener():
         except Exception as e:
             flash(Markup(e.args[0]), 'danger')
     return render_template('lightning/channel_opener.html', funds_dict=LnRpc().list_funds())
+
+@ln_wallet.route('/peer_management', methods=['GET', 'POST'])
+@roles_accepted(Role.ROLE_ADMIN)
+def peer_management():
+    rpc = LnRpc()
+    if request.method == 'POST':
+        if request.form['form-name'] == 'peer_close_form':
+            peer_id = request.form['peerId']
+            try:
+                LnRpc().disconnect_peer(peer_id)
+                flash(Markup(f'successfully disconnected id: {peer_id}'), 'success')
+            except Exception as e:
+                flash(Markup(f'{e}'), 'danger')
+        elif request.form['form-name'] == 'peer_connect_form':
+            peer_id = request.form['peerId']
+            try:
+                rpc = LnRpc()
+                rpc.connect_node(peer_id)
+                node_id = peer_id.split('@')
+                flash(Markup(f'successfully connected peer: {node_id[0]}'), 'success')
+            except Exception as e:
+                flash(Markup(f'{e}'), 'danger')
+    peers = rpc.list_peers()['peers']
+    return render_template('lightning/peer_management.html', peers=peers)
 
 @ln_wallet.route('/create_psbt', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)

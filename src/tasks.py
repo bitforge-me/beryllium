@@ -7,13 +7,43 @@ import assets
 import email_utils
 import depwith
 import broker
+import utils
 from task_manager import TaskManager
 import wallet
 from ln import LnRpc, _msat_to_sat
 from models import CryptoDeposit
 import websocket
-
 logger = logging.getLogger(__name__)
+
+global_dict = {}
+
+def get_task_info(task: str):
+    logger.info("calling get_task_info(), current: global_dict = {0}".format(global_dict))
+    task_infos = []
+    if 'ongoing_tasks' in global_dict:
+        if '{0}_task_list'.format(task) in global_dict['ongoing_tasks']:
+            task_infos = global_dict['ongoing_tasks']['{0}_task_list'.format(task)]
+    return task_infos
+
+def clear_task_info(task_uid: str, task: str):
+    logger.info("calling clear_task_info(), current: global_dict = {0}".format(global_dict))
+    if '{0}_task_list'.format(task) in global_dict['ongoing_tasks']:
+        if task_uid in global_dict['ongoing_tasks']['{0}_task_list'.format(task)]:
+            global_dict['ongoing_tasks']['{0}_task_list'.format(task)].pop(task_uid)
+
+def store_task_info(task: str, info: dict, task_uid: str):
+    logger.info("calling store_task_info(), current: global_dict = {0}".format(global_dict))
+    if 'ongoing_tasks' not in global_dict:
+        logger.info("calling store_task_info(), current: global_dict = {0}".format(global_dict))
+        global_dict['ongoing_tasks'] = {}
+    if '{0}_task_list'.format(task) not in global_dict['ongoing_tasks']:
+        logger.info("calling store_task_info(), current: global_dict = {0}".format(global_dict))
+        # if no list of tasks for that task exists, init a list
+        global_dict['ongoing_tasks']['{0}_task_list'.format(task)] = {task_uid : info}
+    else:
+        logger.info("calling store_task_info(), current: global_dict = {0}".format(global_dict))
+        # if process already exists, update info / status
+        global_dict['ongoing_tasks']['{0}_task_list'.format(task)][task_uid] = info
 
 #
 # Periodic task functions, !assume we have a flask app context!
@@ -69,7 +99,7 @@ def update_withdrawal(asset: str, token: str):
 #
 
 def _process_ln_invoices_loop():
-    gevent.sleep(10, False) # HACK: wait for the webserver to start
+    gevent.sleep(10, False)  # HACK: wait for the ln server to start
     lastpay_index = 0
     while True:
         try:
@@ -78,7 +108,7 @@ def _process_ln_invoices_loop():
             pay, err = wallet.ln_any_deposit_completed(lastpay_index)
             if err:
                 logger.debug('wait_any_invoice failed: "%s"', err)
-                gevent.sleep(2, False) # probably timeout so we wait a short time before polling again
+                gevent.sleep(2, False)  # probably timeout so we wait a short time before polling again
             else:
                 logger.info('wait_any_invoice: %s', pay)
                 with app.app_context():
@@ -104,6 +134,37 @@ def _process_ln_invoices_loop():
             logger.error('wait_any_invoice error: %s', e)
             gevent.sleep(5, False)
 
+def rebalance_channels(oscid: str, iscid: str, amount: int):
+    info_str = 'Rebalancing {0} -> {1} with {2} sats'.format(oscid, iscid, amount)
+    task_uid = str(utils.generate_key())
+    store_task_info('rebalance_channels', ["started", info_str], task_uid)
+    try:
+        email_utils.send_email('Channel Rebalance Successful', info_str)
+        store_task_info('rebalance_channels', ["success", info_str], task_uid)
+    except Exception as e:
+        logger.error('rebalance_channels error: %s', e)
+        store_task_info('rebalance_channels', ["error", info_str], task_uid)
+
+def send_email_task(subject: str, msg: str, recipient: str | None = None, attachment: str | None = None):
+    if not recipient:
+        recipient = app.config["ADMIN_EMAIL"]
+    assert recipient
+    if app.config["USE_SENDGRID"]:
+        return email_utils.send_email_sendgrid(logger, subject, msg, recipient, attachment)
+    return email_utils.send_email_postfix(logger, subject, msg, recipient, attachment)
+
+def pay_to_invoice(invoice_str: str):
+    task_uid = str(utils.generate_key())
+    info_str = 'Paid Invoice: {0}'.format(invoice_str)
+    store_task_info('pay_to_invoice', ["started", info_str], task_uid)
+    try:
+        LnRpc().pay(invoice_str)
+        email_utils.send_email('Paid Invoice', info_str)
+        store_task_info('pay_to_invoice', ["success", info_str], task_uid)
+    except Exception as e:
+        logger.error('pay_to_invoice error: %s', e)
+        store_task_info('pay_to_invoice', ["error", info_str], task_uid)
+    return info_str
 #
 # Init tasks
 #
