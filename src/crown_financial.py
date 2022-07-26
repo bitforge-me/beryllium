@@ -61,7 +61,7 @@ def _req(endpoint, data=None):
     logger.info('   GET - %s', url)
     return httpreq.get(url, headers=headers)
 
-def _check_request_status(req: httpreq.HttpReqResponse):
+def _check_response_status(req: httpreq.Response):
     try:
         req.raise_for_status()
     except Exception as e:
@@ -86,19 +86,19 @@ def user_from_deposit(db_session: Session, txn: CrownTx) -> User | None:
 def balance():
     logger.info(':: calling balance..')
     r = _req('balance', {})
-    _check_request_status(r)
+    _check_response_status(r)
     return int(r.json()['value'][CURRENCY] * 100)
 
 def transaction_details(crown_txn_id: str):
     logger.info(':: calling transaction details id..')
     r = _req(f'transaction/details/{crown_txn_id}', {})
-    _check_request_status(r)
+    _check_response_status(r)
     return _parse_tx(r.json()['value'])
 
 def transactions() -> list[CrownTx]:
     logger.info(':: calling transaction..')
     r = _req('transaction/all', {})
-    _check_request_status(r)
+    _check_response_status(r)
     txs = []
     for json_tx in r.json()['value']:
         txs.append(_parse_tx(json_tx))
@@ -112,7 +112,7 @@ def transactions_filtered_status(status: str, from_date: datetime, to_date: date
     # status (string) - available parameters ('pending', 'accepted', 'rejected', 'frozen', 'require_aml_document', 'clarity_around_name_mismatch')
     # dates (string) - '%m-%d-%Y'
     r = _req(f'transaction/filtered/status/{status}/from/{_dt_format(from_date)}/to/{_dt_format(to_date)}', {})
-    _check_request_status(r)
+    _check_response_status(r)
     txs = []
     for json_tx in r.json()['value']:
         txs.append(_parse_tx(json_tx))
@@ -123,7 +123,7 @@ def transactions_filtered_type(type_: str, from_date: datetime, to_date: datetim
     # type (string) - available parameters ('deposit', 'withdrawal')
     # dates (string) - '%m-%d-%Y'
     r = _req(f'transaction/filtered/type/{type_.lower()}/from/{_dt_format(from_date)}/to/{_dt_format(to_date)}', {})
-    _check_request_status(r)
+    _check_response_status(r)
     txs = []
     for json_tx in r.json()['value']:
         txs.append(_parse_tx(json_tx))
@@ -135,7 +135,7 @@ def withdrawal(amount: int, reference: str, code: str, account_number: str, acco
     r = _req('transaction/withdrawal/bank', dict(source_currency=CURRENCY, to_currency=CURRENCY, amount=amount_float, pre_assigned_code=reference, reference=code,
                                                  sent_payment_to_country='New Zealand', to_account_number=account_number, bank_swift_bic='-', bank_account_name=account_name,
                                                  bank_owner_address_1=account_address_01, bank_owner_address_2=account_address_02, bank_owner_address_country=account_address_country))
-    _check_request_status(r)
+    _check_response_status(r)
     return r.json()['transaction_id']
 
 if __name__ == '__main__':
