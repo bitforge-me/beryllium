@@ -60,12 +60,12 @@ def email_exception(logger: Logger, msg: str):
 def email_user_create_request(logger: Logger, req: UserCreateRequest):
     url = url_for("api.user_registration_confirm", token=req.token, _external=True)
     msg = f"You have a pending user registration waiting!<br/><br/>Confirm your registration <a href='{url}'>here</a><br/><br/>Confirm within {req.MINUTES_EXPIRY} minutes"
-    send_email("Confirm your registration", msg, req.email)
+    send_email("Confirm your registration", msg, str(req.email))
 
 def email_user_update_email_request(logger: Logger, req: UserUpdateEmailRequest):
     url = url_for("api.user_update_email_confirm", token=req.token, _external=True)
     msg = f"You have a pending update email request waiting!<br/><br/>Confirm your new email <a href='{url}'>here</a><br/><br/>Confirm within {req.MINUTES_EXPIRY} minutes"
-    send_email("Confirm your update email request", msg, req.email)
+    send_email("Confirm your update email request", msg, str(req.email))
 
 def email_api_key_request(logger: Logger, req: ApiKeyRequest):
     url = url_for("api.api_key_confirm", token=req.token, secret=req.secret, _external=True)
@@ -74,7 +74,7 @@ def email_api_key_request(logger: Logger, req: ApiKeyRequest):
 
 def email_referral(logger: Logger, referral: Referral):
     shop_name = app.config["REFERRAL_STORE_NAME"]
-    qrcode_b64 = utils.qrcode_pngb64_create(referral.token, box_size=4)
+    qrcode_b64 = utils.qrcode_pngb64_create(str(referral.token), box_size=4)
     ecom_link = app.config["REFERRAL_ECOMMERCE_URL"]
     if ecom_link:
         ecom_link += f"?beryllium_referral={referral.token}"
@@ -91,7 +91,7 @@ def email_referral(logger: Logger, referral: Referral):
     if ecom_link:
         msg += ecom_link
     attachment = _attachment_inline(qrcode_b64, 'image/png', 'qrcode.png', 'qrcode')
-    send_email(f"{shop_name} Referral", msg, referral.recipient, attachment)
+    send_email(f"{shop_name} Referral", msg, str(referral.recipient), attachment)
 
 def email_notification_alert(logger: Logger, subject: str, msg: str, recipient: str):
     send_email(subject, msg, recipient=recipient)
