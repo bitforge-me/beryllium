@@ -83,7 +83,7 @@ def ln_invoice():
 @roles_accepted(Role.ROLE_ADMIN)
 def channel_management():
     """ Returns a template listing all connected LN peers """
-    rebalance_tasks = tasks.get_task_info('rebalance_channels')
+    rebalance_tasks = tasks.get_task_info('rebalance_channels').copy()
     if len(rebalance_tasks) > 0:
         flash('Rebalance tasks in progress: {0}'.format(rebalance_tasks), 'success')
         for task_uid in rebalance_tasks:
@@ -150,7 +150,7 @@ def list_forwards():
 @roles_accepted(Role.ROLE_ADMIN)
 def pay_invoice():
     """Returns template for paying LN invoices"""
-    pay_tasks = tasks.get_task_info('pay_to_invoice')
+    pay_tasks = tasks.get_task_info('pay_to_invoice').copy()
     if len(pay_tasks) > 0:
         flash('Pay to invoice tasks in progress: {0}'.format(pay_tasks), 'success')
         for task_uid in pay_tasks:
