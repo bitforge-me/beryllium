@@ -31,7 +31,7 @@ def clear_task_info(task_uid: str, task: str):
         if task_uid in global_dict['ongoing_tasks']['{0}_task_list'.format(task)]:
             global_dict['ongoing_tasks']['{0}_task_list'.format(task)].pop(task_uid)
 
-def store_task_info(task: str, info: dict, task_uid: str):
+def store_task_info(task: str, info: list, task_uid: str):
     logger.info("calling store_task_info(), current: global_dict = {0}".format(global_dict))
     if 'ongoing_tasks' not in global_dict:
         logger.info("calling store_task_info(), current: global_dict = {0}".format(global_dict))
