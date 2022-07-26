@@ -165,4 +165,3 @@ def broker_orders_update(db_session: Session):
         logger.info('num orders: %d', len(orders))
         for broker_order in orders:
             _broker_order_update_and_commit(db_session, broker_order)
-

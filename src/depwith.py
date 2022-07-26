@@ -467,4 +467,3 @@ def crypto_withdrawals_update(db_session: Session):
         logger.info('num withdrawals: %d', len(withdrawals))
         for withdrawal in withdrawals:
             _crypto_withdrawal_update_and_commit(db_session, withdrawal)
-
