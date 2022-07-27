@@ -1,5 +1,8 @@
 import gevent
 import logging
+from dataclasses import dataclass
+
+from flask import flash
 
 from app_core import app, db
 import dasset
@@ -7,6 +10,7 @@ import assets
 import email_utils
 import depwith
 import broker
+import utils
 from task_manager import TaskManager
 import wallet
 from ln import LnRpc, _msat_to_sat
@@ -14,6 +18,50 @@ from models import BalanceUpdate
 import websocket
 
 logger = logging.getLogger(__name__)
+
+_task_info: dict[str, dict[str, 'TaskInfo']] = {}
+
+@dataclass
+class TaskInfo:
+    STATUS_INPROGRESS = 'in progress'
+    STATUS_ERROR = 'error'
+    STATUS_SUCCESS = 'success'
+
+    status: str
+    message: str
+
+def get_task_info_category(category: str):
+    logger.info("calling get_task_info(), current: _task_info = {0}".format(_task_info))
+    if category in _task_info:
+        return _task_info[category]
+    return {}
+
+def clear_task_info(category: str, task_uid: str):
+    logger.info("calling clear_task_info(), current: _task_info = {0}".format(_task_info))
+    if category in _task_info:
+        infos = _task_info[category]
+        if task_uid in infos:
+            infos.pop(task_uid)
+
+def store_task_info(category: str, task_uid: str, info: TaskInfo):
+    logger.info("calling store_task_info(), current: _task_info = {0}".format(_task_info))
+    if category not in _task_info:
+        _task_info[category] = {}
+    infos = _task_info[category]
+    infos[task_uid] = info
+
+def flash_and_clear_tasks(category: str):
+    infos = get_task_info_category(category).copy()
+    for task_uid in infos:
+        info = infos[task_uid]
+        color = 'primary'
+        if info.status == info.STATUS_SUCCESS:
+            color = 'success'
+        elif info.status == info.STATUS_ERROR:
+            color = 'danger'
+        flash(f'pay invoice task {info.status}: {info.message}', color)
+        if info.status in [info.STATUS_ERROR, info.STATUS_SUCCESS]:
+            clear_task_info(category, task_uid)
 
 #
 # Periodic task functions, !assume we have a flask app context!
@@ -51,7 +99,7 @@ def process_btc_tx_index():
     wallet.btc_transactions_index()
 
 def process_dasset_cache():
-    #logger.info('process dasset cache..')
+    # logger.info('process dasset cache..')
     dasset.order_book_refresh_cache(10)
     dasset.markets_refresh_cache(10)
 
@@ -107,6 +155,41 @@ def _process_ln_invoices_loop():
             logger.error('wait_any_invoice error: %s', e)
             gevent.sleep(5, False)
 
+def ln_rebalance_channels(oscid: str, iscid: str, amount: int):
+    category = 'ln_rebalance_channels'
+    info_str = 'Rebalancing {0} -> {1} with {2} sats'.format(oscid, iscid, amount)
+    task_uid = utils.generate_key()
+    store_task_info(category, task_uid, TaskInfo(TaskInfo.STATUS_INPROGRESS, info_str))
+    try:
+        email_utils.send_email('Channel Rebalance Successful', info_str)
+        store_task_info(category, task_uid, TaskInfo(TaskInfo.STATUS_SUCCESS, info_str))
+    except Exception as e:
+        logger.error('ln_rebalance_channels error: %s', e)
+        info_str = 'error: {0}'.format(e)
+        store_task_info(category, task_uid, TaskInfo(TaskInfo.STATUS_ERROR, info_str))
+
+def send_email_task(subject: str, msg: str, recipient: str | None = None, attachment: str | None = None):
+    if not recipient:
+        recipient = app.config["ADMIN_EMAIL"]
+    assert recipient
+    if app.config["USE_SENDGRID"]:
+        return email_utils.send_email_sendgrid(logger, subject, msg, recipient, attachment)
+    return email_utils.send_email_postfix(logger, subject, msg, recipient, attachment)
+
+def ln_pay_to_invoice(bolt11: str):
+    category = 'ln_pay_to_invoice'
+    task_uid = utils.generate_key()
+    info_str = 'Paid Invoice: {0}'.format(utils.shorten(bolt11))
+    store_task_info(category, task_uid, TaskInfo(TaskInfo.STATUS_INPROGRESS, info_str))
+    try:
+        LnRpc().pay(bolt11)
+        email_utils.send_email('Paid Invoice', info_str)
+        store_task_info(category, task_uid, TaskInfo(TaskInfo.STATUS_SUCCESS, info_str))
+    except Exception as e:
+        logger.error('%s error: %s', category, e)
+        info_str = 'error: {0}'.format(e)
+        store_task_info(category, task_uid, TaskInfo(TaskInfo.STATUS_ERROR, info_str))
+    return info_str
 #
 # Init tasks
 #
