@@ -11,6 +11,7 @@ from app_core import app, limiter, db
 from models import BtcTxIndex, Role
 from ln import LnRpc, _msat_to_sat
 from wallet import bitcoind_rpc, btc_txs_load
+import tasks
 
 logger = logging.getLogger(__name__)
 ln_wallet = Blueprint('ln_wallet', __name__, template_folder='templates')
@@ -82,6 +83,8 @@ def ln_invoice():
 @roles_accepted(Role.ROLE_ADMIN)
 def channel_management():
     """ Returns a template listing all connected LN peers """
+    category = 'ln_rebalance_channels'
+    tasks.flash_and_clear_tasks(category)
     rpc = LnRpc()
     if request.method == 'POST':
         if request.form['form-name'] == 'rebalance_channel_form':
@@ -89,8 +92,8 @@ def channel_management():
             iscid = request.form['iscid']
             amount = int(request.form['amount'])
             try:
-                LnRpc().rebalance_channel(oscid, iscid, amount)
-                flash(Markup(f'successfully moved {amount} sats from {oscid} to {iscid}'), 'success')
+                tasks.task_manager.one_off(category, tasks.ln_rebalance_channels, [oscid, iscid, amount])
+                flash(Markup(f'Task started: move {amount} sats from {oscid} to {iscid}'), 'success')
             except Exception as e:
                 flash(Markup(e.args[0]), 'danger')
         elif request.form['form-name'] == 'close_channel_form':
@@ -143,12 +146,13 @@ def list_forwards():
 @roles_accepted(Role.ROLE_ADMIN)
 def pay_invoice():
     """Returns template for paying LN invoices"""
+    category = 'ln_pay_to_invoice'
+    tasks.flash_and_clear_tasks(category)
     invoice = ''
     if request.method == 'POST':
         invoice = request.form['invoice']
         try:
-            result = LnRpc().pay(invoice)
-            flash(f'Invoice paid: {result}', 'success')
+            result = tasks.task_manager.one_off(category, tasks.ln_pay_to_invoice, [invoice])
         except Exception as e:
             flash(f'Error paying invoice: {e}', 'danger')
     return render_template("lightning/pay_invoice.html", invoice=invoice, funds_dict=LnRpc().list_funds())
