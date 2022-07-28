@@ -25,8 +25,7 @@ def aplyid_send_text(mobile_number: str, token: str):
         r.raise_for_status()
         return r.json()['transaction_id']
     except Exception as ex:
-        print('failed to get transaction id')
-        print(ex)
+        logger.error('failed to get transaction id', ex)
     return None
 
 def aplyid_request_init(req: KycRequest, mobile_number: str):
