@@ -94,7 +94,7 @@ app.config["REFERRAL_ECOMMERCE_URL"] = strdef("REFERRAL_ECOMMERCE_URL", None)
 app.config["REFERRAL_STORE_NAME"] = strdef("REFERRAL_STORE_NAME", "Change My Name Inc")
 app.config["REFERRAL_SPEND_ASSET"] = strdef("REFERRAL_SPEND_ASSET", "NZD")
 
-app.config["BROKER_ORDER_FEE"] = strdef("BROKER_ORDER_FEE", "2.5")
+app.config["BROKER_ORDER_FEE"] = strdef("BROKER_ORDER_FEE", "0.5")
 
 app.config['EXCHANGE_ACCOUNT_MOCK'] = boolify(os.getenv('EXCHANGE_ACCOUNT_MOCK'))
 

@@ -34,7 +34,7 @@ class Market:
     quote_asset: Asset
 
 TESTNET = app.config['TESTNET']
-NZD = Asset(symbol='NZD', name='New Zealand Dollar', decimals=2, withdraw_fee=Dec(7), withdraw_fee_fixed=True, min_withdraw=Dec(20), is_crypto=False, l2_network=None,
+NZD = Asset(symbol='NZD', name='New Zealand Dollar', decimals=2, withdraw_fee=Dec(5), withdraw_fee_fixed=True, min_withdraw=Dec(20), is_crypto=False, l2_network=None,
             deposit_instr=None, withdraw_instr=None)
 BTCLN = Asset(symbol='BTC-LN', name='Bitcoin Lightning', decimals=8, withdraw_fee=Dec('0.005'), withdraw_fee_fixed=False, min_withdraw=Dec('0.00000001'), is_crypto=True, l2_network=None,
               deposit_instr=None, withdraw_instr=None)
