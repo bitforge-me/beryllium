@@ -174,7 +174,7 @@ def api_key_create():
     api_key = ApiKey(user, device_name)
     for name in Permission.PERMS_ALL:
         perm = Permission.from_name(db.session, name)
-        assert(perm)
+        assert perm
         api_key.permissions.append(perm)
     db.session.add(api_key)
     db.session.commit()
