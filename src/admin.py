@@ -357,6 +357,13 @@ class BaseModelView(sqla.ModelView):
             return redirect(url_for('security.login', next=request.url))
         return None
 
+    def is_editable(self, name):
+        """
+        Override builtin so we can use the pre Oct-2021 behaviour of having editable
+        columns without having the entire table editable
+        """
+        return name in self.column_editable_list
+
 class RestrictedModelView(BaseModelView):
     can_create = False
     can_delete = False
