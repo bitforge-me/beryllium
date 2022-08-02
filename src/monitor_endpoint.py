@@ -1,20 +1,18 @@
 import logging
-import json
 import requests
 
-from flask import Blueprint, render_template, request, flash, jsonify
-from markupsafe import Markup
+from flask import Blueprint, jsonify
 
-from app_core import app, limiter, db
+from app_core import app
 from ln import LnRpc, _msat_to_sat
 from dasset import account_balances
 
 logger = logging.getLogger(__name__)
-monitoring = Blueprint('monitoring', __name__, template_folder='templates')
+monitor = Blueprint('monitor', __name__, template_folder='templates')
 BITCOIN_EXPLORER = app.config["BITCOIN_EXPLORER"]
 
-@monitoring.route('/info')
-def monitoring_info():
+@monitor.route('/info')
+def monitor_info():
     peers = LnRpc().list_peers()['peers']
     channels = []
     total_receivable = 0
@@ -74,4 +72,4 @@ def monitoring_info():
         info['remote_blockheight'] = -1
     info['blockheight_diff'] = info['blockheight'] - info['remote_blockheight']
     info['blockheight_diff'] = abs(info['blockheight_diff'])
-    return info
+    return jsonify(info)

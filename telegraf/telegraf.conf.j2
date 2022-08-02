@@ -35,7 +35,7 @@
 #'''
 
 [[inputs.http]]
-  urls = ["http://app:5000/monitoring/info"]
+  urls = ["http://app:5000/monitor/info"]
   name_override = "lightning_info"
   data_format = "json"
   timeout = "30s"
@@ -44,7 +44,7 @@
 
 # Output Plugin InfluxDB
 [[outputs.influxdb]]
-  database = "{{ environ('TELEGRAF_INFLUXDB_DB') }}"
+  database = "{{ environ('TELEGRAF_DB') }}"
   urls = [ "{{ environ('TELEGRAF_INFLUXDB_URL') }}" ]
-  username = "{{ environ('TELEGRAF_INFLUXDB_USER') }}"
-  password = "{{ environ('TELEGRAF_INFLUXDB_PASS') }}"
+  username = "{{ environ('TELEGRAF_USER') }}"
+  password = "{{ environ('TELEGRAF_PASS') }}"

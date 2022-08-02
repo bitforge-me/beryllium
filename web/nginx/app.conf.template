@@ -38,7 +38,7 @@ server {
     autoindex off;
   }
 
-  location /monitoring {
+  location /monitor {
     deny all;
   }
 
