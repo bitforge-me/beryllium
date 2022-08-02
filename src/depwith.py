@@ -17,6 +17,7 @@ import tripwire
 import utils
 import crown_financial
 import payouts_core
+import broker
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,7 @@ def _fiat_deposit_update(fiat_deposit: BalanceUpdate):
     updated_records = []
     # check payment
     if fiat_deposit.status == fiat_deposit.STATUS_CREATED:
+        # windcave payments
         if fiat_deposit.windcave_payment_request:
             payment_req = fiat_deposit.windcave_payment_request
             windcave.payment_request_status_update(payment_req)
@@ -57,15 +59,28 @@ def _fiat_deposit_update(fiat_deposit: BalanceUpdate):
                 updated_records.append(fiat_deposit)
                 updated_records.append(ftx)
                 return updated_records
+        # crown payments
         elif fiat_deposit.crown_payment:
+            if not utils.is_email(crown_financial.EMAIL):
+                logger.error('invalid crown_financial.EMAIL %s', crown_financial.EMAIL)
+                return updated_records
             crown_payment = fiat_deposit.crown_payment
             tx = crown_financial.transaction_details(crown_payment.crown_txn_id)
             if tx.status == tx.STATUS_ACCEPTED:
                 crown_payment.crown_status = tx.STATUS_ACCEPTED
-                crown_payment.status = fiat_deposit.crown_payment.STATUS_COMPLETED
+                crown_payment.status = crown_payment.STATUS_COMPLETED
                 fiat_deposit.status = fiat_deposit.STATUS_COMPLETED
                 ftx = fiatdb_core.tx_create(fiat_deposit.user, FiatDbTransaction.ACTION_CREDIT, fiat_deposit.asset, fiat_deposit.amount, f'fiat deposit: {fiat_deposit.token}')
                 fiat_deposit.balance_tx = ftx
+                # check for autobuy asset in deposit code
+                if fiat_deposit.deposit_code:
+                    code = fiat_deposit.deposit_code
+                    if code.autobuy_asset:
+                        market = assets.assets_to_market(code.autobuy_asset, crown_financial.CURRENCY)
+                        if market in assets.MARKETS:
+                            #TODO - create broker order
+                            pass
+
                 updated_records.append(crown_payment)
                 updated_records.append(fiat_deposit)
                 updated_records.append(ftx)
@@ -97,10 +112,11 @@ def _crown_check_new_desposits(db_session: Session):
     for tx in txs:
         if tx.currency == crown_financial.CURRENCY and not CrownPayment.from_crown_txn_id(db_session, tx.crown_txn_id):
             payment = CrownPayment(utils.generate_key(), tx.currency, tx.amount, tx.crown_txn_id, tx.status)
-            user = crown_financial.user_from_deposit(db_session, tx)
-            if user:
-                deposit = BalanceUpdate.fiat_deposit(user, crown_financial.CURRENCY, tx.amount, 0, crown_financial.CROWN_ACCOUNT_CODE)
+            code = crown_financial.code_from_deposit(db_session, tx)
+            if code:
+                deposit = BalanceUpdate.fiat_deposit(code.user, crown_financial.CURRENCY, tx.amount, 0, crown_financial.CROWN_ACCOUNT_CODE)
                 deposit.crown_payment = payment
+                deposit.deposit_code = code
                 db_session.add(payment)
                 db_session.add(deposit)
                 db_session.commit()

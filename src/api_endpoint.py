@@ -759,23 +759,36 @@ def fiat_deposit_windcave_req():
 
 @api.route('/fiat_deposit_direct', methods=['POST'])
 def fiat_deposit_direct_req():
-    asset, api_key, err_response = auth_request_get_single_param(db, 'asset')
-    assert asset is not None and api_key
+    api_key, err_response = auth_request(db)
     if err_response:
         return err_response
-    if not assets.asset_is_fiat(asset):
-        return bad_request(web_utils.INVALID_ASSET)
 
-    deposit_codes = list(api_key.user.fiat_deposit_codes)
-    if not deposit_codes:
+    deposit_code = FiatDepositCode.from_autobuy_asset(db.session, None)
+    if not deposit_code:
         deposit_code = FiatDepositCode(api_key.user, None)
         db.session.add(deposit_code)
         db.session.commit()
-    else:
-        deposit_code = deposit_codes[0]
     crown_account_number = app.config['CROWN_ACCOUNT_NUMBER']
     crown_account_code = app.config['CROWN_ACCOUNT_CODE']
-    return jsonify(deposit=dict(account_number=crown_account_number, reference=crown_account_code, code=deposit_code.token))
+    return jsonify(deposit=dict(account_number=crown_account_number, reference=crown_account_code, code=deposit_code.token, autobuy_asset=None))
+
+@api.route('/fiat_deposit_autobuy', methods=['POST'])
+def fiat_deposit_autobuy_req():
+    autobuy_asset, api_key, err_response = auth_request_get_single_param(db, 'autobuy_asset')
+    if err_response:
+        return err_response
+    assert autobuy_asset is not None and api_key
+    if not assets.asset_is_crypto(autobuy_asset):
+        return bad_request(web_utils.INVALID_ASSET)
+
+    deposit_code = FiatDepositCode.from_autobuy_asset(db.session, autobuy_asset)
+    if not deposit_code:
+        deposit_code = FiatDepositCode(api_key.user, autobuy_asset)
+        db.session.add(deposit_code)
+        db.session.commit()
+    crown_account_number = app.config['CROWN_ACCOUNT_NUMBER']
+    crown_account_code = app.config['CROWN_ACCOUNT_CODE']
+    return jsonify(deposit=dict(account_number=crown_account_number, reference=crown_account_code, code=deposit_code.token, autobuy_asset=autobuy_asset))
 
 @api.route('/fiat_withdrawal_create', methods=['POST'])
 def fiat_withdrawal_create_req():

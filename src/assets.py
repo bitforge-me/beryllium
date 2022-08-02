@@ -110,6 +110,9 @@ def market_side_nice(side: MarketSide | str) -> str:
             return 'buy'
     return 'n/a'
 
+def assets_to_market(asset_base: str, asset_quote: str):
+    return f'{asset_base}-{asset_quote}'
+
 def assets_from_market(market: str) -> list[str]:
     return market.split('-')
 

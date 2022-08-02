@@ -73,14 +73,12 @@ def _check_response_status(req: httpreq.Response):
         logger.error('failure message: %s', jsn['msg'])
         raise Exception()
 
-def user_from_deposit(db_session: Session, txn: CrownTx) -> User | None:
+def code_from_deposit(db_session: Session, txn: CrownTx) -> FiatDepositCode | None:
     parts = txn.user_reference.split('-')
     for part in parts:
         if part.strip().upper() == CROWN_ACCOUNT_CODE:
             continue
-        deposit_code = FiatDepositCode.from_token(db_session, part)
-        if deposit_code:
-            return deposit_code.user
+        return FiatDepositCode.from_token(db_session, part)
     return None
 
 def balance():
