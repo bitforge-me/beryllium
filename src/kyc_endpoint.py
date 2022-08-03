@@ -2,7 +2,7 @@ import logging
 
 from flask import Blueprint, request, render_template, flash, redirect, make_response, abort
 
-from app_core import app, db, limiter
+from app_core import app, db, limiter, csrf
 from models import KycRequest
 import websocket
 import kyc_core
@@ -61,6 +61,7 @@ def aplyid_pdf(token=None):
     return response
 
 @kyc.route('/aplyid_webhook', methods=['POST'])
+@csrf.exempt
 def aplyid_webhook():
     logger.info('aplyid webhook entry')
     # check bearer token
