@@ -144,6 +144,7 @@ services:
 
   mail:
     container_name: mail
+    restart: unless-stopped
     environment:
       ALLOWED_SENDER_DOMAINS: ${EMAIL_SENDER} ${SERVER_NAME}
       HOSTNAME: ${SERVER_NAME:?SERVER_NAME unset}
