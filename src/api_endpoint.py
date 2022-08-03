@@ -66,7 +66,7 @@ def version():
 #
 
 @api.route('/user_register', methods=['POST'])
-@limiter.limit('10/hour')
+@limiter.limit('20/minute')
 def user_register():
     if not app.config['SECURITY_REGISTERABLE']:
         return bad_request(web_utils.NOT_AVAILABLE)
@@ -149,7 +149,7 @@ def user_two_factor_enabled_check():
     return jsonify(dict(tf_enabled=tf_enabled_check(user)))
 
 @api.route('/api_key_create', methods=['POST'])
-@limiter.limit('10/hour')
+@limiter.limit('20/minute')
 def api_key_create():
     tripwire.login_attempt()
     content = request.get_json(force=True)
