@@ -18,7 +18,7 @@ from fcm import FCM
 from web_utils import bad_request, get_json_params, get_json_params_optional
 import broker
 import depwith
-from api_endpoint import api
+from api_endpoint import api, api_supplemental
 from reward_endpoint import reward
 from reporting_endpoint import reporting
 from payments_endpoint import payments
@@ -58,6 +58,7 @@ fcm = FCM(app.config["FIREBASE_CREDENTIALS"])
 
 # blueprints
 app.register_blueprint(api, url_prefix='/apiv1')
+app.register_blueprint(api_supplemental, url_prefix='/apis')
 app.register_blueprint(reward, url_prefix='/reward')
 app.register_blueprint(reporting, url_prefix='/reporting')
 app.register_blueprint(payments, url_prefix='/payments')

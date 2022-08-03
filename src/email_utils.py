@@ -58,17 +58,17 @@ def email_exception(logger: Logger, msg: str):
     send_email("beryllium exception", msg)
 
 def email_user_create_request(logger: Logger, req: UserCreateRequest):
-    url = url_for("api.user_registration_confirm", token=req.token, _external=True)
+    url = url_for("api_supplemental.user_registration_confirm", token=req.token, _external=True)
     msg = f"You have a pending user registration waiting!<br/><br/>Confirm your registration <a href='{url}'>here</a><br/><br/>Confirm within {req.MINUTES_EXPIRY} minutes"
     send_email("Confirm your registration", msg, req.email)
 
 def email_user_update_email_request(logger: Logger, req: UserUpdateEmailRequest):
-    url = url_for("api.user_update_email_confirm", token=req.token, _external=True)
+    url = url_for("api_supplemental.user_update_email_confirm", token=req.token, _external=True)
     msg = f"You have a pending update email request waiting!<br/><br/>Confirm your new email <a href='{url}'>here</a><br/><br/>Confirm within {req.MINUTES_EXPIRY} minutes"
     send_email("Confirm your update email request", msg, req.email)
 
 def email_api_key_request(logger: Logger, req: ApiKeyRequest):
-    url = url_for("api.api_key_confirm", token=req.token, secret=req.secret, _external=True)
+    url = url_for("api_supplemental.api_key_confirm", token=req.token, secret=req.secret, _external=True)
     msg = f"You have a pending email login request waiting!<br/><br/>Confirm your email login <a href='{url}'>here</a><br/><br/>Confirm within {req.MINUTES_EXPIRY} minutes"
     send_email("Confirm your email login request", msg, req.user.email)
 
@@ -111,7 +111,7 @@ def email_tripwire_notification(logger: Logger):
     send_email(subject, html_content)
 
 def email_withdrawal_confirmation(logger: Logger, conf: WithdrawalConfirmation):
-    url = url_for("api.withdrawal_confirm", token=conf.token, secret=conf.secret, _external=True)
+    url = url_for("api_supplemental.withdrawal_confirm", token=conf.token, secret=conf.secret, _external=True)
     assert conf.withdrawal
     asset = conf.withdrawal.asset
     amount_dec = assets.asset_int_to_dec(asset, conf.withdrawal.amount)

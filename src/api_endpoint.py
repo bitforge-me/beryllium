@@ -33,6 +33,10 @@ api = Blueprint('api', __name__, template_folder='templates')
 limiter.limit('100/minute')(api)
 csrf.exempt(api)
 
+# blueprint for supplemental routes of the api (like user confirmations etc), we separate this out so it have CSRF restrictions applied etc
+api_supplemental = Blueprint('api_supplemental', __name__, template_folder='templates')
+limiter.limit('100/minute')(api_supplemental)
+
 def _user_subaccount_get_or_create(db_session, user):
     # create subaccount for user
     if not user.dasset_subaccount:
@@ -94,7 +98,7 @@ def user_register():
     db.session.commit()
     return 'ok'
 
-@api.route('/user_registration_confirm/<token>', methods=['GET'])
+@api_supplemental.route('/user_registration_confirm/<token>', methods=['GET'])
 @limiter.limit('20/minute')
 def user_registration_confirm(token=None):
     if not token:
@@ -227,7 +231,7 @@ def api_key_claim():
     db.session.commit()
     return jsonify(dict(token=api_key.token, secret=api_key.secret, device_name=api_key.device_name, expiry=api_key.expiry))
 
-@api.route('/api_key_confirm/<token>/<secret>', methods=['GET', 'POST'])
+@api_supplemental.route('/api_key_confirm/<token>/<secret>', methods=['GET', 'POST'])
 @limiter.limit('20/minute')
 def api_key_confirm(token=None, secret=None):
     if not token or not secret:
@@ -323,7 +327,7 @@ def user_update_email():
     tf_code_send(api_key.user)
     return 'ok'
 
-@api.route('/user_update_email_confirm/<token>', methods=['GET', 'POST'])
+@api_supplemental.route('/user_update_email_confirm/<token>', methods=['GET', 'POST'])
 @limiter.limit('10/hour')
 def user_update_email_confirm(token=None):
     if not token:
@@ -538,7 +542,7 @@ def _validate_crypto_asset_deposit(asset: str, l2_network: str | None):
         return bad_request(web_utils.INVALID_NETWORK)
     return None
 
-@api.route('/withdrawal_confirm/<token>/<secret>', methods=['GET', 'POST'])
+@api_supplemental.route('/withdrawal_confirm/<token>/<secret>', methods=['GET', 'POST'])
 @limiter.limit('20/minute')
 def withdrawal_confirm(token=None, secret=None):
     if not token or not secret:
