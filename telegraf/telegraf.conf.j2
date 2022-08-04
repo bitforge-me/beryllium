@@ -40,7 +40,6 @@
   data_format = "json"
   timeout = "30s"
   headers = {"HOST" = "{{ environ('SERVER_NAME') }}"}
-  json_string_fields = ["BTC_available", "BTC_total", "NZD_available", "NZD_total"]
 
 # Output Plugin InfluxDB
 [[outputs.influxdb]]

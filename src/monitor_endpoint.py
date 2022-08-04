@@ -64,8 +64,8 @@ def monitor_info():
     info['num_pending_channels'] = ln_info['num_pending_channels']
     info['num_peers'] = ln_info['num_peers']
     for balance in dasset_balances or []:
-        info[f'{balance.symbol}_available'] = format(balance.available, f'.{balance.decimals}f')
-        info[f'{balance.symbol}_total'] = format(balance.total, f'.{balance.decimals}f')
+        info[f'{balance.symbol}_available'] = float(format(balance.available, f'.{balance.decimals}f'))
+        info[f'{balance.symbol}_total'] = float(format(balance.total, f'.{balance.decimals}f'))
     if remote_height.status_code == 200:
         info['remote_blockheight'] = int(remote_height.text)
     else:
