@@ -1,5 +1,4 @@
 import logging
-import time
 from datetime import datetime
 import decimal
 
@@ -7,6 +6,7 @@ from flask import Blueprint, request, jsonify, flash, redirect, render_template
 import flask_security
 from flask_security.utils import encrypt_password, verify_password
 from flask_security.recoverable import send_reset_password_instructions
+import gevent
 
 import web_utils
 from web_utils import bad_request, get_json_params, auth_request, auth_request_get_single_param, auth_request_get_params
@@ -57,6 +57,10 @@ def _tf_check_withdrawal(user, tf_code):
             return bad_request(web_utils.AUTH_FAILED)
     return None
 
+def _redirect_confirmation_result(message, category):
+    flash(message, category)
+    return redirect('/apis/confirmation_result')
+
 #
 # Public API
 #
@@ -64,6 +68,10 @@ def _tf_check_withdrawal(user, tf_code):
 @api.route('/version', methods=['GET', 'POST'])
 def version():
     return jsonify(dict(server_version=SERVER_VERSION, client_version_deployed=CLIENT_VERSION_DEPLOYED))
+
+@api_supplemental.route('/confirmation_result', methods=['GET'])
+def confirmation_result():
+    return render_template('api/confirmation_result.html')
 
 #
 # Private API
@@ -91,7 +99,7 @@ def user_register():
     req = UserCreateRequest(first_name, last_name, email, mobile_number, address, photo, photo_type, encrypt_password(password))
     user = User.from_email(db.session, email)
     if user:
-        time.sleep(5)
+        gevent.sleep(5)
         return bad_request(web_utils.USER_EXISTS)
     email_utils.email_user_create_request(logger, req)
     db.session.add(req)
@@ -102,22 +110,18 @@ def user_register():
 @limiter.limit('20/minute')
 def user_registration_confirm(token=None):
     if not token:
-        flash('Invalid request', 'danger')
-        return redirect('/')
+        return _redirect_confirmation_result('Invalid request', 'danger')
     if not app.config['SECURITY_REGISTERABLE']:
         return bad_request(web_utils.NOT_AVAILABLE)
     req = UserCreateRequest.from_token(db.session, token)
     if not req:
-        flash('User registration request not found.', 'danger')
-        return redirect('/')
+        return _redirect_confirmation_result('User registration request not found.', 'danger')
     user = User.from_email(db.session, req.email)
     if user:
-        flash('User already exists.', 'danger')
-        return redirect('/')
+        return _redirect_confirmation_result('User already exists.', 'danger')
     now = datetime.now()
     if now > req.expiry:
-        flash('User registration expired.', 'danger')
-        return redirect('/')
+        return _redirect_confirmation_result('User registration expired.', 'danger')
     user = user_datastore.create_user(email=req.email, password=req.password, first_name=req.first_name, last_name=req.last_name)
     user.mobile_number = req.mobile_number
     user.address = req.address
@@ -126,8 +130,7 @@ def user_registration_confirm(token=None):
     user.confirmed_at = now
     db.session.delete(req)
     db.session.commit()
-    flash('User registered.', 'success')
-    return redirect('/')
+    return _redirect_confirmation_result('User registered.', 'success')
 
 @api.route('/user_two_factor_enabled_check', methods=['POST'])
 @limiter.limit('10/hour')
@@ -144,10 +147,10 @@ def user_two_factor_enabled_check():
     email = email.lower()
     user = User.from_email(db.session, email)
     if not user:
-        time.sleep(5)
+        gevent.sleep(5)
         return bad_request(web_utils.AUTH_FAILED)
     if not verify_password(password, user.password):
-        time.sleep(5)
+        gevent.sleep(5)
         return bad_request(web_utils.AUTH_FAILED)
     tf_code_send(user)
     return jsonify(dict(tf_enabled=tf_enabled_check(user)))
@@ -168,10 +171,10 @@ def api_key_create():
     email = email.lower()
     user = User.from_email(db.session, email)
     if not user:
-        time.sleep(5)
+        gevent.sleep(5)
         return bad_request(web_utils.AUTH_FAILED)
     if not verify_password(password, user.password):
-        time.sleep(5)
+        gevent.sleep(5)
         return bad_request(web_utils.AUTH_FAILED)
     if tf_enabled_check(user) and not tf_code_validate(user, tf_code):
         return bad_request(web_utils.AUTH_FAILED)
@@ -221,10 +224,10 @@ def api_key_claim():
     token, = params
     req = ApiKeyRequest.from_token(db.session, token)
     if not req:
-        time.sleep(5)
+        gevent.sleep(5)
         return bad_request(web_utils.NOT_FOUND)
     if not req.created_api_key:
-        time.sleep(5)
+        gevent.sleep(5)
         return bad_request(web_utils.NOT_CREATED)
     api_key = req.created_api_key
     db.session.delete(req)
@@ -235,28 +238,23 @@ def api_key_claim():
 @limiter.limit('20/minute')
 def api_key_confirm(token=None, secret=None):
     if not token or not secret:
-        flash('Invalid request', 'danger')
-        return redirect('/')
+        return _redirect_confirmation_result('Invalid request', 'danger')
     req = ApiKeyRequest.from_token(db.session, token)
     if not req:
-        time.sleep(5)
-        flash('Email login request not found.', 'danger')
-        return redirect('/')
+        gevent.sleep(5)
+        return _redirect_confirmation_result('Email login request not found.', 'danger')
     if req.secret != secret:
-        flash('Email login code invalid.', 'danger')
-        return redirect('/')
+        return _redirect_confirmation_result('Email login code invalid.', 'danger')
     now = datetime.now()
     if now > req.expiry:
-        time.sleep(5)
-        flash('Email login request expired.', 'danger')
-        return redirect('/')
+        gevent.sleep(5)
+        return _redirect_confirmation_result('Email login request expired.', 'danger')
     if request.method == 'POST':
         confirm = request.form.get('confirm') == 'true'
         if not confirm:
             db.session.delete(req)
             db.session.commit()
-            flash('Email login cancelled.', 'success')
-            return redirect('/')
+            return _redirect_confirmation_result('Email login cancelled.', 'success')
         tf_code = request.form.get('tf_code')
         if tf_enabled_check(req.user) and (not tf_code or not tf_code_validate(req.user, tf_code)):
             return bad_request(web_utils.AUTH_FAILED)
@@ -270,8 +268,7 @@ def api_key_confirm(token=None, secret=None):
         db.session.add(req)
         db.session.add(api_key)
         db.session.commit()
-        flash('Email login confirmed.', 'success')
-        return redirect('/')
+        return _redirect_confirmation_result('Email login confirmed.', 'success')
     return render_template('api/api_key_confirm.html', req=req, perms=Permission.PERMS_ALL)
 
 @api.route('/user_info', methods=['POST'])
@@ -286,10 +283,10 @@ def user_info():
         email = email.lower()
     user = User.from_email(db.session, email)
     if not user:
-        time.sleep(5)
+        gevent.sleep(5)
         return bad_request(web_utils.AUTH_FAILED)
     if user.email != api_key.user.email and not api_key.user.has_role(Role.ROLE_ADMIN):
-        time.sleep(5)
+        gevent.sleep(5)
         return bad_request(web_utils.AUTH_FAILED)
     return jsonify(websocket.user_info_dict(api_key, email == api_key.user.email))
 
@@ -318,7 +315,7 @@ def user_update_email():
     email = email.lower()
     user = User.from_email(db.session, email)
     if user:
-        time.sleep(5)
+        gevent.sleep(5)
         return bad_request(web_utils.USER_EXISTS)
     req = UserUpdateEmailRequest(api_key.user, email)
     email_utils.email_user_update_email_request(logger, req)
@@ -331,27 +328,23 @@ def user_update_email():
 @limiter.limit('10/hour')
 def user_update_email_confirm(token=None):
     if not token:
-        flash('Invalid request', 'danger')
-        return redirect('/')
+        return _redirect_confirmation_result('Invalid request', 'danger')
     req = UserUpdateEmailRequest.from_token(db.session, token)
     if not req:
-        flash('User update email request not found.', 'danger')
-        return redirect('/')
+        return _redirect_confirmation_result('User update email request not found.', 'danger')
     now = datetime.now()
     if now > req.expiry:
-        flash('User update email request expired.', 'danger')
-        return redirect('/')
+        return _redirect_confirmation_result('User update email request expired.', 'danger')
     user = User.from_email(db.session, req.email)
     if user:
-        time.sleep(5)
+        gevent.sleep(5)
         return bad_request(web_utils.USER_EXISTS)
     if request.method == 'POST':
         confirm = request.form.get('confirm') == 'true'
         if not confirm:
             db.session.delete(req)
             db.session.commit()
-            flash('Email update cancelled.', 'success')
-            return redirect('/')
+            return _redirect_confirmation_result('Email update cancelled.', 'success')
         tf_code = request.form.get('tf_code')
         if tf_enabled_check(req.user) and (not tf_code or not tf_code_validate(req.user, tf_code)):
             return bad_request(web_utils.AUTH_FAILED)
@@ -362,8 +355,7 @@ def user_update_email_confirm(token=None):
         db.session.delete(req)
         db.session.commit()
         websocket.user_info_event(user, old_email)
-        flash('User email updated.', 'success')
-        return redirect('/')
+        return _redirect_confirmation_result('User email updated.', 'success')
     return render_template('api/update_email_confirm.html', req=req)
 
 @api.route('/user_update_password', methods=['POST'])
@@ -546,47 +538,41 @@ def _validate_crypto_asset_deposit(asset: str, l2_network: str | None):
 @limiter.limit('20/minute')
 def withdrawal_confirm(token=None, secret=None):
     if not token or not secret:
-        flash('Invalid request.', 'danger')
-        return redirect('/')
+        return _redirect_confirmation_result('Invalid request.', 'danger')
     conf = WithdrawalConfirmation.from_token(db.session, token)
     if not conf or not conf.withdrawal:
-        time.sleep(5)
-        flash('Withdrawal confirmation not found.', 'danger')
-        return redirect('/')
+        gevent.sleep(5)
+        return _redirect_confirmation_result('Withdrawal confirmation not found.', 'danger')
     if conf.secret != secret:
-        flash('Withdrawal confirmation code invalid.', 'danger')
-        return redirect('/')
+        return _redirect_confirmation_result('Withdrawal confirmation code invalid.', 'danger')
     if conf.confirmed is not None:
-        flash('Withdrawal confirmation already processed.', 'danger')
-        return redirect('/')
+        return _redirect_confirmation_result('Withdrawal confirmation already processed.', 'danger')
     if conf.expired():
-        time.sleep(5)
-        flash('Withdrawal confirmation expired.', 'danger')
-        return redirect('/')
+        gevent.sleep(5)
+        return _redirect_confirmation_result('Withdrawal confirmation expired.', 'danger')
     if not conf.status_is_created():
-        time.sleep(5)
-        flash('Withdrawal invalid.', 'danger')
-        return redirect('/')
+        gevent.sleep(5)
+        return _redirect_confirmation_result('Withdrawal invalid.', 'danger')
     if request.method == 'POST':
         confirm = request.form.get('confirm') == 'true'
+        msg = ''
         with coordinator.lock:
             # check withdrawal status
             if not conf.withdrawal or conf.withdrawal.status != conf.withdrawal.STATUS_CREATED:
-                flash('withdrawal status invalid', 'danger')
-                return redirect('/')
+                return _redirect_confirmation_result('withdrawal status invalid', 'danger')
             # update confirmation
             if confirm:
                 conf.confirmed = True
-                flash('Withdrawal confirmed.', 'success')
+                msg = 'Withdrawal confirmed.'
             else:
                 conf.confirmed = False
-                flash('Withdrawal cancelled.', 'success')
+                msg = 'Withdrawal cancelled.'
             db.session.add(conf)
             # commit changes
             db.session.commit()
             # update withdrawal asap
             tasks.task_manager.one_off('update withdrawal', tasks.update_withdrawal, [conf.withdrawal.asset, conf.withdrawal.token])
-        return redirect('/')
+        return _redirect_confirmation_result(msg, 'success')
     asset = conf.withdrawal.asset
     amount = conf.withdrawal.amount
     amount_dec = assets.asset_int_to_dec(asset, amount)
