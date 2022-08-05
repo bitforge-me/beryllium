@@ -1,0 +1,19 @@
+{% set no_login = True %}
+{% extends "layout.html" %}
+{% block content %}
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-center">
+                <div class="card">
+                    <div class="card-body">
+                        <p>You can now close this window and go back to the app.</p>
+                        <button type="submit" class="btn btn-primary" id="close">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block scripts %}
+    <script src="{{ url_for('static',filename='assets/js_custom/confirmation_result.js') }}"></script>
+{% endblock %}

@@ -66,10 +66,12 @@
                 &nbsp;
             </span>
             <span class="form-inline">
-                {% if current_user.is_authenticated %}
-                    <button class="btn btn-primary" type="button" id="btn-logout"/>Logout</button>
-                {% else %}
-                    <button class="btn btn-primary" type="button" id="btn-login"/>Login</button>
+                {% if no_login != True %}
+                    {% if current_user.is_authenticated %}
+                        <button class="btn btn-primary" type="button" id="btn-logout"/>Logout</button>
+                    {% else %}
+                        <button class="btn btn-primary" type="button" id="btn-login"/>Login</button>
+                    {% endif %}
                 {% endif %}
             </span>
         </div>
@@ -88,7 +90,7 @@
     <div id="navigation" class="container-sm">
         {% block navigation %}{% endblock %}
     </div>
-    <div id="content" class="container-sm m-2">
+    <div id="content" class="container-sm mt-2">
         {% block content %}{% endblock %}
     </div>
     <div id="footer" class="container">
