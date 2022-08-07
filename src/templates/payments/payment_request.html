@@ -1,3 +1,4 @@
+{% set no_login = True %}
 {% extends "layout.html" %}
 {% block content %}
     <!-- Page Content -->
@@ -56,6 +57,11 @@
                         <p>Your payment is cancelled.</p>
                     {% endif %}
                     <p>Thank-you.</p>
+                    {% if completed or cancelled %}
+                        <br/>
+                        <p class="small">You can now close this window and go back to the app.</p>
+                        <button type="submit" class="btn btn-primary" id="close">Close</button>
+                    {% endif %}
                 {% endif %}
             </div>
         </div>
