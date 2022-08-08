@@ -9,7 +9,7 @@ if [ -n "$LIGHTNINGD_REPLICA" ]; then
 fi
 
 # move rebalance plugin into place
-mkdir "${LIGHTNINGD_DATA}/plugins"
+mkdir -p "${LIGHTNINGD_DATA}/plugins"
 cp "${LN_WORK}/rebalance.py" "${LIGHTNINGD_DATA}/plugins/rebalance.py"
 
 # process config template
