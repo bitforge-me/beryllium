@@ -19,6 +19,9 @@ def monitor_info():
     total_spendable = 0
     largest_channel_sats = 0
     overall_total = 0
+    total_active_channels = 0
+    total_inactive_channels = 0
+    total_peer_connected = 0
     for peer in peers:
         for channel in peer['channels']:
             total = channel['msatoshi_total']
@@ -36,6 +39,13 @@ def monitor_info():
                 total_receivable += receivable
                 total_spendable += spendable
                 overall_total += total
+                total_active_channels += 1
+
+            if not peer['connected'] and channel['state'] == 'CHANNELD_NORMAL':
+                total_inactive_channels += 1
+
+            if peer['connected']:
+                total_peer_connected += 1
 
             channel['total_sats'] = _msat_to_sat(total)
             channel['our_reserve_sats'] = our_reserve
@@ -56,6 +66,9 @@ def monitor_info():
     info['total_spendable'] = _msat_to_sat(total_spendable)
     info['total_receivable'] = _msat_to_sat(total_receivable)
     info['overall_total_sats'] = _msat_to_sat(overall_total)
+    info['total_active_channels'] = total_active_channels
+    info['total_inactive_channels'] = total_inactive_channels
+    info['total_peer_connected'] = total_peer_connected
     info['sats_channels'] = ln_funds['sats_channels']
     info['sats_onchain'] = ln_funds['sats_onchain']
     info['blockheight'] = ln_info['blockheight']
