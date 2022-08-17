@@ -1,6 +1,6 @@
 # Global Agent Configuration
 [global_tags]
-  group = "dev"
+  group = "{{ environ('TELEGRAF_GROUP') }}"
 
 [agent]
   hostname = "{{ environ('TELEGRAF_NAME') | default('dev') }}"
