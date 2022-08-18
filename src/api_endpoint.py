@@ -644,20 +644,6 @@ def crypto_deposit_recipient_req():
     db.session.commit()
     return jsonify(recipient=crypto_address.address, asset=asset, l2_network=l2_network, amount_dec=decimal.Decimal(0))
 
-@api.route('/crypto_deposits', methods=['POST'])
-def crypto_deposits_req():
-    params, api_key, err_response = auth_request_get_params(db, ['asset', 'l2_network', 'offset', 'limit'])
-    if err_response:
-        return err_response
-    assert params and api_key
-    asset, l2_network, offset, limit = params
-    if not assets.asset_is_crypto(asset):
-        return bad_request(web_utils.INVALID_ASSET)
-    deposits = BalanceUpdate.of_asset(db.session, api_key.user, BalanceUpdate.TYPE_DEPOSIT, asset, l2_network, offset, limit)
-    deposits = [deposit.to_json() for deposit in deposits]
-    total = BalanceUpdate.total_of_asset(db.session, api_key.user, BalanceUpdate.TYPE_DEPOSIT, asset, l2_network)
-    return jsonify(deposits=deposits, offset=offset, limit=limit, total=total)
-
 def _validate_crypto_asset_withdraw(asset: str, l2_network: str | None, recipient: str | None):
     if not assets.asset_is_crypto(asset):
         return bad_request(web_utils.INVALID_ASSET)
@@ -744,27 +730,6 @@ def crypto_withdrawal_create_req():
     websocket.crypto_withdrawal_new_event(crypto_withdrawal)
     return jsonify(withdrawal=crypto_withdrawal.to_json())
 
-@api.route('/crypto_withdrawals', methods=['POST'])
-def crypto_withdrawals_req():
-    params, api_key, err_response = auth_request_get_params(db, ['asset', 'l2_network', 'offset', 'limit'])
-    if err_response:
-        return err_response
-    assert params and api_key
-    asset, l2_network, offset, limit = params
-    err_response = _validate_crypto_asset_withdraw(asset, l2_network, None)
-    if err_response:
-        return err_response
-    if not isinstance(offset, int):
-        return bad_request(web_utils.INVALID_PARAMETER)
-    if not isinstance(limit, int):
-        return bad_request(web_utils.INVALID_PARAMETER)
-    if limit > 1000:
-        return bad_request(web_utils.LIMIT_TOO_LARGE)
-    withdrawals = BalanceUpdate.of_asset(db.session, api_key.user, BalanceUpdate.TYPE_WITHDRAWAL, asset, l2_network, offset, limit)
-    withdrawals = [withdrawal.to_json() for withdrawal in withdrawals]
-    total = BalanceUpdate.total_of_asset(db.session, api_key.user, BalanceUpdate.TYPE_WITHDRAWAL, asset, l2_network)
-    return jsonify(withdrawals=withdrawals, offset=offset, limit=limit, total=total)
-
 @api.route('/fiat_deposit_windcave', methods=['POST'])
 def fiat_deposit_windcave_req():
     params, api_key, err_response = auth_request_get_params(db, ['asset', 'amount_dec'])
@@ -809,26 +774,6 @@ def fiat_deposit_direct_req():
     crown_account_number = app.config['CROWN_ACCOUNT_NUMBER']
     crown_account_code = app.config['CROWN_ACCOUNT_CODE']
     return jsonify(deposit=dict(account_number=crown_account_number, reference=crown_account_code, code=deposit_code.token))
-
-@api.route('/fiat_deposits', methods=['POST'])
-def fiat_deposits_req():
-    params, api_key, err_response = auth_request_get_params(db, ['asset', 'offset', 'limit'])
-    if err_response:
-        return err_response
-    assert params and api_key
-    asset, offset, limit = params
-    if not assets.asset_is_fiat(asset):
-        return bad_request(web_utils.INVALID_ASSET)
-    if not isinstance(offset, int):
-        return bad_request(web_utils.INVALID_PARAMETER)
-    if not isinstance(limit, int):
-        return bad_request(web_utils.INVALID_PARAMETER)
-    if limit > 1000:
-        return bad_request(web_utils.LIMIT_TOO_LARGE)
-    deposits = BalanceUpdate.of_asset(db.session, api_key.user, BalanceUpdate.TYPE_DEPOSIT, asset, None, offset, limit)
-    deposits = [deposit.to_json() for deposit in deposits]
-    total = BalanceUpdate.total_of_asset(db.session, api_key.user, BalanceUpdate.TYPE_DEPOSIT, asset, None)
-    return jsonify(deposits=deposits, offset=offset, limit=limit, total=total)
 
 @api.route('/fiat_withdrawal_create', methods=['POST'])
 def fiat_withdrawal_create_req():
@@ -889,24 +834,50 @@ def fiat_withdrawal_create_req():
     websocket.fiat_withdrawal_new_event(fiat_withdrawal)
     return jsonify(withdrawal=fiat_withdrawal.to_json())
 
-@api.route('/fiat_withdrawals', methods=['POST'])
-def fiat_withdrawals_req():
-    params, api_key, err_response = auth_request_get_params(db, ['asset', 'offset', 'limit'])
+@api.route('/deposits', methods=['POST'])
+def deposits_req():
+    params, api_key, err_response = auth_request_get_params(db, ['asset', 'l2_network', 'offset', 'limit'])
     if err_response:
         return err_response
     assert params and api_key
-    asset, offset, limit = params
-    if not assets.asset_is_fiat(asset):
-        return bad_request(web_utils.INVALID_ASSET)
+    asset, l2_network, offset, limit = params
     if not isinstance(offset, int):
         return bad_request(web_utils.INVALID_PARAMETER)
     if not isinstance(limit, int):
         return bad_request(web_utils.INVALID_PARAMETER)
     if limit > 1000:
         return bad_request(web_utils.LIMIT_TOO_LARGE)
-    withdrawals = BalanceUpdate.of_asset(db.session, api_key.user, BalanceUpdate.TYPE_WITHDRAWAL, asset, None, offset, limit)
-    withdrawals = [withdrawal.to_json() for withdrawal in withdrawals]
-    total = BalanceUpdate.total_of_asset(db.session, api_key.user, BalanceUpdate.TYPE_WITHDRAWAL, asset, None)
+    if asset == '*ALL*':
+        deposits = BalanceUpdate.of_type(db.session, api_key.user, BalanceUpdate.TYPE_DEPOSIT, offset, limit)
+        deposits = [deposit.to_json() for deposit in deposits]
+        total = BalanceUpdate.total_of_type(db.session, api_key.user, BalanceUpdate.TYPE_DEPOSIT)
+    else:
+        deposits = BalanceUpdate.of_asset(db.session, api_key.user, BalanceUpdate.TYPE_DEPOSIT, asset, l2_network, offset, limit)
+        deposits = [deposit.to_json() for deposit in deposits]
+        total = BalanceUpdate.total_of_asset(db.session, api_key.user, BalanceUpdate.TYPE_DEPOSIT, asset, l2_network)
+    return jsonify(deposits=deposits, offset=offset, limit=limit, total=total)
+
+@api.route('/withdrawals', methods=['POST'])
+def withdrawals_req():
+    params, api_key, err_response = auth_request_get_params(db, ['asset', 'l2_network', 'offset', 'limit'])
+    if err_response:
+        return err_response
+    assert params and api_key
+    asset, l2_network, offset, limit = params
+    if not isinstance(offset, int):
+        return bad_request(web_utils.INVALID_PARAMETER)
+    if not isinstance(limit, int):
+        return bad_request(web_utils.INVALID_PARAMETER)
+    if limit > 1000:
+        return bad_request(web_utils.LIMIT_TOO_LARGE)
+    if asset == '*ALL*':
+        withdrawals = BalanceUpdate.of_type(db.session, api_key.user, BalanceUpdate.TYPE_WITHDRAWAL, offset, limit)
+        withdrawals = [withdrawal.to_json() for withdrawal in withdrawals]
+        total = BalanceUpdate.total_of_type(db.session, api_key.user, BalanceUpdate.TYPE_WITHDRAWAL)
+    else:
+        withdrawals = BalanceUpdate.of_asset(db.session, api_key.user, BalanceUpdate.TYPE_WITHDRAWAL, asset, l2_network, offset, limit)
+        withdrawals = [withdrawal.to_json() for withdrawal in withdrawals]
+        total = BalanceUpdate.total_of_asset(db.session, api_key.user, BalanceUpdate.TYPE_WITHDRAWAL, asset, l2_network)
     return jsonify(withdrawals=withdrawals, offset=offset, limit=limit, total=total)
 
 @api.route('/address_book', methods=['POST'])

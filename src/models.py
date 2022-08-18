@@ -608,6 +608,14 @@ class BalanceUpdate(BaseModel, FromUserMixin, FromTokenMixin):
         return session.query(cls).filter(cls.wallet_reference == wallet_reference).first()
 
     @classmethod
+    def of_type(cls, session: Session, user: User, type: str, offset: int, limit: int):
+        return session.query(cls).filter(and_(cls.user_id == user.id, cls.type == type)).order_by(cls.id.desc()).offset(offset).limit(limit)
+
+    @classmethod
+    def total_of_type(cls, session: Session, user: User, type: str, ):
+        return session.query(cls).filter(and_(cls.user_id == user.id, cls.type == type)).count()
+
+    @classmethod
     def of_asset(cls, session: Session, user: User, type: str, asset: str, l2_network: str | None, offset: int, limit: int):
         return session.query(cls).filter(and_(and_(cls.user_id == user.id, and_(cls.asset == asset, cls.l2_network == l2_network), cls.type == type))).order_by(cls.id.desc()).offset(offset).limit(limit)
 
