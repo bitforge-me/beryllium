@@ -21,8 +21,8 @@ from flask_wtf.csrf import CSRFProtect
 from flask_talisman import Talisman
 from dotenv import load_dotenv
 
-SERVER_VERSION = 11
-CLIENT_VERSION_DEPLOYED = 9
+SERVER_VERSION = 12
+CLIENT_VERSION_DEPLOYED = 12
 
 MISSING_VITAL_SETTING = False
 
