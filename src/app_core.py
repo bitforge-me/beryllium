@@ -21,8 +21,8 @@ from flask_wtf.csrf import CSRFProtect
 from flask_talisman import Talisman
 from dotenv import load_dotenv
 
-SERVER_VERSION = 12
-CLIENT_VERSION_DEPLOYED = 12
+SERVER_VERSION = 13
+CLIENT_VERSION_DEPLOYED = 13
 
 MISSING_VITAL_SETTING = False
 
@@ -95,6 +95,7 @@ app.config["REFERRAL_STORE_NAME"] = strdef("REFERRAL_STORE_NAME", "Change My Nam
 app.config["REFERRAL_SPEND_ASSET"] = strdef("REFERRAL_SPEND_ASSET", "NZD")
 
 app.config["BROKER_ORDER_FEE"] = strdef("BROKER_ORDER_FEE", "0.5")
+app.config["BROKER_ORDER_FEE_FIXED"] = strdef("BROKER_ORDER_FEE_FIXED", '{"NZD":"1"}')
 
 app.config['EXCHANGE_ACCOUNT_MOCK'] = boolify(os.getenv('EXCHANGE_ACCOUNT_MOCK'))
 
