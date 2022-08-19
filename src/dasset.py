@@ -18,6 +18,9 @@ logger = logging.getLogger(__name__)
 DASSET_API_SECRET = app.config['DASSET_API_SECRET']
 DASSET_ACCOUNT_ID = app.config['DASSET_ACCOUNT_ID']
 BROKER_ORDER_FEE = decimal.Decimal(app.config['BROKER_ORDER_FEE'])
+BROKER_ORDER_FEE_FIXED: dict[str, decimal.Decimal] = json.loads(app.config['BROKER_ORDER_FEE_FIXED'])
+for key in BROKER_ORDER_FEE_FIXED:
+    BROKER_ORDER_FEE_FIXED[key] = decimal.Decimal(BROKER_ORDER_FEE_FIXED[key])
 
 URL_BASE = 'https://api.dassetx.com/api'
 URL_BASE_NOAPI = 'https://api.dassetx.com'
@@ -32,6 +35,18 @@ class QuoteResult(Enum):
     AMOUNT_TOO_LOW = 1
     INSUFFICIENT_LIQUIDITY = 2
     MARKET_API_FAIL = 3
+
+@dataclass
+class QuoteTotalPrice:
+    amountBaseAsset: decimal.Decimal
+    amountQuoteAsset: decimal.Decimal
+    feeQuoteAsset: decimal.Decimal
+    fixedFeeQuoteAsset: decimal.Decimal
+    err: QuoteResult
+
+    @classmethod
+    def error(cls, err: QuoteResult):
+        return cls(decimal.Decimal(0), decimal.Decimal(0), decimal.Decimal(0), decimal.Decimal(0), err)
 
 @dataclass
 class DassetBalance:
@@ -56,7 +71,7 @@ class DassetMarket:
     symbol: str
     base_asset: str
     quote_asset: str
-    precision: str
+    precision: int
     status: str
     min_trade: str
     message: str
@@ -200,7 +215,7 @@ def _req_put(endpoint, params):
     r = httpreq.put(url, headers=headers, data=json.dumps(params))
     return r
 
-def assets_req(asset=None):
+def _assets_req(asset=None):
     endpoint = '/currencies'
     if asset:
         endpoint = f'/currencies/{asset}'
@@ -210,15 +225,7 @@ def assets_req(asset=None):
     logger.error('request failed: %d, %s', r.status_code, r.text[:100])
     return None
 
-def markets_refresh_cache(margin: int):
-    if _markets_cache:
-        timestamp, _ = _markets_cache
-        if timestamp + CACHE_EXPIRY - margin > time.time():
-            return
-    #logger.info('refresh cache for %s', MARKETS_KEY)
-    markets_req(quiet=True)
-
-def markets_req(use_cache=False, quiet=False):
+def _markets_req(use_cache=False, quiet=False):
     global _markets_cache
     if use_cache:
         # see if we have a cached version to return
@@ -240,31 +247,22 @@ def markets_req(use_cache=False, quiet=False):
     logger.error('request failed: %d, %s', r.status_code, r.text[:100])
     return None
 
-def market_req(name, use_cache=False):
-    markets = markets_req(use_cache)
+def _market_req(name, use_cache=False):
+    markets = _markets_req(use_cache)
     if markets:
         for market in markets:
             if market.symbol == name:
                 return market
     return None
 
-def order_book_refresh_cache(margin: int):
-    for symbol in assets.MARKETS:
-        if symbol in _orderbook_cache:
-            timestamp, _ = _orderbook_cache[symbol]
-            if timestamp + CACHE_EXPIRY - margin > time.time():
-                continue
-        #logger.info('refresh cache for %s', symbol)
-        order_book_req(symbol, quiet=True)
-
-def order_book_req(symbol, use_cache=False, quiet=False):
+def _order_book_req(symbol, use_cache=False, quiet=False):
     if use_cache:
         # see if we have a cached version to return
         if symbol in _orderbook_cache:
             timestamp, book = _orderbook_cache[symbol]
             # if timestamp + cache expiry is greater then current timestamp then cache still valid
             if timestamp + CACHE_EXPIRY > time.time():
-                return book, BROKER_ORDER_FEE
+                return book
             logger.error('cache hit failed, ts: %f, time: %f', timestamp, time.time())
     # request the current data from dasset
     endpoint = f'/markets/{symbol}/orderbook'
@@ -274,7 +272,7 @@ def order_book_req(symbol, use_cache=False, quiet=False):
         book = _parse_order_book(r.json()[0])
         _orderbook_cache[symbol] = time.time(), book
         # return result to caller
-        return book, BROKER_ORDER_FEE
+        return book
     logger.error('request failed: %d, %s', r.status_code, r.text[:100])
     return None
 
@@ -432,20 +430,48 @@ def crypto_deposit_completed(deposit: DassetDeposit):
 # Public functions that rely on an exchange request
 #
 
-def bid_quote_amount(market: str, amount: decimal.Decimal, use_cache=False):
+def _fixed_fee(market: str, broker_fee_fixed: dict[str, decimal.Decimal]):
+    base_asset, quote_asset = assets.assets_from_market(market)
+    for key, value in broker_fee_fixed.items():
+        if key == quote_asset:
+            return value
+    return decimal.Decimal(0)
+
+def markets_data(use_cache: bool):
+    if _account_mock():
+        markets = []
+        for key in assets.MARKETS:
+            markets.append(market_data(key, use_cache))
+        return markets
+    return _markets_req(use_cache=use_cache)
+
+def market_data(market: str, use_cache: bool):
+    if _account_mock():
+        base_asset, quote_asset = assets.assets_from_market(market)
+        return DassetMarket(market, base_asset, quote_asset, 8, 'ONLINE', '0.000001', '')
+    return _market_req(market, use_cache=use_cache)
+
+def order_book_data(market: str, use_cache: bool):
+    if _account_mock():
+        bids = [dict(quantity='1', rate='9999'), dict(quantity='1', rate='9950'), dict(quantity='1', rate='9925'), dict(quantity='1', rate='9900')]
+        asks = [dict(quantity='1', rate='10000'), dict(quantity='1', rate='10050'), dict(quantity='1', rate='10075'), dict(quantity='1', rate='10100')]
+        return DassetOrderbook(bids, asks), BROKER_ORDER_FEE, BROKER_ORDER_FEE_FIXED
+    return _order_book_req(market, use_cache=use_cache), BROKER_ORDER_FEE, BROKER_ORDER_FEE_FIXED
+
+def bid_quote_amount(market: str, amount: decimal.Decimal, use_cache=False) -> QuoteTotalPrice:
     assert isinstance(amount, decimal.Decimal)
-    dasset_market = market_req(market, use_cache=use_cache)
+    dasset_market = market_data(market, use_cache=use_cache)
     if not dasset_market:
-        return decimal.Decimal(-1), QuoteResult.MARKET_API_FAIL
+        return QuoteTotalPrice.error(QuoteResult.MARKET_API_FAIL)
     min_trade = decimal.Decimal(dasset_market.min_trade)
     if amount < min_trade:
-        return decimal.Decimal(-1), QuoteResult.AMOUNT_TOO_LOW
+        return QuoteTotalPrice.error(QuoteResult.AMOUNT_TOO_LOW)
 
-    order_book_result = order_book_req(market, use_cache=use_cache)
-    if not order_book_result:
-        return decimal.Decimal(-1), QuoteResult.MARKET_API_FAIL
-    order_book, broker_fee = order_book_result
+    order_book, broker_fee, broker_fee_fixed = order_book_data(market, use_cache=use_cache)
+    if not order_book:
+        return QuoteTotalPrice.error(QuoteResult.MARKET_API_FAIL)
 
+    fixed_fee = _fixed_fee(market, broker_fee_fixed)
     filled = decimal.Decimal(0)
     total_price = decimal.Decimal(0)
     n = 0
@@ -460,25 +486,27 @@ def bid_quote_amount(market: str, amount: decimal.Decimal, use_cache=False):
         filled += quantity_to_use
         total_price += quantity_to_use * rate
         if filled == amount:
-            return total_price * (decimal.Decimal(1) + broker_fee / decimal.Decimal(100)), QuoteResult.OK
+            total_price_including_margin = total_price * (decimal.Decimal(1) + broker_fee / decimal.Decimal(100))
+            fee = total_price_including_margin - total_price
+            return QuoteTotalPrice(amount, total_price_including_margin + fixed_fee, fee, fixed_fee, QuoteResult.OK)
         n += 1
 
-    return decimal.Decimal(-1), QuoteResult.INSUFFICIENT_LIQUIDITY
+    return QuoteTotalPrice.error(QuoteResult.INSUFFICIENT_LIQUIDITY)
 
-def ask_quote_amount(market: str, amount: decimal.Decimal, use_cache=False):
+def ask_quote_amount(market: str, amount: decimal.Decimal, use_cache=False) -> QuoteTotalPrice:
     assert isinstance(amount, decimal.Decimal)
-    dasset_market = market_req(market, use_cache=use_cache)
+    dasset_market = market_data(market, use_cache=use_cache)
     if not dasset_market:
-        return decimal.Decimal(-1), QuoteResult.MARKET_API_FAIL
+        return QuoteTotalPrice.error(QuoteResult.MARKET_API_FAIL)
     min_trade = decimal.Decimal(dasset_market.min_trade)
     if amount < min_trade:
-        return decimal.Decimal(-1), QuoteResult.AMOUNT_TOO_LOW
+        return QuoteTotalPrice.error(QuoteResult.AMOUNT_TOO_LOW)
 
-    order_book_result = order_book_req(market, use_cache=use_cache)
-    if not order_book_result:
-        return decimal.Decimal(-1), QuoteResult.MARKET_API_FAIL
-    order_book, broker_fee = order_book_result
+    order_book, broker_fee, broker_fee_fixed = order_book_data(market, use_cache=use_cache)
+    if not order_book:
+        return QuoteTotalPrice.error(QuoteResult.MARKET_API_FAIL)
 
+    fixed_fee = _fixed_fee(market, broker_fee_fixed)
     filled = decimal.Decimal(0)
     total_price = decimal.Decimal(0)
     n = 0
@@ -493,10 +521,12 @@ def ask_quote_amount(market: str, amount: decimal.Decimal, use_cache=False):
         filled += quantity_to_use
         total_price += quantity_to_use * rate
         if filled == amount:
-            return total_price * (decimal.Decimal(1) - broker_fee / decimal.Decimal(100)), QuoteResult.OK
+            total_price_including_margin = total_price * (decimal.Decimal(1) - broker_fee / decimal.Decimal(100))
+            fee = total_price - total_price_including_margin
+            return QuoteTotalPrice(amount, total_price_including_margin - fixed_fee, fee, fixed_fee, QuoteResult.OK)
         n += 1
 
-    return decimal.Decimal(-1), QuoteResult.INSUFFICIENT_LIQUIDITY
+    return QuoteTotalPrice.error(QuoteResult.INSUFFICIENT_LIQUIDITY)
 
 def account_balances(asset: str | None = None, subaccount_id: str | None = None):
     if _account_mock():
@@ -600,3 +630,24 @@ def funds_available_us(asset: str, amount: decimal.Decimal):
             if balance.symbol == asset:
                 return balance.available >= amount
     return False
+
+def markets_refresh_cache(margin: int):
+    if _account_mock():
+        return
+    if _markets_cache:
+        timestamp, _ = _markets_cache
+        if timestamp + CACHE_EXPIRY - margin > time.time():
+            return
+    #logger.info('refresh cache for %s', MARKETS_KEY)
+    _markets_req(quiet=True)
+
+def order_book_refresh_cache(margin: int):
+    if _account_mock():
+        return
+    for symbol in assets.MARKETS:
+        if symbol in _orderbook_cache:
+            timestamp, _ = _orderbook_cache[symbol]
+            if timestamp + CACHE_EXPIRY - margin > time.time():
+                continue
+        #logger.info('refresh cache for %s', symbol)
+        _order_book_req(symbol, quiet=True)

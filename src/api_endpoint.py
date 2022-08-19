@@ -496,7 +496,7 @@ def markets_req():
     _, err_response = auth_request(db)
     if err_response:
         return err_response
-    return jsonify(markets=dasset.markets_req(use_cache=True))
+    return jsonify(markets=dasset.markets_data(use_cache=True))
 
 @api.route('/order_book', methods=['POST'])
 def order_book_req():
@@ -508,11 +508,13 @@ def order_book_req():
     base_asset, quote_asset = assets.assets_from_market(market)
     base_asset_withdraw_fee = assets.asset_withdraw_fee(base_asset, None)
     quote_asset_withdraw_fee = assets.asset_withdraw_fee(quote_asset, None)
-    order_book_resp = dasset.order_book_req(market, use_cache=True)
-    if not order_book_resp:
+    order_book, broker_fee, broker_fee_fixed = dasset.order_book_data(market, use_cache=True)
+    if not order_book:
         return bad_request(web_utils.FAILED_EXCHANGE)
-    order_book, broker_fee = order_book_resp
-    return jsonify(bids=order_book.bids, asks=order_book.asks, base_asset_withdraw_fee=str(base_asset_withdraw_fee), quote_asset_withdraw_fee=str(quote_asset_withdraw_fee), broker_fee=str(broker_fee))
+    broker_fee_fixed_str = {}
+    for key in broker_fee_fixed:
+        broker_fee_fixed_str[key] = str(broker_fee_fixed[key])
+    return jsonify(bids=order_book.bids, asks=order_book.asks, base_asset_withdraw_fee=str(base_asset_withdraw_fee), quote_asset_withdraw_fee=str(quote_asset_withdraw_fee), broker_fee=str(broker_fee), broker_fee_fixed=broker_fee_fixed_str)
 
 @api.route('/balances', methods=['POST'])
 def balances_req():
@@ -902,22 +904,25 @@ def _broker_order_validate(user, market, side, amount_dec, use_cache=False):
         return return_error(bad_request(web_utils.INVALID_SIDE))
     amount_dec = decimal.Decimal(amount_dec)
     if market_side_is(side, MarketSide.BID):
-        quote_amount_dec, err = dasset.bid_quote_amount(market, amount_dec, use_cache)
+        quote = dasset.bid_quote_amount(market, amount_dec, use_cache)
     else:
-        quote_amount_dec, err = dasset.ask_quote_amount(market, amount_dec, use_cache)
-    if err == dasset.QuoteResult.INSUFFICIENT_LIQUIDITY:
+        quote = dasset.ask_quote_amount(market, amount_dec, use_cache)
+    if quote.err == dasset.QuoteResult.INSUFFICIENT_LIQUIDITY:
         return return_error(bad_request(web_utils.INSUFFICIENT_LIQUIDITY))
-    if err == dasset.QuoteResult.AMOUNT_TOO_LOW:
+    if quote.err == dasset.QuoteResult.AMOUNT_TOO_LOW:
         return return_error(bad_request(web_utils.AMOUNT_TOO_LOW))
-    if err == dasset.QuoteResult.MARKET_API_FAIL:
+    if quote.err == dasset.QuoteResult.MARKET_API_FAIL:
         logger.error('failled getting quote amount due to error in dasset market API')
         return return_error(bad_request(web_utils.NOT_AVAILABLE))
-    if err != dasset.QuoteResult.OK:
+    if quote.err != dasset.QuoteResult.OK:
         logger.error('failded getting quote amount due to unknown error')
         return return_error(bad_request(web_utils.UNKNOWN_ERROR))
     base_asset, quote_asset = assets.assets_from_market(market)
+    logger.info('quote %s %s %s for %s %s, fee: %s %s, fixed fee: %s %s', side.name, amount_dec, base_asset, quote.amountQuoteAsset, quote_asset, quote.feeQuoteAsset, quote_asset, quote.fixedFeeQuoteAsset, quote_asset)
     base_amount = assets.asset_dec_to_int(base_asset, amount_dec)
-    quote_amount = assets.asset_dec_to_int(quote_asset, quote_amount_dec)
+    quote_amount = assets.asset_dec_to_int(quote_asset, quote.amountQuoteAsset)
+    if base_amount <= 0 or quote_amount <= 0:
+        return return_error(bad_request(web_utils.AMOUNT_TOO_LOW))
     order = BrokerOrder(user, market, side.value, base_asset, quote_asset, base_amount, quote_amount)
     err_msg = broker.order_check_funds(db.session, order)
     if err_msg:
@@ -943,7 +948,7 @@ def broker_order_create():
         return err_response
     assert params and api_key
     market, side, amount_dec = params
-    if not api_key.user.kyc_validated():
+    if not api_key.user.kyc_validated() and not dasset._account_mock():
         return bad_request(web_utils.KYC_NOT_VALIDATED)
     err_response, order = _broker_order_validate(api_key.user, market, side, amount_dec, use_cache=False)
     if err_response:
