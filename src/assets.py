@@ -143,7 +143,7 @@ def asset_int_to_dec(asset: str, value: int) -> Dec:
 
 def asset_dec_to_int(asset: str, value: Dec) -> int:
     decimals = asset_decimals(asset)
-    return int(value * Dec(10**decimals))
+    return int(round(value * Dec(10**decimals)))
 
 def asset_dec_to_str(asset: str, value: Dec) -> str:
     decimals = asset_decimals(asset)
