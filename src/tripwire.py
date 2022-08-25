@@ -33,7 +33,7 @@ def _attempt(event_type: EventType):
     if event_type.attempts > 10:
         for name, event_type in DATA.items():
             event_type.ok = False
-        email_utils.email_tripwire_notification(logger)
+        email_utils.email_tripwire_notification()
 
 def login_attempt():
     _attempt(LOGIN)

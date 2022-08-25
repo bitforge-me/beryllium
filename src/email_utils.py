@@ -54,25 +54,25 @@ def send_email_postfix(logger: Logger, subject: str, msg: str, recipient: str, a
         logger.error(f"email '{subject}': {ex}")
     return False
 
-def email_exception(logger: Logger, msg: str):
+def email_exception(msg: str):
     send_email("beryllium exception", msg)
 
-def email_user_create_request(logger: Logger, req: UserCreateRequest):
+def email_user_create_request(req: UserCreateRequest):
     url = url_for("api_supplemental.user_registration_confirm", token=req.token, _external=True)
     msg = f"You have a pending user registration waiting!<br/><br/>Confirm your registration <a href='{url}'>here</a><br/><br/>Confirm within {req.MINUTES_EXPIRY} minutes"
     send_email("Confirm your registration", msg, req.email)
 
-def email_user_update_email_request(logger: Logger, req: UserUpdateEmailRequest):
+def email_user_update_email_request(req: UserUpdateEmailRequest):
     url = url_for("api_supplemental.user_update_email_confirm", token=req.token, _external=True)
     msg = f"You have a pending update email request waiting!<br/><br/>Confirm your new email <a href='{url}'>here</a><br/><br/>Confirm within {req.MINUTES_EXPIRY} minutes"
     send_email("Confirm your update email request", msg, req.email)
 
-def email_api_key_request(logger: Logger, req: ApiKeyRequest):
+def email_api_key_request(req: ApiKeyRequest):
     url = url_for("api_supplemental.api_key_confirm", token=req.token, secret=req.secret, _external=True)
     msg = f"You have a pending email login request waiting!<br/><br/>Confirm your email login <a href='{url}'>here</a><br/><br/>Confirm within {req.MINUTES_EXPIRY} minutes"
     send_email("Confirm your email login request", msg, req.user.email)
 
-def email_referral(logger: Logger, referral: Referral):
+def email_referral(referral: Referral):
     shop_name = app.config["REFERRAL_STORE_NAME"]
     qrcode_b64 = utils.qrcode_pngb64_create(referral.token, box_size=4)
     ecom_link = app.config["REFERRAL_ECOMMERCE_URL"]
@@ -93,10 +93,10 @@ def email_referral(logger: Logger, referral: Referral):
     attachment = _attachment_inline(qrcode_b64, 'image/png', 'qrcode.png', 'qrcode')
     send_email(f"{shop_name} Referral", msg, referral.recipient, attachment)
 
-def email_notification_alert(logger: Logger, subject: str, msg: str, recipient: str):
+def email_notification_alert(subject: str, msg: str, recipient: str):
     send_email(subject, msg, recipient=recipient)
 
-def email_payouts_notification(logger: Logger, payout_requests: list[PayoutRequest]):
+def email_payouts_notification(payout_requests: list[PayoutRequest]):
     recipient = app.config['PAYOUT_GROUP_EMAIL']
     server_name = app.config['SERVER_NAME']
     subject = f'{server_name} payouts'
@@ -104,13 +104,13 @@ def email_payouts_notification(logger: Logger, payout_requests: list[PayoutReque
     html_content = f'{len(payout_requests)} payout requests<br/><br/><a href="{url}">payouts</a>'
     send_email(subject, html_content, recipient=recipient)
 
-def email_tripwire_notification(logger: Logger):
+def email_tripwire_notification():
     server_name = app.config['SERVER_NAME']
     subject = f'{server_name} tripwire'
     html_content = f'the tripwire at <a href="{server_name}">{server_name}</a> has triggered'
     send_email(subject, html_content)
 
-def email_withdrawal_confirmation(logger: Logger, conf: WithdrawalConfirmation):
+def email_withdrawal_confirmation(conf: WithdrawalConfirmation):
     url = url_for("api_supplemental.withdrawal_confirm", token=conf.token, secret=conf.secret, _external=True)
     assert conf.withdrawal
     asset = conf.withdrawal.asset

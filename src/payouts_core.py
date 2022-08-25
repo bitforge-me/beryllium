@@ -14,7 +14,7 @@ def payout_create(amount, reference, code, address_book):
 def payouts_notification_create():
     reqs = PayoutRequest.where_status_created(db.session)
     # send email
-    email_utils.email_payouts_notification(logger, reqs)
+    email_utils.email_payouts_notification(reqs)
 
 def payout_group_create():
     # create payout group

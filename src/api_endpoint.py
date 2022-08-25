@@ -101,7 +101,7 @@ def user_register():
     if user:
         gevent.sleep(5)
         return bad_request(web_utils.USER_EXISTS)
-    email_utils.email_user_create_request(logger, req)
+    email_utils.email_user_create_request(req)
     db.session.add(req)
     db.session.commit()
     return 'ok'
@@ -206,7 +206,7 @@ def api_key_request():
         req = ApiKeyRequest(user, device_name)
         return jsonify(dict(token=req.token))
     req = ApiKeyRequest(user, device_name)
-    email_utils.email_api_key_request(logger, req)
+    email_utils.email_api_key_request(req)
     db.session.add(req)
     db.session.commit()
     tf_code_send(user)
@@ -318,7 +318,7 @@ def user_update_email():
         gevent.sleep(5)
         return bad_request(web_utils.USER_EXISTS)
     req = UserUpdateEmailRequest(api_key.user, email)
-    email_utils.email_user_update_email_request(logger, req)
+    email_utils.email_user_update_email_request(req)
     db.session.add(req)
     db.session.commit()
     tf_code_send(api_key.user)
@@ -683,7 +683,7 @@ def _create_withdrawal(user: User, asset: str, l2_network: str | None, amount_de
         db.session.commit()
         # step 2) create / send withdrawal confirmation
         conf = WithdrawalConfirmation(crypto_withdrawal.user, crypto_withdrawal, None)
-        email_utils.email_withdrawal_confirmation(db.session, conf)
+        email_utils.email_withdrawal_confirmation(conf)
         db.session.add(conf)
         db.session.commit()
         return crypto_withdrawal, None
@@ -829,7 +829,7 @@ def fiat_withdrawal_create_req():
         db.session.commit()
         # step 2) create / send withdrawal confimation
         conf = WithdrawalConfirmation(fiat_withdrawal.user, fiat_withdrawal, entry)
-        email_utils.email_withdrawal_confirmation(db.session, conf)
+        email_utils.email_withdrawal_confirmation(conf)
         db.session.add(conf)
         db.session.commit()
     # update user

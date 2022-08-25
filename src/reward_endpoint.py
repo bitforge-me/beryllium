@@ -57,7 +57,7 @@ def referral_create():
     reward_recipient = app.config["REFERRAL_REWARD_RECIPIENT"]
     recipient_min_spend = app.config["REFERRAL_RECIPIENT_MIN_SPEND"]
     ref = Referral(api_key.user, recipient, reward_sender_type, reward_sender, reward_recipient_type, reward_recipient, recipient_min_spend)
-    email_utils.email_referral(logger, ref)
+    email_utils.email_referral(ref)
     db.session.add(ref)
     db.session.commit()
     return 'ok'
@@ -76,7 +76,7 @@ def referral_remind():
         return bad_request(web_utils.NOT_FOUND)
     if ref.status != ref.STATUS_CREATED:
         return bad_request(web_utils.NOT_FOUND)
-    email_utils.email_referral(logger, ref)
+    email_utils.email_referral(ref)
     return 'ok'
 
 @reward.route('/referral_list', methods=['POST'])

@@ -94,7 +94,7 @@ def g_exception(greenlet):
     except Exception as e:
         stack_trace = traceback.format_exc()
         msg = f"{e}\n---\n{stack_trace}"
-        email_utils.email_exception(logger, msg)
+        email_utils.email_exception(msg)
 
 KEEP_RUNNING = True
 if __name__ == "__main__":
