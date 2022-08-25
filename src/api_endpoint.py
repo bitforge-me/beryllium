@@ -762,7 +762,7 @@ def fiat_deposit_direct_req():
     api_key, err_response = auth_request(db)
     if err_response:
         return err_response
-
+    assert api_key
     deposit_code = FiatDepositCode.from_autobuy_asset(db.session, None)
     if not deposit_code:
         deposit_code = FiatDepositCode(api_key.user, None)
@@ -907,39 +907,10 @@ def address_book_req():
     entries = [entry.to_json() for entry in entries]
     return jsonify(entries=entries, asset=asset)
 
-def _broker_order_validate(user, market, side, amount_dec, use_cache=False):
-    def return_error(err_response):
-        return err_response, None
-    if market not in assets.MARKETS:
-        return return_error(bad_request(web_utils.INVALID_MARKET))
-    side = MarketSide.parse(side)
-    if not side:
-        return return_error(bad_request(web_utils.INVALID_SIDE))
-    amount_dec = decimal.Decimal(amount_dec)
-    if market_side_is(side, MarketSide.BID):
-        quote = dasset.bid_quote_amount(market, amount_dec, use_cache)
-    else:
-        quote = dasset.ask_quote_amount(market, amount_dec, use_cache)
-    if quote.err == dasset.QuoteResult.INSUFFICIENT_LIQUIDITY:
-        return return_error(bad_request(web_utils.INSUFFICIENT_LIQUIDITY))
-    if quote.err == dasset.QuoteResult.AMOUNT_TOO_LOW:
-        return return_error(bad_request(web_utils.AMOUNT_TOO_LOW))
-    if quote.err == dasset.QuoteResult.MARKET_API_FAIL:
-        logger.error('failled getting quote amount due to error in dasset market API')
-        return return_error(bad_request(web_utils.NOT_AVAILABLE))
-    if quote.err != dasset.QuoteResult.OK:
-        logger.error('failded getting quote amount due to unknown error')
-        return return_error(bad_request(web_utils.UNKNOWN_ERROR))
-    base_asset, quote_asset = assets.assets_from_market(market)
-    logger.info('quote %s %s %s for %s %s, fee: %s %s, fixed fee: %s %s', side.name, amount_dec, base_asset, quote.amountQuoteAsset, quote_asset, quote.feeQuoteAsset, quote_asset, quote.fixedFeeQuoteAsset, quote_asset)
-    base_amount = assets.asset_dec_to_int(base_asset, amount_dec)
-    quote_amount = assets.asset_dec_to_int(quote_asset, quote.amountQuoteAsset)
-    if base_amount <= 0 or quote_amount <= 0:
-        return return_error(bad_request(web_utils.AMOUNT_TOO_LOW))
-    order = BrokerOrder(user, market, side.value, base_asset, quote_asset, base_amount, quote_amount)
-    err_msg = broker.order_check_funds(db.session, order)
+def _broker_order_validate(user: User, market: str, side: MarketSide, amount_dec: str, use_cache=False):
+    err_msg, order = broker.order_validate(db.session, user, market, side, decimal.Decimal(amount_dec), use_cache)
     if err_msg:
-        return return_error(bad_request(err_msg))
+        return bad_request(err_msg), order
     return None, order
 
 @api.route('/broker_order_validate', methods=['POST'])
@@ -949,9 +920,13 @@ def broker_order_validate():
         return err_response
     assert params and api_key
     market, side, amount_dec = params
+    side = MarketSide.parse(side)
+    if not side:
+        return bad_request(web_utils.INVALID_SIDE)
     err_response, order = _broker_order_validate(api_key.user, market, side, amount_dec, use_cache=True)
     if err_response:
         return err_response
+    assert order
     return jsonify(broker_order=order.to_json())
 
 @api.route('/broker_order_create', methods=['POST'])
@@ -963,9 +938,13 @@ def broker_order_create():
     market, side, amount_dec = params
     if not api_key.user.kyc_validated() and not dasset._account_mock():
         return bad_request(web_utils.KYC_NOT_VALIDATED)
+    side = MarketSide.parse(side)
+    if not side:
+        return bad_request(web_utils.INVALID_SIDE)
     err_response, order = _broker_order_validate(api_key.user, market, side, amount_dec, use_cache=False)
     if err_response:
         return err_response
+    assert order
     db.session.add(order)
     db.session.commit()
     websocket.broker_order_new_event(order)
@@ -991,29 +970,10 @@ def broker_order_accept():
     broker_order = BrokerOrder.from_token(db.session, token)
     if not broker_order or broker_order.user != api_key.user:
         return bad_request(web_utils.NOT_FOUND)
-    now = datetime.now()
-    if now > broker_order.expiry:
-        return bad_request(web_utils.EXPIRED)
-    if broker_order.status != broker_order.STATUS_CREATED:
-        return bad_request(web_utils.INVALID_STATUS)
-    side = MarketSide.parse(broker_order.side)
-    if not side:
-        return bad_request(web_utils.INVALID_SIDE)
     with coordinator.lock:
-        # check funds
-        err_msg = broker.order_check_funds(db.session, broker_order)
+        err_msg, ftx = broker.order_accept(db.session, broker_order)
         if err_msg:
             return bad_request(err_msg)
-        # debit users account
-        if side is MarketSide.BID:
-            asset = broker_order.quote_asset
-            amount_int = broker_order.quote_amount
-        else:
-            asset = broker_order.base_asset
-            amount_int = broker_order.base_amount
-        ftx = fiatdb_core.tx_create(broker_order.user, FiatDbTransaction.ACTION_DEBIT, asset, amount_int, f'broker order: {broker_order.token}')
-        # update status
-        broker_order.status = broker_order.STATUS_READY
         db.session.add(broker_order)
         db.session.add(ftx)
         db.session.commit()

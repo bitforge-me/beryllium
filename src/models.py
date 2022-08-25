@@ -722,7 +722,7 @@ class FiatDepositCode(BaseModel, FromTokenMixin):
 
     @classmethod
     def from_autobuy_asset(cls, session: Session, autobuy_asset: str | None) -> FiatDepositCode | None:
-        return session.query(cls).filter(cls.autobuy_asset == autobuy_asset).all()
+        return session.query(cls).filter(cls.autobuy_asset == autobuy_asset).first()
 
 class PayoutGroupRequest(BaseModel):
     payout_group_id = Column(Integer, ForeignKey('payout_group.id'), primary_key=True)
