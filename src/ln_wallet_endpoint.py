@@ -124,7 +124,7 @@ def channel_management():
                 total_receivable += receivable
                 total_spendable += spendable
 
-            channel['total_sats'] = total
+            channel['total_sats'] = _msat_to_sat(total)
             channel['our_reserve_sats'] = our_reserve
             channel['their_reserve_sats'] = their_reserve
             channel['receivable_sats'] = _msat_to_sat(receivable)
