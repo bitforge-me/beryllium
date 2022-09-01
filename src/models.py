@@ -545,6 +545,8 @@ class BalanceUpdate(BaseModel, FromUserMixin, FromTokenMixin):
     windcave_payment_request: RelationshipProperty['WindcavePaymentRequest' | None] = relationship('WindcavePaymentRequest', backref=backref('fiat_deposit', uselist=False))
     crown_payment_id = Column(Integer, ForeignKey('crown_payment.id'))
     crown_payment: RelationshipProperty['CrownPayment' | None] = relationship('CrownPayment', backref=backref('fiat_deposit', uselist=False))
+    deposit_code_id = Column(Integer, ForeignKey('fiat_deposit_code.id'))
+    deposit_code: RelationshipProperty['FiatDepositCode' | None] = relationship('FiatDepositCode')
 
     # fiat withdrawal fields
     payout_request_id = Column(Integer, ForeignKey('payout_request.id'))
@@ -717,6 +719,10 @@ class FiatDepositCode(BaseModel, FromTokenMixin):
         self.user = user
         self.token = generate_key(8, True)
         self.autobuy_asset = autobuy_asset
+
+    @classmethod
+    def from_autobuy_asset(cls, session: Session, autobuy_asset: str | None) -> FiatDepositCode | None:
+        return session.query(cls).filter(cls.autobuy_asset == autobuy_asset).first()
 
 class PayoutGroupRequest(BaseModel):
     payout_group_id = Column(Integer, ForeignKey('payout_group.id'), primary_key=True)

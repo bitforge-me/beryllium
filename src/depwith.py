@@ -7,7 +7,7 @@ from sqlalchemy.orm.session import Session
 import windcave
 import dasset
 import assets
-from models import CryptoAddress, BalanceUpdate, FiatDbTransaction, User, CrownPayment, WithdrawalConfirmation
+from models import BrokerOrder, FiatDepositCode, CryptoAddress, BalanceUpdate, FiatDbTransaction, User, CrownPayment, WithdrawalConfirmation
 import websocket
 import email_utils
 import fiatdb_core
@@ -17,6 +17,7 @@ import tripwire
 import utils
 import crown_financial
 import payouts_core
+import broker
 
 logger = logging.getLogger(__name__)
 
@@ -36,11 +37,18 @@ def withdrawal_cancel(withdrawal: BalanceUpdate, reason: str):
 
 # -------------
 
-def _fiat_deposit_update(fiat_deposit: BalanceUpdate):
+def _fiat_deposit_autobuy_failure_email(fiat_deposit: BalanceUpdate, code: FiatDepositCode):
+    amount = assets.asset_int_to_dec(fiat_deposit.asset, fiat_deposit.amount)
+    amount_str = assets.asset_dec_to_str(fiat_deposit.asset, amount)
+    msg = f'Your deposit is being processed but we failed to automatically create a buy order for {code.autobuy_asset} using the funds. Sorry for the inconvenience.'
+    email_utils.send_email('Deposit Autobuy Failed', msg, fiat_deposit.user.email)
+
+def _fiat_deposit_update(db_session: Session, fiat_deposit: BalanceUpdate):
     logger.info('processing fiat deposit %s (%s)..', fiat_deposit.token, fiat_deposit.status)
     updated_records = []
     # check payment
     if fiat_deposit.status == fiat_deposit.STATUS_CREATED:
+        # windcave payments
         if fiat_deposit.windcave_payment_request:
             payment_req = fiat_deposit.windcave_payment_request
             windcave.payment_request_status_update(payment_req)
@@ -57,18 +65,44 @@ def _fiat_deposit_update(fiat_deposit: BalanceUpdate):
                 updated_records.append(fiat_deposit)
                 updated_records.append(ftx)
                 return updated_records
+        # crown payments
         elif fiat_deposit.crown_payment:
+            if not utils.is_email(crown_financial.EMAIL):
+                logger.error('invalid crown_financial.EMAIL %s', crown_financial.EMAIL)
+                return updated_records
             crown_payment = fiat_deposit.crown_payment
             tx = crown_financial.transaction_details(crown_payment.crown_txn_id)
             if tx.status == tx.STATUS_ACCEPTED:
                 crown_payment.crown_status = tx.STATUS_ACCEPTED
-                crown_payment.status = fiat_deposit.crown_payment.STATUS_COMPLETED
+                crown_payment.status = crown_payment.STATUS_COMPLETED
                 fiat_deposit.status = fiat_deposit.STATUS_COMPLETED
-                ftx = fiatdb_core.tx_create(fiat_deposit.user, FiatDbTransaction.ACTION_CREDIT, fiat_deposit.asset, fiat_deposit.amount, f'fiat deposit: {fiat_deposit.token}')
-                fiat_deposit.balance_tx = ftx
+                ftx_deposit = fiatdb_core.tx_create(fiat_deposit.user, FiatDbTransaction.ACTION_CREDIT, fiat_deposit.asset, fiat_deposit.amount, f'fiat deposit: {fiat_deposit.token}')
+                fiat_deposit.balance_tx = ftx_deposit
+                # check for autobuy asset in deposit code
+                if fiat_deposit.deposit_code:
+                    code = fiat_deposit.deposit_code
+                    if code.autobuy_asset:
+                        market = assets.assets_to_market(code.autobuy_asset, crown_financial.CURRENCY)
+                        if market in assets.MARKETS:
+                            # create broker order of 'autobuy_asset'
+                            amount_dec = assets.asset_int_to_dec(code.autobuy_asset, fiat_deposit.amount)
+                            err_msg, order = broker.order_validate(db_session, fiat_deposit.user, market, assets.MarketSide.BID, amount_dec)
+                            if err_msg:
+                                logger.error('failed to make autobuy for deposit %s (%s)', fiat_deposit.token, err_msg)
+                                _fiat_deposit_autobuy_failure_email(fiat_deposit, code)
+                            else:
+                                err_msg, ftx_order = broker.order_accept(db_session, order)
+                                if err_msg:
+                                    logger.error('failed to make autobuy for deposit %s (%s)', fiat_deposit.token, err_msg)
+                                    _fiat_deposit_autobuy_failure_email(fiat_deposit, code)
+                                else:
+                                    updated_records.append(order)
+                                    updated_records.append(ftx_order)
+                                    websocket.broker_order_new_event(order)
+                                    websocket.broker_order_update_event(order)
                 updated_records.append(crown_payment)
                 updated_records.append(fiat_deposit)
-                updated_records.append(ftx)
+                updated_records.append(ftx_deposit)
                 return updated_records
     # check expiry (for deposits via windcave)
     if fiat_deposit.status == fiat_deposit.STATUS_CREATED and fiat_deposit.windcave_payment_request:
@@ -97,10 +131,11 @@ def _crown_check_new_desposits(db_session: Session):
     for tx in txs:
         if tx.currency == crown_financial.CURRENCY and not CrownPayment.from_crown_txn_id(db_session, tx.crown_txn_id):
             payment = CrownPayment(utils.generate_key(), tx.currency, tx.amount, tx.crown_txn_id, tx.status)
-            user = crown_financial.user_from_deposit(db_session, tx)
-            if user:
-                deposit = BalanceUpdate.fiat_deposit(user, crown_financial.CURRENCY, tx.amount, 0, crown_financial.CROWN_ACCOUNT_CODE)
+            code = crown_financial.code_from_deposit(db_session, tx)
+            if code:
+                deposit = BalanceUpdate.fiat_deposit(code.user, crown_financial.CURRENCY, tx.amount, 0, crown_financial.CROWN_ACCOUNT_CODE)
                 deposit.crown_payment = payment
+                deposit.deposit_code = code
                 db_session.add(payment)
                 db_session.add(deposit)
                 db_session.commit()
@@ -110,7 +145,7 @@ def _fiat_deposit_update_and_commit(db_session: Session, deposit: BalanceUpdate)
         logger.error('fiat deposit (%s) asset (%s) is not valid', deposit.token, deposit.asset)
         return
     while True:
-        updated_records = _fiat_deposit_update(deposit)
+        updated_records = _fiat_deposit_update(db_session, deposit)
         # commit db if records updated
         if not updated_records:
             return
