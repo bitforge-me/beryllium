@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm.session import Session
 
 from app_core import app
-from models import FiatDepositCode, User
+from models import FiatDepositCode
 from log_utils import setup_logging
 import httpreq
 
@@ -18,7 +18,7 @@ API_SECRET = app.config['CROWN_API_SECRET']
 CROWN_ACCOUNT_CODE = app.config['CROWN_ACCOUNT_CODE']
 CROWN_WITHDRAW_FEE_INT = int(app.config['CROWN_WITHDRAW_FEE_INT'])
 CROWN_WITHDRAW_NAME = app.config['CROWN_WITHDRAW_NAME']
-URL_BASE = 'XXX'  # TODO
+URL_BASE = 'https://api.crownmoney.online'
 if app.config['TESTNET']:
     URL_BASE = 'https://api.mycrown.services/'
 
