@@ -763,7 +763,7 @@ def fiat_deposit_direct_req():
     if err_response:
         return err_response
     assert api_key
-    deposit_code = FiatDepositCode.from_autobuy_asset(db.session, None)
+    deposit_code = FiatDepositCode.from_autobuy_asset(db.session, api_key.user, None)
     if not deposit_code:
         deposit_code = FiatDepositCode(api_key.user, None)
         db.session.add(deposit_code)
@@ -781,7 +781,7 @@ def fiat_deposit_autobuy_req():
     if not assets.asset_is_crypto(autobuy_asset):
         return bad_request(web_utils.INVALID_ASSET)
 
-    deposit_code = FiatDepositCode.from_autobuy_asset(db.session, autobuy_asset)
+    deposit_code = FiatDepositCode.from_autobuy_asset(db.session, api_key.user, autobuy_asset)
     if not deposit_code:
         deposit_code = FiatDepositCode(api_key.user, autobuy_asset)
         db.session.add(deposit_code)
