@@ -76,9 +76,12 @@ def _check_response_status(req: httpreq.Response):
 def code_from_deposit(db_session: Session, txn: CrownTx) -> FiatDepositCode | None:
     parts = txn.user_reference.split('-')
     for part in parts:
-        if part.strip().upper() == CROWN_ACCOUNT_CODE:
+        part = part.strip().upper()
+        if part == CROWN_ACCOUNT_CODE:
             continue
-        return FiatDepositCode.from_token(db_session, part)
+        code = FiatDepositCode.from_token(db_session, part)
+        if code:
+            return code
     return None
 
 def balance():
