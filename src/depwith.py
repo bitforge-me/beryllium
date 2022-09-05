@@ -40,7 +40,7 @@ def withdrawal_cancel(withdrawal: BalanceUpdate, reason: str):
 def _fiat_deposit_autobuy_failure_email(fiat_deposit: BalanceUpdate, code: FiatDepositCode):
     amount = assets.asset_int_to_dec(fiat_deposit.asset, fiat_deposit.amount)
     amount_str = assets.asset_dec_to_str(fiat_deposit.asset, amount)
-    msg = f'Your deposit is being processed but we failed to automatically create a buy order for {code.autobuy_asset} using the funds. Sorry for the inconvenience.'
+    msg = f'Your deposit is being processed but we failed to automatically create a buy order for {code.autobuy_asset} using the funds deposited ({amount_str} {fiat_deposit.asset}). Sorry for the inconvenience.'
     email_utils.send_email('Deposit Autobuy Failed', msg, fiat_deposit.user.email)
 
 def _fiat_deposit_update(db_session: Session, fiat_deposit: BalanceUpdate):
@@ -85,21 +85,26 @@ def _fiat_deposit_update(db_session: Session, fiat_deposit: BalanceUpdate):
                         market = assets.assets_to_market(code.autobuy_asset, crown_financial.CURRENCY)
                         if market in assets.MARKETS:
                             # create broker order of 'autobuy_asset'
-                            amount_dec = assets.asset_int_to_dec(code.autobuy_asset, fiat_deposit.amount)
-                            err_msg, order = broker.order_validate(db_session, fiat_deposit.user, market, assets.MarketSide.BID, amount_dec)
-                            if err_msg:
-                                logger.error('failed to make autobuy for deposit %s (%s)', fiat_deposit.token, err_msg)
+                            amount_dec = assets.asset_int_to_dec(fiat_deposit.asset, fiat_deposit.amount)
+                            quote = dasset.bid_brute_force(market, amount_dec)
+                            if quote.err != dasset.QuoteResult.OK:
+                                logger.error('failed to make autobuy for deposit %s (QuoteResult: %s)', fiat_deposit.token, quote.err)
                                 _fiat_deposit_autobuy_failure_email(fiat_deposit, code)
                             else:
-                                err_msg, ftx_order = broker.order_accept(db_session, order)
+                                err_msg, order = broker.order_validate(db_session, fiat_deposit.user, market, assets.MarketSide.BID, quote.amountBaseAsset)
                                 if err_msg:
                                     logger.error('failed to make autobuy for deposit %s (%s)', fiat_deposit.token, err_msg)
                                     _fiat_deposit_autobuy_failure_email(fiat_deposit, code)
                                 else:
-                                    updated_records.append(order)
-                                    updated_records.append(ftx_order)
-                                    websocket.broker_order_new_event(order)
-                                    websocket.broker_order_update_event(order)
+                                    err_msg, ftx_order = broker.order_accept(db_session, order)
+                                    if err_msg:
+                                        logger.error('failed to make autobuy for deposit %s (%s)', fiat_deposit.token, err_msg)
+                                        _fiat_deposit_autobuy_failure_email(fiat_deposit, code)
+                                    else:
+                                        updated_records.append(order)
+                                        updated_records.append(ftx_order)
+                                        websocket.broker_order_new_event(order)
+                                        websocket.broker_order_update_event(order)
                 updated_records.append(crown_payment)
                 updated_records.append(fiat_deposit)
                 updated_records.append(ftx_deposit)

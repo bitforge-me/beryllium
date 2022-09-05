@@ -482,6 +482,18 @@ def task_test_action():
     _task_test(name, action, work_time, yield_after)
     return 'ok'
 
+@app.route('/bid_brute_force_test', methods=['GET', 'POST'])
+@roles_accepted(Role.ROLE_ADMIN)
+def bid_brute_force_test():
+    if request.method == 'POST':
+        market = request.form['market']
+        quote_asset_amount = request.form['quote_asset_amount']
+        quote_asset_amount = decimal.Decimal(quote_asset_amount)
+        quote = dasset.bid_brute_force(market, quote_asset_amount, log=True)
+        flash(str(quote))
+    markets = assets.MARKETS.keys()
+    return render_template('bid_brute_force_test.html', markets=markets)
+
 #
 # gevent class
 #

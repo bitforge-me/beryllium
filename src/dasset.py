@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import logging
 import decimal
+from decimal import Decimal as Dec
 import json
 from enum import Enum
 import time
@@ -17,10 +18,10 @@ logger = logging.getLogger(__name__)
 
 DASSET_API_SECRET = app.config['DASSET_API_SECRET']
 DASSET_ACCOUNT_ID = app.config['DASSET_ACCOUNT_ID']
-BROKER_ORDER_FEE = decimal.Decimal(app.config['BROKER_ORDER_FEE'])
-BROKER_ORDER_FEE_FIXED: dict[str, decimal.Decimal] = json.loads(app.config['BROKER_ORDER_FEE_FIXED'])
+BROKER_ORDER_FEE = Dec(app.config['BROKER_ORDER_FEE'])
+BROKER_ORDER_FEE_FIXED: dict[str, Dec] = json.loads(app.config['BROKER_ORDER_FEE_FIXED'])
 for key in BROKER_ORDER_FEE_FIXED:
-    BROKER_ORDER_FEE_FIXED[key] = decimal.Decimal(BROKER_ORDER_FEE_FIXED[key])
+    BROKER_ORDER_FEE_FIXED[key] = Dec(BROKER_ORDER_FEE_FIXED[key])
 
 URL_BASE = 'https://api.dassetx.com/api'
 URL_BASE_NOAPI = 'https://api.dassetx.com'
@@ -38,22 +39,29 @@ class QuoteResult(Enum):
 
 @dataclass
 class QuoteTotalPrice:
-    amountBaseAsset: decimal.Decimal
-    amountQuoteAsset: decimal.Decimal
-    feeQuoteAsset: decimal.Decimal
-    fixedFeeQuoteAsset: decimal.Decimal
+    amountBaseAsset: Dec
+    amountQuoteAsset: Dec
+    feeQuoteAsset: Dec
+    fixedFeeQuoteAsset: Dec
+    market: str
     err: QuoteResult
 
     @classmethod
     def error(cls, err: QuoteResult):
-        return cls(decimal.Decimal(0), decimal.Decimal(0), decimal.Decimal(0), decimal.Decimal(0), err)
+        return cls(Dec(0), Dec(0), Dec(0), Dec(0), '', err)
+
+    def __repr__(self) -> str:
+        if self.err != QuoteResult.OK:
+            return self.err.name
+        base_asset, quote_asset = assets.assets_from_market(self.market)
+        return f'{self.amountBaseAsset} {base_asset} for {self.amountQuoteAsset} {quote_asset}, fee: {self.feeQuoteAsset} {quote_asset}, fixed fee: {self.fixedFeeQuoteAsset} {quote_asset}'
 
 @dataclass
 class DassetBalance:
     symbol: str
     name: str
-    total: decimal.Decimal
-    available: decimal.Decimal
+    total: Dec
+    available: Dec
     decimals: int
 
 @dataclass
@@ -98,7 +106,7 @@ class DassetDeposit:
     id: Any
     symbol: str
     address: str
-    amount: decimal.Decimal
+    amount: Dec
     date: str
     status: str
     txid: str | None
@@ -125,7 +133,7 @@ def _account_mock():
 
 def _parse_balance(item):
     symbol = item['currencySymbol']
-    return DassetBalance(symbol=symbol, name=item['currencyName'], total=decimal.Decimal(item['total']), available=decimal.Decimal(item['available']), decimals=assets.asset_decimals(symbol))
+    return DassetBalance(symbol=symbol, name=item['currencyName'], total=Dec(item['total']), available=Dec(item['available']), decimals=assets.asset_decimals(symbol))
 
 def _parse_asset(item):
     symbol = item['symbol']
@@ -149,7 +157,7 @@ def _parse_order(item):
                        base_amount=item['baseAmount'], quote_amount=item['quoteAmount'], filled=item['details']['filled'])
 
 def _parse_deposit(item):
-    return DassetDeposit(id=item['id'], symbol=item['currencySymbol'], address=item['cryptoAddress'], amount=decimal.Decimal(item['quantity']), date=item['updatedAt'], status=item['status'], txid=item['txId'])
+    return DassetDeposit(id=item['id'], symbol=item['currencySymbol'], address=item['cryptoAddress'], amount=Dec(item['quantity']), date=item['updatedAt'], status=item['status'], txid=item['txId'])
 
 def _parse_withdrawal_full(item):
     id_ = item['id'] if 'id' in item else item['transactionId']
@@ -288,10 +296,10 @@ def _balances_req(asset: str | None, subaccount_id: str | None):
     logger.error('request failed: %d, %s', r.status_code, r.text[:100])
     return None
 
-def _order_create_req(market: str, side: assets.MarketSide, amount: decimal.Decimal, price: decimal.Decimal):
+def _order_create_req(market: str, side: assets.MarketSide, amount: Dec, price: Dec):
     assert isinstance(side, assets.MarketSide)
-    assert isinstance(amount, decimal.Decimal)
-    assert isinstance(price, decimal.Decimal)
+    assert isinstance(amount, Dec)
+    assert isinstance(price, Dec)
     endpoint = '/orders'
     if side is assets.MarketSide.BID:
         dasset_side = 'BUY'
@@ -329,8 +337,8 @@ def _order_status_req(order_id: str, market: str):
     logger.error('exchange order %s not found for market %s', order_id, market)
     return None
 
-def _crypto_withdrawal_create_req(asset: str, amount: decimal.Decimal, address: str):
-    assert isinstance(amount, decimal.Decimal)
+def _crypto_withdrawal_create_req(asset: str, amount: Dec, address: str):
+    assert isinstance(amount, Dec)
     endpoint = '/crypto/withdrawals'
     r = _req_post(endpoint, params=dict(currencySymbol=asset, quantity=float(amount), cryptoAddress=address))
     if r.status_code == 200:
@@ -411,7 +419,7 @@ def _subaccount_req(reference: str):
     logger.error('request failed: %d, %s', r.status_code, r.text[:100])
     return None
 
-def _transfer_req(to_master: bool, from_subaccount_id: str | None, to_subaccount_id: str | None, asset: str, amount: decimal.Decimal):
+def _transfer_req(to_master: bool, from_subaccount_id: str | None, to_subaccount_id: str | None, asset: str, amount: Dec):
     endpoint = '/transfer'
     r = _req_put(endpoint, params=dict(toMasterAccount=to_master, fromSubaccountId=from_subaccount_id, toSubaccountId=to_subaccount_id, symbol=asset, quantity=str(amount)))
     if r.status_code == 200:
@@ -430,12 +438,12 @@ def crypto_deposit_completed(deposit: DassetDeposit):
 # Public functions that rely on an exchange request
 #
 
-def _fixed_fee(market: str, broker_fee_fixed: dict[str, decimal.Decimal]):
+def _fixed_fee(market: str, broker_fee_fixed: dict[str, Dec]):
     base_asset, quote_asset = assets.assets_from_market(market)
     for key, value in broker_fee_fixed.items():
         if key == quote_asset:
             return value
-    return decimal.Decimal(0)
+    return Dec(0)
 
 def markets_data(use_cache: bool):
     if _account_mock():
@@ -458,12 +466,12 @@ def order_book_data(market: str, use_cache: bool):
         return DassetOrderbook(bids, asks), BROKER_ORDER_FEE, BROKER_ORDER_FEE_FIXED
     return _order_book_req(market, use_cache=use_cache), BROKER_ORDER_FEE, BROKER_ORDER_FEE_FIXED
 
-def bid_quote_amount(market: str, amount: decimal.Decimal, use_cache=False) -> QuoteTotalPrice:
-    assert isinstance(amount, decimal.Decimal)
+def bid_quote_amount(market: str, amount: Dec, use_cache=False) -> QuoteTotalPrice:
+    assert isinstance(amount, Dec)
     dasset_market = market_data(market, use_cache=use_cache)
     if not dasset_market:
         return QuoteTotalPrice.error(QuoteResult.MARKET_API_FAIL)
-    min_trade = decimal.Decimal(dasset_market.min_trade)
+    min_trade = Dec(dasset_market.min_trade)
     if amount < min_trade:
         return QuoteTotalPrice.error(QuoteResult.AMOUNT_TOO_LOW)
 
@@ -472,33 +480,82 @@ def bid_quote_amount(market: str, amount: decimal.Decimal, use_cache=False) -> Q
         return QuoteTotalPrice.error(QuoteResult.MARKET_API_FAIL)
 
     fixed_fee = _fixed_fee(market, broker_fee_fixed)
-    filled = decimal.Decimal(0)
-    total_price = decimal.Decimal(0)
+    filled = Dec(0)
+    total_price = Dec(0)
     n = 0
     while amount > filled:
         if n >= len(order_book.asks):
             break
-        rate = decimal.Decimal(order_book.asks[n]['rate'])
-        quantity = decimal.Decimal(order_book.asks[n]['quantity'])
+        rate = Dec(order_book.asks[n]['rate'])
+        quantity = Dec(order_book.asks[n]['quantity'])
         quantity_to_use = quantity
         if quantity_to_use > amount - filled:
             quantity_to_use = amount - filled
         filled += quantity_to_use
         total_price += quantity_to_use * rate
         if filled == amount:
-            total_price_including_margin = total_price * (decimal.Decimal(1) + broker_fee / decimal.Decimal(100))
+            total_price_including_margin = total_price * (Dec(1) + broker_fee / Dec(100))
             fee = total_price_including_margin - total_price
-            return QuoteTotalPrice(amount, total_price_including_margin + fixed_fee, fee, fixed_fee, QuoteResult.OK)
+            return QuoteTotalPrice(amount, total_price_including_margin + fixed_fee, fee, fixed_fee, market, QuoteResult.OK)
         n += 1
 
     return QuoteTotalPrice.error(QuoteResult.INSUFFICIENT_LIQUIDITY)
 
-def ask_quote_amount(market: str, amount: decimal.Decimal, use_cache=False) -> QuoteTotalPrice:
-    assert isinstance(amount, decimal.Decimal)
+def _power(value: Dec, n: int):
+    result = value
+    while (n > 1):
+        result = result * value
+        n -= 1
+    if n == 1:
+        return result
+    if n == 0:
+        return Dec(1)
+    assert False
+
+def _roundAt(value: Dec, digit: int):
+    return value.quantize(Dec(10) ** -digit)
+
+def bid_brute_force(market: str, quote_asset_amount: Dec, use_cache=False, log=False) -> QuoteTotalPrice:
+    if log:
+        logger.info('market: %s, quote_asset_amount: %s', market, quote_asset_amount)
+    base_asset, quote_asset = assets.assets_from_market(market)
+    smallest_amount = Dec(1) / _power(Dec(10), assets.asset_decimals(base_asset))
+    # get starting amount
     dasset_market = market_data(market, use_cache=use_cache)
     if not dasset_market:
         return QuoteTotalPrice.error(QuoteResult.MARKET_API_FAIL)
-    min_trade = decimal.Decimal(dasset_market.min_trade)
+    base_asset_amount = Dec(dasset_market.min_trade)
+    # loop to find input that matches 'quote_asset_amount'
+    n_rise = 0
+    n_lower = 0
+    n = 0
+    while 1:
+        quote = bid_quote_amount(market, base_asset_amount, use_cache)
+        use_cache = True
+        if quote.err != QuoteResult.OK:
+            return quote
+        quote_asset_rounded = _roundAt(quote.amountQuoteAsset, assets.asset_decimals(quote_asset))
+        if log and n % 100 == 0:
+            logger.info('n: %d, quote_asset_rounded: %s', n, quote_asset_rounded)
+        n += 1
+        if quote_asset_rounded < quote_asset_amount:
+            base_asset_amount += smallest_amount * n_rise
+            n_rise += 1
+            n_lower = 0
+        elif quote_asset_rounded > quote_asset_amount:
+            base_asset_amount -= smallest_amount * n_lower
+            n_rise = 0
+            n_lower += 1
+        else:
+            return quote
+    assert False
+
+def ask_quote_amount(market: str, amount: Dec, use_cache=False) -> QuoteTotalPrice:
+    assert isinstance(amount, Dec)
+    dasset_market = market_data(market, use_cache=use_cache)
+    if not dasset_market:
+        return QuoteTotalPrice.error(QuoteResult.MARKET_API_FAIL)
+    min_trade = Dec(dasset_market.min_trade)
     if amount < min_trade:
         return QuoteTotalPrice.error(QuoteResult.AMOUNT_TOO_LOW)
 
@@ -507,23 +564,23 @@ def ask_quote_amount(market: str, amount: decimal.Decimal, use_cache=False) -> Q
         return QuoteTotalPrice.error(QuoteResult.MARKET_API_FAIL)
 
     fixed_fee = _fixed_fee(market, broker_fee_fixed)
-    filled = decimal.Decimal(0)
-    total_price = decimal.Decimal(0)
+    filled = Dec(0)
+    total_price = Dec(0)
     n = 0
     while amount > filled:
         if n >= len(order_book.bids):
             break
-        rate = decimal.Decimal(order_book.bids[n]['rate'])
-        quantity = decimal.Decimal(order_book.bids[n]['quantity'])
+        rate = Dec(order_book.bids[n]['rate'])
+        quantity = Dec(order_book.bids[n]['quantity'])
         quantity_to_use = quantity
         if quantity_to_use > amount - filled:
             quantity_to_use = amount - filled
         filled += quantity_to_use
         total_price += quantity_to_use * rate
         if filled == amount:
-            total_price_including_margin = total_price * (decimal.Decimal(1) - broker_fee / decimal.Decimal(100))
+            total_price_including_margin = total_price * (Dec(1) - broker_fee / Dec(100))
             fee = total_price - total_price_including_margin
-            return QuoteTotalPrice(amount, total_price_including_margin - fixed_fee, fee, fixed_fee, QuoteResult.OK)
+            return QuoteTotalPrice(amount, total_price_including_margin - fixed_fee, fee, fixed_fee, market, QuoteResult.OK)
         n += 1
 
     return QuoteTotalPrice.error(QuoteResult.INSUFFICIENT_LIQUIDITY)
@@ -534,12 +591,12 @@ def account_balances(asset: str | None = None, subaccount_id: str | None = None)
         for item in assets.ASSETS.values():
             if subaccount_id and assets.asset_is_fiat(item.symbol):
                 continue
-            balance = DassetBalance(symbol=item.symbol, name=item.name, total=decimal.Decimal('9999.01234567890123456789'), available=decimal.Decimal('9999.01234567890123456789'), decimals=item.decimals)
+            balance = DassetBalance(symbol=item.symbol, name=item.name, total=Dec('9999.01234567890123456789'), available=Dec('9999.01234567890123456789'), decimals=item.decimals)
             balances.append(balance)
         return balances
     return _balances_req(asset, subaccount_id)
 
-def order_create(market: str, side: assets.MarketSide, amount: decimal.Decimal, price: decimal.Decimal):
+def order_create(market: str, side: assets.MarketSide, amount: Dec, price: Dec):
     if _account_mock():
         return utils.generate_key()
     return _order_create_req(market, side, amount, price)
@@ -567,7 +624,7 @@ def address_get_or_create(asset: str, subaccount_id: str):
             return addrs[0]
     return None
 
-def crypto_withdrawal_create(asset: str, amount: decimal.Decimal, address: str):
+def crypto_withdrawal_create(asset: str, amount: Dec, address: str):
     if _account_mock():
         return utils.generate_key()
     return _crypto_withdrawal_create_req(asset, amount, address)
@@ -616,14 +673,14 @@ def subaccount_create(reference: str):
         return utils.generate_key()
     return _subaccount_req(reference)
 
-def transfer(to_subaccount_id: str | None, from_subaccount_id: str | None, asset: str, amount: decimal.Decimal):
+def transfer(to_subaccount_id: str | None, from_subaccount_id: str | None, asset: str, amount: Dec):
     assert to_subaccount_id is None or from_subaccount_id is None
-    assert isinstance(amount, decimal.Decimal)
+    assert isinstance(amount, Dec)
     to_master = not to_subaccount_id
     return _transfer_req(to_master, from_subaccount_id, to_subaccount_id, asset, amount)
 
-def funds_available_us(asset: str, amount: decimal.Decimal):
-    assert isinstance(amount, decimal.Decimal)
+def funds_available_us(asset: str, amount: Dec):
+    assert isinstance(amount, Dec)
     balances = account_balances(asset)
     if balances:
         for balance in balances:
