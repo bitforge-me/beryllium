@@ -82,6 +82,8 @@ def order_validate(db_session: Session, user: User, market: str, side: assets.Ma
     return None, order
 
 def order_accept(db_session: Session, broker_order: BrokerOrder) -> tuple[str | None, FiatDbTransaction | None]:
+    # caller must hold coordinator.lock!!
+
     now = datetime.now()
     if now > broker_order.expiry:
         return web_utils.EXPIRED, None
@@ -90,21 +92,20 @@ def order_accept(db_session: Session, broker_order: BrokerOrder) -> tuple[str | 
     side = MarketSide.parse(broker_order.side)
     if not side:
         return web_utils.INVALID_SIDE, None
-    with coordinator.lock:
-        # check funds
-        err_msg = order_check_funds(db_session, broker_order)
-        if err_msg:
-            return err_msg, None
-        # debit users account
-        if side is MarketSide.BID:
-            asset = broker_order.quote_asset
-            amount_int = broker_order.quote_amount
-        else:
-            asset = broker_order.base_asset
-            amount_int = broker_order.base_amount
-        ftx = fiatdb_core.tx_create(broker_order.user, FiatDbTransaction.ACTION_DEBIT, asset, amount_int, f'broker order: {broker_order.token}')
-        # update status
-        broker_order.status = broker_order.STATUS_READY
+    # check funds
+    err_msg = order_check_funds(db_session, broker_order)
+    if err_msg:
+        return err_msg, None
+    # debit users account
+    if side is MarketSide.BID:
+        asset = broker_order.quote_asset
+        amount_int = broker_order.quote_amount
+    else:
+        asset = broker_order.base_asset
+        amount_int = broker_order.base_amount
+    ftx = fiatdb_core.tx_create(broker_order.user, FiatDbTransaction.ACTION_DEBIT, asset, amount_int, f'broker order: {broker_order.token}')
+    # update status
+    broker_order.status = broker_order.STATUS_READY
     return None, ftx
 
 #
