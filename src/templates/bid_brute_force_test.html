@@ -1,0 +1,42 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Brute Force Bid Test</h5>
+            <form id="form" method="POST">
+                <input type="hidden"
+                       id="csrfToken"
+                       name="csrf_token"
+                       value="{{ csrf_token() }}"/>
+                <div class="form-group">
+                    <label for="market">Market</label>
+                    <select class="form-control"
+                            id="market"
+                            name="market"
+                            aria-describedby="marketHelp">
+                        {% for market in markets %}
+                            <option value="{{ market }}">
+                                {{ market }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <small id="marketHelp" class="form-text text-muted">The market</small>
+                </div>
+                <div class="form-group">
+                    <label for="workTime">Quote Asset Amount</label>
+                    <input type="number"
+                           class="form-control"
+                           id="quoteAssetAmount"
+                           name="quote_asset_amount"
+                           value="50"
+                           aria-describedby="quoteAssetAmountHelp"/>
+                    <small id="quoteAssetAmountHelp" class="form-text text-muted">The amount of the quote asset</small>
+                </div>
+                <button id="form-submit" type="submit" class="btn btn-primary">Submit</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}
+{% block scripts %}
+    <script src="{{ url_for('static',filename='assets/js_custom/brute_force_bid_test.js') }}"></script>
+{% endblock %}
