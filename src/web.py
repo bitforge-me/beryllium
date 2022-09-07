@@ -25,6 +25,7 @@ from payments_endpoint import payments
 from kyc_endpoint import kyc
 from ln_wallet_endpoint import ln_wallet
 from monitor_endpoint import monitor
+from support_endpoint import support
 import websocket
 import admin  # import to register flask admin endpoints
 import dasset
@@ -66,6 +67,7 @@ app.register_blueprint(payments, url_prefix='/payments')
 app.register_blueprint(kyc, url_prefix='/kyc')
 app.register_blueprint(ln_wallet, url_prefix='/ln_wallet')
 app.register_blueprint(monitor, url_prefix='/monitor')
+app.register_blueprint(support, url_prefix='/support')
 
 #
 # Flask views

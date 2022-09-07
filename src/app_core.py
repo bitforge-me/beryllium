@@ -59,6 +59,7 @@ csp = {
     'object-src': "'none'",
     'style-src': "'self' 'unsafe-hashes' 'sha256-aLM6kCMKBszYlopfUKTtpYd6xHtlR3jUaa4HNP1LLmI=' 'sha256-ZdHxw9eWtnxUb3mk6tBS+gIiVUPE3pGM470keHPDFlE=' 'sha256-0EZqoz+oBhx7gF4nvY2bSqoGyy4zLjNF+SDQXGp/ZrY='",
     'script-src': "'self' 'unsafe-hashes' 'sha256-rRMdkshZyJlCmDX27XnL7g3zXaxv7ei6Sg+yt4R3svU=' 'sha256-ftmTNsdfRKq6ZNyHL+p7dI9xRqueDTpseN1IaUUgQW4=' 'sha256-gikCNhEl+fhjSb8779qEr3zNPPm8nyTyg8MPyBYs+Tw=' 'sha256-2rvfFrggTCtyF5WOiTri1gDS8Boibj4Njn0e+VCBmDI='",
+    'frame-src': "'self'",
     'font-src': "'self'",
     'frame-ancestors': "'none'",
     'form-action': "'self'"
@@ -117,6 +118,10 @@ else:
 
 app.config["MAIL_SERVER"] = "mail"
 app.config["MAIL_PORT"] = 587
+
+app.config["SUPPORT_EMAIL"] = os.getenv("SUPPORT_EMAIL", None)
+app.config["CAPTCHA_SECRETKEY"] = os.getenv("CAPTCHA_SECRETKEY", None)
+app.config["CAPTCHA_SITEKEY"] = os.getenv("CAPTCHA_SITEKEY", None)
 
 def set_vital_setting(env_name, setting_name=None, acceptable_values=None, custom_handler=None):
     global MISSING_VITAL_SETTING

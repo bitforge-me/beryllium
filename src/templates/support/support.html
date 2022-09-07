@@ -1,0 +1,47 @@
+{% set no_login = True %}
+{% extends "layout.html" %}
+{% block content %}
+    <!-- Page Content -->
+    <div class="container">
+        <form id="form" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="row">
+                <div class="col-sm-12 d-flex justify-content-center">
+                    <h2>Bitforge Support</h2>
+                </div>
+            </div>
+            <div class="row">
+                <div class="form-group col-sm-6 align-self-center">
+                    <label for="email">Your Email</label>
+                    <input type="email"
+                           class="form-control"
+                           name="email"
+                           id="email"
+                           value="{{ email }}"
+                           required/>
+                </div>
+            </div>
+            <div class="row">
+                <div class="form-group col-sm-6 align-self-center">
+                    <label for="email">Support Request</label>
+                    <textarea class="form-control" name="msg" id="msg" required>{{ msg }}</textarea>
+                </div>
+            </div>
+            {% if site_key %}
+                <div class="row">
+                    <div class="col-sm-6 align-self-center">
+                        <div class="cf-turnstile" data-sitekey="{{ site_key }}" data-theme="light"></div>
+                    </div>
+                </div>
+            {% endif %}
+            <div class="row">
+                <div class="form-group col-sm-6 align-self-center">
+                    <input value="Submit" type="submit" class="btn btn-primary" />
+                </div>
+            </div>
+        </form>
+    </div>
+{% endblock %}
+{% block scripts %}
+    {% if site_key %}<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>{% endif %}
+{% endblock %}

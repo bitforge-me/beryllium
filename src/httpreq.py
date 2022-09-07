@@ -4,10 +4,10 @@ from requests import Response
 def get(url: str, headers: dict = {}, params: dict = {}):
     return requests.get(url, headers=headers, params=params)
 
-def post(url: str, headers: dict = {}, data: str = '', json: dict | None = None):
+def post(url: str, headers: dict = {}, data: dict | str | None = None, json: dict | None = None):
     return requests.post(url, headers=headers, data=data, json=json)
 
-def put(url: str, headers: dict = {}, data: str = '', json: dict | None = None):
+def put(url: str, headers: dict = {}, data: dict | str | None = None, json: dict | None = None):
     return requests.put(url, headers=headers, data=data, json=json)
 
 if __name__ == '__main__':
