@@ -85,7 +85,7 @@ def dashboard():
 @reporting.route("/dashboard_general")
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def dashboard_general():
-    balances = dasset.account_balances()
+    balances = dasset.account_balances(quiet=True)
     balances_formatted = []
     if balances:
         for balance in balances:

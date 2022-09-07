@@ -284,11 +284,11 @@ def _order_book_req(symbol, use_cache=False, quiet=False):
     logger.error('request failed: %d, %s', r.status_code, r.text[:100])
     return None
 
-def _balances_req(asset: str | None, subaccount_id: str | None):
+def _balances_req(asset: str | None, subaccount_id: str | None, quiet=False):
     endpoint = '/balances'
     if asset:
         endpoint = f'/balances/{asset}'
-    r = _req_get(endpoint, subaccount_id=subaccount_id)
+    r = _req_get(endpoint, subaccount_id=subaccount_id, quiet=quiet)
     if r.status_code == 200:
         balances = r.json()
         balances = [_parse_balance(b) for b in balances if b['currencySymbol'] in assets.ASSETS]
@@ -585,7 +585,7 @@ def ask_quote_amount(market: str, amount: Dec, use_cache=False) -> QuoteTotalPri
 
     return QuoteTotalPrice.error(QuoteResult.INSUFFICIENT_LIQUIDITY)
 
-def account_balances(asset: str | None = None, subaccount_id: str | None = None):
+def account_balances(asset: str | None = None, subaccount_id: str | None = None, quiet=False):
     if _account_mock():
         balances = []
         for item in assets.ASSETS.values():
@@ -594,7 +594,7 @@ def account_balances(asset: str | None = None, subaccount_id: str | None = None)
             balance = DassetBalance(symbol=item.symbol, name=item.name, total=Dec('9999.01234567890123456789'), available=Dec('9999.01234567890123456789'), decimals=item.decimals)
             balances.append(balance)
         return balances
-    return _balances_req(asset, subaccount_id)
+    return _balances_req(asset, subaccount_id, quiet=quiet)
 
 def order_create(market: str, side: assets.MarketSide, amount: Dec, price: Dec):
     if _account_mock():

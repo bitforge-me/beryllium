@@ -59,7 +59,7 @@ def monitor_info():
 
     ln_funds = LnRpc().list_funds()
     ln_info = LnRpc().get_info()
-    dasset_balances = account_balances()
+    dasset_balances = account_balances(quiet=True)
     remote_height = requests.get(f'{BITCOIN_EXPLORER}/api/blocks/tip/height')
 
     info = {}
