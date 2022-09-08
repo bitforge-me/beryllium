@@ -1,5 +1,4 @@
 from logging import Logger
-import os
 
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, From, Attachment, FileContent, FileName, FileType, Disposition, ContentId
@@ -29,7 +28,7 @@ def send_email(subject: str, msg: str, recipient: str | None = None, attachment:
 
 def send_email_sendgrid(logger: Logger, subject: str, msg: str, recipient: str, attachment: str | None = None) -> bool:
     from_email = From(app.config["FROM_EMAIL"], app.config["FROM_NAME"])
-    html = render_template('email.html', content=msg)
+    html = render_template('email.html', content=msg, nonce=utils.generate_key())
     message = Mail(from_email=from_email, to_emails=recipient, subject=subject, html_content=html)
     if attachment:
         message.attachment = attachment
@@ -43,7 +42,7 @@ def send_email_sendgrid(logger: Logger, subject: str, msg: str, recipient: str, 
 
 def send_email_postfix(logger: Logger, subject: str, msg: str, recipient: str, attachment: str | None = None) -> bool:
     from_email = app.config["FROM_EMAIL"]
-    html = render_template('email.html', content=msg)
+    html = render_template('email.html', content=msg, nonce=utils.generate_key())
     message = Message(sender=from_email, recipients=[recipient], subject=subject, html=html)
     if attachment:
         message.attachments = attachment
