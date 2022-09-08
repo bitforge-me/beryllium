@@ -133,6 +133,8 @@ def transactions_filtered_type(type_: str, from_date: datetime, to_date: datetim
 def withdrawal(amount: int, reference: str, code: str, account_number: str, account_name: str, account_address_01: str, account_address_02: str, account_address_country: str) -> str:
     logger.info(':: calling withdrawal to bank..')
     amount_float = amount / 100.0
+    if not account_address_02:
+        account_address_02 = 'n/a'
     r = _req('transaction/withdrawal/bank', dict(source_currency=CURRENCY, to_currency=CURRENCY, amount=amount_float, pre_assigned_code=reference, reference=code,
                                                  sent_payment_to_country='New Zealand', to_account_number=account_number, bank_swift_bic='-', bank_account_name=account_name,
                                                  bank_owner_address_1=account_address_01, bank_owner_address_2=account_address_02, bank_owner_address_country=account_address_country))
