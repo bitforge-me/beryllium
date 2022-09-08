@@ -6,6 +6,7 @@ from flask import Blueprint, jsonify
 from app_core import app
 from ln import LnRpc, _msat_to_sat
 from dasset import account_balances
+import crown_financial
 
 logger = logging.getLogger(__name__)
 monitor = Blueprint('monitor', __name__, template_folder='templates')
@@ -60,6 +61,8 @@ def monitor_info():
     ln_funds = LnRpc().list_funds()
     ln_info = LnRpc().get_info()
     dasset_balances = account_balances(quiet=True)
+    crown_balance = crown_financial.balance_float(quiet=True)
+    crown_currency = crown_financial.CURRENCY
     remote_height = requests.get(f'{BITCOIN_EXPLORER}/api/blocks/tip/height')
 
     info = {}
@@ -77,8 +80,9 @@ def monitor_info():
     info['num_pending_channels'] = ln_info['num_pending_channels']
     info['num_peers'] = ln_info['num_peers']
     for balance in dasset_balances or []:
-        info[f'{balance.symbol}_available'] = float(format(balance.available, f'.{balance.decimals}f'))
-        info[f'{balance.symbol}_total'] = float(format(balance.total, f'.{balance.decimals}f'))
+        info[f'exchange_{balance.symbol}_available'] = float(format(balance.available, f'.{balance.decimals}f'))
+        info[f'exchange_{balance.symbol}_total'] = float(format(balance.total, f'.{balance.decimals}f'))
+    info[f'bank_{crown_currency}_available'] = crown_balance
     if remote_height.status_code == 200:
         info['remote_blockheight'] = int(remote_height.text)
     else:
