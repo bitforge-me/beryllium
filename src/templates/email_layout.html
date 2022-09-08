@@ -20,6 +20,7 @@
             .image_fix {display:block;}
             .logo {margin: 15px 35px 15px; }
             .small {font-size: 10px; text-decoration: none; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif; color: #666666}
+            .super-small {font-size: 6px; text-decoration: none; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif; color: #aaaaaa}
             .content {font-size: 12pt; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif; color: #000000; margin: 15px 35px 15px;}
             .content-margin {margin: 15px 35px 15px;}
             .align-right {text-align: right;}
@@ -137,7 +138,7 @@
                                style="font-size: 10px; text-decoration: none; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif; color: #666666"
                                target
                                _blank
-                               href="https://zap.me">Zap</a>
+                               href="https://bitforge.me">Bitforge</a>
                         </td>
                     </tr>
                 </table>
@@ -149,6 +150,9 @@
                             {% block content %}{% endblock %}
                         </div>
                         <div>&nbsp;</div>
+                        <div class="super-small">
+                            {% block nonce %}{% endblock %}
+                        </div>
                     </td>
                 </tr>
             </table>
@@ -184,7 +188,7 @@
                     <td>
                         <div class="small content-margin align-right"
                              style="margin: 15px 35px 15px; font-size: 10px; text-decoration: none; font-family:'Helvetica Neue', Helvetica, Arial, sans-serif; color: #666666; text-align: right;">
-                            © Copyright Zap 2021
+                            © Copyright Bitforge 2022
                         </div>
                     </td>
                 </tr>
