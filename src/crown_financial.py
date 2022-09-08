@@ -51,14 +51,16 @@ def _parse_tx(json_tx):
     reference = json_tx['transaction_info']['user_reference']
     return CrownTx(json_tx['transaction_id'], json_tx['transaction_currency'], amount, fee, json_tx['transaction_date'], reference, json_tx['transaction_status'], json_tx['transaction_type'])
 
-def _req(endpoint, data=None):
+def _req(endpoint, data=None, quiet=False):
     url = URL_BASE + endpoint
     authorizing_key = base64.b64encode(f'{EMAIL}:{API_SECRET}'.encode('utf-8')).decode()
     headers = {'Authorization': f'Basic {authorizing_key}', 'APIKEY': f'{API_KEY}'}
     if data:
-        logger.info('   POST - %s', url)
+        if not quiet:
+            logger.info('   POST - %s', url)
         return httpreq.post(url, headers=headers, data=data)
-    logger.info('   GET - %s', url)
+    if not quiet:
+        logger.info('   GET - %s', url)
     return httpreq.get(url, headers=headers)
 
 def _check_response_status(req: httpreq.Response):
@@ -84,11 +86,15 @@ def code_from_deposit(db_session: Session, txn: CrownTx) -> FiatDepositCode | No
             return code
     return None
 
-def balance():
-    logger.info(':: calling balance..')
-    r = _req('balance', {})
+def balance_float(quiet=False) -> float:
+    if not quiet:
+        logger.info(':: calling balance..')
+    r = _req('balance', {}, quiet=quiet)
     _check_response_status(r)
-    return int(r.json()['value'][CURRENCY] * 100)
+    return r.json()['value'][CURRENCY]
+
+def balance(quiet=False):
+    return int(balance_float(quiet=quiet) * 100)
 
 def transaction_details(crown_txn_id: str):
     logger.info(':: calling transaction details id..')
