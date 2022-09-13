@@ -614,7 +614,7 @@ def crypto_deposit_recipient_req():
         amount_int = assets.asset_dec_to_int(asset, amount_dec)
         crypto_deposit = BalanceUpdate.crypto_deposit(api_key.user, asset, l2_network, amount_int, 0, 'temp recipient')
         logger.info('create local wallet deposit: %s, %s, %s', asset, l2_network, amount_dec)
-        wallet_reference, err_msg = wallet.deposit_create(asset, l2_network, crypto_deposit.token, 'deposit to Bronze', amount_dec)
+        wallet_reference, err_msg = wallet.deposit_create(asset, l2_network, crypto_deposit.token, 'deposit to Bitforge', amount_dec)
         if err_msg:
             return bad_request(f'{web_utils.FAILED_PAYMENT_CREATE} - {err_msg}')
         assert wallet_reference
