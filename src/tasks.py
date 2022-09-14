@@ -18,6 +18,7 @@ from ln import LnRpc, _msat_to_sat
 from models import BalanceUpdate
 import websocket
 import utils
+import security
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +93,16 @@ def _process_dasset_cache():
     # logger.info('process dasset cache..')
     dasset.order_book_refresh_cache(10)
     dasset.markets_refresh_cache(10)
+
+def _tf_method_check():
+    # for some reason `security.tf_method()` randomly starts failing after some time
+    # it is difficult to debug because we dont know how or what causes it to start happening
+    # this is a stop gap solution to send an email to the admin when it starts failing
+    try:
+        security.tf_method()
+    except Exception as e:
+        logger.error('tf_method() failed: %s', e)
+        email_utils.send_email('tf_method() failed', str(e))
 
 #
 # One off task functions, !assume we have a flask app context
@@ -190,4 +201,5 @@ task_manager = TaskManager()
 task_manager.repeated('deposits, withdrawals, orders', process_depwith_and_broker_orders, 5)
 task_manager.repeated('btc tx index', _process_btc_tx_index, 60)
 task_manager.repeated('dasset cache', _process_dasset_cache, 0)
+task_manager.repeated('tf_method() check', _tf_method_check, 5)
 task_manager.non_terminating('ln invoices', _process_ln_invoices_loop)
