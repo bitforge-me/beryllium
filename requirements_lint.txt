@@ -1,4 +1,4 @@
-djlint
+djlint==1.14.0 # lock djlint to a version that we know works with our files :/
 pycodestyle
 mypy
 sqlalchemy-stubs
