@@ -8,6 +8,7 @@ from flask_security.decorators import roles_accepted
 
 from models import Role, User, BrokerOrder
 import dasset
+import crown_financial
 import assets
 
 logger = logging.getLogger(__name__)
@@ -86,12 +87,17 @@ def dashboard():
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def dashboard_general():
     balances = dasset.account_balances(quiet=True)
-    balances_formatted = []
+    exchange_balances_formatted = []
     if balances:
         for balance in balances:
             balance_formatted = dict(symbol=balance.symbol, available=assets.asset_dec_to_str(balance.symbol, balance.available), total=assets.asset_dec_to_str(balance.symbol, balance.total))
-            balances_formatted.append(balance_formatted)
-    return render_template('reporting/dashboard_general.html', dasset_balances=balances_formatted)
+            exchange_balances_formatted.append(balance_formatted)
+    crown_balance = crown_financial.balance(quiet=True)
+    crown_currency = crown_financial.CURRENCY
+    bank_balance = assets.asset_dec_to_str(crown_currency, assets.asset_int_to_dec(crown_currency, crown_balance))
+    bank_balances_formated = [dict(symbol=crown_currency, available=bank_balance, total=bank_balance)]
+
+    return render_template('reporting/dashboard_general.html', exchange_balances=exchange_balances_formatted, bank_balances=bank_balances_formated)
 
 @reporting.route("/dashboard_user")
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
