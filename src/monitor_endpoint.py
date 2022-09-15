@@ -60,7 +60,7 @@ def monitor_info():
 
     ln_funds = LnRpc().list_funds()
     ln_info = LnRpc().get_info()
-    dasset_balances = account_balances(quiet=True)
+    exchange_balances = account_balances(quiet=True)
     crown_balance = crown_financial.balance_float(quiet=True)
     crown_currency = crown_financial.CURRENCY
     remote_height = requests.get(f'{BITCOIN_EXPLORER}/api/blocks/tip/height')
@@ -79,7 +79,7 @@ def monitor_info():
     info['num_inactive_channels'] = ln_info['num_inactive_channels']
     info['num_pending_channels'] = ln_info['num_pending_channels']
     info['num_peers'] = ln_info['num_peers']
-    for balance in dasset_balances or []:
+    for balance in exchange_balances or []:
         info[f'exchange_{balance.symbol}_available'] = float(format(balance.available, f'.{balance.decimals}f'))
         info[f'exchange_{balance.symbol}_total'] = float(format(balance.total, f'.{balance.decimals}f'))
     info[f'bank_{crown_currency}_available'] = crown_balance

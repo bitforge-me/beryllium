@@ -2,14 +2,14 @@
 {% block content %}
     <div class="row justify-content-center">
         <div class="col-sm">
-            <h3>Dasset Balances</h3>
+            <h3>Exchange Balances</h3>
         </div>
     </div>
     <div class="row">
-        {% for balance in dasset_balances %}
+        {% for balance in exchange_balances %}
             <div class="col-sm">
                 <div class="operations_account_column text_color">
-                    <b>{{ balance.name }}</b>
+                    <b>{{ balance.symbol }}</b>
                     <div class="report-row report-row-sm blue text_color">Available: {{ balance.available }} {{ balance.symbol }}</div>
                     <div class="report-row report-row-sm blue text_color">Total: {{ balance.total }} {{ balance.symbol }}</div>
                 </div>
@@ -17,7 +17,24 @@
         {% endfor %}
     </div>
     <hr />
+    <div class="row justify-content-center">
+        <div class="col-sm">
+            <h3>Bank Balances</h3>
+        </div>
+    </div>
+    <div class="row">
+        {% for balance in bank_balances %}
+            <div class="col-sm">
+                <div class="operations_account_column text_color">
+                    <b>{{ balance.symbol }}</b>
+                    <div class="report-row report-row-sm blue text_color">Available: {{ balance.available }} {{ balance.symbol }}</div>
+                    <div class="report-row report-row-sm blue text_color">Total: {{ balance.total }} {{ balance.symbol }}</div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
     {% if config["USE_REFERRALS"] %}
+        <hr />
         {% include "referral_settings.html" %}
     {% endif %}
 {% endblock %}
