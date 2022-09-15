@@ -161,10 +161,8 @@ def test_email():
         recipient = request.form['recipient']
         subject = request.form['subject']
         message = request.form['message']
-        if email_utils.send_email(subject, message, recipient):
-            flash('Email sent', 'success')
-        else:
-            flash('Email failed', 'danger')
+        email_utils.send_email(subject, message, recipient)
+        flash('Send email task created', 'success')
     return render_template('test_email.html', recipient=recipient, subject=subject, message=message)
 
 @app.route('/test_ws', methods=['GET', 'POST'])
