@@ -1,7 +1,7 @@
 const largestChannelSats = parseFloat(document.currentScript.getAttribute('data-largest-channel-sats'));
 const channels = JSON.parse(document.currentScript.getAttribute('data-channels'));
-const totalSpendableSats = document.currentScript.getAttribute('data-total-spendable-sats');
-const totalReceivableSats = document.currentScript.getAttribute('data-total-receivable-sats');
+const totalSpendableSats = parseFloat(document.currentScript.getAttribute('data-total-spendable-sats'));
+const totalReceivableSats = parseFloat(document.currentScript.getAttribute('data-total-receivable-sats'));
 
 function confirmClose(form, channelShortId) {
     bootbox.confirm({
@@ -71,8 +71,11 @@ $(document).ready(function() {
     });
 
     // set progress bar widths
-    document.getElementById('progbar-total-spendable').style = `width: ${totalSpendableSats / (totalSpendableSats + totalReceivableSats) * 100}%`;
-    document.getElementById('progbar-total-receivable').style = `width: ${totalReceivableSats / (totalSpendableSats + totalReceivableSats) * 100}%`;
+    const totalLiquidity = totalSpendableSats + totalReceivableSats;
+    const spendableWidth = totalSpendableSats / totalLiquidity * 100;
+    const receivableWidth = totalReceivableSats / totalLiquidity * 100;
+    document.getElementById('progbar-total-spendable').style = `width: ${spendableWidth}%`;
+    document.getElementById('progbar-total-receivable').style = `width: ${receivableWidth}%`;
     channels.forEach(channel => {
         const ratio = channel.total_sats / largestChannelSats;
         document.getElementById(`progbar-${channel.short_channel_id}-our-reserve`).style = `width: ${channel.our_reserve_sats / channel.total_sats * 100 * ratio}%;`;
