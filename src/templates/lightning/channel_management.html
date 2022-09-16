@@ -153,5 +153,5 @@
     </div>
 {% endblock %}
 {% block scripts %}
-    <script data-largest-channel-sats="{{ largest_channel_sats }}" data-channels='{{ channels | tojson }}' data-total-spendable-sats="{{ total_spendable_sats }}" data-total-receivable-sats="{{ total_receivable_sats }}" src="{{ url_for('static',filename='assets/js_custom/channel_management.js') }}"></script>
+    <script data-largest-channel-sats="{{ largest_channel_sats }}" data-channels='{{ channels | tojson }}' data-total-spendable-sats="{{ total_spendable_sats }}" data-total-receivable-sats="{{ total_receivable_sats }}" data-total-liquidity-sats="{{ total_spendable_sats + total_receivable_sats }}" src="{{ url_for('static',filename='assets/js_custom/channel_management.js') }}"></script>
 {% endblock %}
