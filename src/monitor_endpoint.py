@@ -64,6 +64,10 @@ def monitor_info():
     crown_balance = crown_financial.balance_float(quiet=True)
     crown_currency = crown_financial.CURRENCY
     remote_height = requests.get(f'{BITCOIN_EXPLORER}/api/blocks/tip/height')
+    utxo_count_status_all = 0
+    utxo_count_status_available = 0
+    utxo_count_status_confirmed = 0
+    utxo_count_status_reserved = 0
 
     info = {}
     info['total_spendable'] = _msat_to_sat(total_spendable)
@@ -74,6 +78,19 @@ def monitor_info():
     info['total_peer_connected'] = total_peer_connected
     info['sats_channels'] = ln_funds['sats_channels']
     info['sats_onchain'] = ln_funds['sats_onchain']
+    for utxo in ln_funds['funds']['outputs']:
+        utxo_count_status_all += 1
+        if utxo['status'] == 'confirmed':
+            utxo_count_status_confirmed += 1
+            if utxo['reserved'] is True:
+                utxo_count_status_reserved += 1
+            else:
+                utxo_count_status_available += 1
+
+    info['utxo_count_status_all'] = int(utxo_count_status_all)
+    info['utxo_count_status_available'] = int(utxo_count_status_available)
+    info['utxo_count_status_confirmed'] = int(utxo_count_status_confirmed)
+    info['utxo_count_status_reserved'] = int(utxo_count_status_reserved)
     info['blockheight'] = ln_info['blockheight']
     info['num_active_channels'] = ln_info['num_active_channels']
     info['num_inactive_channels'] = ln_info['num_inactive_channels']
