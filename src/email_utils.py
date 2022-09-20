@@ -56,6 +56,9 @@ def send_email_postfix(logger: Logger, subject: str, msg: str, recipient: str, a
 def email_exception(msg: str):
     send_email("beryllium exception", msg)
 
+def email_catastrophic_error(msg: str):
+    send_email("beryllium catastrophic error", msg)
+
 def email_user_create_request(req: UserCreateRequest):
     url = url_for("api_supplemental.user_registration_confirm", token=req.token, _external=True)
     msg = f"You have a pending user registration waiting!<br/><br/>Confirm your registration <a href='{url}'>here</a><br/><br/>Confirm within {req.MINUTES_EXPIRY} minutes"

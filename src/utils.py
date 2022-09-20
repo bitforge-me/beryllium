@@ -1,5 +1,6 @@
 import re
 import io
+import pathlib
 import decimal
 import base64
 import secrets
@@ -55,3 +56,23 @@ def yield_gevent():
     # using a value of 0 means that this greenlet could be reschedualed again immediately so
     # we sleep for a small positive value to ensure another greenlet gets schedualed
     gevent.sleep(0.001)
+
+_LOCK_FILE_DIR = pathlib.Path('./lockfiles')
+
+def lock_file_exists_any():
+    return any(_LOCK_FILE_DIR.iterdir())
+
+def lock_file_create(filename):
+    _LOCK_FILE_DIR.mkdir(parents=True, exist_ok=True)
+    path = _LOCK_FILE_DIR.joinpath(filename)
+    if path.exists():
+        return False
+    path.touch()
+    return True
+
+def lock_file_remove(filename):
+    path = _LOCK_FILE_DIR.joinpath(filename)
+    if path.exists():
+        path.unlink()
+        return True
+    return False
