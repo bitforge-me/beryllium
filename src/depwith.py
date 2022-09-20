@@ -236,20 +236,35 @@ def _fiat_withdrawal_update_and_commit(db_session: Session, withdrawal: BalanceU
     if withdrawal.asset not in assets.ASSETS:
         logger.error('fiat withdrawal (%s) asset (%s) is not valid', withdrawal.token, withdrawal.asset)
         return
+    # write a lock file for the withdrawal and refuse to process withdrawal if lock exists
+    filename = f'fiat_withdrawal_{withdrawal.token}.lock'
+    if not utils.lock_file_create(filename):
+        msg = f'failed to create lockfile for withdrawal: {withdrawal.token}'
+        logger.error(msg)
+        email_utils.email_catastrophic_error(msg)
+        return
     while True:
         updated_records = _fiat_withdrawal_update(withdrawal)
         # commit db if record updated
         if not updated_records:
-            return
+            break
         for updated_record in updated_records:
             db_session.add(updated_record)
         db_session.commit()
         # send updates
         _fiat_withdrawal_email(withdrawal)
         websocket.fiat_withdrawal_update_event(withdrawal)
+    # remove the lock file
+    if not utils.lock_file_remove(filename):
+        msg = f'failed to remove lockfile for withdrawal: {withdrawal.token}'
+        logger.error(msg)
+        email_utils.email_catastrophic_error(msg)
 
 def fiat_withdrawal_update(db_session: Session, token: str):
     with coordinator.lock:
+        if utils.lock_file_exists_any():
+            logger.error('not processing withdrawals as lockfile directory not empty')
+            return
         withdrawal = BalanceUpdate.from_token(db_session, token)
         if withdrawal:
             assert withdrawal.type == withdrawal.TYPE_WITHDRAWAL and not withdrawal.crypto
@@ -257,6 +272,9 @@ def fiat_withdrawal_update(db_session: Session, token: str):
 
 def fiat_withdrawals_update(db_session: Session):
     with coordinator.lock:
+        if utils.lock_file_exists_any():
+            logger.error('not processing withdrawals as lockfile directory not empty')
+            return
         withdrawals = BalanceUpdate.all_active(db_session, BalanceUpdate.TYPE_WITHDRAWAL, False)
         logger.info('num withdrawals: %d', len(withdrawals))
         for withdrawal in withdrawals:
@@ -505,20 +523,36 @@ def _crypto_withdrawal_update_and_commit(db_session: Session, withdrawal: Balanc
     if withdrawal.asset not in assets.ASSETS:
         logger.error('crypto withdrawal (%s) asset (%s) is not valid', withdrawal.token, withdrawal.asset)
         return
+    # write a lock file for the withdrawal and refuse to process withdrawal if lock exists
+    filename = f'crypto_withdrawal_{withdrawal.token}.lock'
+    if not utils.lock_file_create(filename):
+        msg = f'failed to create lockfile for withdrawal: {withdrawal.token}'
+        logger.error(msg)
+        email_utils.email_catastrophic_error(msg)
+        return
+    # process withdrawal
     while True:
         updated_records = _crypto_withdrawal_update(withdrawal)
         # commit db if records updated
         if not updated_records:
-            return
+            break
         for rec in updated_records:
             db_session.add(rec)
         db_session.commit()
         # send updates
         _crypto_withdrawal_email(withdrawal)
         websocket.crypto_withdrawal_update_event(withdrawal)
+    # remove the lock file
+    if not utils.lock_file_remove(filename):
+        msg = f'failed to remove lockfile for withdrawal: {withdrawal.token}'
+        logger.error(msg)
+        email_utils.email_catastrophic_error(msg)
 
 def crypto_withdrawal_update(db_session: Session, token: str):
     with coordinator.lock:
+        if utils.lock_file_exists_any():
+            logger.error('not processing withdrawals as lockfile directory not empty')
+            return
         withdrawal = BalanceUpdate.from_token(db_session, token)
         if withdrawal:
             assert withdrawal.type == withdrawal.TYPE_WITHDRAWAL and withdrawal.crypto
@@ -526,6 +560,9 @@ def crypto_withdrawal_update(db_session: Session, token: str):
 
 def crypto_withdrawals_update(db_session: Session):
     with coordinator.lock:
+        if utils.lock_file_exists_any():
+            logger.error('not processing withdrawals as lockfile directory not empty')
+            return
         withdrawals = BalanceUpdate.all_active(db_session, BalanceUpdate.TYPE_WITHDRAWAL, True)
         logger.info('num withdrawals: %d', len(withdrawals))
         for withdrawal in withdrawals:

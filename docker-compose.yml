@@ -54,6 +54,7 @@ services:
     volumes:
       - "lightning_datadir:/etc/lightning"
       - "bitcoin_datadir:/etc/bitcoin"
+      - ./lockfiles:/app/lockfiles
     links:
       - lightningd
       - db
