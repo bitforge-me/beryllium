@@ -37,6 +37,7 @@ import db_settings
 import tasks
 import utils
 import httpreq
+import wallet
 
 USER_BALANCE_SHOW = 'show balance'
 USER_BALANCE_CREDIT = 'credit'
@@ -491,6 +492,28 @@ def bid_brute_force_test():
         flash(str(quote))
     markets = assets.MARKETS.keys()
     return render_template('bid_brute_force_test.html', markets=markets)
+
+@app.route('/unconfirmed_inputs_test', methods=['GET', 'POST'])
+@roles_accepted(Role.ROLE_ADMIN)
+def unconfirmed_inputs_test():
+    minconf = 0
+    addr = ''
+    amount_sats = 50000
+    if request.method == 'POST':
+        minconf = int(request.form['minconf'])
+        addr = request.form['addr']
+        amount_sats = int(request.form['amount_sats'])
+        txid, signed_psbt, err_msg = wallet.btc_signed_psbt_create([addr], [amount_sats], minconf=minconf)
+        if err_msg:
+            flash(err_msg, 'danger')
+        else:
+            flash(f'tx created: {txid}')
+            assert txid
+            if not wallet.btc_signed_psbt_discard(txid):
+                flash(f'failed to discard tx: {txid}', 'danger')
+    sats_available = wallet.btc_onchain_funds()
+    sats_available_including_unconfirmed = wallet.btc_onchain_funds(included_unconfirmed=True)
+    return render_template('unconfirmed_inputs_test.html', minconf=minconf, addr=addr, amount_sats=amount_sats, sats_available=sats_available, sats_available_including_unconfirmed=sats_available_including_unconfirmed)
 
 #
 # gevent class

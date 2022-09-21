@@ -1,0 +1,48 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Unconfirmed Inputs Test</h5>
+            <pre>
+                sats available: {{sats_available}} (including unconfirmed: {{sats_available_including_unconfirmed}})
+            </pre>
+            <form id="form" method="POST">
+                <div class="form-group">
+                    <label for="addr">Input min confirmations</label>
+                    <input type="number"
+                           class="form-control"
+                           id="minconf"
+                           name="minconf"
+                           value="{{ minconf }}"
+                           aria-describedby="minconfsHelp"/>
+                    <small id="minconfsHelp" class="form-text text-muted">The minimum confirmation for the transaction inputs</small>
+                </div>
+                <input type="hidden"
+                       id="csrfToken"
+                       name="csrf_token"
+                       value="{{ csrf_token() }}"/>
+                <div class="form-group">
+                    <label for="addr">Address</label>
+                    <input type="text"
+                           class="form-control"
+                           id="addr"
+                           name="addr"
+                           value="{{ addr }}"
+                           aria-describedby="addrHelp"/>
+                    <small id="addrHelp" class="form-text text-muted">The address for the transaction</small>
+                </div>
+                <div class="form-group">
+                    <label for="amount_sats">Amount (satoshis)</label>
+                    <input type="number"
+                           class="form-control"
+                           id="amount_sats"
+                           name="amount_sats"
+                           value="{{ amount_sats }}"
+                           aria-describedby="amount_satsHelp"/>
+                    <small id="amount_satsHelp" class="form-text text-muted">The amount for the transaction (satoshis)</small>
+                </div>
+                <button id="form-submit" type="submit" class="btn btn-primary">Submit</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}

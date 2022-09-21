@@ -3,6 +3,7 @@ import logging
 from typing import Dict, Tuple
 
 from sqlalchemy.orm.session import Session
+from ln_wallet_endpoint import sign_psbt
 
 import windcave
 import dasset
@@ -276,7 +277,7 @@ def fiat_withdrawals_update(db_session: Session):
             logger.error('not processing withdrawals as lockfile directory not empty')
             return
         withdrawals = BalanceUpdate.all_active(db_session, BalanceUpdate.TYPE_WITHDRAWAL, False)
-        logger.info('num withdrawals: %d', len(withdrawals))
+        logger.info('num fiat withdrawals: %d', len(withdrawals))
         for withdrawal in withdrawals:
             _fiat_withdrawal_update_and_commit(db_session, withdrawal)
 
@@ -450,6 +451,12 @@ def _crypto_withdrawal_update(crypto_withdrawal: BalanceUpdate):
             updated_records.append(ftx)
         return updated_records
     if crypto_withdrawal.status == crypto_withdrawal.STATUS_AUTHORIZED:
+
+        # we process btc onchain withdrawals as a batch so skip this
+        if crypto_withdrawal.asset == assets.BTC.symbol and crypto_withdrawal.l2_network is None:
+            logger.info('authorized BTC onchain withdrawals will be done in the batch process')
+            return updated_records
+
         if not crypto_withdrawal.wallet_reference and not crypto_withdrawal.exchange_reference:
             asset = crypto_withdrawal.asset
             l2_network = crypto_withdrawal.l2_network
@@ -558,12 +565,57 @@ def crypto_withdrawal_update(db_session: Session, token: str):
             assert withdrawal.type == withdrawal.TYPE_WITHDRAWAL and withdrawal.crypto
             _crypto_withdrawal_update_and_commit(db_session, withdrawal)
 
+def btc_onchain_withdrawals_update(db_session: Session):
+    assert wallet.withdrawals_supported(assets.BTC.symbol, None)
+    with coordinator.lock:
+        if utils.lock_file_exists_any():
+            logger.error('not processing withdrawals as lockfile directory not empty')
+            return
+        # get authorized btc on chain withdrawals
+        withdrawals = BalanceUpdate.all_of_state_and_asset(db_session, BalanceUpdate.TYPE_WITHDRAWAL, BalanceUpdate.STATUS_AUTHORIZED, assets.BTC.symbol, None)
+        logger.info('num btc onchain withdrawals authorized: %d', len(withdrawals))
+        # create signed psbt
+        addrs = []
+        amounts_int = []
+        amount_total_int = 0
+        for withdrawal in withdrawals:
+            addrs.append(withdrawal.recipient)
+            amounts_int.append(withdrawal.amount)
+            amount_total_int += withdrawal.amount
+        available = wallet.btc_onchain_funds(included_unconfirmed=True)
+        available -= 10000  # allow for large transaction fee
+        if available < amount_total_int:
+            logger.error('btc_onchain_funds (%d sats) is not enough for withdrawal total (%d)', available, amount_total_int)
+            return
+        txid, signed_psbt, err = wallet.btc_signed_psbt_create(addrs, amounts_int, minconf=0)
+        if err:
+            logger.error(err)
+            return
+        assert txid and signed_psbt
+        # commit updated state of withdrawals in DB
+        for withdrawal in withdrawals:
+            withdrawal.wallet_reference = txid
+            withdrawal.txid = txid
+            withdrawal.status = withdrawal.STATUS_WITHDRAW
+            db_session.add(withdrawal)
+        db_session.commit()
+        # broadcast btc tx
+        if not wallet.btc_signed_psbt_broadcast(signed_psbt):
+            msg = f'failed to broadcast signed psbt: txid = {txid}'
+            logger.error(msg)
+            email_utils.email_catastrophic_error(msg)
+            return
+        # send updates
+        for withdrawal in withdrawals:
+            _crypto_withdrawal_email(withdrawal)
+            websocket.crypto_withdrawal_update_event(withdrawal)
+
 def crypto_withdrawals_update(db_session: Session):
     with coordinator.lock:
         if utils.lock_file_exists_any():
             logger.error('not processing withdrawals as lockfile directory not empty')
             return
         withdrawals = BalanceUpdate.all_active(db_session, BalanceUpdate.TYPE_WITHDRAWAL, True)
-        logger.info('num withdrawals: %d', len(withdrawals))
+        logger.info('num crypto withdrawals: %d', len(withdrawals))
         for withdrawal in withdrawals:
             _crypto_withdrawal_update_and_commit(db_session, withdrawal)
