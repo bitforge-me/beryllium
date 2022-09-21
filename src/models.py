@@ -594,6 +594,10 @@ class BalanceUpdate(BaseModel, FromUserMixin, FromTokenMixin):
         return session.query(cls).filter(and_(and_(and_(cls.status != cls.STATUS_COMPLETED, cls.status != cls.STATUS_CANCELLED), cls.type == type), cls.crypto == crypto)).all()
 
     @classmethod
+    def all_of_state_and_asset(cls, session, type: str, status: str, asset: str, l2_network: str | None) -> list[BalanceUpdate]:
+        return session.query(cls).filter(and_(and_(cls.type == type, cls.status == status), and_(cls.asset == asset, cls.l2_network == l2_network))).all()
+
+    @classmethod
     def where_active_with_recipient(cls, session, type: str, crypto: bool, recipient: str) -> list[BalanceUpdate]:
         return session.query(cls).filter(and_(and_(and_(and_(cls.status != cls.STATUS_COMPLETED, cls.status != cls.STATUS_CANCELLED), cls.type == type), cls.crypto == crypto), cls.recipient == recipient)).all()
 

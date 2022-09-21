@@ -236,8 +236,11 @@ class LnRpc():
         # outputs is in form {"address" : amount}
         return self.instance.multiwithdraw(outputs)
 
-    def prepare_psbt(self, outputs: list[dict[str, str]]):
-        return self.instance.txprepare(outputs)
+    def prepare_psbt(self, outputs: list[dict[str, str]], minconf=1):
+        return self.instance.txprepare(outputs, minconf=minconf)
+
+    def discard_psbt(self, txid: str):
+        return self.instance.txdiscard(txid)
 
     def sign_psbt(self, unsigned_psbt: str):
         return self.instance.signpsbt(unsigned_psbt)

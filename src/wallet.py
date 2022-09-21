@@ -130,7 +130,7 @@ def funds_available(asset: str, l2_network: str | None, amount_dec: Decimal) -> 
         return funds['sats_largest_channel'] >= sats
     if _is_btc_chain(asset, l2_network):
         funds = LnRpc().list_funds()
-        sats = assets.asset_dec_to_int(asset, amount_dec)
+        sats = assets.asset_dec_to_int(asset, amount_dec * Decimal('1.01'))  # add a 1% buffer for fees
         logger.info('required: %d sats, sats onchain: %d sats', sats, funds['sats_onchain'])
         return funds['sats_onchain'] >= sats
     return False
@@ -191,6 +191,48 @@ def withdrawal_completed(asset: str, l2_network: str | None, wallet_reference: s
             if tx['hash'] == wallet_reference:
                 return tx['blockheight'] >= 0  # tx is in a block
         return False
+    return False
+
+def btc_onchain_funds(included_unconfirmed=False) -> int:
+    funds = LnRpc().list_funds()
+    total = funds['sats_onchain']
+    if included_unconfirmed:  # this shound only use *our* own confirmed uxtos (https://github.com/ElementsProject/lightning/issues/5612)
+        total += funds['sats_onchain_unconfirmed']
+    return total
+
+def btc_signed_psbt_create(addrs: list[str], amounts_int: list[int], minconf=1):
+    try:
+        rpc = LnRpc()
+        outputs = []
+        for addr, amount_int in zip(addrs, amounts_int):
+            output = {addr: f'{amount_int}sats'}
+            outputs.append(output)
+        res = rpc.prepare_psbt(outputs, minconf=minconf)  # set minconf=0 to use our own unconfirmed utxos (https://github.com/ElementsProject/lightning/issues/5612)
+        psbt = res['psbt']
+        txid = res['txid']
+        res = rpc.sign_psbt(psbt)
+        signed_psbt = res['signed_psbt']
+        return txid, signed_psbt, None
+    except RpcError as e:
+        logger.error('ln signed psbt create error: %s', e.error)
+        return None, None, e.error
+
+def btc_signed_psbt_discard(txid: str):
+    try:
+        rpc = LnRpc()
+        rpc.discard_psbt(txid)
+        return True
+    except RpcError as e:
+        logger.error('ln signed psbt discard error: %s', e.error)
+    return False
+
+def btc_signed_psbt_broadcast(psbt: str):
+    try:
+        rpc = LnRpc()
+        rpc.send_psbt(psbt)
+        return True
+    except RpcError as e:
+        logger.error('ln signed psbt broadcast error: %s', e.error)
     return False
 
 def deposits_supported(asset: str, l2_network: str | None):

@@ -12,7 +12,6 @@ import depwith
 import broker
 import utils
 from task_manager import TaskManager
-from utils import yield_gevent
 import wallet
 from ln import LnRpc, _msat_to_sat
 from models import BalanceUpdate
@@ -78,6 +77,9 @@ def process_depwith_and_broker_orders():
     utils.yield_gevent()
     logger.info('process withdrawals..')
     depwith.fiat_withdrawals_update(db.session)
+    utils.yield_gevent()
+    # process btc onchain withdrawals before other crypto withdrawals (so we can batch all outstanding)
+    depwith.btc_onchain_withdrawals_update(db.session)
     utils.yield_gevent()
     depwith.crypto_withdrawals_update(db.session)
     utils.yield_gevent()
