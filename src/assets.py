@@ -34,11 +34,11 @@ class Market:
     quote_asset: Asset
 
 TESTNET = app.config['TESTNET']
-NZD = Asset(symbol='NZD', name='New Zealand Dollar', decimals=2, withdraw_fee=Dec(5), withdraw_fee_fixed=True, min_withdraw=Dec(20), is_crypto=False, l2_network=None,
+NZD = Asset(symbol='NZD', name='New Zealand Dollar', decimals=2, withdraw_fee=Dec(5), withdraw_fee_fixed=True, min_withdraw=Dec(10), is_crypto=False, l2_network=None,
             deposit_instr=None, withdraw_instr=None)
 BTCLN = Asset(symbol='BTC-LN', name='Bitcoin Lightning', decimals=8, withdraw_fee=Dec('0.005'), withdraw_fee_fixed=False, min_withdraw=Dec('0.00000001'), is_crypto=True, l2_network=None,
               deposit_instr=None, withdraw_instr=None)
-BTC = Asset(symbol='BTC', name='Bitcoin', decimals=8, withdraw_fee=Dec('0.0001'), withdraw_fee_fixed=True, min_withdraw=Dec('0.001'), is_crypto=True, l2_network=BTCLN,
+BTC = Asset(symbol='BTC', name='Bitcoin', decimals=8, withdraw_fee=Dec('0.00005'), withdraw_fee_fixed=True, min_withdraw=Dec('0.0001'), is_crypto=True, l2_network=BTCLN,
             deposit_instr=None, withdraw_instr=None)
 USDT = Asset(symbol='USDT', name='Tether USD', decimals=2, withdraw_fee=Dec(20), withdraw_fee_fixed=True, min_withdraw=Dec(50), is_crypto=True, l2_network=None,
              deposit_instr='This is an ethereum network address. Only deposit from the ethereum network.', withdraw_instr='Only withdraw to an ethereum address on the ethereum network.')
