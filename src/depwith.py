@@ -574,6 +574,9 @@ def btc_onchain_withdrawals_update(db_session: Session):
         # get authorized btc on chain withdrawals
         withdrawals = BalanceUpdate.all_of_state_and_asset(db_session, BalanceUpdate.TYPE_WITHDRAWAL, BalanceUpdate.STATUS_AUTHORIZED, assets.BTC.symbol, None)
         logger.info('num btc onchain withdrawals authorized: %d', len(withdrawals))
+        # bail if 0 withdrawals
+        if len(withdrawals) <= 0:
+            return
         # create signed psbt
         addrs = []
         amounts_int = []
