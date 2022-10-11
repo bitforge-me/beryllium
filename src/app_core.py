@@ -1,5 +1,6 @@
 import os
 import decimal
+import json
 
 # make the postgres adapter cooperative
 # we need to call this before sqlalchemy loads postgrest to ensure the lib is patched before use
@@ -122,6 +123,12 @@ app.config["MAIL_PORT"] = 587
 app.config["SUPPORT_EMAIL"] = os.getenv("SUPPORT_EMAIL", None)
 app.config["CAPTCHA_SECRETKEY"] = os.getenv("CAPTCHA_SECRETKEY", None)
 app.config["CAPTCHA_SITEKEY"] = os.getenv("CAPTCHA_SITEKEY", None)
+
+app.config["LN_SPENDABLE_MIN"] = int(os.getenv("LN_SPENDABLE_MIN", 1000000))
+app.config["LN_RECEIVABLE_MIN"] = int(os.getenv("LN_RECEIVABLE_MIN", 1000000))
+app.config["LN_ONCHAIN_MIN"] = int(os.getenv("LN_ONCHAIN_MIN", 3000000))
+app.config["EXCHANGE_MIN"] = json.loads(os.getenv("EXHANGE_MIN", '{"BTC": 0.05, "NZD": 2000}'))
+app.config["BANK_MIN"] = json.loads(os.getenv("BANK_MIN", '{"NZD": 2000}'))
 
 def set_vital_setting(env_name, setting_name=None, acceptable_values=None, custom_handler=None):
     global MISSING_VITAL_SETTING
