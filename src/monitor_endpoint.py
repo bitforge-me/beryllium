@@ -11,6 +11,11 @@ import crown_financial
 logger = logging.getLogger(__name__)
 monitor = Blueprint('monitor', __name__, template_folder='templates')
 BITCOIN_EXPLORER = app.config["BITCOIN_EXPLORER"]
+LN_SPENDABLE_MIN = app.config["LN_SPENDABLE_MIN"]
+LN_RECEIVABLE_MIN = app.config["LN_RECEIVABLE_MIN"]
+LN_ONCHAIN_MIN = app.config["LN_ONCHAIN_MIN"]
+EXCHANGE_MIN = app.config["EXCHANGE_MIN"]
+BANK_MIN = app.config["BANK_MIN"]
 
 @monitor.route('/info')
 def monitor_info():
@@ -67,13 +72,25 @@ def monitor_info():
 
     info = {}
     info['total_spendable'] = _msat_to_sat(total_spendable)
+    if info['total_spendable'] < LN_SPENDABLE_MIN:
+        info['total_spendable_below_min'] = 1
+    else:
+        info['total_spendable_below_min'] = 0
     info['total_receivable'] = _msat_to_sat(total_receivable)
+    if info['total_receivable'] < LN_RECEIVABLE_MIN:
+        info['total_receivable_below_min'] = 1
+    else:
+        info['total_receivable_below_min'] = 0
     info['overall_total_sats'] = _msat_to_sat(overall_total)
     info['total_active_channels'] = total_active_channels
     info['total_inactive_channels'] = total_inactive_channels
     info['total_peer_connected'] = total_peer_connected
     info['sats_channels'] = ln_funds['sats_channels']
     info['sats_onchain'] = ln_funds['sats_onchain']
+    if ln_funds['sats_onchain'] < LN_ONCHAIN_MIN:
+        info['sats_onchain_below_min'] = 1
+    else:
+        info['sats_onchain_below_min'] = 0
     info['blockheight'] = ln_info['blockheight']
     info['num_active_channels'] = ln_info['num_active_channels']
     info['num_inactive_channels'] = ln_info['num_inactive_channels']
@@ -82,7 +99,16 @@ def monitor_info():
     for balance in exchange_balances or []:
         info[f'exchange_{balance.symbol}_available'] = float(format(balance.available, f'.{balance.decimals}f'))
         info[f'exchange_{balance.symbol}_total'] = float(format(balance.total, f'.{balance.decimals}f'))
+        if balance.symbol in EXCHANGE_MIN:
+            if balance.available < EXCHANGE_MIN[balance.symbol]:
+                info[f'exchange_{balance.symbol}_below_min'] = 1
+            else:
+                info[f'exchange_{balance.symbol}_below_min'] = 0
     info[f'bank_{crown_currency}_available'] = crown_balance
+    if crown_currency in BANK_MIN and crown_balance < BANK_MIN[crown_currency]:
+        info[f'bank_{crown_currency}_below_min'] = 1
+    else:
+        info[f'bank_{crown_currency}_below_min'] = 0
     if remote_height.status_code == 200:
         info['remote_blockheight'] = int(remote_height.text)
     else:
