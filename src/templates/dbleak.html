@@ -1,3 +1,112 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <!-- Required meta tags -->
+        <meta charset="utf-8" />
+        <meta name="viewport"
+              content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+        <!-- Bootstrap CSS -->
+        <link rel="stylesheet" href="/static/assets/css/bootstrap.min.css"/>
+        <!-- Font Awesome CSS -->
+        <link rel="stylesheet" href="/static/assets/css/fontawesome.all.min.css"/>
+        <!-- Custom CSS -->
+        <link rel="stylesheet"
+              href="{{ url_for('static', filename='css/custom_reporting.css') }}"/>
+        {% if config['CSS_THEME'] %}
+            <link rel="stylesheet"
+                  href="{{ url_for('static', filename=config['CSS_THEME']) }}"
+                  crossorigin="anonymous"/>
+        {% endif %}
+        {% block header %}{% endblock %}
+        <title>
+            {% block title %}{% endblock %}
+        </title>
+        <nav class="navbar navbar-expand-lg navbar-{{ config['CSS_THEME_INTENSITY'] }} bg-{{ config['CSS_THEME_INTENSITY'] }}">
+            <a class="navbar-brand" href="/">
+                <img src="{{ config['LOGO_URL_SRC'] }}" alt="logo" height="40" />
+            </a>
+            <button class="navbar-toggler"
+                    type="button"
+                    data-toggle="collapse"
+                    data-target="#navbarSupportedContent"
+                    aria-controls="navbarSupportedContent"
+                    aria-expanded="false"
+                    aria-label="Toggle navigation">
+                <i class="fas fa-solid fa-bars"></i>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav mr-auto">
+                    {% if request.blueprint == "ln_wallet" %}
+                        {% if request.endpoint != "ln_wallet.ln_index" %}
+                            <a class="btn {% if request.endpoint == 'ln_wallet.ln_index' %}btn-primary{% else %}btn-secondary{% endif %}"
+                               href="/ln_wallet/"><i class="glyphicon glyphicon-chevron-left"></i>Lightning Home</a>&nbsp
+                        {% endif %}
+                    {% elif request.blueprint == "reporting" %}
+                        <a class="btn {% if request.endpoint == 'reporting.dashboard_general' %}btn-primary{% else %}btn-secondary{% endif %}"
+                           href="dashboard_general"><i class="glyphicon glyphicon-chevron-left"></i>General</a>&nbsp
+                        <a class="btn {% if request.endpoint == 'reporting.dashboard_user' %}btn-primary{% else %}btn-secondary{% endif %}"
+                           href="dashboard_user"><i class="glyphicon glyphicon-chevron-left"></i>Users</a>&nbsp
+                        <a class="btn {% if request.endpoint == 'reporting.dashboard_report_broker_order' %}btn-primary{% else %}btn-secondary{% endif %}"
+                           href="dashboard_report_broker_order"><i class="glyphicon glyphicon-chevron-left"></i>Broker Orders</a>&nbsp
+                    {% endif %}
+                </ul>
+                <span class="navbar-text">
+                    {% if current_user.is_authenticated %}
+                        {{ current_user.email }}
+                        <a href="{{ url_for('security.two_factor_setup') }}"
+                           {% if not current_user.tf_primary_method %}
+                           title="Two Factor Authentication not setup!">
+                            <i class="fas fa-exclamation-triangle text-danger"></i>
+                        {% else %}
+                            title="Two Factor Authentication">
+                            <i class="fas fa-shield-alt text-success"></i>
+                        {% endif %}
+                    </a>
+                {% endif %}
+                &nbsp;
+            </span>
+            <span class="form-inline">
+                {% if no_login != True %}
+                    {% if current_user.is_authenticated %}
+                        <button class="btn btn-primary" type="button" id="btn-logout"/>Logout</button>
+                    {% else %}
+                        <button class="btn btn-primary" type="button" id="btn-login"/>Login</button>
+                    {% endif %}
+                {% endif %}
+            </span>
+        </div>
+    </nav>
+</head>
+<body>
+    {%- with messages = get_flashed_messages(with_categories=true) -%}
+        {% if messages %}
+            <div id="flashes" class="container-sm">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {%- endwith %}
+    <div id="navigation" class="container-sm">
+        {% block navigation %}{% endblock %}
+    </div>
+    <div id="content" class="container-sm mt-2">
+        {% block content %}{% endblock %}
+    </div>
+    <div id="footer" class="container">
+        {% block footer %}{% endblock %}
+    </div>
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS, then Bootbox -->
+    <script src="/static/assets/js/jquery-3.6.0.min.js"></script>
+    <script src="/static/assets/js/popper.min.js"></script>
+    <script src="/static/assets/js/bootstrap.min.js"></script>
+    <script src="/static/assets/js/bootbox.min.js"></script>
+    <script data-login-url="{{ url_for('security.login') }}" data-logout-url="{{ url_for('security.logout') }}" src="{{ url_for('static',filename='assets/js_custom/layout.js') }}"></script>
+    {% block scripts %}{% endblock %}
+
+
+
 <div>
     {% if current_user.is_authenticated %}
         {{ current_user.email }}
@@ -15,3 +124,6 @@
 <div class="card" id="here">
 </div>
 <script src="{{ url_for('static',filename='assets/js_custom/dbleak.js') }}"></script>
+
+</body>
+</html>
