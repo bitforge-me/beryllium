@@ -517,6 +517,14 @@ def unconfirmed_inputs_test():
     sats_available_including_unconfirmed = wallet.btc_onchain_funds(included_unconfirmed=True)
     return render_template('unconfirmed_inputs_test.html', minconf=minconf, addr=addr, amount_sats=amount_sats, sats_available=sats_available, sats_available_including_unconfirmed=sats_available_including_unconfirmed)
 
+
+@app.teardown_request
+def recycle_db_conn():
+    # print session type (if scoped session it should automatically dispose...!?)
+    logger.info('disposing session: %s', db.session)
+    # manually dispose session
+    db.session.remove()
+
 #
 # gevent class
 #
