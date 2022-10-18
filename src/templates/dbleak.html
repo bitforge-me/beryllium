@@ -1,23 +1,6 @@
 <!doctype html>
 <html lang="en">
     <head>
-        <!-- Required meta tags -->
-        <meta charset="utf-8" />
-        <meta name="viewport"
-              content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
-        <!-- Bootstrap CSS -->
-        <link rel="stylesheet" href="/static/assets/css/bootstrap.min.css"/>
-        <!-- Font Awesome CSS -->
-        <link rel="stylesheet" href="/static/assets/css/fontawesome.all.min.css"/>
-        <!-- Custom CSS -->
-        <link rel="stylesheet"
-              href="{{ url_for('static', filename='css/custom_reporting.css') }}"/>
-        {% if config['CSS_THEME'] %}
-            <link rel="stylesheet"
-                  href="{{ url_for('static', filename=config['CSS_THEME']) }}"
-                  crossorigin="anonymous"/>
-        {% endif %}
-        {% block header %}{% endblock %}
         <title>
             {% block title %}{% endblock %}
         </title>
