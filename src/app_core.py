@@ -171,6 +171,8 @@ set_vital_setting("KYC_BUCKET")
 set_vital_setting("BITCOIN_DATADIR")
 set_vital_setting("BITCOIN_RPCCONNECT")
 
+app.config['SQLALCHEMY_POOL_SIZE'] = 1
+app.config['SQLALCHEMY_MAX_OVERFLOW'] = 0
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 if app.config["USE_SENDGRID"]:
