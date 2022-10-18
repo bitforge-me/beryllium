@@ -522,8 +522,9 @@ def unconfirmed_inputs_test():
 def recycle_db_conn(response):
     # print session type (if scoped session it should automatically dispose...!?)
     logger.info('disposing session: %s, %s', request.url, db.session)
-    # manually dispose session
-    db.session.remove()
+    # manually dispose session/engine
+    #db.session.remove()
+    db.engine.dispose()
 
 #
 # gevent class
