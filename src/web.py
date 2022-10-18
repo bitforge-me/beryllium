@@ -517,6 +517,9 @@ def unconfirmed_inputs_test():
     sats_available_including_unconfirmed = wallet.btc_onchain_funds(included_unconfirmed=True)
     return render_template('unconfirmed_inputs_test.html', minconf=minconf, addr=addr, amount_sats=amount_sats, sats_available=sats_available, sats_available_including_unconfirmed=sats_available_including_unconfirmed)
 
+@app.route('/dbleak', methods=['GET', 'POST'])
+def dbleak():
+    return render_template('dbleak.html')
 
 @app.teardown_request
 def recycle_db_conn(response):
