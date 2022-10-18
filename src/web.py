@@ -521,7 +521,7 @@ def unconfirmed_inputs_test():
 @app.teardown_request
 def recycle_db_conn(response):
     # print session type (if scoped session it should automatically dispose...!?)
-    logger.info('disposing session: %s', db.session)
+    logger.info('disposing session: %s, %s', request.url. db.session)
     # manually dispose session
     db.session.remove()
 
