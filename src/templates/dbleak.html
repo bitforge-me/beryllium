@@ -78,34 +78,6 @@
     </nav>
 </head>
 <body>
-    {%- with messages = get_flashed_messages(with_categories=true) -%}
-        {% if messages %}
-            <div id="flashes" class="container-sm">
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
-                {% endfor %}
-            </div>
-        {% endif %}
-    {%- endwith %}
-    <div id="navigation" class="container-sm">
-        {% block navigation %}{% endblock %}
-    </div>
-    <div id="content" class="container-sm mt-2">
-        {% block content %}{% endblock %}
-    </div>
-    <div id="footer" class="container">
-        {% block footer %}{% endblock %}
-    </div>
-    <!-- Optional JavaScript -->
-    <!-- jQuery first, then Popper.js, then Bootstrap JS, then Bootbox -->
-    <script src="/static/assets/js/jquery-3.6.0.min.js"></script>
-    <script src="/static/assets/js/popper.min.js"></script>
-    <script src="/static/assets/js/bootstrap.min.js"></script>
-    <script src="/static/assets/js/bootbox.min.js"></script>
-    <script data-login-url="{{ url_for('security.login') }}" data-logout-url="{{ url_for('security.logout') }}" src="{{ url_for('static',filename='assets/js_custom/layout.js') }}"></script>
-    {% block scripts %}{% endblock %}
-
-
 
 <div>
     {% if current_user.is_authenticated %}
