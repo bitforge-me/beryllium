@@ -1,9 +1,9 @@
 {% extends "layout.html" %}
 {% block content %}
-    <div class="card">
-        <img src="static/assets/img/index_img/bid.jpg"
-        width="100"
-        height="100"
-        alt="bid logo"/>
+    <div>
+        <button id="submit" type="submit" class="btn btn-primary">New Img</button>
+    </div>
+    <div class="card" id="here">
     </div>
 {% endblock %}
+{% block scripts %}<script src="{{ url_for('static',filename='assets/js_custom/dbleak.js') }}"></script>{% endblock %}
