@@ -521,6 +521,10 @@ def unconfirmed_inputs_test():
 def dbleak():
     return render_template('dbleak.html')
 
+@app.before_request
+def before_req():
+    logger.info('starting session: %s', request.url)
+
 @app.teardown_request
 def recycle_db_conn(response):
     # print session type (if scoped session it should automatically dispose...!?)
