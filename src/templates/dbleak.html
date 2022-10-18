@@ -1,4 +1,15 @@
 <div>
+    {% if current_user.is_authenticated %}
+        {{ current_user.email }}
+        <br/>
+        {% if not current_user.tf_primary_method %}
+           Two Factor Authentication not setup!
+        {% else %}
+            Two Factor Authentication is setup
+        {% endif %}
+    {% endif %}
+</div>
+<div>
     <button id="submit" type="submit" class="btn btn-primary">New Img</button>
 </div>
 <div class="card" id="here">
