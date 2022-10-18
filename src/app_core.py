@@ -173,7 +173,7 @@ set_vital_setting("BITCOIN_RPCCONNECT")
 
 app.config['SQLALCHEMY_POOL_SIZE'] = 1
 app.config['SQLALCHEMY_MAX_OVERFLOW'] = 0
-db = SQLAlchemy(app)
+db = SQLAlchemy(app,  session_options={'autocommit': True})
 migrate = Migrate(app, db)
 if app.config["USE_SENDGRID"]:
     mail = MailSendGrid(app)
