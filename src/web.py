@@ -527,12 +527,12 @@ def before_req():
     logger.info('starting session: %s', request.url)
 
 @app.teardown_request
-def recycle_db_conn(response):
+def teardown_req(response):
     # print session type (if scoped session it should automatically dispose...!?)
     logger.info('disposing session: %s, %s', request.url, db.session)
     # manually dispose session/engine
     #db.session.remove()
-    db.engine.dispose()
+    #db.engine.dispose()
 
 #
 # gevent class
