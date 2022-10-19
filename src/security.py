@@ -76,6 +76,8 @@ def tf_code_validate(user: User, code: str) -> bool:
 
 @app.before_request
 def check_verify():
+    return
+
     # we need to manually send the two factor security token because we cant change the
     # 'verify' view in flask_security.views
     if current_user.is_active and current_user.is_authenticated and \
