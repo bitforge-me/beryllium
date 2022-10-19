@@ -2,10 +2,15 @@ import os
 import decimal
 import json
 
+# DISABLED psycogreen: until we make our own sqlalchemy *poolclass* compatible with gevent
+#
+#    https://stackoverflow.com/questions/56271116/flask-sqlalchemy-sqlalchemy-engine-options-not-set-up-correctly/58504084#58504084
+#    https://github.com/gevent/gevent/blob/master/examples/psycopg2_pool.py
+#
 # make the postgres adapter cooperative
 # we need to call this before sqlalchemy loads postgrest to ensure the lib is patched before use
-import psycogreen.gevent
-psycogreen.gevent.patch_psycopg()  # noqa
+#import psycogreen.gevent
+#psycogreen.gevent.patch_psycopg()  # noqa
 
 from flask import Flask
 import flask.json
