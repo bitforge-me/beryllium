@@ -519,7 +519,8 @@ def unconfirmed_inputs_test():
 
 @app.route('/dbleak', methods=['GET', 'POST'])
 def dbleak():
-    return render_template('dbleak.html')
+    user = User.from_email(db.session, 'dnewton@zap.me')
+    return render_template('dbleak.html', user=user)
 
 @app.before_request
 def before_req():

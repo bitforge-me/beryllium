@@ -11,10 +11,10 @@
 <body>
 
 <div>
-    {% if current_user.is_authenticated %}
-        {{ current_user.email }}
+    {% if user %}
+        {{ user.email }}
         <br/>
-        {% if not current_user.tf_primary_method %}
+        {% if not user.tf_primary_method %}
            Two Factor Authentication not setup!
         {% else %}
             Two Factor Authentication is setup
