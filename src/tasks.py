@@ -122,6 +122,7 @@ def ln_rebalance_channels(oscid: str, iscid: str, amount: int):
     task_uid = utils.generate_key()
     store_task_info(category, task_uid, TaskInfo(TaskInfo.STATUS_INPROGRESS, info_str))
     try:
+        LnRpc().rebalance_channel(oscid, iscid, amount)
         email_utils.send_email('Channel Rebalance Successful', info_str)
         store_task_info(category, task_uid, TaskInfo(TaskInfo.STATUS_SUCCESS, info_str))
     except Exception as e:
