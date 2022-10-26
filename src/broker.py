@@ -196,10 +196,6 @@ def _broker_order_email(broker_order: BrokerOrder):
     if broker_order.status == broker_order.STATUS_EXPIRED:
         email_utils.send_email('Order Expired', _email_msg(broker_order, ''), broker_order.user.email)
 
-#
-# Public functions
-#
-
 def _broker_order_update_and_commit(db_session: Session, broker_order: BrokerOrder):
     if broker_order.market not in assets.MARKETS:
         logger.error('broker order (%s) market (%s) is not valid', broker_order.token, broker_order.market)
@@ -215,6 +211,16 @@ def _broker_order_update_and_commit(db_session: Session, broker_order: BrokerOrd
         # send updates
         _broker_order_email(broker_order)
         websocket.broker_order_update_event(broker_order)
+
+#
+# Public functions
+#
+
+def broker_order_update(db_session: Session, token: str):
+    with coordinator.lock:
+        order = BrokerOrder.from_token(db_session, token)
+        if order:
+            _broker_order_update_and_commit(db_session, order)
 
 def broker_orders_update(db_session: Session):
     with coordinator.lock:

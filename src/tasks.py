@@ -110,6 +110,9 @@ def _tf_method_check():
 # One off task functions, !assume we have a flask app context
 #
 
+def process_broker_order(token: str):
+    broker.broker_orders_update(db.session)
+
 def update_withdrawal(asset: str, token: str):
     if assets.asset_is_crypto(asset):
         depwith.crypto_withdrawal_update(db.session, token)
