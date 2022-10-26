@@ -978,6 +978,7 @@ def broker_order_accept():
         db.session.add(ftx)
         db.session.commit()
     websocket.broker_order_update_event(broker_order)
+    tasks.task_manager.one_off('process broker order', tasks.process_broker_order, [broker_order.token])
     return jsonify(broker_order=broker_order.to_json())
 
 @api.route('/broker_orders', methods=['POST'])
