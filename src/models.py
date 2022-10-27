@@ -375,6 +375,10 @@ class BrokerOrderSchema(Schema):
     quote_asset = fields.String()
     quote_amount = fields.Integer()
     quote_amount_dec = fields.Method('get_quote_amount_dec')
+    quote_fee = fields.Integer()
+    quote_fee_dec = fields.Method('get_quote_fee_dec')
+    quote_fee_fixed = fields.Integer()
+    quote_fee_fixed_dec = fields.Method('get_quote_fee_fixed_dec')
     status = fields.String()
 
     def get_base_amount_dec(self, obj):
@@ -382,6 +386,16 @@ class BrokerOrderSchema(Schema):
 
     def get_quote_amount_dec(self, obj):
         return str(assets.asset_int_to_dec(obj.quote_asset, obj.quote_amount))
+
+    def get_quote_fee_dec(self, obj):
+        if obj.quote_fee is None:
+            return None
+        return str(assets.asset_int_to_dec(obj.quote_asset, obj.quote_fee))
+
+    def get_quote_fee_fixed_dec(self, obj):
+        if obj.quote_fee_fixed is None:
+            return None
+        return str(assets.asset_int_to_dec(obj.quote_asset, obj.quote_fee_fixed))
 
 class BrokerOrder(BaseModel, FromUserMixin, FromTokenMixin):
     STATUS_CREATED = 'created'
@@ -407,12 +421,14 @@ class BrokerOrder(BaseModel, FromUserMixin, FromTokenMixin):
     quote_asset = Column(String, nullable=False)
     base_amount = Column(BigInteger, nullable=False)
     quote_amount = Column(BigInteger, nullable=False)
+    quote_fee = Column(BigInteger)
+    quote_fee_fixed = Column(BigInteger)
     exchange_order_id = Column(Integer, ForeignKey('exchange_order.id'))
     exchange_order: RelationshipProperty['ExchangeOrder' | None] = relationship('ExchangeOrder')
 
     status = Column(String, nullable=False)
 
-    def __init__(self, user, market, side, base_asset, quote_asset, base_amount, quote_amount):
+    def __init__(self, user, market, side, base_asset, quote_asset, base_amount, quote_amount, quote_fee, quote_fee_fixed):
         self.token = generate_key()
         self.user = user
         self.date = datetime.now()
@@ -423,6 +439,8 @@ class BrokerOrder(BaseModel, FromUserMixin, FromTokenMixin):
         self.quote_asset = quote_asset
         self.base_amount = base_amount
         self.quote_amount = quote_amount
+        self.quote_fee = quote_fee
+        self.quote_fee_fixed = quote_fee_fixed
         self.status = self.STATUS_CREATED
 
     def to_json(self):

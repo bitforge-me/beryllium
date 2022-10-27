@@ -73,9 +73,11 @@ def order_validate(db_session: Session, user: User, market: str, side: assets.Ma
     logger.info('quote %s %s %s for %s %s, fee: %s %s, fixed fee: %s %s', side.name, amount_dec, base_asset, quote.amountQuoteAsset, quote_asset, quote.feeQuoteAsset, quote_asset, quote.fixedFeeQuoteAsset, quote_asset)
     base_amount = assets.asset_dec_to_int(base_asset, amount_dec)
     quote_amount = assets.asset_dec_to_int(quote_asset, quote.amountQuoteAsset)
+    quote_fee_amount = assets.asset_dec_to_int(quote_asset, quote.feeQuoteAsset)
+    quote_fee_fixed_amount = assets.asset_dec_to_int(quote_asset, quote.fixedFeeQuoteAsset)
     if base_amount <= 0 or quote_amount <= 0:
         return web_utils.AMOUNT_TOO_LOW, None
-    order = BrokerOrder(user, market, side.value, base_asset, quote_asset, base_amount, quote_amount)
+    order = BrokerOrder(user, market, side.value, base_asset, quote_asset, base_amount, quote_amount, quote_fee_amount, quote_fee_fixed_amount)
     err_msg = order_check_funds(db_session, order)
     if err_msg:
         return err_msg, None
