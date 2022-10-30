@@ -115,4 +115,8 @@ def monitor_info():
         info['remote_blockheight'] = -1
     info['blockheight_diff'] = info['blockheight'] - info['remote_blockheight']
     info['blockheight_diff'] = abs(info['blockheight_diff'])
+    if info['blockheight_diff'] > 0:
+        info['blockheight_diff_threshold'] = 1
+    else:
+        info['blockheight_diff_threshold'] = 0
     return jsonify(info)
