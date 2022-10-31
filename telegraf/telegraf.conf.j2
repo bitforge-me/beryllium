@@ -6,6 +6,7 @@
   hostname = "{{ environ('TELEGRAF_NAME') | default('dev') }}"
   flush_interval = "15s"
   interval = "15s"
+  metric_batch_size = 2000
 
 # Input Plugins
 [[inputs.cpu]]
@@ -40,6 +41,7 @@
   data_format = "json"
   timeout = "30s"
   headers = {"HOST" = "{{ environ('SERVER_NAME') }}"}
+  interval = "60s"
 
 # Output Plugin InfluxDB
 [[outputs.influxdb]]
