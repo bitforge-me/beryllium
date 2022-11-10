@@ -1,7 +1,10 @@
 from datetime import timedelta
 
+from geventconnectionpool import GeventConnectionPool
+
 # Database settings
 SQLALCHEMY_ECHO = False
+SQLALCHEMY_ENGINE_OPTIONS = dict(poolclass=GeventConnectionPool)
 
 # Flask-Security config
 SECURITY_URL_PREFIX = "/admin"
