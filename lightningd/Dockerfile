@@ -1,4 +1,4 @@
-FROM elementsproject/lightningd:v0.12.1
+FROM elementsproject/lightningd:v0.11.1
 
 # we need a staging directory because we cannot modify $LIGHTNINGD_DATA
 # directly as the parent image declares 'VOLUME $LIGHTNINGD_DATA' and
