@@ -7,7 +7,7 @@ from flask_mail import Message
 
 from app_core import app, mail
 import utils
-from models import ApiKeyRequest, PayoutRequest, Referral, UserCreateRequest, UserUpdateEmailRequest, WithdrawalConfirmation
+from models import ApiKeyRequest, PayoutRequest, Referral, UserCreateRequest, UserUpdateEmailRequest, WithdrawalConfirmation, UserInvitation
 import assets
 from tasks import task_manager, send_email_task
 
@@ -63,6 +63,11 @@ def email_user_create_request(req: UserCreateRequest):
     url = url_for("api_supplemental.user_registration_confirm", token=req.token, _external=True)
     msg = f"You have a pending user registration waiting!<br/><br/>Confirm your registration <a href='{url}'>here</a><br/><br/>Confirm within {req.MINUTES_EXPIRY} minutes"
     send_email("Confirm your registration", msg, req.email)
+
+def email_invitation(invite: UserInvitation):
+    url = url_for("api_supplemental.invitation_confirm", token=invite.token, _external=True)
+    msg = f"You have a invitation to create an account!<br/><br/>Confirm your email to create account <a href='{url}'>here</a><br/><br/>Confirm within {invite.HOURS_EXPIRY} hours"
+    send_email(f"Account Invitation", msg, invite.email)
 
 def email_user_update_email_request(req: UserUpdateEmailRequest):
     url = url_for("api_supplemental.user_update_email_confirm", token=req.token, _external=True)
