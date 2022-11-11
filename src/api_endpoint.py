@@ -12,7 +12,7 @@ import web_utils
 from web_utils import bad_request, get_json_params, auth_request, auth_request_get_single_param, auth_request_get_params
 import utils
 import email_utils
-from models import BalanceUpdate, FiatDbTransaction, FiatDepositCode, Role, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, CryptoAddress, DassetSubaccount, WithdrawalConfirmation
+from models import BalanceUpdate, FiatDbTransaction, FiatDepositCode, Role, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, CryptoAddress, DassetSubaccount, WithdrawalConfirmation, UserInvitation
 from app_core import app, db, limiter, csrf, SERVER_VERSION, CLIENT_VERSION_DEPLOYED
 from security import tf_enabled_check, tf_method, tf_code_send, tf_method_set, tf_method_unset, tf_secret_init, tf_code_validate, user_datastore
 import windcave
@@ -106,6 +106,15 @@ def user_register():
     db.session.commit()
     return 'ok'
 
+def _user_create_confirmed(email: str, password: str, first_name: str | None, last_name: str | None, mobile_number: str | None, address: str | None, photo: str | None, photo_type: str | None) -> User:
+    user = user_datastore.create_user(email=email, password=password, first_name=first_name, last_name=last_name)
+    user.mobile_number = mobile_number
+    user.address = address
+    user.photo = photo
+    user.photo_type = photo_type
+    user.confirmed_at = datetime.now()
+    return user
+
 @api_supplemental.route('/user_registration_confirm/<token>', methods=['GET'])
 @limiter.limit('20/minute')
 def user_registration_confirm(token=None):
@@ -122,15 +131,43 @@ def user_registration_confirm(token=None):
     now = datetime.now()
     if now > req.expiry:
         return _redirect_confirmation_result('User registration expired.', 'danger')
-    user = user_datastore.create_user(email=req.email, password=req.password, first_name=req.first_name, last_name=req.last_name)
-    user.mobile_number = req.mobile_number
-    user.address = req.address
-    user.photo = req.photo
-    user.photo_type = req.photo_type
-    user.confirmed_at = now
+    user = _user_create_confirmed(req.email, req.password, req.first_name, req.last_name, req.mobile_number, req.address, req.photo, req.photo_type)
     db.session.delete(req)
-    db.session.commit()
+    db.session.commit()  # user added to session already
     return _redirect_confirmation_result('User registered.', 'success')
+
+@api_supplemental.route('/invitation_confirm/<token>', methods=['GET', 'POST'])
+@limiter.limit('20/minute')
+def invitation_confirm(token=None):
+    if not token:
+        return _redirect_confirmation_result('Invalid request', 'danger')
+    invite = UserInvitation.from_token(db.session, token)
+    if not invite:
+        return _redirect_confirmation_result('User invitation not found.', 'danger')
+    user = User.from_email(db.session, invite.email)
+    if user:
+        return _redirect_confirmation_result('User already exists.', 'danger')
+    now = datetime.now()
+    if now > invite.expiry:
+        return _redirect_confirmation_result('User invitation expired.', 'danger')
+    if invite.claimed:
+        return _redirect_confirmation_result('User invitation expired.', 'danger')
+    if request.method == 'POST':
+        password = request.form.get('password')
+        password_confirm = request.form.get('password_confirm')
+        if not password:
+            flash('Empty password', 'danger')
+            return render_template('api/invitation_confirm.html', invite=invite)
+        if password != password_confirm:
+            flash('Passwords do not match', 'danger')
+            return render_template('api/invitation_confirm.html', invite=invite)
+        password = encrypt_password(password)
+        user = _user_create_confirmed(invite.email, password=password, first_name=None, last_name=None, mobile_number=None, address=None, photo=None, photo_type=None)
+        invite.claimed = True
+        db.session.add(invite)
+        db.session.commit()  # user added to session already
+        return _redirect_confirmation_result('User registered.', 'success')
+    return render_template('api/invitation_confirm.html', invite=invite)
 
 @api.route('/user_two_factor_enabled_check', methods=['POST'])
 @limiter.limit('10/hour')

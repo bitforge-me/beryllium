@@ -1072,6 +1072,23 @@ class WithdrawalConfirmation(BaseModel, FromTokenMixin):
     def status_is_created(self):
         return self.withdrawal and self.withdrawal.status == self.withdrawal.STATUS_CREATED
 
+class UserInvitation(BaseModel, FromTokenMixin):
+    HOURS_EXPIRY = 24
+
+    id = Column(Integer, primary_key=True)
+    token = Column(String(255), unique=True, nullable=False)
+    date = Column(DateTime(), nullable=False)
+    expiry = Column(DateTime(), nullable=False)
+    claimed = Column(Boolean, nullable=False)
+    email = Column(String(), nullable=False)
+
+    def __init__(self, email: str):
+        self.token = generate_key()
+        self.date = datetime.now()
+        self.expiry = self.date + timedelta(hours=self.HOURS_EXPIRY)
+        self.claimed = False
+        self.email = email
+
 class BtcTxIndex(BaseModel):
     id = Column(Integer, primary_key=True)
     txid = Column(String(255), nullable=False)

@@ -12,7 +12,7 @@ from flask.wrappers import Response
 from flask_security.decorators import roles_accepted
 
 from app_core import app, boolify, db, socketio
-from models import User, Role, Topic, PushNotificationLocation, BrokerOrder, BalanceUpdate, KycRequest, FiatDbTransaction
+from models import User, Role, Topic, PushNotificationLocation, BrokerOrder, BalanceUpdate, KycRequest, FiatDbTransaction, UserInvitation
 import email_utils
 from fcm import FCM
 from web_utils import bad_request, get_json_params, get_json_params_optional
@@ -516,6 +516,38 @@ def unconfirmed_inputs_test():
     sats_available = wallet.btc_onchain_funds()
     sats_available_including_unconfirmed = wallet.btc_onchain_funds(included_unconfirmed=True)
     return render_template('unconfirmed_inputs_test.html', minconf=minconf, addr=addr, amount_sats=amount_sats, sats_available=sats_available, sats_available_including_unconfirmed=sats_available_including_unconfirmed)
+
+@app.route('/invite_users', methods=['GET', 'POST'])
+@roles_accepted(Role.ROLE_ADMIN)
+def invite_users():
+    addrs_raw = ''
+    if request.method == 'POST':
+        addrs_raw = request.form['addrs']
+        if addrs_raw:
+            addrs = addrs_raw.split('\n')
+            addrs = [addr.strip().lower() for addr in addrs]
+            for addr in addrs:
+                if not addr:
+                    continue
+                if not utils.is_email(addr):
+                    flash(f'invalid email ({addr})', 'danger')
+                    return render_template('invite_users.html', addrs=addrs_raw)
+                user = User.from_email(db.session, addr)
+                if user:
+                    flash(f'user exists ({addr})', 'danger')
+                    return render_template('invite_users.html', addrs=addrs_raw)
+            for addr in addrs:
+                if not addr:
+                    continue
+                # invite addr to join
+                invite = UserInvitation(addr)
+                db.session.add(invite)
+                db.session.commit()
+                email_utils.email_invitation(invite)
+            flash('invitations sent')
+        else:
+            flash('no emails', 'danger')
+    return render_template('invite_users.html', addrs=addrs_raw)
 
 #
 # gevent class

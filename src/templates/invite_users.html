@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Invite Users</h5>
+            <pre>
+                Invite users by email (one email per line). This can bypass disabled registrations
+            </pre>
+            <form id="form" method="POST">
+                <input type="hidden"
+                       id="csrfToken"
+                       name="csrf_token"
+                       value="{{ csrf_token() }}"/>
+                <div class="form-group">
+                    <label for="addrs">Email Addresses</label>
+                    <textarea class="form-control" id="addrs" name="addrs" aria-describedby="addrsHelp">{{ addrs }}</textarea>
+                    <small id="addrsHelp" class="form-text text-muted">The users email addresses</small>
+                </div>
+                <button id="form-submit" type="submit" class="btn btn-primary">Submit</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}
+{% block scripts %}
+    <script src="{{ url_for('static',filename='assets/js_custom/invite_users.js') }}"></script>
+{% endblock %}
