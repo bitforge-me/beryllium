@@ -61,6 +61,18 @@ def _redirect_confirmation_result(message, category):
     flash(message, category)
     return redirect('/apis/confirmation_result')
 
+def _password_complexity_valid(password):
+    if flask_security.utils.password_length_validator(password):
+        logger.info('password length failed')
+        return False
+    if flask_security.utils.password_complexity_validator(password, True):
+        logger.info('password complexity failed')
+        return False
+    if flask_security.utils.password_breached_validator(password):
+        logger.info('password breached failed')
+        return False
+    return True
+
 #
 # Public API
 #
@@ -94,6 +106,8 @@ def user_register():
     email = email.lower()
     if not password:
         return bad_request(web_utils.EMPTY_PASSWORD)
+    if not _password_complexity_valid(password):
+        return bad_request(web_utils.WEAK_PASSWORD)
     if photo and len(photo) > 50000:
         return bad_request(web_utils.PHOTO_DATA_LARGE)
     req = UserCreateRequest(first_name, last_name, email, mobile_number, address, photo, photo_type, encrypt_password(password))
@@ -157,6 +171,9 @@ def invitation_confirm(token=None):
         password_confirm = request.form.get('password_confirm')
         if not password:
             flash('Empty password', 'danger')
+            return render_template('api/invitation_confirm.html', invite=invite)
+        if not _password_complexity_valid(password):
+            flash(web_utils.WEAK_PASSWORD, 'danger')
             return render_template('api/invitation_confirm.html', invite=invite)
         if password != password_confirm:
             flash('Passwords do not match', 'danger')
@@ -408,7 +425,7 @@ def user_update_password():
     if not verified_password:
         return bad_request(web_utils.INCORRECT_PASSWORD)
     # set the new_password:
-    if flask_security.utils.password_length_validator(new_password) or flask_security.utils.password_complexity_validator(new_password, True) or flask_security.utils.password_breached_validator(new_password):
+    if not _password_complexity_valid(new_password):
         return bad_request(web_utils.WEAK_PASSWORD)
     user.password = encrypt_password(new_password)
     db.session.add(user)
