@@ -10,6 +10,7 @@ from models import Role, User, BrokerOrder
 import dasset
 import crown_financial
 import assets
+from ln import LnRpc
 
 logger = logging.getLogger(__name__)
 reporting = Blueprint('reporting', __name__, template_folder='templates/reporting')
@@ -95,9 +96,14 @@ def dashboard_general():
     crown_balance = crown_financial.balance(quiet=True)
     crown_currency = crown_financial.CURRENCY
     bank_balance = assets.asset_dec_to_str(crown_currency, assets.asset_int_to_dec(crown_currency, crown_balance))
-    bank_balances_formated = [dict(symbol=crown_currency, available=bank_balance, total=bank_balance)]
+    bank_balances_formatted = [dict(symbol=crown_currency, available=bank_balance, total=bank_balance)]
+    ln_funds = LnRpc().list_funds()
+    onchain_balance = assets.asset_dec_to_str(assets.BTC.symbol, assets.asset_int_to_dec(assets.BTC.symbol, ln_funds['sats_onchain']))
+    channel_out_balance = assets.asset_dec_to_str(assets.BTC.symbol, assets.asset_int_to_dec(assets.BTC.symbol, ln_funds['sats_channels']))
+    channel_in_balance = assets.asset_dec_to_str(assets.BTC.symbol, assets.asset_int_to_dec(assets.BTC.symbol, ln_funds['sats_channels_theirs']))
+    wallet_balances_formatted = [dict(symbol=assets.BTC.symbol, desc='onchain', available=onchain_balance, total=onchain_balance), dict(symbol=assets.BTC.symbol, desc='LN outbound', available=channel_out_balance, total=channel_out_balance), dict(symbol=assets.BTC.symbol, desc='LN inbound', available=channel_in_balance, total=channel_in_balance)]
 
-    return render_template('reporting/dashboard_general.html', exchange_balances=exchange_balances_formatted, bank_balances=bank_balances_formated)
+    return render_template('reporting/dashboard_general.html', exchange_balances=exchange_balances_formatted, bank_balances=bank_balances_formatted, wallet_balances=wallet_balances_formatted)
 
 @reporting.route("/dashboard_user")
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)

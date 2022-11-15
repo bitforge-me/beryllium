@@ -33,6 +33,23 @@
             </div>
         {% endfor %}
     </div>
+    <hr />
+    <div class="row justify-content-center">
+        <div class="col-sm">
+            <h3>Wallet Balances</h3>
+        </div>
+    </div>
+    <div class="row">
+        {% for balance in wallet_balances %}
+            <div class="col-sm">
+                <div class="operations_account_column text_color">
+                    <b>{{ balance.symbol }} - {{ balance.desc }}</b>
+                    <div class="report-row report-row-sm blue text_color">Available: {{ balance.available }} {{ balance.symbol }}</div>
+                    <div class="report-row report-row-sm blue text_color">Total: {{ balance.total }} {{ balance.symbol }}</div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
     {% if config["USE_REFERRALS"] %}
         <hr />
         {% include "referral_settings.html" %}
