@@ -721,6 +721,7 @@ def _create_withdrawal(user: User, asset: str, l2_network: str | None, amount_de
                 return None, bad_request(web_utils.RECIPIENT_EXISTS)
         # check funds available
         fee_dec = assets.asset_withdraw_fee(asset, l2_network, amount_dec)
+        fee_dec = utils.round_dec(fee_dec, assets.asset_decimals(asset))
         amount_plus_fee_dec = amount_dec + fee_dec
         logger.info('amount plus withdraw fee: %s', amount_plus_fee_dec)
         if not fiatdb_core.funds_available_user(db.session, user, asset, amount_plus_fee_dec):
