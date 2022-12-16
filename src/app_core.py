@@ -177,6 +177,7 @@ set_vital_setting("CROWN_WITHDRAW_NAME")
 set_vital_setting("KYC_BUCKET")
 set_vital_setting("BITCOIN_DATADIR")
 set_vital_setting("BITCOIN_RPCCONNECT")
+set_vital_setting("POUCH_API_KEY")
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
