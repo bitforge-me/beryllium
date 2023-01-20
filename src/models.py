@@ -1037,7 +1037,7 @@ class CryptoAddress(BaseModel, FromUserMixin):
     @classmethod
     def need_to_be_checked(cls, session) -> list[CryptoAddress]:
         now = datetime.timestamp(datetime.now())
-        return session.query(cls).filter(now - cls.checked_at > (cls.checked_at - cls.viewed_at) * 2).all()
+        return session.query(cls).filter(now - cls.checked_at > cls.checked_at - cls.viewed_at).all()
 
 class WithdrawalConfirmation(BaseModel, FromTokenMixin):
     MINUTES_EXPIRY = 30
