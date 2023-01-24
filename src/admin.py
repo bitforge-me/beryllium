@@ -25,14 +25,6 @@ class ReloadingIterator:
 
 # flask admin formatters
 
-def _date_format(view, value):
-    return value.strftime('%Y.%m.%d %H:%M')
-
-MY_DEFAULT_FORMATTERS = dict(typefmt.BASE_FORMATTERS)
-MY_DEFAULT_FORMATTERS.update({
-    datetime.date: _date_format,
-})
-
 def _format_location(view, context, model, name):
     lat = model.latitude
     lon = model.longitude
