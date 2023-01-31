@@ -12,7 +12,7 @@ from flask.wrappers import Response
 from flask_security.decorators import roles_accepted
 
 from app_core import app, boolify, db, socketio
-from models import User, Role, Topic, PushNotificationLocation, BrokerOrder, BalanceUpdate, KycRequest, FiatDbTransaction, UserInvitation
+from models import User, Role, Topic, PushNotificationLocation, BrokerOrder, BalanceUpdate, KycRequest, FiatDbTransaction, UserInvitation, CryptoAddress
 import email_utils
 from fcm import FCM
 from web_utils import bad_request, get_json_params, get_json_params_optional
@@ -548,6 +548,44 @@ def invite_users():
         else:
             flash('no emails', 'danger')
     return render_template('invite_users.html', addrs=addrs_raw)
+
+@app.route('/check_addr', methods=['GET', 'POST'])
+@roles_accepted(Role.ROLE_ADMIN)
+def check_addr():
+    email = ''
+    asset = 'BTC'
+    addr = ''
+    new_crypto_deposits = []
+    updated_crypto_deposits = []
+    if request.method == 'POST':
+        email = request.form['email']
+        asset = request.form['asset']
+        addr = request.form['addr']
+        if not utils.is_email(email):
+            flash(f'invalid email ({email})', 'danger')
+            return render_template('check_addr.html', email=email, asset=asset, addr=addr)
+        user = User.from_email(db.session, email)
+        if not user:
+            flash(f'user does not exist ({email})', 'danger')
+            return render_template('check_addr.html', email=email, asset=asset, addr=addr)
+        if not asset:
+            flash(f'invalid asset ({asset})', 'danger')
+            return render_template('check_addr.html', email=email, asset=asset, addr=addr)
+        if not wallet.deposits_supported(asset, None):
+            flash(f'invalid asset ({asset})', 'danger')
+            return render_template('check_addr.html', email=email, asset=asset, addr=addr)
+        addrs = []
+        if not addr:
+            db_addr = CryptoAddress.from_asset(db.session, user, asset)
+            if not db_addr:
+                flash(f'no addr found for user ({email})', 'danger')
+                return render_template('check_addr.html', email=email, asset=asset, addr=addr)
+            addrs.append(db_addr.address)
+        else:
+            addrs.append(addr)
+        new_crypto_deposits, updated_crypto_deposits = depwith.crypto_addresses_check(db.session, user, asset, addrs)
+        flash(f'checked address ({addrs[0]})')
+    return render_template('check_addr.html', email=email, asset=asset, addr=addr, new_crypto_deposits=new_crypto_deposits, updated_crypto_deposits=updated_crypto_deposits)
 
 #
 # gevent class

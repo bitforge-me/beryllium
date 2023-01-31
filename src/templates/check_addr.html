@@ -1,0 +1,57 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Check Address</h5>
+            <pre>
+                Check a crypto address of a user for new transactions
+            </pre>
+            <form id="form" method="POST">
+                <input type="hidden"
+                       id="csrfToken"
+                       name="csrf_token"
+                       value="{{ csrf_token() }}"/>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email"
+                           class="form-control"
+                           id="email"
+                           name="email"
+                           aria-describedby="emailHelp"
+                           value="{{ email }}"/>
+                    <small id="emailHelp" class="form-text text-muted">The users email address</small>
+                    <label for="asset">Asset</label>
+                    <input type="text"
+                           class="form-control"
+                           id="asset"
+                           name="asset"
+                           aria-describedby="assetHelp"
+                           value="{{ asset }}"/>
+                    <small id="assetHelp" class="form-text text-muted">The asset to check (BTC, etc..)</small>
+                    <label for="addr">Address</label>
+                    <input type="text"
+                           class="form-control"
+                           id="addr"
+                           name="addr"
+                           aria-describedby="addrHelp"
+                           value="{{ addr }}"/>
+                    <small id="addrHelp" class="form-text text-muted">The address to check (leave blank for all user addresses)</small>
+                </div>
+                <button id="form-submit" type="submit" class="btn btn-primary">Submit</button>
+            </form>
+            {% for bu in new_crypto_deposits %}
+                <pre>
+                    {{ bu.type }}, {{ bu.date }} {{ bu.asset }}, {{ bu.amount }}, {{ bu.status }} {{ bu.wallet_reference }}
+                </pre>
+            {% endfor %}
+            {% for bu in updated_crypto_deposits %}
+                <pre>
+                    {{ bu.type }}, {{ bu.date }} {{ bu.asset }}, {{ bu.amount }}, {{ bu.status }} {{ bu.wallet_reference }}
+                </pre>
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}
+{% block scripts %}
+    <script src="{{ url_for('static',filename='assets/js_custom/check_addr.js') }}"></script>
+{% endblock %}
