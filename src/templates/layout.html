@@ -82,7 +82,8 @@
         {% if messages %}
             <div id="flashes" class="container-sm">
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
+                    <div class="alert alert-{{ category if category != 'message' else 'primary' }}"
+                         role="alert">{{ message }}</div>
                 {% endfor %}
             </div>
         {% endif %}

@@ -16,7 +16,7 @@
         {% for category, message in get_flashed_messages(with_categories=True) %}
             {% if message not in printed_messages %}
                 {% set x = printed_messages.__setitem__(message, "value")  %}
-                <div class="alert alert-{{ category }} alert-dismissible fade in"
+                <div class="alert alert-{{ category if category != 'message' else 'primary' }} alert-dismissible fade in"
                      role="alert">
                     {{ message }}
                     <button type="button" class="close" data-dismiss="alert" aria-label="Close">
