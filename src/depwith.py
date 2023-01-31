@@ -361,7 +361,7 @@ def _crypto_deposits_dasset_check(db_session: Session, new_crypto_deposits: list
         db_session.add(crypto_deposit)
         db_session.commit()
 
-def _crypto_deposits_address_check(db_session: Session, new_crypto_deposits: list[BalanceUpdate], updated_crypto_deposits: list[BalanceUpdate]):
+def _crypto_deposits_stale_addresses_check(db_session: Session, new_crypto_deposits: list[BalanceUpdate], updated_crypto_deposits: list[BalanceUpdate]):
     # query for list of addresses that need to be checked
     addrs = CryptoAddress.need_to_be_checked(db_session)
     # sort in groups of assets for each user
@@ -380,6 +380,7 @@ def _crypto_deposits_address_check(db_session: Session, new_crypto_deposits: lis
     for user, asset_dict in user_assets.values():
         for asset, addr_list in asset_dict.items():
             if wallet.deposits_supported(asset, None):
+                logger.info('checking wallet for addr %s, asset %s, user %s', '-'.join(addr_list), asset, user.email)
                 _crypto_deposits_wallet_check(db_session, new_crypto_deposits, updated_crypto_deposits, user, asset, addr_list)
             else:
                 _crypto_deposits_dasset_check(db_session, new_crypto_deposits, updated_crypto_deposits, user, asset)
@@ -410,12 +411,27 @@ def crypto_wallet_deposits_check(db_session: Session):
         _crypto_deposit_email(deposit)
         websocket.crypto_deposit_update_event(deposit)
 
+def crypto_addresses_check(db_session: Session, user: User, asset: str, addrs: list[str]):
+    new_crypto_deposits: list[BalanceUpdate] = []
+    updated_crypto_deposits: list[BalanceUpdate] = []
+    with coordinator.lock:
+        # check specific user/asset/address combination
+        _crypto_deposits_wallet_check(db_session, new_crypto_deposits, updated_crypto_deposits, user, asset, addrs)
+    # send updates
+    for deposit in new_crypto_deposits:
+        _crypto_deposit_email(deposit)
+        websocket.crypto_deposit_new_event(deposit)
+    for deposit in updated_crypto_deposits:
+        _crypto_deposit_email(deposit)
+        websocket.crypto_deposit_update_event(deposit)
+    return new_crypto_deposits, updated_crypto_deposits
+
 def crypto_deposits_check(db_session: Session):
     new_crypto_deposits: list[BalanceUpdate] = []
     updated_crypto_deposits: list[BalanceUpdate] = []
     with coordinator.lock:
         # check crypto deposits from addresses that are due to be checked (from dasset or our wallet)
-        _crypto_deposits_address_check(db_session, new_crypto_deposits, updated_crypto_deposits)
+        _crypto_deposits_stale_addresses_check(db_session, new_crypto_deposits, updated_crypto_deposits)
         # check crypto deposits in our wallet
         _crypto_deposits_updated_wallet_check(db_session, updated_crypto_deposits)
     # send updates
