@@ -319,7 +319,11 @@ def _crypto_deposits_wallet_check(db_session: Session, new_crypto_deposits: list
             if not crypto_deposit.crypto_address:
                 addr_db = CryptoAddress.from_addr(db_session, addr)
                 if addr_db:
+                    # attach crypto addr to deposit
                     crypto_deposit.crypto_address = addr_db
+                    # reset check interval
+                    addr_db.check_interval = addr_db.INITIAL_CHECK_INTERVAL  # type: ignore
+                    db_session.add(addr_db)
             db_session.add(crypto_deposit)
             db_session.commit()
 
@@ -365,22 +369,24 @@ def _crypto_deposits_stale_addresses_check(db_session: Session, new_crypto_depos
     # query for list of addresses that need to be checked
     addrs = CryptoAddress.need_to_be_checked(db_session)
     # sort in groups of assets for each user
-    user_assets: Dict[str, Tuple[User, dict]] = {}
+    user_assets: dict[str, Tuple[User, dict[str, list[str]]]] = {}
     for addr in addrs:
         if addr.user.email not in user_assets:
             user_assets[addr.user.email] = addr.user, {}
         _, asset_dict = user_assets[addr.user.email]
         if addr.asset not in asset_dict:
             asset_dict[addr.asset] = [addr.address]
+        else:
+            asset_dict[addr.asset].append(addr.address)
         # update checked at time of CryptoAddress
         addr.checked_at = int(datetime.timestamp(datetime.now()))
+        addr.check_interval = addr.check_interval * 2  # type: ignore
         db_session.add(addr)
     db_session.commit()
     # check for new deposits, update existing deposits
     for user, asset_dict in user_assets.values():
         for asset, addr_list in asset_dict.items():
             if wallet.deposits_supported(asset, None):
-                logger.info('checking wallet for addr %s, asset %s, user %s', '-'.join(addr_list), asset, user.email)
                 _crypto_deposits_wallet_check(db_session, new_crypto_deposits, updated_crypto_deposits, user, asset, addr_list)
             else:
                 _crypto_deposits_dasset_check(db_session, new_crypto_deposits, updated_crypto_deposits, user, asset)

@@ -1006,6 +1006,7 @@ class FiatDbTransaction(BaseModel, FromTokenMixin):
         return tx_schema.dump(self)
 
 class CryptoAddress(BaseModel, FromUserMixin):
+    INITIAL_CHECK_INTERVAL = 300
 
     id = Column(Integer, primary_key=True)
 
@@ -1017,6 +1018,7 @@ class CryptoAddress(BaseModel, FromUserMixin):
     # we make these integer timestamps so we dont have any issues with any comparisons in DB
     viewed_at = Column(BigInteger(), nullable=False)
     checked_at = Column(BigInteger(), nullable=False)
+    check_interval = Column(BigInteger(), nullable=False, default=INITIAL_CHECK_INTERVAL)  # type: ignore
 
     def __init__(self, user, asset, address):
         self.user = user
@@ -1037,7 +1039,7 @@ class CryptoAddress(BaseModel, FromUserMixin):
     @classmethod
     def need_to_be_checked(cls, session) -> list[CryptoAddress]:
         now = datetime.timestamp(datetime.now())
-        return session.query(cls).filter(now - cls.checked_at > cls.checked_at - cls.viewed_at).all()
+        return session.query(cls).filter(now > cls.checked_at + cls.check_interval).all()
 
 class WithdrawalConfirmation(BaseModel, FromTokenMixin):
     MINUTES_EXPIRY = 30

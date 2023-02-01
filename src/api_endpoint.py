@@ -658,6 +658,7 @@ def crypto_deposit_recipient_req():
                     return bad_request(web_utils.FAILED_WALLET)
                 crypto_address = CryptoAddress(api_key.user, asset, address)
             crypto_address.viewed_at = int(datetime.timestamp(datetime.now()))
+            crypto_address.check_interval = crypto_address.INITIAL_CHECK_INTERVAL  # type: ignore
             db.session.add(crypto_address)
             db.session.commit()
             return jsonify(recipient=crypto_address.address, asset=asset, l2_network=l2_network, amount_dec=decimal.Decimal(0))
@@ -696,6 +697,7 @@ def crypto_deposit_recipient_req():
             return bad_request(web_utils.FAILED_EXCHANGE)
         crypto_address = CryptoAddress(api_key.user, asset, address)
     crypto_address.viewed_at = int(datetime.timestamp(datetime.now()))
+    crypto_address.check_interval = crypto_address.INITIAL_CHECK_INTERVAL  # type: ignore
     db.session.add(crypto_address)
     db.session.commit()
     return jsonify(recipient=crypto_address.address, asset=asset, l2_network=l2_network, amount_dec=decimal.Decimal(0))
