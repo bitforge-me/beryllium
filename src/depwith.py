@@ -129,11 +129,12 @@ def _fiat_deposit_email(fiat_deposit: BalanceUpdate):
     if fiat_deposit.status == fiat_deposit.STATUS_CANCELLED:
         email_utils.send_email('Deposit Cancelled', _fiat_deposit_email_msg(fiat_deposit, ''), fiat_deposit.user.email)
 
-def _crown_check_new_desposits(db_session: Session):
+def _crown_check_new_desposits(db_session: Session, start_date: datetime, end_date: datetime) -> list[BalanceUpdate]:
+    new_fiat_deposits = []
     if not utils.is_email(crown_financial.EMAIL):
         logger.error('invalid crown_financial.EMAIL %s', crown_financial.EMAIL)
-        return
-    txs = crown_financial.transactions_filtered_type(crown_financial.CrownTx.TYPE_DEPOSIT, datetime.now() - timedelta(days=7), datetime.now())
+        return new_fiat_deposits
+    txs = crown_financial.transactions_filtered_type(crown_financial.CrownTx.TYPE_DEPOSIT, start_date, end_date)
     for tx in txs:
         if tx.currency == crown_financial.CURRENCY and not CrownPayment.from_crown_txn_id(db_session, tx.crown_txn_id):
             payment = CrownPayment(utils.generate_key(), tx.currency, tx.amount, tx.crown_txn_id, tx.status)
@@ -145,6 +146,8 @@ def _crown_check_new_desposits(db_session: Session):
                 db_session.add(payment)
                 db_session.add(deposit)
                 db_session.commit()
+                new_fiat_deposits.append(deposit)
+    return new_fiat_deposits
 
 def _fiat_deposit_update_and_commit(db_session: Session, deposit: BalanceUpdate):
     if deposit.asset not in assets.ASSETS:
@@ -175,7 +178,11 @@ def fiat_deposits_update(db_session: Session):
         logger.info('num deposits: %d', len(deposits))
         for deposit in deposits:
             _fiat_deposit_update_and_commit(db_session, deposit)
-        _crown_check_new_desposits(db_session)
+        _crown_check_new_desposits(db_session, datetime.now() - timedelta(days=7), datetime.now())
+
+def fiat_deposits_new_check(db_session: Session, start_date: datetime, end_date: datetime):
+    with coordinator.lock:
+        return _crown_check_new_desposits(db_session, start_date, end_date)
 
 def _fiat_withdrawal_update(fiat_withdrawal: BalanceUpdate):
     logger.info('processing fiat withdrawal %s (%s)..', fiat_withdrawal.token, fiat_withdrawal.status)
