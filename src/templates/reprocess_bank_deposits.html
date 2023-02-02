@@ -1,0 +1,44 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Reprocess Bank Deposits</h5>
+            <pre>
+                Check a date for bank deposits
+            </pre>
+            <form id="form" method="POST">
+                <input type="hidden"
+                       id="csrfToken"
+                       name="csrf_token"
+                       value="{{ csrf_token() }}"/>
+                <div class="form-group">
+                    <label for="start_date">Email</label>
+                    <input type="date"
+                           class="form-control"
+                           id="start_date"
+                           name="start_date"
+                           aria-describedby="emailHelp"
+                           value="{{ start_date }}"/>
+                    <small id="startDateHelp" class="form-text text-muted">The starting date</small>
+                    <label for="interval">Asset</label>
+                    <input type="text"
+                           class="form-control"
+                           id="interval"
+                           name="interval"
+                           aria-describedby="assetHelp"
+                           value="{{ interval }}"/>
+                    <small id="assetHelp" class="form-text text-muted">The interval to use (1w, 1m)</small>
+                </div>
+                <button id="form-submit" type="submit" class="btn btn-primary">Submit</button>
+            </form>
+            {% for bu in new_fiat_deposits %}
+                <pre>
+                    {{ bu.token }}, {{ bu.user.email }}, {{ bu.date }}, {{ bu.type }}, {{ bu.asset }}, {{ bu.amount }}, {{ bu.status }} {{ bu.recipient }}
+                </pre>
+            {% endfor %}
+        </div>
+    </div>
+{% endblock %}
+{% block scripts %}
+    <script src="{{ url_for('static',filename='assets/js_custom/reprocess_bank_deposits.js') }}"></script>
+{% endblock %}

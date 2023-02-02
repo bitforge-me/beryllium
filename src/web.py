@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import decimal
 import logging
 import math
@@ -586,6 +586,42 @@ def check_addr():
         new_crypto_deposits, updated_crypto_deposits = depwith.crypto_addresses_check(db.session, user, asset, addrs)
         flash(f'checked address ({addrs[0]})')
     return render_template('check_addr.html', email=email, asset=asset, addr=addr, new_crypto_deposits=new_crypto_deposits, updated_crypto_deposits=updated_crypto_deposits)
+
+@app.route('/reprocess_bank_deposits', methods=['GET', 'POST'])
+@roles_accepted(Role.ROLE_ADMIN)
+def reprocess_bank_deposits():
+    def last_week_date():
+        today = date.today()
+        week = timedelta(days=7)
+        last_week = today - week
+        return last_week.strftime("%Y-%m-%d")
+
+    def parse_date(date):
+        return datetime.strptime(date, '%Y-%m-%d')
+
+    INT_WEEK = '1w'
+    INT_MONTH = '1m'
+    start_date = last_week_date()
+    interval = INT_WEEK
+    new_fiat_deposits = []
+    if request.method == 'POST':
+        start_date = request.form['start_date']
+        interval = request.form['interval']
+        if not start_date:
+            flash(f'invalid start date ({start_date})', 'danger')
+            return render_template('reprocess_bank_deposits.html', start_date=start_date, interval=interval)
+        if interval:
+            interval = interval.lower()
+        if interval not in (INT_WEEK, INT_MONTH):
+            flash(f'invalid interval ({interval})', 'danger')
+            return render_template('reprocess_bank_deposits.html', start_date=start_date, interval=interval)
+        start_date_dt = parse_date(start_date)
+        end_date_dt = start_date_dt + timedelta(days=7)
+        if interval == INT_MONTH:
+            end_date_dt = start_date_dt + timedelta(days=30)
+        new_fiat_deposits = depwith.fiat_deposits_new_check(db.session, start_date_dt, end_date_dt)
+        flash(f'checked deposits ({start_date}, {interval})')
+    return render_template('reprocess_bank_deposits.html', start_date=start_date, interval=interval, new_fiat_deposits=new_fiat_deposits)
 
 #
 # gevent class
