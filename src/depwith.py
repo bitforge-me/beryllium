@@ -178,7 +178,7 @@ def fiat_deposits_update(db_session: Session):
         logger.info('num deposits: %d', len(deposits))
         for deposit in deposits:
             _fiat_deposit_update_and_commit(db_session, deposit)
-        _crown_check_new_desposits(db_session, datetime.now() - timedelta(days=7), datetime.now())
+        _crown_check_new_desposits(db_session, datetime.now() - timedelta(days=30), datetime.now())
 
 def fiat_deposits_new_check(db_session: Session, start_date: datetime, end_date: datetime):
     with coordinator.lock:
