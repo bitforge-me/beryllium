@@ -1,53 +1,88 @@
 import logging
+import uuid
 from dataclasses import dataclass
+import json
+
+import marshmallow
+import marshmallow_dataclass
 
 from app_core import app
 from log_utils import setup_logging
+from web_utils import create_hmac_sig
 import httpreq
 
 logger = logging.getLogger(__name__)
 
 API_KEY = app.config['POUCH_API_KEY']
-URL_BASE = 'https://app.pouch.ph/api/v2/remit/'
+API_SECRET = app.config['POUCH_API_SECRET']
+URL_BASE = 'https://remit.pouch.ph/api/v1/'
 if app.config['TESTNET']:
-    URL_BASE = 'https://test.pouch.ph/api/v2/remit/'
+    URL_BASE = 'https://remit-sandbox.pouch.ph/v1/'
+
+WEBHOOK_INVOICE_PAID = 'invoice.paid'
+WEBHOOK_INVOICE_FAILED = 'invoice.failed'
+
+class CamelcaseSchema(marshmallow.Schema):
+    """A Schema that marshals data with *camelCased* keys from *snake_cased*."""
+    def on_bind_field(self, field_name, field_obj):
+        field_name = field_obj.data_key or field_name
+        camel_cased = field_name[0] + field_name.title().replace('_', '')[1:]
+        field_obj.data_key = camel_cased
 
 @dataclass
-class PouchBank:
+class PouchPaymentMethod:
     code: str
     name: str
-    brstn: str | None
-
-@dataclass
-class PouchSender:
-    fee_centavos: int
-    bolt11: str
 
 @dataclass
 class PouchRecipient:
-    method: str
     name: str
-    account_number: str
-    bank_code: str
+    account_number: str | None
+    mobile_number: str | None
 
 @dataclass
-class PouchOrder:
-    id: str
-    ref_id: str
-    partner: str
-    amount_centavos: int
-    sender: PouchSender
+class PouchInvoiceReq:
+    reference_id: str
+    description: str
+    payment_method_code: str
+    currency: str
+    amount: int
     recipient: PouchRecipient
+
+@dataclass
+class PouchFee:
+    amount: int
+    currency: str
+
+@dataclass
+class PouchInvoice:
+    ref_id: str
     status: str
+    bolt11: str
+    sender_amount: int
+    sender_currency: str
+    recipient_name: str
+    recipient_account_number: str | None
+    recipient_mobile_number: str | None
+    recipient_amount: int
+    recipient_currency: str
+    rates: dict[str, dict[str, float]]
+    fees: dict[str, PouchFee]
     created_at: str
     updated_at: str
 
-def _req(endpoint, data=None, quiet=False):
+def _req(endpoint, data=None, quiet=False, use_put=False):
     url = URL_BASE + endpoint
-    headers = {'x-api-key': API_KEY}
+    headers = {'X-Pouch-Api-Key': API_KEY}
     if data:
+        data = json.dumps(data)
         if not quiet:
             logger.info('   POST - %s', url)
+            #logger.info('          %s', data)
+        headers['X-Pouch-Signature'] = create_hmac_sig(API_SECRET, data, 'hex')
+        headers['Content-Type'] = 'application/json'
+        if use_put:
+            return httpreq.put(url, headers=headers, data=data)
         return httpreq.post(url, headers=headers, data=data)
     if not quiet:
         logger.info('   GET - %s', url)
@@ -61,62 +96,81 @@ def _check_response_status(req: httpreq.Response):
         logger.error(req.text)
         raise e
 
-def _parse_order(json):
-    sender = json['senderDetails']
-    recipient = json['recipientDetails']
-    return PouchOrder(json['_id'], json['referenceId'], json['partner'], json['amountInCentavos'], PouchSender(sender['feeInCentavos'], sender['bolt11']), PouchRecipient(recipient['method'], recipient['name'], recipient['accountNumber'], recipient['bankCode']), json['status'], json['createdAt'], json['updatedAt'])
+def _parse_invoice(json):
+    data = json['data']
+    ref_id = data['referenceId']
+    status = data['status']
+    bolt11 = data['bolt11']
+    sender_amount = data['senderDetails']['amount']
+    sender_currency = data['senderDetails']['currency']
+    recipient_name = data['recipientDetails']['name']
+    recipient_account_number = data['recipientDetails']['accountNumber'] if 'accountNumber' in data['recipientDetails'] else None
+    recipient_mobile_number = data['recipientDetails']['mobileNumber'] if 'mobileNumber' in data['recipientDetails'] else None
+    recipient_amount = data['recipientDetails']['amount']
+    recipient_currency = data['recipientDetails']['currency']
+    rates = {}
+    for name, value in data['rates'].items():
+        rates[name] = value
+    fees = {}
+    for name, value in data['fees'].items():
+        fees[name] = PouchFee(value['amount'], value['currency'])
+    created_at = data['createdAt']
+    updated_at = data['updatedAt']
+    return PouchInvoice(ref_id, status, bolt11, sender_amount, sender_currency, recipient_name, recipient_account_number, recipient_mobile_number, recipient_amount, recipient_currency, rates, fees, created_at, updated_at)
 
-
-def rates(quiet=False) -> dict[str, str]:
+def payment_methods(quiet=False) -> dict[str, list[PouchPaymentMethod]]:
     if not quiet:
-        logger.info(':: calling rates..')
-    r = _req('rates', quiet=quiet)
+        logger.info(':: calling payment methods..')
+    r = _req('paymentMethods', quiet=quiet)
     _check_response_status(r)
-    return r.json()
+    payment_methods = {}
+    categories = r.json()['data']['results']
+    for name, value in categories.items():
+        payment_methods[name] = []
+        for pm in value:
+            payment_methods[name].append(PouchPaymentMethod(pm['code'], pm['name']))
+    return payment_methods
 
-def banks(quiet=False) -> list[PouchBank]:
+def invoice_create(invoice_req: PouchInvoiceReq, quiet=False) -> PouchInvoice | None:
     if not quiet:
-        logger.info(':: calling banks..')
-    r = _req('banks', quiet=quiet)
+        logger.info(':: calling invoice create..')
+    Schema = marshmallow_dataclass.class_schema(PouchInvoiceReq, base_schema=CamelcaseSchema)
+    r = _req('invoices', Schema().dump(invoice_req), quiet=quiet)
     _check_response_status(r)
-    banks = []
-    for b in r.json():
-        banks.append(PouchBank(b['bankCode'], b['bankName'], b['brstn'] if 'brstn' in b else None))
-    return banks
+    return _parse_invoice(r.json())
 
-def remit(bank_code: str, amount_centavos: int, name: str, account_number: str, quiet=False):
+def invoice_check(ref_id: str, quiet=False) -> PouchInvoice | None:
     if not quiet:
-        logger.info(':: calling remit..')
-    r = _req('', dict(bankCode=bank_code, amountInCentavos=amount_centavos, name=name, accountNumber=account_number), quiet=quiet)
+        logger.info(':: calling invoice check..')
+    r = _req(f'invoices/{ref_id}', quiet=quiet)
     _check_response_status(r)
-    return _parse_order(r.json())
+    return _parse_invoice(r.json())
 
-def check_transfer(ref_id: str, quiet=False):
-    if not quiet:
-        logger.info(':: calling check order..')
-    r = _req(ref_id, quiet=quiet)
-    _check_response_status(r)
-    return _parse_order(r.json())
+def webhook_set(event: str, url: str, quiet=False):
 
-def retry(ref_id: str, bank_code: str, amount_centavos: int, name: str, account_number: str, quiet=False):
-    if not quiet:
-        logger.info(':: calling retry..')
-    r = _req('retry', dict(referenceId=ref_id, bankCode=bank_code, amountInCentavos=amount_centavos, name=name, accountNumber=account_number), quiet=quiet)
-    _check_response_status(r)
-    return _parse_order(r.json())
+    #
+    # TODO: test webhooks
+    #
 
-def refund(ref_id: str, invoice: str, quiet=False):
     if not quiet:
-        logger.info(':: calling refund..')
-    r = _req('refund', dict(referenceId=ref_id, pr=invoice), quiet=quiet)
+        logger.info(':: calling webhook set..')
+    r = _req('webhooks', dict(event=event, url=url), use_put=True, quiet=quiet)
     _check_response_status(r)
-    return _parse_order(r.json())
+    return True
+
+def webhook_get(quiet=False):
+    if not quiet:
+        logger.info(':: calling webhooks get..')
+    r = _req('webhooks', quiet=quiet)
+    _check_response_status(r)
+    return r.json()['data']
 
 if __name__ == '__main__':
     setup_logging(logger, logging.DEBUG)
-    print(rates())
-    #banks = banks()
-    #print(banks[0])
-    #print(banks[-1])
-    #print(remit('AIIPPHM1XXX', 500, 'Satoshi Nakamoto', '012345'))
-    print(check_transfer('e4b14ff0-470f-44b1-847d-15ede6320dee'))
+
+    #print(payment_methods())
+    #print(invoice_create(PouchInvoiceReq(str(uuid.uuid4()), 'test invoice', 'UNODPHM2XXX', 'SAT', 500, PouchRecipient('Dan Test', '1234567', None))))
+    #print(invoice_check('9aadfbf8-23e1-46e2-9f95-61d9e55ebb54'))
+
+    print(webhook_set(WEBHOOK_INVOICE_PAID, 'https://www.example.com'))
+    print(webhook_get())
