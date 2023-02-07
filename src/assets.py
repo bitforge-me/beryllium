@@ -3,6 +3,7 @@ from decimal import Decimal as Dec
 from enum import Enum
 from dataclasses import dataclass
 from typing import Optional
+import time
 
 import bitcoin
 import bitcoin.wallet
@@ -181,6 +182,19 @@ def asset_recipient_extract_amount(asset: str, l2_network: str | None, recipient
         return asset_int_to_dec(asset, result['amount_sat'])
     return Dec(0)
 
+def asset_recipient_expiry_valid(asset: str, l2_network: str | None, recipient: str):
+    if asset == BTC.symbol and l2_network == BTCLN.symbol:
+        rpc = LnRpc()
+        result = rpc.decode_bolt11(recipient)
+        if not result:
+            return False
+        created_at: int = result['created_at']
+        expiry: int = result['expiry']
+        if time.time() >= created_at + expiry:
+            return False
+    # LN bolt11 only recipient with expiry
+    return True
+
 def asset_recipient_validate(asset: str, l2_network: str | None, recipient: str) -> bool:
     result = False
     if asset == NZD.symbol:
@@ -188,13 +202,16 @@ def asset_recipient_validate(asset: str, l2_network: str | None, recipient: str)
     elif asset == BTC.symbol:
         if l2_network == BTCLN.symbol:
             # if a valid lightning invoice it should have a positive amount to send
-            return asset_recipient_extract_amount(asset, l2_network, recipient) > 0
-        bitcoin.SelectParams('testnet' if TESTNET else 'mainnet')
-        try:
-            bitcoin.wallet.CBitcoinAddress(recipient)
-            result = True
-        except Exception:
-            pass
+            if asset_recipient_extract_amount(asset, l2_network, recipient) > 0 and \
+               asset_recipient_expiry_valid(asset, l2_network, recipient):
+                result = True
+        else:
+            bitcoin.SelectParams('testnet' if TESTNET else 'mainnet')
+            try:
+                bitcoin.wallet.CBitcoinAddress(recipient)
+                result = True
+            except Exception:
+                pass
     elif asset in (USDT.symbol, USDC.symbol, ETH.symbol):
         result = web3.Web3.isAddress(recipient)
     elif asset == DOGE.symbol:

@@ -49,6 +49,14 @@ class PouchInvoiceReq:
     amount: int
     recipient: PouchRecipient
 
+    def __init__(self, desc: str, paycode: str, currency: str, amount: int, recipient: PouchRecipient):
+        self.reference_id = str(uuid.uuid4())
+        self.description = desc
+        self.payment_method_code = paycode
+        self.currency = currency
+        self.amount = amount
+        self.recipient = recipient
+
 @dataclass
 class PouchFee:
     amount: int
@@ -139,9 +147,9 @@ def invoice_create(invoice_req: PouchInvoiceReq, quiet=False) -> PouchInvoice | 
     _check_response_status(r)
     return _parse_invoice(r.json())
 
-def invoice_check(ref_id: str, quiet=False) -> PouchInvoice | None:
+def invoice_status(ref_id: str, quiet=False) -> PouchInvoice | None:
     if not quiet:
-        logger.info(':: calling invoice check..')
+        logger.info(':: calling invoice status..')
     r = _req(f'invoices/{ref_id}', quiet=quiet)
     _check_response_status(r)
     return _parse_invoice(r.json())
@@ -168,9 +176,9 @@ def webhook_get(quiet=False):
 if __name__ == '__main__':
     setup_logging(logger, logging.DEBUG)
 
-    #print(payment_methods())
-    #print(invoice_create(PouchInvoiceReq(str(uuid.uuid4()), 'test invoice', 'UNODPHM2XXX', 'SAT', 500, PouchRecipient('Dan Test', '1234567', None))))
-    #print(invoice_check('9aadfbf8-23e1-46e2-9f95-61d9e55ebb54'))
+    print(payment_methods())
+    #print(invoice_create(PouchInvoiceReq('test invoice', 'UNODPHM2XXX', 'SAT', 500, PouchRecipient('Dan Test', '1234567', None))))
+    #print(invoice_status('9aadfbf8-23e1-46e2-9f95-61d9e55ebb54'))
 
     print(webhook_set(WEBHOOK_INVOICE_PAID, 'https://www.example.com'))
     print(webhook_get())

@@ -39,6 +39,7 @@ import tasks
 import utils
 import httpreq
 import wallet
+import pouch
 
 USER_BALANCE_SHOW = 'show balance'
 USER_BALANCE_CREDIT = 'credit'
@@ -622,6 +623,73 @@ def reprocess_bank_deposits():
         new_fiat_deposits = depwith.fiat_deposits_new_check(db.session, start_date_dt, end_date_dt)
         flash(f'checked deposits ({start_date}, {interval})')
     return render_template('reprocess_bank_deposits.html', start_date=start_date, interval=interval, new_fiat_deposits=new_fiat_deposits)
+
+@app.route('/remit', methods=['GET', 'POST'])
+@roles_accepted(Role.ROLE_ADMIN)
+def remit():
+    INVOICE_CREATE = 'create'
+    INVOICE_STATUS = 'status'
+
+    actions = (INVOICE_CREATE, INVOICE_STATUS)
+    action = INVOICE_CREATE
+    payment_methods = {}
+    ref_id = ''
+    paycode = ''
+    name = ''
+    acct = ''
+    mobile = ''
+    currency = 'SAT'
+    amount = ''
+    desc = ''
+    invoice = None
+
+    def return_response(err_msg=None):
+        if err_msg:
+            flash(err_msg, 'danger')
+        return render_template('remit.html', actions=actions, action=action, payment_methods=payment_methods, ref_id=ref_id, paycode=paycode, name=name, acct=acct, mobile=mobile, currency=currency, amount=amount, desc=desc, invoice=invoice)
+
+    try:
+        payment_methods = pouch.payment_methods(quiet=True)
+    except Exception:
+        flash('unable to query payment methods')
+        return render_template('remit.html', action=action, payment_methods=payment_methods)
+
+    if request.method == 'POST':
+        action = request.form['action']
+        if not action or action not in [INVOICE_CREATE, INVOICE_STATUS]:
+            return return_response(f'invalid action ({action})')
+        if action == INVOICE_CREATE:
+            paycode = request.form['paycode']
+            name = request.form['name']
+            if not name:
+                return return_response('empty name')
+            acct = request.form['acct']
+            mobile = request.form['mobile']
+            if not acct and not mobile:
+                return return_response('empty account/mobile number')
+            currency = request.form['currency']
+            amount = request.form['amount']
+            if not amount:
+                return return_response('invalid amount')
+            amount = int(amount)
+            desc = request.form['desc']
+            recipient = pouch.PouchRecipient(name, acct, mobile)
+            req = pouch.PouchInvoiceReq(desc, paycode, currency, amount, recipient)
+            try:
+                invoice = pouch.invoice_create(req, quiet=False)
+                if not invoice:
+                    raise
+                flash(f'created invoice {invoice.ref_id}')
+            except Exception:
+                return return_response('failed to create invoice')
+        elif action == INVOICE_STATUS:
+            ref_id = request.form['refId']
+            try:
+                invoice = pouch.invoice_status(ref_id, quiet=True)
+                flash(f'retrieved invoice {ref_id}')
+            except Exception:
+                return return_response(f'failed to retrieve invoice {ref_id}')
+    return return_response()
 
 #
 # gevent class

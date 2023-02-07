@@ -1,0 +1,125 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Remit</h5>
+            <form id="form" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="form-group" id="action-group">
+                    <label for="action">Action</label>
+                    <select class="form-control"
+                            id="action"
+                            name="action"
+                            aria-describedby="actionHelp">
+                        {% for a in actions %}
+                            <option {% if action == a %}selected{% endif %} value="{{a }}">
+                                {{a}}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <small id="actionHelp" class="form-text text-muted">The selected action</small>
+                </div>
+                <div class="form-group" id="refId-group">
+                    <label for="refId">Reference Id</label>
+                    <input type="text"
+                           class="form-control"
+                           id="refId"
+                           name="refId"
+                           aria-describedby="emailHelp"
+                           value="{{ ref_id }}"/>
+                    <small id="emailHelp" class="form-text text-muted">Invoice reference id</small>
+                </div>
+                <div class="form-group" id="paycode-group">
+                    <label for="paycode">Payment Method</label>
+                    <select class="form-control"
+                            id="paycode"
+                            name="paycode"
+                            aria-describedby="paycodeHelp">
+                        {% for category, pms in payment_methods.items() %}
+                            {% for pm in pms %}
+                                <option {% if paycode == pm.code %}selected{% endif %}
+                                        x-cat="{{ category }}"
+                                        value="{{ pm.code }}">
+                                    {{ pm.name }}
+                                </option>
+                            {% endfor %}
+                        {% endfor %}
+                    </select>
+                    <small id="actionHelp" class="form-text text-muted">The selected payment method</small>
+                </div>
+                <div class="form-group" id="name-group">
+                    <label for="name">Recipient Name</label>
+                    <input type="text"
+                           class="form-control"
+                           id="name"
+                           name="name"
+                           aria-describedby="nameHelp"
+                           value="{{ name }}"/>
+                    <small id="nameHelp" class="form-text text-muted">The recipients full name</small>
+                </div>
+                <div class="form-group" id="acct-group">
+                    <label for="acct">Recipient Account Number</label>
+                    <input type="text"
+                           class="form-control"
+                           id="acct"
+                           name="acct"
+                           aria-describedby="acctHelp"
+                           value="{{ acct }}"/>
+                    <small id="acctHelp" class="form-text text-muted">The recipients account number</small>
+                </div>
+                <div class="form-group" id="mobile-group">
+                    <label for="mobile">Recipient Mobile Number</label>
+                    <input type="text"
+                           class="form-control"
+                           id="mobile"
+                           name="mobile"
+                           aria-describedby="mobileHelp"
+                           value="{{ mobile }}"/>
+                    <small id="mobileHelp" class="form-text text-muted">The recipients mobile number</small>
+                </div>
+                <div class="form-group" id="currency-group">
+                    <label for="currency">Currency</label>
+                    <input type="text"
+                           class="form-control"
+                           id="currency"
+                           name="currency"
+                           aria-describedby="currencyHelp"
+                           value="{{ currency }}"
+                           readonly/>
+                    <small id="currencyHelp" class="form-text text-muted">The currency</small>
+                </div>
+                <div class="form-group" id="amount-group">
+                    <label for="amount">Amount</label>
+                    <input type="number"
+                           class="form-control"
+                           id="amount"
+                           name="amount"
+                           aria-describedby="amountHelp"
+                           value="{{ amount }}"/>
+                    <small id="amountHelp" class="form-text text-muted">The amount</small>
+                </div>
+                <div class="form-group" id="desc-group">
+                    <label for="desc">Description</label>
+                    <input type="text"
+                           class="form-control"
+                           id="desc"
+                           name="desc"
+                           aria-describedby="descHelp"
+                           value="{{ desc }}"/>
+                    <small id="descHelp" class="form-text text-muted">The description</small>
+                </div>
+                <button id="form-submit" type="submit" class="btn btn-primary">Submit</button>
+            </form>
+            {% if invoice %}
+                <pre>
+                    ref id: {{ invoice.ref_id }}
+                    status: {{ invoice.status }}
+                    sender amount: {{ invoice.sender_amount }}, currency: {{ invoice.sender_currency }}
+                    recipient amount: {{ invoice.recipient_amount }}, currency: {{ invoice.recipient_currency }}
+                    bolt11: {{ invoice.bolt11 }}
+                </pre>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static',filename='assets/js_custom/remit.js') }}"></script>{% endblock %}
