@@ -30,9 +30,20 @@ class CamelcaseSchema(marshmallow.Schema):
         field_obj.data_key = camel_cased
 
 @dataclass
+class PouchError:
+    code: str
+    message: str
+    details: list[str]
+
+@dataclass
 class PouchPaymentMethod:
     code: str
     name: str
+
+@dataclass
+class PouchPaymentMethodsResult:
+    methods: dict[str, list[PouchPaymentMethod]] | None
+    err: PouchError | None
 
 @dataclass
 class PouchRecipient:
@@ -79,6 +90,16 @@ class PouchInvoice:
     created_at: str
     updated_at: str
 
+@dataclass
+class PouchInvoiceResult:
+    invoice: PouchInvoice | None
+    err: PouchError | None
+
+@dataclass
+class PouchWebhooksResult:
+    webhooks: dict[str, str] | None
+    err: PouchError | None
+
 def _req(endpoint, data=None, quiet=False, use_put=False):
     url = URL_BASE + endpoint
     headers = {'X-Pouch-Api-Key': API_KEY}
@@ -96,13 +117,18 @@ def _req(endpoint, data=None, quiet=False, use_put=False):
         logger.info('   GET - %s', url)
     return httpreq.get(url, headers=headers)
 
-def _check_response_status(req: httpreq.Response):
+def _check_response_status(req: httpreq.Response) -> PouchError | None:
     try:
         req.raise_for_status()
-    except Exception as e:
+    except Exception:
         logger.error('%d - %s', req.status_code, req.url)
         logger.error(req.text)
-        raise e
+        try:
+            err = req.json()['error']
+            return PouchError(err['code'], err['message'], err['details'])
+        except Exception:
+            return PouchError('', f'{req.status_code} - {req.url}', [])
+    return None
 
 def _parse_invoice(json):
     data = json['data']
@@ -126,35 +152,41 @@ def _parse_invoice(json):
     updated_at = data['updatedAt']
     return PouchInvoice(ref_id, status, bolt11, sender_amount, sender_currency, recipient_name, recipient_account_number, recipient_mobile_number, recipient_amount, recipient_currency, rates, fees, created_at, updated_at)
 
-def payment_methods(quiet=False) -> dict[str, list[PouchPaymentMethod]]:
+def payment_methods(quiet=False) -> PouchPaymentMethodsResult:
     if not quiet:
         logger.info(':: calling payment methods..')
     r = _req('paymentMethods', quiet=quiet)
-    _check_response_status(r)
+    err = _check_response_status(r)
+    if err:
+        return PouchPaymentMethodsResult(None, err)
     payment_methods = {}
     categories = r.json()['data']['results']
     for name, value in categories.items():
         payment_methods[name] = []
         for pm in value:
             payment_methods[name].append(PouchPaymentMethod(pm['code'], pm['name']))
-    return payment_methods
+    return PouchPaymentMethodsResult(payment_methods, None)
 
-def invoice_create(invoice_req: PouchInvoiceReq, quiet=False) -> PouchInvoice | None:
+def invoice_create(invoice_req: PouchInvoiceReq, quiet=False) -> PouchInvoiceResult:
     if not quiet:
         logger.info(':: calling invoice create..')
     Schema = marshmallow_dataclass.class_schema(PouchInvoiceReq, base_schema=CamelcaseSchema)
     r = _req('invoices', Schema().dump(invoice_req), quiet=quiet)
-    _check_response_status(r)
-    return _parse_invoice(r.json())
+    err = _check_response_status(r)
+    if err:
+        return PouchInvoiceResult(None, err)
+    return PouchInvoiceResult(_parse_invoice(r.json()), None)
 
-def invoice_status(ref_id: str, quiet=False) -> PouchInvoice | None:
+def invoice_status(ref_id: str, quiet=False) -> PouchInvoiceResult:
     if not quiet:
         logger.info(':: calling invoice status..')
     r = _req(f'invoices/{ref_id}', quiet=quiet)
-    _check_response_status(r)
-    return _parse_invoice(r.json())
+    err = _check_response_status(r)
+    if err:
+        return PouchInvoiceResult(None, err)
+    return PouchInvoiceResult(_parse_invoice(r.json()), None)
 
-def webhook_set(event: str, url: str, quiet=False):
+def webhook_set(event: str, url: str, quiet=False) -> PouchError | None:
 
     #
     # TODO: test webhooks
@@ -163,20 +195,24 @@ def webhook_set(event: str, url: str, quiet=False):
     if not quiet:
         logger.info(':: calling webhook set..')
     r = _req('webhooks', dict(event=event, url=url), use_put=True, quiet=quiet)
-    _check_response_status(r)
-    return True
+    err = _check_response_status(r)
+    if err:
+        return err
+    return None
 
-def webhook_get(quiet=False):
+def webhook_get(quiet=False) -> PouchWebhooksResult:
     if not quiet:
         logger.info(':: calling webhooks get..')
     r = _req('webhooks', quiet=quiet)
-    _check_response_status(r)
-    return r.json()['data']
+    err = _check_response_status(r)
+    if err:
+        return PouchWebhooksResult(None, err)
+    return PouchWebhooksResult(r.json()['data'], None)
 
 if __name__ == '__main__':
     setup_logging(logger, logging.DEBUG)
 
-    print(payment_methods())
+    #print(payment_methods())
     #print(invoice_create(PouchInvoiceReq('test invoice', 'UNODPHM2XXX', 'SAT', 500, PouchRecipient('Dan Test', '1234567', None))))
     #print(invoice_status('9aadfbf8-23e1-46e2-9f95-61d9e55ebb54'))
 

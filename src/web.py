@@ -629,7 +629,7 @@ def reprocess_bank_deposits():
 def remit():
     INVOICE_CREATE = 'create'
     INVOICE_STATUS = 'status'
-
+    # default values
     actions = (INVOICE_CREATE, INVOICE_STATUS)
     action = INVOICE_CREATE
     payment_methods = {}
@@ -643,17 +643,24 @@ def remit():
     desc = ''
     invoice = None
 
+    # helper return functions
     def return_response(err_msg=None):
         if err_msg:
             flash(err_msg, 'danger')
         return render_template('remit.html', actions=actions, action=action, payment_methods=payment_methods, ref_id=ref_id, paycode=paycode, name=name, acct=acct, mobile=mobile, currency=currency, amount=amount, desc=desc, invoice=invoice)
 
-    try:
-        payment_methods = pouch.payment_methods(quiet=True)
-    except Exception:
-        flash('unable to query payment methods')
-        return render_template('remit.html', action=action, payment_methods=payment_methods)
+    def return_pouch_err(err: pouch.PouchError):
+        msg = err.message
+        if err.details:
+            msg = f'{msg} - {",".join(err.details)}'
+        return return_response(msg)
 
+    # get payment methods
+    res = pouch.payment_methods(quiet=True)
+    if res.err:
+        return return_pouch_err(res.err)
+    payment_methods = res.methods
+    # process command
     if request.method == 'POST':
         action = request.form['action']
         if not action or action not in [INVOICE_CREATE, INVOICE_STATUS]:
@@ -675,20 +682,19 @@ def remit():
             desc = request.form['desc']
             recipient = pouch.PouchRecipient(name, acct, mobile)
             req = pouch.PouchInvoiceReq(desc, paycode, currency, amount, recipient)
-            try:
-                invoice = pouch.invoice_create(req, quiet=False)
-                if not invoice:
-                    raise
-                flash(f'created invoice {invoice.ref_id}')
-            except Exception:
-                return return_response('failed to create invoice')
+            res = pouch.invoice_create(req, quiet=True)
+            if res.err:
+                return return_pouch_err(res.err)
+            invoice = res.invoice
+            assert(invoice)
+            flash(f'created invoice {invoice.ref_id}')
         elif action == INVOICE_STATUS:
             ref_id = request.form['refId']
-            try:
-                invoice = pouch.invoice_status(ref_id, quiet=True)
-                flash(f'retrieved invoice {ref_id}')
-            except Exception:
-                return return_response(f'failed to retrieve invoice {ref_id}')
+            res = pouch.invoice_status(ref_id, quiet=True)
+            if res.err:
+                return return_pouch_err(res.err)
+            invoice = res.invoice
+            flash(f'retrieved invoice {ref_id}')
     return return_response()
 
 #
