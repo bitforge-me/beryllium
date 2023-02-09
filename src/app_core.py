@@ -187,5 +187,5 @@ if app.config["USE_SENDGRID"]:
 else:
     mail = Mail(app)
 socketio = SocketIO(app, cors_allowed_origins='*')
-limiter = Limiter(app, key_func=get_remote_address, headers_enabled=True, default_limits=["3000 per minute"])
+limiter = Limiter(get_remote_address, app=app, headers_enabled=True, default_limits=["3000 per minute"])
 csrf = CSRFProtect(app)

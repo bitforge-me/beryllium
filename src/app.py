@@ -14,7 +14,7 @@ import signal
 import traceback
 
 import gevent
-from flask_security.utils import encrypt_password
+from flask_security.utils import hash_password
 
 import payouts_core
 import web
@@ -36,9 +36,9 @@ def add_user(email, password):
         user = User.from_email(db.session, email)
         if user:
             logger.info('user already exists, updating password...')
-            user.password = encrypt_password(password)
+            user.password = hash_password(password)
         else:
-            user = user_datastore.create_user(email=email, password=encrypt_password(password))
+            user = user_datastore.create_user(email=email, password=hash_password(password))
         db.session.commit()
 
 def create_role(name, desc):
