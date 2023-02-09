@@ -9,7 +9,7 @@
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         {{ verify_form.hidden_tag() }}
         {{ render_field_with_errors(verify_form.password) }}
-        {{ render_field_with_errors(verify_form.code) }}
+        {% if current_user.tf_primary_method %}{{ render_field_with_errors(verify_form.code) }}{% endif %}
         {{ render_field(verify_form.submit) }}
     </form>
 {% endblock %}

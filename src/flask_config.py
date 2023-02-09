@@ -5,6 +5,7 @@ from geventconnectionpool import GeventConnectionPool
 # Database settings
 SQLALCHEMY_ECHO = False
 SQLALCHEMY_ENGINE_OPTIONS = dict(poolclass=GeventConnectionPool)
+SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 # Flask-Security config
 SECURITY_URL_PREFIX = "/admin"
@@ -26,9 +27,9 @@ SECURITY_TRACKABLE = True
 SECURITY_REGISTERABLE = True
 SECURITY_RECOVERABLE = True
 SECURITY_CHANGEABLE = True
-SQLALCHEMY_TRACK_MODIFICATIONS = False
 SECURITY_TWO_FACTOR = True
 SECURITY_TWO_FACTOR_ENABLED_METHODS = ['authenticator']
+SECURITY_TWO_FACTOR_RESCUE_EMAIL = False
 SECURITY_TOTP_ISSUER = 'bitforge'
 SECURITY_FRESHNESS = timedelta(minutes=30)
 SECURITY_FRESHNESS_GRACE_PERIOD = timedelta(seconds=300)
