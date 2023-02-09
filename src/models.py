@@ -500,6 +500,7 @@ class BalanceUpdateSchema(Schema):
     txid = fields.String()
     status = fields.String()
     payment_url = fields.Method('get_payment_url')
+    remit = fields.Method('get_remit')
 
     def get_amount_dec(self, obj):
         return str(assets.asset_int_to_dec(obj.asset, obj.amount))
@@ -512,6 +513,12 @@ class BalanceUpdateSchema(Schema):
         if obj.windcave_payment_request:
             payment_url = url_for('payments.payment_interstitial', token=obj.windcave_payment_request.token, _external=True)
         return payment_url
+
+    def get_remit(self, obj):
+        remit = None
+        if obj.remit:
+            remit = obj.remit.to_json()
+        return remit
 
 class BalanceUpdate(BaseModel, FromUserMixin, FromTokenMixin):
     TYPE_DEPOSIT = 'deposit'
@@ -1111,3 +1118,38 @@ class BtcTxIndex(BaseModel):
     @classmethod
     def clear(cls, session):
         session.query(cls).delete()
+
+class RemitSchema(Schema):
+    date = fields.DateTime()
+    token = fields.String()
+    provider = fields.String()
+    reference_id = fields.String()
+    status = fields.String()
+
+class Remit(BaseModel, FromTokenMixin):
+    id = Column(Integer, primary_key=True)
+    date = Column(DateTime(), nullable=False, unique=False)
+    token = Column(String, nullable=False, unique=True)
+    provider = Column(String, nullable=False, unique=False)
+    reference_id = Column(String, nullable=False, unique=True)
+    status = Column(String, nullable=False, unique=False)
+    user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
+    user: RelationshipProperty[User] = relationship('User', backref=backref('remits', lazy='dynamic'))
+    withdrawal_id = Column(Integer, ForeignKey('balance_update.id'))
+    withdrawal: RelationshipProperty[BalanceUpdate | None] = relationship('BalanceUpdate', backref=backref('remit', uselist=False))
+
+    def __init__(self, user: User, provider: str, reference_id: str, status: str):
+        self.date = datetime.now()
+        self.user = user
+        self.token = generate_key(8, True)
+        self.provider = provider
+        self.reference_id = reference_id
+        self.status = status
+
+    def to_json(self):
+        ref_schema = RemitSchema()
+        return ref_schema.dump(self)
+
+    @classmethod
+    def from_reference_id(cls, session: Session, user: User, ref_id: str) -> Remit | None:
+        return session.query(cls).filter(cls.user_id == user.id).filter(cls.reference_id == ref_id).first()

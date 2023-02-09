@@ -4,7 +4,7 @@ import decimal
 
 from flask import Blueprint, request, jsonify, flash, redirect, render_template
 import flask_security
-from flask_security.utils import encrypt_password, verify_password
+from flask_security.utils import hash_password, verify_password
 from flask_security.recoverable import send_reset_password_instructions
 import gevent
 
@@ -12,7 +12,7 @@ import web_utils
 from web_utils import bad_request, get_json_params, auth_request, auth_request_get_single_param, auth_request_get_params
 import utils
 import email_utils
-from models import BalanceUpdate, FiatDbTransaction, FiatDepositCode, Role, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, CryptoAddress, DassetSubaccount, WithdrawalConfirmation, UserInvitation
+from models import BalanceUpdate, FiatDbTransaction, FiatDepositCode, Role, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, CryptoAddress, DassetSubaccount, WithdrawalConfirmation, UserInvitation, Remit
 from app_core import app, db, limiter, csrf, SERVER_VERSION, CLIENT_VERSION_DEPLOYED
 from security import tf_enabled_check, tf_method, tf_code_send, tf_method_set, tf_method_unset, tf_secret_init, tf_code_validate, user_datastore
 import windcave
@@ -27,6 +27,7 @@ import coordinator
 import wallet
 import tripwire
 import tasks
+import pouch
 
 logger = logging.getLogger(__name__)
 api = Blueprint('api', __name__, template_folder='templates')
@@ -110,7 +111,7 @@ def user_register():
         return bad_request(web_utils.WEAK_PASSWORD)
     if photo and len(photo) > 50000:
         return bad_request(web_utils.PHOTO_DATA_LARGE)
-    req = UserCreateRequest(first_name, last_name, email, mobile_number, address, photo, photo_type, encrypt_password(password))
+    req = UserCreateRequest(first_name, last_name, email, mobile_number, address, photo, photo_type, hash_password(password))
     user = User.from_email(db.session, email)
     if user:
         gevent.sleep(5)
@@ -178,7 +179,7 @@ def invitation_confirm(token=None):
         if password != password_confirm:
             flash('Passwords do not match', 'danger')
             return render_template('api/invitation_confirm.html', invite=invite)
-        password = encrypt_password(password)
+        password = hash_password(password)
         user = _user_create_confirmed(invite.email, password=password, first_name=None, last_name=None, mobile_number=None, address=None, photo=None, photo_type=None)
         invite.claimed = True
         db.session.add(invite)
@@ -427,7 +428,7 @@ def user_update_password():
     # set the new_password:
     if not _password_complexity_valid(new_password):
         return bad_request(web_utils.WEAK_PASSWORD)
-    user.password = encrypt_password(new_password)
+    user.password = hash_password(new_password)
     db.session.add(user)
     db.session.commit()
     return 'password changed.'
@@ -599,6 +600,7 @@ def withdrawal_confirm(token=None, secret=None):
     if not conf or not conf.withdrawal:
         gevent.sleep(5)
         return _redirect_confirmation_result('Withdrawal confirmation not found.', 'danger')
+    withdrawal: BalanceUpdate = conf.withdrawal
     if conf.secret != secret:
         return _redirect_confirmation_result('Withdrawal confirmation code invalid.', 'danger')
     if conf.confirmed is not None:
@@ -614,8 +616,11 @@ def withdrawal_confirm(token=None, secret=None):
         msg = ''
         with coordinator.lock:
             # check withdrawal status
-            if not conf.withdrawal or conf.withdrawal.status != conf.withdrawal.STATUS_CREATED:
+            if withdrawal.status != withdrawal.STATUS_CREATED:
                 return _redirect_confirmation_result('withdrawal status invalid', 'danger')
+            # check withdrawal expiry
+            if not assets.asset_recipient_expiry_valid(withdrawal.asset, withdrawal.l2_network, withdrawal.recipient):
+                return _redirect_confirmation_result('withdrawal expired', 'danger')
             # update confirmation
             if confirm:
                 conf.confirmed = True
@@ -627,10 +632,10 @@ def withdrawal_confirm(token=None, secret=None):
             # commit changes
             db.session.commit()
             # update withdrawal asap
-            tasks.task_manager.one_off('update withdrawal', tasks.update_withdrawal, [conf.withdrawal.asset, conf.withdrawal.token])
+            tasks.task_manager.one_off('update withdrawal', tasks.update_withdrawal, [withdrawal.asset, withdrawal.token])
         return _redirect_confirmation_result(msg, 'success')
-    asset = conf.withdrawal.asset
-    amount = conf.withdrawal.amount
+    asset = withdrawal.asset
+    amount = withdrawal.amount
     amount_dec = assets.asset_int_to_dec(asset, amount)
     amount_str = assets.asset_dec_to_str(asset, amount_dec)
     formatted_amount = f'{amount_str} {asset}'
@@ -944,12 +949,11 @@ def withdrawals_req():
         return bad_request(web_utils.LIMIT_TOO_LARGE)
     if asset == '*ALL*':
         withdrawals = BalanceUpdate.of_type(db.session, api_key.user, BalanceUpdate.TYPE_WITHDRAWAL, offset, limit)
-        withdrawals = [withdrawal.to_json() for withdrawal in withdrawals]
         total = BalanceUpdate.total_of_type(db.session, api_key.user, BalanceUpdate.TYPE_WITHDRAWAL)
     else:
         withdrawals = BalanceUpdate.of_asset(db.session, api_key.user, BalanceUpdate.TYPE_WITHDRAWAL, asset, l2_network, offset, limit)
-        withdrawals = [withdrawal.to_json() for withdrawal in withdrawals]
         total = BalanceUpdate.total_of_asset(db.session, api_key.user, BalanceUpdate.TYPE_WITHDRAWAL, asset, l2_network)
+    withdrawals = [withdrawal.to_json() for withdrawal in withdrawals]
     return jsonify(withdrawals=withdrawals, offset=offset, limit=limit, total=total)
 
 @api.route('/address_book', methods=['POST'])
@@ -1055,3 +1059,110 @@ def broker_orders():
     orders = [order.to_json() for order in orders]
     total = BrokerOrder.total_for_user(db.session, api_key.user)
     return jsonify(dict(broker_orders=orders, offset=offset, limit=limit, total=total))
+
+@api.route('/remit_payment_methods', methods=['POST'])
+def remit_payment_methods():
+    api_key, err_response = auth_request(db)
+    if err_response:
+        return err_response
+    assert api_key
+    res = pouch.payment_methods(quiet=True)
+    if res.err:
+        return bad_request(res.err.message)
+    return jsonify(dict(methods=res.methods))
+
+@api.route('/remit_invoice_create', methods=['POST'])
+def remit_invoice_create():
+    params, api_key, err_response = auth_request_get_params(db, ["paycode", "name", "account_number", "mobile_number", "currency", "amount", "description"])
+    if err_response:
+        return err_response
+    assert params and api_key
+    paycode, name, account_number, mobile_number, currency, amount, description = params
+    if not paycode or not name or not currency or not description:
+        return bad_request(web_utils.INVALID_PARAMETER)
+    if not isinstance(amount, int):
+        return bad_request(web_utils.INVALID_PARAMETER)
+    if amount <= 0:
+        return bad_request(web_utils.AMOUNT_TOO_LOW)
+    recipient = pouch.PouchRecipient(name, account_number, mobile_number)
+    req = pouch.PouchInvoiceReq(description, paycode, currency, amount, recipient)
+    res = pouch.invoice_create(req, quiet=True)
+    if res.err:
+        return bad_request(res.err.message)
+    assert(res.invoice)
+    invoice = res.invoice
+    user = api_key.user
+    remit = Remit(user, pouch.PROVIDER, invoice.ref_id, invoice.status)
+    db.session.add(remit)
+    db.session.commit()
+    return jsonify(dict(remit=remit.to_json(), invoice=invoice.to_json()))
+
+@api.route('/remit_invoice_status', methods=['POST'])
+def remit_invoice_status():
+    ref_id, api_key, err_response = auth_request_get_single_param(db, "ref_id")
+    if err_response:
+        return err_response
+    assert ref_id and api_key
+    remit = Remit.from_reference_id(db.session, api_key.user, ref_id)
+    if not remit:
+        return bad_request(web_utils.NOT_FOUND)
+    res = pouch.invoice_status(ref_id, quiet=True)
+    if res.err:
+        return bad_request(res.err.message)
+    invoice = res.invoice
+    assert(invoice)
+    if remit.status != invoice.status:
+        remit.status = invoice.status
+        db.session.add(remit)
+        db.session.commit()
+    return jsonify(dict(remit=remit.to_json(), invoice=invoice.to_json()))
+
+@api.route('/remit_invoice_pay', methods=['POST'])
+def remit_invoice_pay():
+    params, api_key, err_response = auth_request_get_params(db, ["ref_id", "tf_code"])
+    if err_response:
+        return err_response
+    assert params and api_key
+    ref_id, tf_code = params
+    # get remit
+    remit = Remit.from_reference_id(db.session, api_key.user, ref_id)
+    if not remit:
+        return bad_request(web_utils.NOT_FOUND)
+    # get pouch invoice
+    res = pouch.invoice_status(ref_id, quiet=True)
+    if res.err:
+        return bad_request(res.err.message)
+    assert(res.invoice)
+    invoice = res.invoice
+    # check withdrawal ok
+
+    # TODO: make sub routine to share with crypto_withdrawal_create()???
+    err_response = _tf_check_withdrawal(api_key.user, tf_code)
+    if err_response:
+        return err_response
+    err_response = _validate_crypto_asset_withdraw(assets.BTC.symbol, assets.BTCLN.symbol, invoice.bolt11)
+    if err_response:
+        return err_response
+    amount_dec = assets.asset_recipient_extract_amount(assets.BTC.symbol, assets.BTCLN.symbol, invoice.bolt11)
+    if amount_dec <= 0:
+        return bad_request(web_utils.INVALID_AMOUNT)
+    if amount_dec < assets.asset_min_withdraw(assets.BTC.symbol, assets.BTCLN.symbol):
+        return bad_request(web_utils.AMOUNT_TOO_LOW)
+    # check withdrawals enabled
+    if not tripwire.WITHDRAWAL.ok:
+        return bad_request(web_utils.NOT_AVAILABLE)
+    tripwire.withdrawal_attempt()
+    # create withdrawal
+    crypto_withdrawal, err_response = _create_withdrawal(api_key.user, assets.BTC.symbol, assets.BTCLN.symbol, amount_dec, invoice.bolt11)
+    if err_response:
+        return err_response
+    assert crypto_withdrawal
+    # END-TODO
+
+    # add withdrawal to remit
+    remit.withdrawal = crypto_withdrawal
+    db.session.add(remit)
+    db.session.commit()
+    # update user
+    websocket.crypto_withdrawal_new_event(crypto_withdrawal)
+    return jsonify(remit=remit.to_json(), invoice=res.invoice.to_json(), withdrawal=crypto_withdrawal.to_json())

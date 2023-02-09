@@ -2,6 +2,7 @@ import logging
 import uuid
 from dataclasses import dataclass
 import json
+from datetime import datetime
 
 import marshmallow
 import marshmallow_dataclass
@@ -13,6 +14,7 @@ import httpreq
 
 logger = logging.getLogger(__name__)
 
+PROVIDER = 'pouch'
 API_KEY = app.config['POUCH_API_KEY']
 API_SECRET = app.config['POUCH_API_SECRET']
 URL_BASE = 'https://remit.pouch.ph/api/v1/'
@@ -69,26 +71,29 @@ class PouchInvoiceReq:
         self.recipient = recipient
 
 @dataclass
-class PouchFee:
+class PouchAmount:
     amount: int
     currency: str
+
+@dataclass
+class PouchRecipientAmount(PouchRecipient, PouchAmount):
+    pass
 
 @dataclass
 class PouchInvoice:
     ref_id: str
     status: str
     bolt11: str
-    sender_amount: int
-    sender_currency: str
-    recipient_name: str
-    recipient_account_number: str | None
-    recipient_mobile_number: str | None
-    recipient_amount: int
-    recipient_currency: str
+    sender: PouchAmount
+    recipient: PouchRecipientAmount
     rates: dict[str, dict[str, float]]
-    fees: dict[str, PouchFee]
-    created_at: str
-    updated_at: str
+    fees: dict[str, PouchAmount]
+    created_at: datetime
+    updated_at: datetime
+
+    def to_json(self):
+        Schema = marshmallow_dataclass.class_schema(PouchInvoice)
+        return Schema().dump(self)
 
 @dataclass
 class PouchInvoiceResult:
@@ -135,22 +140,24 @@ def _parse_invoice(json):
     ref_id = data['referenceId']
     status = data['status']
     bolt11 = data['bolt11']
-    sender_amount = data['senderDetails']['amount']
-    sender_currency = data['senderDetails']['currency']
-    recipient_name = data['recipientDetails']['name']
-    recipient_account_number = data['recipientDetails']['accountNumber'] if 'accountNumber' in data['recipientDetails'] else None
-    recipient_mobile_number = data['recipientDetails']['mobileNumber'] if 'mobileNumber' in data['recipientDetails'] else None
-    recipient_amount = data['recipientDetails']['amount']
-    recipient_currency = data['recipientDetails']['currency']
+    sd = data['senderDetails']
+    sender = PouchAmount(sd['amount'], sd['currency'])
+    rd = data['recipientDetails']
+    recipient_name = rd['name']
+    recipient_account_number = rd['accountNumber'] if 'accountNumber' in rd else None
+    recipient_mobile_number = rd['mobileNumber'] if 'mobileNumber' in rd else None
+    recipient_amount = rd['amount']
+    recipient_currency = rd['currency']
+    recipient = PouchRecipientAmount(recipient_amount, recipient_currency, recipient_name, recipient_account_number, recipient_mobile_number)
     rates = {}
     for name, value in data['rates'].items():
         rates[name] = value
     fees = {}
     for name, value in data['fees'].items():
-        fees[name] = PouchFee(value['amount'], value['currency'])
-    created_at = data['createdAt']
-    updated_at = data['updatedAt']
-    return PouchInvoice(ref_id, status, bolt11, sender_amount, sender_currency, recipient_name, recipient_account_number, recipient_mobile_number, recipient_amount, recipient_currency, rates, fees, created_at, updated_at)
+        fees[name] = PouchAmount(value['amount'], value['currency'])
+    created_at = datetime.strptime(data['createdAt'], "%Y-%m-%dT%H:%M:%S.%f%z")
+    updated_at = datetime.strptime(data['updatedAt'], "%Y-%m-%dT%H:%M:%S.%f%z")
+    return PouchInvoice(ref_id, status, bolt11, sender, recipient, rates, fees, created_at, updated_at)
 
 def payment_methods(quiet=False) -> PouchPaymentMethodsResult:
     if not quiet:
