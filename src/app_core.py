@@ -56,14 +56,14 @@ all_origins = {"origins": "*"}
 cors = CORS(app, resources={r"/apiv1/*": all_origins})
 csp = {
     'default-src': "'self'",
-    'img-src': "'self'",
+    'img-src': "'self' data:",
     'object-src': "'none'",
     'style-src': "'self' 'unsafe-hashes' 'sha256-aLM6kCMKBszYlopfUKTtpYd6xHtlR3jUaa4HNP1LLmI=' 'sha256-ZdHxw9eWtnxUb3mk6tBS+gIiVUPE3pGM470keHPDFlE=' 'sha256-0EZqoz+oBhx7gF4nvY2bSqoGyy4zLjNF+SDQXGp/ZrY='",
     'script-src': "'self' 'unsafe-hashes' 'sha256-rRMdkshZyJlCmDX27XnL7g3zXaxv7ei6Sg+yt4R3svU=' 'sha256-ftmTNsdfRKq6ZNyHL+p7dI9xRqueDTpseN1IaUUgQW4=' 'sha256-gikCNhEl+fhjSb8779qEr3zNPPm8nyTyg8MPyBYs+Tw=' 'sha256-2rvfFrggTCtyF5WOiTri1gDS8Boibj4Njn0e+VCBmDI='",
     'frame-src': "'self'",
     'font-src': "'self'",
     'frame-ancestors': "'none'",
-    'form-action': "'self'"
+    'form-action': "*"  # https://github.com/w3c/webappsec-csp/issues/8#issuecomment-810066954
 }
 talisman = Talisman(app, content_security_policy=csp, force_https=False)
 
