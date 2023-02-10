@@ -101,7 +101,8 @@ def _tf_method_check():
     # it is difficult to debug because we dont know how or what causes it to start happening
     # this is a stop gap solution to send an email to the admin when it starts failing
     try:
-        security.tf_method()
+        with app.app_context():
+            security.tf_method()
     except Exception as e:
         logger.error('tf_method() failed: %s', e)
         email_utils.send_email('tf_method() failed', str(e))
