@@ -4,7 +4,8 @@ Flask-Admin==1.6.0
 Flask-Security-Too==5.1.0
 PyQRCode==1.2.1 # required for flask security
 Flask-SQLAlchemy==3.0.3
-Flask-Mail-SendGrid==0.3
+#Flask-Mail-SendGrid==0.3
+git+https://github.com/djpnewton/flask-mail-sendgrid@3cf7ac7#egg=Flask-Mail-SendGrid
 Flask-Mail==0.9.1
 Flask-SocketIO==5.3.2
 Flask-Cors==3.0.10

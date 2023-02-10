@@ -2,7 +2,7 @@ FROM python:3.10-slim
 
 # install debian packages
 RUN apt-get update
-RUN apt-get install -y build-essential libpq-dev postgresql-client cron nano gettext librsync-dev libsecp256k1-0
+RUN apt-get install -y build-essential libpq-dev postgresql-client cron nano gettext librsync-dev libsecp256k1-0 git
 
 # install python packages
 RUN pip3 install --upgrade pip
