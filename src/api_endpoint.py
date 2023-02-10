@@ -1089,7 +1089,7 @@ def remit_invoice_create():
     res = pouch.invoice_create(req, quiet=True)
     if res.err:
         return bad_request(res.err.message)
-    assert(res.invoice)
+    assert res.invoice
     invoice = res.invoice
     user = api_key.user
     remit = Remit(user, pouch.PROVIDER, invoice.ref_id, invoice.status)
@@ -1110,7 +1110,7 @@ def remit_invoice_status():
     if res.err:
         return bad_request(res.err.message)
     invoice = res.invoice
-    assert(invoice)
+    assert invoice
     if remit.status != invoice.status:
         remit.status = invoice.status
         db.session.add(remit)
@@ -1132,7 +1132,7 @@ def remit_invoice_pay():
     res = pouch.invoice_status(ref_id, quiet=True)
     if res.err:
         return bad_request(res.err.message)
-    assert(res.invoice)
+    assert res.invoice
     invoice = res.invoice
     # check withdrawal ok
 

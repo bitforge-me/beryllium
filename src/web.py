@@ -686,7 +686,7 @@ def remit():
             if res.err:
                 return return_pouch_err(res.err)
             invoice = res.invoice
-            assert(invoice)
+            assert invoice
             flash(f'created invoice {invoice.ref_id}')
         elif action == INVOICE_STATUS:
             ref_id = request.form['refId']
