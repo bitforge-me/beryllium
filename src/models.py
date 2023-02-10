@@ -1124,6 +1124,9 @@ class RemitSchema(Schema):
     token = fields.String()
     provider = fields.String()
     reference_id = fields.String()
+    payment_method_category = fields.String()
+    payment_method_code = fields.String()
+    payment_method_name = fields.String()
     status = fields.String()
 
 class Remit(BaseModel, FromTokenMixin):
@@ -1132,18 +1135,24 @@ class Remit(BaseModel, FromTokenMixin):
     token = Column(String, nullable=False, unique=True)
     provider = Column(String, nullable=False, unique=False)
     reference_id = Column(String, nullable=False, unique=True)
+    payment_method_category = Column(String, nullable=False, unique=False)
+    payment_method_code = Column(String, nullable=False, unique=False)
+    payment_method_name = Column(String, nullable=False, unique=False)
     status = Column(String, nullable=False, unique=False)
     user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
     user: RelationshipProperty[User] = relationship('User', backref=backref('remits', lazy='dynamic'))
     withdrawal_id = Column(Integer, ForeignKey('balance_update.id'))
     withdrawal: RelationshipProperty[BalanceUpdate | None] = relationship('BalanceUpdate', backref=backref('remit', uselist=False))
 
-    def __init__(self, user: User, provider: str, reference_id: str, status: str):
+    def __init__(self, user: User, provider: str, reference_id: str, payment_method_category: str, payment_method_code: str, payment_method_name: str, status: str):
         self.date = datetime.now()
         self.user = user
         self.token = generate_key(8, True)
         self.provider = provider
         self.reference_id = reference_id
+        self.payment_method_category = payment_method_category
+        self.payment_method_code = payment_method_code
+        self.payment_method_name = payment_method_name
         self.status = status
 
     def to_json(self):

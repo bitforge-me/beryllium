@@ -1073,26 +1073,26 @@ def remit_payment_methods():
 
 @api.route('/remit_invoice_create', methods=['POST'])
 def remit_invoice_create():
-    params, api_key, err_response = auth_request_get_params(db, ["paycode", "name", "account_number", "mobile_number", "currency", "amount", "description"])
+    params, api_key, err_response = auth_request_get_params(db, ["payment_method_category", "payment_method_code", "payment_method_name", "name", "account_number", "mobile_number", "currency", "amount", "description"])
     if err_response:
         return err_response
     assert params and api_key
-    paycode, name, account_number, mobile_number, currency, amount, description = params
-    if not paycode or not name or not currency or not description:
+    payment_method_category, payment_method_code, payment_method_name, name, account_number, mobile_number, currency, amount, description = params
+    if not payment_method_code or not name or not currency or not description:
         return bad_request(web_utils.INVALID_PARAMETER)
     if not isinstance(amount, int):
         return bad_request(web_utils.INVALID_PARAMETER)
     if amount <= 0:
         return bad_request(web_utils.AMOUNT_TOO_LOW)
     recipient = pouch.PouchRecipient(name, account_number, mobile_number)
-    req = pouch.PouchInvoiceReq(description, paycode, currency, amount, recipient)
+    req = pouch.PouchInvoiceReq(description, payment_method_code, currency, amount, recipient)
     res = pouch.invoice_create(req, quiet=True)
     if res.err:
         return bad_request(res.err.message)
     assert res.invoice
     invoice = res.invoice
     user = api_key.user
-    remit = Remit(user, pouch.PROVIDER, invoice.ref_id, invoice.status)
+    remit = Remit(user, pouch.PROVIDER, invoice.ref_id, payment_method_category, payment_method_code, payment_method_name, invoice.status)
     db.session.add(remit)
     db.session.commit()
     return jsonify(dict(remit=remit.to_json(), invoice=invoice.to_json()))
