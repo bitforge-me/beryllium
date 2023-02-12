@@ -9,7 +9,7 @@ from utils import qrcode_svg_create
 from web_utils import bad_request
 from app_core import app, limiter, db
 from models import BtcTxIndex, Role
-from ln import LnRpc, _msat_to_sat
+from ln import LnRpc, _msat_to_sat, make_json_friendly
 from wallet import bitcoind_rpc, btc_txs_load
 import tasks
 
@@ -133,6 +133,7 @@ def channel_management():
             channel['peer_connected'] = peer['connected']
 
             channels.append(channel)
+    channels = make_json_friendly(channels)
 
     return render_template('lightning/channel_management.html', channels=channels, total_spendable_sats=_msat_to_sat(total_spendable), total_receivable_sats=_msat_to_sat(total_receivable), largest_channel_sats=largest_channel_sats)
 
@@ -184,7 +185,7 @@ def decode_bolt11(bolt11=None):
         return bad_request('please enter a non-empty bolt11 string')
     try:
         rpc = LnRpc()
-        return rpc.decode_bolt11(str(bolt11))
+        return make_json_friendly(rpc.decode_bolt11(str(bolt11)))
     except Exception as e:
         return bad_request(str(e))
 

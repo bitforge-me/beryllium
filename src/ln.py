@@ -2,7 +2,7 @@ from decimal import Decimal
 import os
 import datetime
 
-from pyln.client import LightningRpc
+from pyln.client import LightningRpc, Millisatoshi
 
 import assets
 
@@ -11,6 +11,28 @@ def _msat_to_sat(msats):
 
 def _sat_to_msat(sats):
     return int(sats) * 1000
+
+def make_json_friendly(value: dict | list):
+    def convert_dict(d: dict):
+        # just in case
+        if not isinstance(d, dict):
+            return d
+
+        d_sanitized = {}
+        for k, v in d.items():
+            if isinstance(v, Millisatoshi):
+                v = v.millisatoshis
+            if isinstance(v, list):
+                v = [convert_dict(i) for i in v]
+            if isinstance(v, dict):
+                v = convert_dict(v)
+            d_sanitized[k] = v
+        return d_sanitized
+    if isinstance(value, list):
+        value = [convert_dict(i) for i in value]
+    else:
+        value = convert_dict(value)
+    return value
 
 class LnRpc():
     def __init__(self):
