@@ -7,7 +7,8 @@ from flask_socketio import Namespace, emit, join_room, leave_room
 from app_core import SERVER_VERSION, CLIENT_VERSION_DEPLOYED, db, socketio
 from web_utils import check_auth
 from security import tf_enabled_check
-from models import BrokerOrder, BalanceUpdate, User, ApiKey
+from models import BrokerOrder, BalanceUpdate, User, ApiKey, Remit
+from pouch_core import PouchInvoice
 
 logger = logging.getLogger(__name__)
 ws_sids = {}
@@ -123,6 +124,11 @@ def ln_invoice_paid_event(label: str, payment_hash: str, bolt11: str, email: str
     if email:
         socketio.emit('ln_invoice_paid', data, json=True, room=email, namespace=NS)
     logger.info('ln_invoice_paid: %s, %s, %s, %s', label, email, description, amount_sat)
+
+def remit_update_event(remit: Remit, invoice: PouchInvoice):
+    data = json.dumps(dict(remit=remit.to_json(), invoice=invoice.to_json()))
+    socketio.emit('remit_update', data, json=True, room=remit.user.email, namespace=NS)
+    logger.info('remit_update_event: %s', remit.token)
 
 class EventsNamespace(Namespace):
 

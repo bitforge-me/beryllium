@@ -12,7 +12,7 @@ from flask.wrappers import Response
 from flask_security.decorators import roles_accepted
 
 from app_core import app, boolify, db, socketio
-from models import User, Role, Topic, PushNotificationLocation, BrokerOrder, BalanceUpdate, KycRequest, FiatDbTransaction, UserInvitation, CryptoAddress
+from models import User, Role, Topic, PushNotificationLocation, BrokerOrder, BalanceUpdate, KycRequest, FiatDbTransaction, UserInvitation, CryptoAddress, Remit
 import email_utils
 from fcm import FCM
 from web_utils import bad_request, get_json_params, get_json_params_optional
@@ -26,6 +26,7 @@ from kyc_endpoint import kyc
 from ln_wallet_endpoint import ln_wallet
 from monitor_endpoint import monitor
 from support_endpoint import support
+from pouch_endpoint import pouch
 import websocket
 import admin  # import to register flask admin endpoints
 import dasset
@@ -39,7 +40,7 @@ import tasks
 import utils
 import httpreq
 import wallet
-import pouch
+import pouch_core
 
 USER_BALANCE_SHOW = 'show balance'
 USER_BALANCE_CREDIT = 'credit'
@@ -69,6 +70,7 @@ app.register_blueprint(kyc, url_prefix='/kyc')
 app.register_blueprint(ln_wallet, url_prefix='/ln_wallet')
 app.register_blueprint(monitor, url_prefix='/monitor')
 app.register_blueprint(support, url_prefix='/support')
+app.register_blueprint(pouch, url_prefix='/pouch')
 
 #
 # Flask views
@@ -629,8 +631,9 @@ def reprocess_bank_deposits():
 def remit():
     INVOICE_CREATE = 'create'
     INVOICE_STATUS = 'status'
+    INVOICE_REFUND = 'refund'
     # default values
-    actions = (INVOICE_CREATE, INVOICE_STATUS)
+    actions = (INVOICE_CREATE, INVOICE_STATUS, INVOICE_REFUND)
     action = INVOICE_CREATE
     payment_methods = {}
     ref_id = ''
@@ -641,29 +644,30 @@ def remit():
     currency = 'SAT'
     amount = ''
     desc = ''
+    bolt11 = ''
     invoice = None
 
     # helper return functions
     def return_response(err_msg=None):
         if err_msg:
             flash(err_msg, 'danger')
-        return render_template('remit.html', actions=actions, action=action, payment_methods=payment_methods, ref_id=ref_id, paycode=paycode, name=name, acct=acct, mobile=mobile, currency=currency, amount=amount, desc=desc, invoice=invoice)
+        return render_template('remit.html', actions=actions, action=action, payment_methods=payment_methods, ref_id=ref_id, paycode=paycode, name=name, acct=acct, mobile=mobile, currency=currency, amount=amount, desc=desc, bolt11=bolt11, invoice=invoice)
 
-    def return_pouch_err(err: pouch.PouchError):
+    def return_pouch_err(err: pouch_core.PouchError):
         msg = err.message
         if err.details:
             msg = f'{msg} - {",".join(err.details)}'
         return return_response(msg)
 
     # get payment methods
-    res = pouch.payment_methods(quiet=True)
+    res = pouch_core.payment_methods(quiet=True)
     if res.err:
         return return_pouch_err(res.err)
     payment_methods = res.methods
     # process command
     if request.method == 'POST':
         action = request.form['action']
-        if not action or action not in [INVOICE_CREATE, INVOICE_STATUS]:
+        if not action or action not in [INVOICE_CREATE, INVOICE_STATUS, INVOICE_REFUND]:
             return return_response(f'invalid action ({action})')
         if action == INVOICE_CREATE:
             paycode = request.form['paycode']
@@ -680,9 +684,9 @@ def remit():
                 return return_response('invalid amount')
             amount = int(amount)
             desc = request.form['desc']
-            recipient = pouch.PouchRecipient(name, acct, mobile)
-            req = pouch.PouchInvoiceReq(desc, paycode, currency, amount, recipient)
-            res = pouch.invoice_create(req, quiet=True)
+            recipient = pouch_core.PouchRecipient(name, acct, mobile)
+            req = pouch_core.PouchInvoiceReq(desc, paycode, currency, amount, recipient)
+            res = pouch_core.invoice_create(req, quiet=True)
             if res.err:
                 return return_pouch_err(res.err)
             invoice = res.invoice
@@ -690,11 +694,51 @@ def remit():
             flash(f'created invoice {invoice.ref_id}')
         elif action == INVOICE_STATUS:
             ref_id = request.form['refId']
-            res = pouch.invoice_status(ref_id, quiet=True)
+            res = pouch_core.invoice_status(ref_id, quiet=True)
             if res.err:
                 return return_pouch_err(res.err)
             invoice = res.invoice
             flash(f'retrieved invoice {ref_id}')
+        elif action == INVOICE_REFUND:
+            ref_id = request.form['refId']
+            res = pouch_core.invoice_status(ref_id, quiet=True)
+            if res.err:
+                return return_pouch_err(res.err)
+            invoice = res.invoice
+            assert invoice
+            if invoice.status != pouch_core.PouchInvoiceStatus.failed.value:
+                return return_response('invalid invoice status')
+            bolt11 = request.form['bolt11']
+            if not bolt11:
+                remit = Remit.from_reference_id(db.session, ref_id)
+                if not remit:
+                    return return_response('remit not found')
+                # create BalanceUpdate deposit for user
+                res = pouch_core.invoice_refund_deposit(remit)
+                if res.err:
+                    return return_response(res.err)
+                crypto_deposit = res.deposit
+                assert crypto_deposit
+                db.session.add(crypto_deposit)
+                db.session.commit()
+                # make pouch refund
+                assert crypto_deposit.wallet_reference
+                res = pouch_core.invoice_refund(ref_id, crypto_deposit.wallet_reference, quiet=True)
+                if res.err:
+                    return return_pouch_err(res.err)
+                invoice = res.invoice
+                assert invoice
+                # update status
+                if remit.status != invoice.status:
+                    remit.status = invoice.status
+                    db.session.add(remit)
+                    db.session.commit()
+            else:
+                res = pouch_core.invoice_refund(ref_id, bolt11, quiet=True)
+                if res.err:
+                    return return_pouch_err(res.err)
+                invoice = res.invoice
+            flash(f'refunded invoice {ref_id}')
     return return_response()
 
 #

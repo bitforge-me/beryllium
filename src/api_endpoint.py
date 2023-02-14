@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 import decimal
 
-from flask import Blueprint, request, jsonify, flash, redirect, render_template
+from flask import Blueprint, request, jsonify, flash, redirect, render_template, url_for
 import flask_security
 from flask_security.utils import hash_password, verify_password
 from flask_security.recoverable import send_reset_password_instructions
@@ -27,7 +27,7 @@ import coordinator
 import wallet
 import tripwire
 import tasks
-import pouch
+import pouch_core
 
 logger = logging.getLogger(__name__)
 api = Blueprint('api', __name__, template_folder='templates')
@@ -1066,7 +1066,7 @@ def remit_payment_methods():
     if err_response:
         return err_response
     assert api_key
-    res = pouch.payment_methods(quiet=True)
+    res = pouch_core.payment_methods(quiet=True)
     if res.err:
         return bad_request(res.err.message)
     return jsonify(dict(methods=res.methods))
@@ -1084,15 +1084,20 @@ def remit_invoice_create():
         return bad_request(web_utils.INVALID_PARAMETER)
     if amount <= 0:
         return bad_request(web_utils.AMOUNT_TOO_LOW)
-    recipient = pouch.PouchRecipient(name, account_number, mobile_number)
-    req = pouch.PouchInvoiceReq(description, payment_method_code, currency, amount, recipient)
-    res = pouch.invoice_create(req, quiet=True)
+    # set pouch webhooks
+    url = url_for('pouch.webhook', _external=True)
+    pouch_core.webhook_set(pouch_core.WEBHOOK_INVOICE_PAID, url, quiet=True)
+    pouch_core.webhook_set(pouch_core.WEBHOOK_INVOICE_FAILED, url, quiet=True)
+    # create invoice
+    recipient = pouch_core.PouchRecipient(name, account_number, mobile_number)
+    req = pouch_core.PouchInvoiceReq(description, payment_method_code, currency, amount, recipient)
+    res = pouch_core.invoice_create(req, quiet=True)
     if res.err:
         return bad_request(res.err.message)
     assert res.invoice
     invoice = res.invoice
     user = api_key.user
-    remit = Remit(user, pouch.PROVIDER, invoice.ref_id, payment_method_category, payment_method_code, payment_method_name, invoice.status)
+    remit = Remit(user, pouch_core.PROVIDER, invoice.ref_id, payment_method_category, payment_method_code, payment_method_name, invoice.status)
     db.session.add(remit)
     db.session.commit()
     return jsonify(dict(remit=remit.to_json(), invoice=invoice.to_json()))
@@ -1103,10 +1108,10 @@ def remit_invoice_status():
     if err_response:
         return err_response
     assert ref_id and api_key
-    remit = Remit.from_reference_id(db.session, api_key.user, ref_id)
-    if not remit:
+    remit = Remit.from_reference_id(db.session, ref_id)
+    if not remit or remit.user != api_key.user:
         return bad_request(web_utils.NOT_FOUND)
-    res = pouch.invoice_status(ref_id, quiet=True)
+    res = pouch_core.invoice_status(ref_id, quiet=True)
     if res.err:
         return bad_request(res.err.message)
     invoice = res.invoice
@@ -1125,11 +1130,11 @@ def remit_invoice_pay():
     assert params and api_key
     ref_id, tf_code = params
     # get remit
-    remit = Remit.from_reference_id(db.session, api_key.user, ref_id)
-    if not remit:
+    remit = Remit.from_reference_id(db.session, ref_id)
+    if not remit or remit.user != api_key.user:
         return bad_request(web_utils.NOT_FOUND)
     # get pouch invoice
-    res = pouch.invoice_status(ref_id, quiet=True)
+    res = pouch_core.invoice_status(ref_id, quiet=True)
     if res.err:
         return bad_request(res.err.message)
     assert res.invoice
@@ -1166,3 +1171,44 @@ def remit_invoice_pay():
     # update user
     websocket.crypto_withdrawal_new_event(crypto_withdrawal)
     return jsonify(remit=remit.to_json(), invoice=res.invoice.to_json(), withdrawal=crypto_withdrawal.to_json())
+
+@api.route('/remit_invoice_refund', methods=['POST'])
+def remit_invoice_refund():
+    ref_id, api_key, err_response = auth_request_get_single_param(db, "ref_id")
+    if err_response:
+        return err_response
+    assert ref_id and api_key
+    remit = Remit.from_reference_id(db.session, ref_id)
+    if not remit or remit.user != api_key.user:
+        return bad_request(web_utils.NOT_FOUND)
+    withdrawal = remit.withdrawal
+    if not withdrawal:
+        return bad_request(web_utils.INVALID_STATUS)
+    res = pouch_core.invoice_status(ref_id, quiet=True)
+    if res.err:
+        return bad_request(res.err.message)
+    invoice = res.invoice
+    assert invoice
+    if invoice.status != pouch_core.PouchInvoiceStatus.failed:
+        return bad_request(web_utils.INVALID_STATUS)
+    # create BalanceUpdate deposit for user
+    res = pouch_core.invoice_refund_deposit(remit)
+    if res.err:
+        return bad_request(res.err)
+    crypto_deposit = res.deposit
+    assert crypto_deposit
+    db.session.add(crypto_deposit)
+    db.session.commit()
+    # make pouch refund
+    assert crypto_deposit.wallet_reference
+    res = pouch_core.invoice_refund(ref_id, crypto_deposit.wallet_reference, quiet=True)
+    if res.err:
+        return bad_request(res.err.message)
+    invoice = res.invoice
+    assert invoice
+    # update status
+    if remit.status != invoice.status:
+        remit.status = invoice.status
+        db.session.add(remit)
+        db.session.commit()
+    return jsonify(dict(remit=remit.to_json(), invoice=invoice.to_json()))

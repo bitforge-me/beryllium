@@ -1160,5 +1160,5 @@ class Remit(BaseModel, FromTokenMixin):
         return ref_schema.dump(self)
 
     @classmethod
-    def from_reference_id(cls, session: Session, user: User, ref_id: str) -> Remit | None:
-        return session.query(cls).filter(cls.user_id == user.id).filter(cls.reference_id == ref_id).first()
+    def from_reference_id(cls, session: Session, ref_id: str) -> Remit | None:
+        return session.query(cls).filter(cls.reference_id == ref_id).first()

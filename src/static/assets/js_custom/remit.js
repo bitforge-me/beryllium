@@ -40,6 +40,27 @@ function confirmStatus(formClass, refId) {
     });
 }
 
+function confirmRefund(formClass, refId, bolt11) {
+    bootbox.confirm({
+        message: `Are you sure you want to refund ${refId} to ${bolt11}?`,
+        buttons: {
+            confirm: {
+                label: 'Yes',
+                className: 'btn-success'
+            },
+            cancel: {
+                label: 'No',
+                className: 'btn-danger'
+            }
+        },
+        callback: function(result) {
+            if (result) {
+                $(formClass).submit();
+            }
+        }
+    });
+}
+
 function updateForm() {
     // hide all optional elements
     $('#refId-group').hide();
@@ -50,6 +71,7 @@ function updateForm() {
     $('#currency-group').hide();
     $('#amount-group').hide();
     $('#desc-group').hide();
+    $('#bolt11-group').hide();
     $('select[name=action] option:selected').each(function() {
         const value = $(this).val();
         if (value === 'create') {
@@ -70,6 +92,10 @@ function updateForm() {
         }
         if (value === 'status') {
             $('#refId-group').show();
+        }
+        if (value === 'refund') {
+            $('#refId-group').show();
+            $('#bolt11-group').show();
         }
     });
 }
@@ -96,11 +122,15 @@ $(document).ready(function() {
         }
         const currency = $('#currency').val();
         const amount = $('#amount').val();
+        const bolt11 = $('#bolt11').val();
         if (action === 'create') {
             confirmCreate('#form', payname, name, acct, amount, currency);
         }
         if (action === 'status') {
             confirmStatus('#form', refId);
+        }
+        if (action === 'refund') {
+            confirmRefund('#form', refId, bolt11);
         }
         return false;
     });

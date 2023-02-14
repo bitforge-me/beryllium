@@ -108,6 +108,16 @@
                            value="{{ desc }}"/>
                     <small id="descHelp" class="form-text text-muted">The description</small>
                 </div>
+                <div class="form-group" id="bolt11-group">
+                    <label for="bolt11">Bolt 11 refund invoice</label>
+                    <input type="text"
+                           class="form-control"
+                           id="bolt11"
+                           name="bolt11"
+                           aria-describedby="bolt11Help"
+                           value="{{ bolt11 }}"/>
+                    <small id="bolt11Help" class="form-text text-muted">The bolt 11 refund invoice (leave empty to automatically refund to original user)</small>
+                </div>
                 <button id="form-submit" type="submit" class="btn btn-primary">Submit</button>
             </form>
             {% if invoice %}

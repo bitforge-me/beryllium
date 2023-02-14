@@ -11,7 +11,7 @@ from flask_login.utils import current_user
 from markupsafe import Markup
 
 from app_core import app, db
-from models import Role, User, ApiKey, Topic, PushNotificationLocation, Referral, BrokerOrder, ExchangeOrder, BalanceUpdate, CryptoAddress, KycRequest, AplyId, FiatDbTransaction, WindcavePaymentRequest, PayoutRequest, CrownPayment, WithdrawalConfirmation
+from models import Role, User, ApiKey, Topic, PushNotificationLocation, Referral, BrokerOrder, ExchangeOrder, BalanceUpdate, CryptoAddress, KycRequest, AplyId, FiatDbTransaction, WindcavePaymentRequest, PayoutRequest, CrownPayment, WithdrawalConfirmation, Remit
 from security import security
 
 # helper functions/classes
@@ -503,6 +503,7 @@ admin.add_view(FiatDbTransactionModelView(FiatDbTransaction, db.session, categor
 admin.add_view(WithdrawalConfirmationView(WithdrawalConfirmation, db.session, category='Admin'))
 admin.add_view(RestrictedModelView(KycRequest, db.session, category='Admin'))
 admin.add_view(RestrictedModelView(AplyId, db.session, category='Admin'))
+admin.add_view(RestrictedModelView(Remit, db.session, category='Admin'))
 admin.add_view(ApiKeyModelView(ApiKey, db.session, category='User'))
 if app.config["USE_REFERRALS"]:
     admin.add_view(RestrictedModelView(Referral, db.session, category='Admin', name='Referrals'))

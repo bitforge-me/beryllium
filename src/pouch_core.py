@@ -1,6 +1,7 @@
-import logging
 import uuid
 from dataclasses import dataclass
+from enum import Enum
+import logging
 import json
 from datetime import datetime
 
@@ -8,28 +9,12 @@ import marshmallow
 import marshmallow_dataclass
 
 from app_core import app
+from models import BalanceUpdate, Remit
 from log_utils import setup_logging
-from web_utils import create_hmac_sig
+import web_utils
 import httpreq
-
-logger = logging.getLogger(__name__)
-
-PROVIDER = 'pouch'
-API_KEY = app.config['POUCH_API_KEY']
-API_SECRET = app.config['POUCH_API_SECRET']
-URL_BASE = 'https://remit.pouch.ph/api/v1/'
-if app.config['TESTNET']:
-    URL_BASE = 'https://remit-sandbox.pouch.ph/v1/'
-
-WEBHOOK_INVOICE_PAID = 'invoice.paid'
-WEBHOOK_INVOICE_FAILED = 'invoice.failed'
-
-class CamelcaseSchema(marshmallow.Schema):
-    """A Schema that marshals data with *camelCased* keys from *snake_cased*."""
-    def on_bind_field(self, field_name, field_obj):
-        field_name = field_obj.data_key or field_name
-        camel_cased = field_name[0] + field_name.title().replace('_', '')[1:]
-        field_obj.data_key = camel_cased
+import assets
+import wallet
 
 @dataclass
 class PouchError:
@@ -79,6 +64,16 @@ class PouchAmount:
 class PouchRecipientAmount(PouchRecipient, PouchAmount):
     pass
 
+class PouchInvoiceStatus(Enum):
+    created = 'created'
+    funded = 'funded'
+    pending = 'pending'
+    failed = 'failed'
+    refunding = 'refunding'
+    refunded = 'refunded'
+    completed = 'completed'
+    expired = 'expired'
+
 @dataclass
 class PouchInvoice:
     ref_id: str
@@ -101,9 +96,37 @@ class PouchInvoiceResult:
     err: PouchError | None
 
 @dataclass
+class PouchInvoiceRefundDepositResult:
+    deposit: BalanceUpdate | None
+    err: str | None
+
+@dataclass
 class PouchWebhooksResult:
     webhooks: dict[str, str] | None
     err: PouchError | None
+
+logger = logging.getLogger(__name__)
+
+PROVIDER = 'pouch'
+API_KEY = app.config['POUCH_API_KEY']
+API_SECRET = app.config['POUCH_API_SECRET']
+URL_BASE = 'https://remit.pouch.ph/api/v1/'
+if app.config['TESTNET']:
+    URL_BASE = 'https://remit-sandbox.pouch.ph/v1/'
+
+WEBHOOK_INVOICE_PAID = 'invoice.paid'
+WEBHOOK_INVOICE_FAILED = 'invoice.failed'
+
+class CamelcaseSchema(marshmallow.Schema):
+    """A Schema that marshals data with *camelCased* keys from *snake_cased*."""
+    def on_bind_field(self, field_name, field_obj):
+        field_name = field_obj.data_key or field_name
+        camel_cased = field_name[0] + field_name.title().replace('_', '')[1:]
+        field_obj.data_key = camel_cased
+
+#
+# Private Methods
+#
 
 def _req(endpoint, data=None, quiet=False, use_put=False):
     url = URL_BASE + endpoint
@@ -113,7 +136,7 @@ def _req(endpoint, data=None, quiet=False, use_put=False):
         if not quiet:
             logger.info('   POST - %s', url)
             #logger.info('          %s', data)
-        headers['X-Pouch-Signature'] = create_hmac_sig(API_SECRET, data, 'hex')
+        headers['X-Pouch-Signature'] = web_utils.create_hmac_sig(API_SECRET, data, 'hex')
         headers['Content-Type'] = 'application/json'
         if use_put:
             return httpreq.put(url, headers=headers, data=data)
@@ -159,6 +182,10 @@ def _parse_invoice(json):
     updated_at = datetime.strptime(data['updatedAt'], "%Y-%m-%dT%H:%M:%S.%f%z")
     return PouchInvoice(ref_id, status, bolt11, sender, recipient, rates, fees, created_at, updated_at)
 
+#
+# Public Pouch Methods
+#
+
 def payment_methods(quiet=False) -> PouchPaymentMethodsResult:
     if not quiet:
         logger.info(':: calling payment methods..')
@@ -193,12 +220,33 @@ def invoice_status(ref_id: str, quiet=False) -> PouchInvoiceResult:
         return PouchInvoiceResult(None, err)
     return PouchInvoiceResult(_parse_invoice(r.json()), None)
 
+def invoice_refund_deposit(remit: Remit) -> PouchInvoiceRefundDepositResult:
+    withdrawal = remit.withdrawal
+    assert withdrawal
+    # create BalanceUpdate deposit for user
+    amount_dec = assets.asset_int_to_dec(assets.BTC.symbol, withdrawal.amount)
+    if not wallet.incoming_available(assets.BTC.symbol, assets.BTCLN.symbol, amount_dec):
+        return PouchInvoiceRefundDepositResult(None, web_utils.INSUFFICIENT_LIQUIDITY)
+    crypto_deposit = BalanceUpdate.crypto_deposit(remit.user, assets.BTC.symbol, assets.BTCLN.symbol, withdrawal.amount, 0, 'temp recipient')
+    logger.info('create local wallet deposit: %s, %s, %s', assets.BTC.symbol, assets.BTCLN.symbol, amount_dec)
+    wallet_reference, err_msg = wallet.deposit_create(assets.BTC.symbol, assets.BTCLN.symbol, crypto_deposit.token, 'refund to Bitforge', amount_dec)
+    if err_msg:
+        return PouchInvoiceRefundDepositResult(None, f'{web_utils.FAILED_PAYMENT_CREATE} - {err_msg}')
+    assert wallet_reference
+    crypto_deposit.recipient = wallet_reference  # fill in real recipient here
+    crypto_deposit.wallet_reference = wallet_reference
+    return PouchInvoiceRefundDepositResult(crypto_deposit, None)
+
+def invoice_refund(ref_id: str, bolt11: str, quiet=False) -> PouchInvoiceResult:
+    if not quiet:
+        logger.info(':: calling invoice refund..')
+    r = _req(f'invoices/{ref_id}/refund', dict(bolt11=bolt11), quiet=quiet)
+    err = _check_response_status(r)
+    if err:
+        return PouchInvoiceResult(None, err)
+    return PouchInvoiceResult(_parse_invoice(r.json()), None)
+
 def webhook_set(event: str, url: str, quiet=False) -> PouchError | None:
-
-    #
-    # TODO: test webhooks
-    #
-
     if not quiet:
         logger.info(':: calling webhook set..')
     r = _req('webhooks', dict(event=event, url=url), use_put=True, quiet=quiet)
@@ -223,5 +271,5 @@ if __name__ == '__main__':
     #print(invoice_create(PouchInvoiceReq('test invoice', 'UNODPHM2XXX', 'SAT', 500, PouchRecipient('Dan Test', '1234567', None))))
     #print(invoice_status('9aadfbf8-23e1-46e2-9f95-61d9e55ebb54'))
 
-    print(webhook_set(WEBHOOK_INVOICE_PAID, 'https://www.example.com'))
+    #print(webhook_set(WEBHOOK_INVOICE_PAID, 'https://www.example.com'))
     print(webhook_get())
