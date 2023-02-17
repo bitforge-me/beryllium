@@ -2,7 +2,7 @@ import logging
 
 from flask import Blueprint, request
 
-from app_core import limiter, db
+from app_core import limiter, db, csrf
 import web_utils
 from models import Remit
 import websocket
@@ -17,14 +17,19 @@ limiter.limit("100/minute")(pouch)
 # Pouch webhook
 #
 
-@pouch.route('/webhook', methods=['POST'])
+@pouch.route('/webhook', methods=['GET', 'POST'])
+@csrf.exempt
 def webhook():
     if request.method == 'POST':
         sig = request.headers['X-Pouch-Signature']
         if not sig:
-            return web_utils.bad_request('signature header not present')
+            logger.error('signature header not present')
+            return web_utils.bad_request(web_utils.AUTH_FAILED)
+        logger.info('    sig: %s', sig)
         our_sig = web_utils.create_hmac_sig(pouch_core.API_SECRET, request.data, format='hex')
+        logger.info('out_sig: %s', our_sig)
         if our_sig != sig:
+            logger.error('authentication failed')
             return web_utils.bad_request(web_utils.AUTH_FAILED)
         if request.is_json:
             try:
@@ -76,7 +81,7 @@ def webhook():
                             msg += '<br><br>Your funds are being refunded automatically'
                 send_email('Remit update', msg, remit.user.email)
                 return 'ok'
-            except Exception:
+            except Exception as e:
                 logger.error('pouch webhook failed')
-                email_catastrophic_error('pouch webhook failed')
+                email_catastrophic_error(f'pouch webhook failed - {e}')
     return web_utils.bad_request(web_utils.INVALID_PARAMETER)

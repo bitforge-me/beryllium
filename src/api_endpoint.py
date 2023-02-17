@@ -1085,7 +1085,7 @@ def remit_invoice_create():
     if amount <= 0:
         return bad_request(web_utils.AMOUNT_TOO_LOW)
     # set pouch webhooks
-    url = url_for('pouch.webhook', _external=True)
+    url = url_for('pouch.webhook', _external=True, _scheme='https')
     pouch_core.webhook_set(pouch_core.WEBHOOK_INVOICE_PAID, url, quiet=True)
     pouch_core.webhook_set(pouch_core.WEBHOOK_INVOICE_FAILED, url, quiet=True)
     # create invoice

@@ -158,8 +158,7 @@ def _check_response_status(req: httpreq.Response) -> PouchError | None:
             return PouchError('', f'{req.status_code} - {req.url}', [])
     return None
 
-def _parse_invoice(json):
-    data = json['data']
+def _parse_invoice(data):
     ref_id = data['referenceId']
     status = data['status']
     bolt11 = data['bolt11']
@@ -209,7 +208,7 @@ def invoice_create(invoice_req: PouchInvoiceReq, quiet=False) -> PouchInvoiceRes
     err = _check_response_status(r)
     if err:
         return PouchInvoiceResult(None, err)
-    return PouchInvoiceResult(_parse_invoice(r.json()), None)
+    return PouchInvoiceResult(_parse_invoice(r.json()['data']), None)
 
 def invoice_status(ref_id: str, quiet=False) -> PouchInvoiceResult:
     if not quiet:
@@ -218,7 +217,7 @@ def invoice_status(ref_id: str, quiet=False) -> PouchInvoiceResult:
     err = _check_response_status(r)
     if err:
         return PouchInvoiceResult(None, err)
-    return PouchInvoiceResult(_parse_invoice(r.json()), None)
+    return PouchInvoiceResult(_parse_invoice(r.json()['data']), None)
 
 def invoice_refund_deposit(remit: Remit) -> PouchInvoiceRefundDepositResult:
     withdrawal = remit.withdrawal
@@ -244,7 +243,7 @@ def invoice_refund(ref_id: str, bolt11: str, quiet=False) -> PouchInvoiceResult:
     err = _check_response_status(r)
     if err:
         return PouchInvoiceResult(None, err)
-    return PouchInvoiceResult(_parse_invoice(r.json()), None)
+    return PouchInvoiceResult(_parse_invoice(r.json()['data']), None)
 
 def webhook_set(event: str, url: str, quiet=False) -> PouchError | None:
     if not quiet:
