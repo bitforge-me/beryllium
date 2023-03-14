@@ -10,6 +10,7 @@ import assets
 import email_utils
 import depwith
 import broker
+import remit
 import utils
 from task_manager import TaskManager
 import wallet
@@ -112,13 +113,16 @@ def _tf_method_check():
 #
 
 def process_broker_order(token: str):
-    broker.broker_orders_update(db.session)
+    broker.broker_order_update(db.session, token)
 
 def update_withdrawal(asset: str, token: str):
     if assets.asset_is_crypto(asset):
         depwith.crypto_withdrawal_update(db.session, token)
     else:
         depwith.fiat_withdrawal_update(db.session, token)
+
+def update_remit(token: str):
+    remit.remit_update(db.session, token)
 
 def ln_rebalance_channels(oscid: str, iscid: str, amount: int):
     category = 'ln_rebalance_channels'

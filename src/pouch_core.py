@@ -16,6 +16,11 @@ import httpreq
 import assets
 import wallet
 
+#
+# Pouch Remit Api Docs:
+# https://github.com/pouch-ph/docs/blob/remit/remit-doc.md
+#
+
 @dataclass
 class PouchError:
     code: str

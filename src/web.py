@@ -728,11 +728,6 @@ def remit():
                     return return_pouch_err(res.err)
                 invoice = res.invoice
                 assert invoice
-                # update status
-                if remit.status != invoice.status:
-                    remit.status = invoice.status
-                    db.session.add(remit)
-                    db.session.commit()
             else:
                 res = pouch_core.invoice_refund(ref_id, bolt11, quiet=True)
                 if res.err:

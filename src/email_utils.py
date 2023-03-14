@@ -7,7 +7,7 @@ from flask_mail import Message
 
 from app_core import app, mail
 import utils
-from models import ApiKeyRequest, PayoutRequest, Referral, UserCreateRequest, UserUpdateEmailRequest, WithdrawalConfirmation, UserInvitation
+from models import ApiKeyRequest, PayoutRequest, Referral, UserCreateRequest, UserUpdateEmailRequest, WithdrawalConfirmation, UserInvitation, RemitConfirmation
 import assets
 from tasks import task_manager, send_email_task
 
@@ -131,3 +131,25 @@ def email_withdrawal_confirmation(conf: WithdrawalConfirmation):
     Confirm your withdrawal <a href='{url}'>here</a><br/><br/>
     Confirm within {conf.MINUTES_EXPIRY} minutes'''
     send_email("Confirm your withdrawal", msg, conf.user.email)
+
+def email_remit_confirmation(conf: RemitConfirmation):
+    url = url_for("api_supplemental.remit_invoice_confirm", token=conf.token, secret=conf.secret, _external=True)
+    remit = conf.remit
+    assert remit
+    from_formatted_amount = ''
+    if remit.order:
+        assert assets.market_side_is(remit.order.side, assets.MarketSide.BID)
+        amount_dec = assets.asset_int_to_dec(remit.order.quote_asset, remit.order.quote_amount)
+        amount_str = assets.asset_dec_to_str(remit.order.quote_asset, amount_dec)
+        from_formatted_amount = f'Converted from: {amount_str} {remit.order.quote_asset}<br/><br/>'
+    amount_dec = assets.asset_int_to_dec(assets.BTC.symbol, remit.amount)
+    amount_str = assets.asset_dec_to_str(assets.BTC.symbol, amount_dec)
+    recipient = f'<span style="word-wrap:anywhere;word-break:break-all;"><span style="font-family:monospace">{remit.bolt11}</span></span>'
+    msg = f'''You have a pending remit waiting!<br/><br/><br/>
+    Remit recipient:
+    {recipient}<br/><br/>
+    {from_formatted_amount}
+    Remit amount: {amount_str} {assets.BTC.symbol}<br/><br/>
+    Confirm your remit <a href='{url}'>here</a><br/><br/>
+    Confirm within {conf.MINUTES_EXPIRY} minutes'''
+    send_email("Confirm your remit", msg, conf.user.email)

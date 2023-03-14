@@ -5,9 +5,9 @@ from flask import Blueprint, request
 from app_core import limiter, db, csrf
 import web_utils
 from models import Remit
-import websocket
-from email_utils import email_catastrophic_error, send_email
+from email_utils import email_catastrophic_error
 import pouch_core
+import tasks
 
 logger = logging.getLogger(__name__)
 pouch = Blueprint('pouch', __name__, template_folder='templates/pouch')
@@ -42,44 +42,7 @@ def webhook():
                 if not remit:
                     logger.error('invoice not found %s', ref_id)
                     return web_utils.bad_request(web_utils.NOT_FOUND)
-                # update remit
-                remit.status = invoice.status
-                db.session.add(remit)
-                db.session.commit()
-                # send events
-                websocket.remit_update_event(remit, invoice)
-                recipient = invoice.recipient
-                msg = f'Your remit of {recipient.amount} {recipient.currency} to {recipient.name} has changed status to "{invoice.status}"'
-                if invoice.status == pouch_core.PouchInvoiceStatus.failed.value:
-                    # automatically process refund
-                    res = pouch_core.invoice_refund_deposit(remit)
-                    if res.err:
-                        err_msg = f'failed to create pouch refund deposit for ({invoice.ref_id}) - {res.err}'
-                        logger.error(err_msg)
-                        email_catastrophic_error(err_msg)
-                    else:
-                        crypto_deposit = res.deposit
-                        assert crypto_deposit
-                        db.session.add(crypto_deposit)
-                        db.session.commit()
-                        # make pouch refund
-                        assert crypto_deposit.wallet_reference
-                        res = pouch_core.invoice_refund(ref_id, crypto_deposit.wallet_reference, quiet=True)
-                        if res.err:
-                            err_msg = f'failed to execute pouch refund for ({invoice.ref_id}) - {res.err}'
-                            logger.error(err_msg)
-                            email_catastrophic_error(err_msg)
-                        else:
-                            invoice = res.invoice
-                            assert invoice
-                            # update status
-                            if remit.status != invoice.status:
-                                remit.status = invoice.status
-                                db.session.add(remit)
-                                db.session.commit()
-                            # update msg to user
-                            msg += '<br><br>Your funds are being refunded automatically'
-                send_email('Remit update', msg, remit.user.email)
+                tasks.task_manager.one_off('update remit', tasks.update_remit, [remit.token])
                 return 'ok'
             except Exception as e:
                 logger.error('pouch webhook failed')

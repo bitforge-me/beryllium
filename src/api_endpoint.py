@@ -12,7 +12,7 @@ import web_utils
 from web_utils import bad_request, get_json_params, auth_request, auth_request_get_single_param, auth_request_get_params
 import utils
 import email_utils
-from models import BalanceUpdate, FiatDbTransaction, FiatDepositCode, Role, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, CryptoAddress, DassetSubaccount, WithdrawalConfirmation, UserInvitation, Remit
+from models import BalanceUpdate, FiatDbTransaction, FiatDepositCode, Role, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, CryptoAddress, DassetSubaccount, WithdrawalConfirmation, UserInvitation, Remit, RemitConfirmation
 from app_core import app, db, limiter, csrf, SERVER_VERSION, CLIENT_VERSION_DEPLOYED
 from security import tf_enabled_check, tf_method, tf_code_send, tf_method_set, tf_method_unset, tf_secret_init, tf_code_validate, user_datastore
 import windcave
@@ -28,6 +28,7 @@ import wallet
 import tripwire
 import tasks
 import pouch_core
+import depwith
 
 logger = logging.getLogger(__name__)
 api = Blueprint('api', __name__, template_folder='templates')
@@ -716,40 +717,6 @@ def _validate_crypto_asset_withdraw(asset: str, l2_network: str | None, recipien
         return bad_request(web_utils.INVALID_RECIPIENT)
     return None
 
-def _create_withdrawal(user: User, asset: str, l2_network: str | None, amount_dec: decimal.Decimal, recipient: str):
-    with coordinator.lock:
-        assert wallet.withdrawals_supported(asset, l2_network)
-        # check for any pre-existing withdrawals that might conflict
-        if wallet.withdrawal_l2_recipient_exists(asset, l2_network, recipient):
-            return None, bad_request(web_utils.RECIPIENT_EXISTS)
-        withdrawals = BalanceUpdate.where_active_with_recipient(db.session, BalanceUpdate.TYPE_WITHDRAWAL, True, recipient)
-        for withdrawal in withdrawals:
-            if withdrawal.asset == asset and withdrawal.l2_network and withdrawal.l2_network == l2_network:
-                return None, bad_request(web_utils.RECIPIENT_EXISTS)
-        # check funds available
-        fee_dec = assets.asset_withdraw_fee(asset, l2_network, amount_dec)
-        fee_dec = utils.round_dec(fee_dec, assets.asset_decimals(asset))
-        amount_plus_fee_dec = amount_dec + fee_dec
-        logger.info('amount plus withdraw fee: %s', amount_plus_fee_dec)
-        if not fiatdb_core.funds_available_user(db.session, user, asset, amount_plus_fee_dec):
-            return None, bad_request(web_utils.INSUFFICIENT_BALANCE)
-        # step 1) create CryptoWithdrawal and ftx and commit so that users balance is updated
-        amount_int = assets.asset_dec_to_int(asset, amount_dec)
-        fee_int = assets.asset_dec_to_int(asset, fee_dec)
-        amount_plus_fee_int = assets.asset_dec_to_int(asset, amount_plus_fee_dec)
-        crypto_withdrawal = BalanceUpdate.crypto_withdrawal(user, asset, l2_network, amount_int, fee_int, recipient)
-        ftx = fiatdb_core.tx_create(user, FiatDbTransaction.ACTION_DEBIT, asset, amount_plus_fee_int, f'crypto withdrawal: {crypto_withdrawal.token}')
-        crypto_withdrawal.balance_tx = ftx
-        db.session.add(crypto_withdrawal)
-        db.session.add(ftx)
-        db.session.commit()
-        # step 2) create / send withdrawal confirmation
-        conf = WithdrawalConfirmation(crypto_withdrawal.user, crypto_withdrawal, None)
-        email_utils.email_withdrawal_confirmation(conf)
-        db.session.add(conf)
-        db.session.commit()
-        return crypto_withdrawal, None
-
 @api.route('/crypto_withdrawal_create', methods=['POST'])
 def crypto_withdrawal_create_req():
     params, api_key, err_response = auth_request_get_params(db, ['asset', 'l2_network', 'amount_dec', 'recipient', 'save_recipient', 'recipient_description', 'tf_code'])
@@ -786,7 +753,8 @@ def crypto_withdrawal_create_req():
             entry = AddressBook(api_key.user, asset, recipient, recipient_description, None, None, None, None)
         db.session.add(entry)
     # create withdrawal
-    crypto_withdrawal, err_response = _create_withdrawal(api_key.user, asset, l2_network, amount_dec, recipient)
+    with coordinator.lock:
+        crypto_withdrawal, err_response = depwith.crypto_withdrawal_create(db.session, api_key.user, asset, l2_network, amount_dec, recipient)
     if err_response:
         return err_response
     assert crypto_withdrawal
@@ -1096,8 +1064,18 @@ def remit_invoice_create():
         return bad_request(res.err.message)
     assert res.invoice
     invoice = res.invoice
+    # validate amount
+    amount_extracted_dec = assets.asset_recipient_extract_amount(assets.BTC.symbol, assets.BTCLN.symbol, invoice.bolt11)
+    amount_extracted_int = assets.asset_dec_to_int(assets.BTC.symbol, amount_extracted_dec)
+    if amount_extracted_int != amount:
+        return bad_request(web_utils.INVALID_AMOUNT)
+    if amount_extracted_int <= 0:
+        return bad_request(web_utils.INVALID_AMOUNT)
+    if amount_extracted_dec < assets.asset_min_withdraw(assets.BTC.symbol, assets.BTCLN.symbol):
+        return bad_request(web_utils.AMOUNT_TOO_LOW)
+    # create remit
     user = api_key.user
-    remit = Remit(user, pouch_core.PROVIDER, invoice.ref_id, payment_method_category, payment_method_code, payment_method_name, invoice.status)
+    remit = Remit(user, pouch_core.PROVIDER, invoice.ref_id, payment_method_category, payment_method_code, payment_method_name, amount, invoice.bolt11, invoice.recipient.amount, invoice.recipient.currency)
     db.session.add(remit)
     db.session.commit()
     return jsonify(dict(remit=remit.to_json(), invoice=invoice.to_json()))
@@ -1116,19 +1094,66 @@ def remit_invoice_status():
         return bad_request(res.err.message)
     invoice = res.invoice
     assert invoice
-    if remit.status != invoice.status:
-        remit.status = invoice.status
-        db.session.add(remit)
-        db.session.commit()
     return jsonify(dict(remit=remit.to_json(), invoice=invoice.to_json()))
 
-@api.route('/remit_invoice_pay', methods=['POST'])
-def remit_invoice_pay():
-    params, api_key, err_response = auth_request_get_params(db, ["ref_id", "tf_code"])
+@api_supplemental.route('/remit_invoice_confirm/<token>/<secret>', methods=['GET', 'POST'])
+@limiter.limit('20/minute')
+def remit_invoice_confirm(token=None, secret=None):
+    if not token or not secret:
+        return _redirect_confirmation_result('Invalid request.', 'danger')
+    conf = RemitConfirmation.from_token(db.session, token)
+    if not conf or not conf.remit:
+        gevent.sleep(5)
+        return _redirect_confirmation_result('Remit confirmation not found.', 'danger')
+    remit: Remit = conf.remit
+    if conf.secret != secret:
+        return _redirect_confirmation_result('Remit confirmation code invalid.', 'danger')
+    if conf.confirmed is not None:
+        return _redirect_confirmation_result('Remit confirmation already processed.', 'danger')
+    if conf.expired():
+        gevent.sleep(5)
+        return _redirect_confirmation_result('Remit confirmation expired.', 'danger')
+    if request.method == 'POST':
+        confirm = request.form.get('confirm') == 'true'
+        msg = ''
+        with coordinator.lock:
+            # check confirmed status
+            if conf.confirmed is not None:
+                return _redirect_confirmation_result('Remit status invalid', 'danger')
+            # check invoice expiry
+            if not assets.asset_recipient_expiry_valid(assets.BTC.symbol, assets.BTCLN.symbol, remit.bolt11):
+                return _redirect_confirmation_result('withdrawal expired', 'danger')
+            # update confirmation
+            if confirm:
+                conf.confirmed = True
+                msg = 'Remit confirmed.'
+            else:
+                conf.confirmed = False
+                msg = 'Remit cancelled.'
+            db.session.add(conf)
+            # commit changes
+            db.session.commit()
+            # update withdrawal asap
+            tasks.task_manager.one_off('update remit', tasks.update_remit, [remit.token])
+        return _redirect_confirmation_result(msg, 'success')
+    from_formatted_amount = None
+    if remit.order:
+        assert assets.market_side_is(remit.order.side, assets.MarketSide.BID)
+        amount_dec = assets.asset_int_to_dec(remit.order.quote_asset, remit.order.quote_amount)
+        amount_str = assets.asset_dec_to_str(remit.order.quote_asset, amount_dec)
+        from_formatted_amount = f'{amount_str} {remit.order.quote_asset}'
+    amount_dec = assets.asset_int_to_dec(assets.BTC.symbol, remit.amount)
+    amount_str = assets.asset_dec_to_str(assets.BTC.symbol, amount_dec)
+    send_formatted_amount = f'{amount_str} {assets.BTC.symbol}'
+    return render_template('api/remit_confirm.html', conf=conf, from_formatted_amount=from_formatted_amount, send_formatted_amount=send_formatted_amount)
+
+@api.route('/remit_invoice_accept', methods=['POST'])
+def remit_invoice_accept():
+    params, api_key, err_response = auth_request_get_params(db, ["ref_id", "market", "side", "amount_dec", "tf_code"])
     if err_response:
         return err_response
     assert params and api_key
-    ref_id, tf_code = params
+    ref_id, market, side, amount_dec, tf_code = params
     # get remit
     remit = Remit.from_reference_id(db.session, ref_id)
     if not remit or remit.user != api_key.user:
@@ -1139,38 +1164,64 @@ def remit_invoice_pay():
         return bad_request(res.err.message)
     assert res.invoice
     invoice = res.invoice
-    # check withdrawal ok
-
-    # TODO: make sub routine to share with crypto_withdrawal_create()???
+    # check tf code
     err_response = _tf_check_withdrawal(api_key.user, tf_code)
     if err_response:
         return err_response
-    err_response = _validate_crypto_asset_withdraw(assets.BTC.symbol, assets.BTCLN.symbol, invoice.bolt11)
-    if err_response:
-        return err_response
-    amount_dec = assets.asset_recipient_extract_amount(assets.BTC.symbol, assets.BTCLN.symbol, invoice.bolt11)
-    if amount_dec <= 0:
-        return bad_request(web_utils.INVALID_AMOUNT)
-    if amount_dec < assets.asset_min_withdraw(assets.BTC.symbol, assets.BTCLN.symbol):
-        return bad_request(web_utils.AMOUNT_TOO_LOW)
     # check withdrawals enabled
     if not tripwire.WITHDRAWAL.ok:
         return bad_request(web_utils.NOT_AVAILABLE)
     tripwire.withdrawal_attempt()
-    # create withdrawal
-    crypto_withdrawal, err_response = _create_withdrawal(api_key.user, assets.BTC.symbol, assets.BTCLN.symbol, amount_dec, invoice.bolt11)
+    # check withdrawal ok
+    err_response = _validate_crypto_asset_withdraw(assets.BTC.symbol, assets.BTCLN.symbol, invoice.bolt11)
     if err_response:
         return err_response
-    assert crypto_withdrawal
-    # END-TODO
-
-    # add withdrawal to remit
-    remit.withdrawal = crypto_withdrawal
-    db.session.add(remit)
-    db.session.commit()
+    amount_remit_dec = assets.asset_int_to_dec(assets.BTC.symbol, remit.amount)
+    amount_extracted_dec = assets.asset_recipient_extract_amount(assets.BTC.symbol, assets.BTCLN.symbol, invoice.bolt11)
+    if amount_remit_dec != amount_extracted_dec:
+        return bad_request(web_utils.INVALID_AMOUNT)
+    if amount_extracted_dec <= 0:
+        return bad_request(web_utils.INVALID_AMOUNT)
+    if amount_extracted_dec < assets.asset_min_withdraw(assets.BTC.symbol, assets.BTCLN.symbol):
+        return bad_request(web_utils.AMOUNT_TOO_LOW)
+    with coordinator.lock:
+        # check status
+        if remit.status != remit.STATUS_CREATED:
+            return bad_request(web_utils.INVALID_STATUS)
+        remit.status = remit.STATUS_SENDING
+        db.session.add(remit)
+        # get order info / create order
+        if market:
+            remit.status = remit.STATUS_EXCHANGING
+            side = MarketSide.parse(side)
+            if not side:
+                return bad_request(web_utils.INVALID_SIDE)
+            if not amount_dec:
+                return bad_request(web_utils.INVALID_AMOUNT)
+            # create order
+            err_response, order = _broker_order_validate(api_key.user, market, side, amount_dec, use_cache=False)
+            if err_response:
+                return err_response
+            assert order
+            remit.order = order
+            db.session.add(order)
+            db.session.add(remit)
+            db.session.commit()
+            # accept order
+            err_msg, ftx = broker.order_accept(db.session, order)
+            if err_msg:
+                return bad_request(err_msg)
+            db.session.add(order)
+            db.session.add(ftx)
+            db.session.commit()
+            websocket.broker_order_new_event(order)
+            tasks.task_manager.one_off('process broker order', tasks.process_broker_order, [order.token])
     # update user
-    websocket.crypto_withdrawal_new_event(crypto_withdrawal)
-    return jsonify(remit=remit.to_json(), invoice=res.invoice.to_json(), withdrawal=crypto_withdrawal.to_json())
+    conf = RemitConfirmation(remit.user, remit)
+    email_utils.email_remit_confirmation(conf)
+    db.session.add(conf)
+    db.session.commit()
+    return jsonify(remit=remit.to_json(), invoice=res.invoice.to_json())
 
 @api.route('/remit_invoice_refund', methods=['POST'])
 def remit_invoice_refund():
@@ -1206,9 +1257,4 @@ def remit_invoice_refund():
         return bad_request(res.err.message)
     invoice = res.invoice
     assert invoice
-    # update status
-    if remit.status != invoice.status:
-        remit.status = invoice.status
-        db.session.add(remit)
-        db.session.commit()
     return jsonify(dict(remit=remit.to_json(), invoice=invoice.to_json()))
