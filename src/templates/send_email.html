@@ -3,7 +3,7 @@
     <div class="card">
         <div class="card-body">
             <h5 class="card-title">Send email</h5>
-            <form id="general-form" method="POST">
+            <form id="form" method="POST">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="form-group">
                     <label for="subject">Subject</label>
@@ -23,15 +23,18 @@
                            name="recipient"
                            aria-describedby="recipientHelp"
                            value="{{ recipient }}"/>
-                    <small id="recipientHelp" class="form-text text-muted">The email recipient (address).</small>
+                    <small id="recipientHelp" class="form-text text-muted">The email recipient (address). Use "*ALL*" to send to all users.</small>
                 </div>
                 <div class="form-group">
                     <label for="message">Message</label>
                     <textarea type="text" class="form-control" id="message" name="message" aria-describedby="messageHelp" rows="3">{{message}}</textarea>
                     <small id="messageHelp" class="form-text text-muted">The email message.</small>
                 </div>
-                <button id="general-form-submit" type="submit" class="btn btn-primary">Send</button>
+                <button id="form-submit" type="submit" class="btn btn-primary">Send</button>
             </form>
         </div>
     </div>
+{% endblock %}
+{% block scripts %}
+    <script src="{{ url_for('static',filename='assets/js_custom/send_email.js') }}"></script>
 {% endblock %}

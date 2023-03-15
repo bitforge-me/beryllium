@@ -154,9 +154,9 @@ def push_notifications_register():
         db.session.commit()
     return jsonify(dict(result="ok"))
 
-@app.route('/test_email', methods=['GET', 'POST'])
+@app.route('/send_email', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
-def test_email():
+def send_email():
     recipient = ''
     subject = ''
     message = ''
@@ -164,9 +164,18 @@ def test_email():
         recipient = request.form['recipient']
         subject = request.form['subject']
         message = request.form['message']
-        email_utils.send_email(subject, message, recipient)
-        flash('Send email task created', 'success')
-    return render_template('test_email.html', recipient=recipient, subject=subject, message=message)
+        if not recipient:
+            flash('Invalid recipient', 'danger')
+            return render_template('send_email.html', recipient=recipient, subject=subject, message=message)
+        if recipient == '*ALL*':
+            users = User.all_active(db.session)
+            for user in users:
+                email_utils.send_email(subject, message, user.email)
+            flash(f'Send email task created ({len(users)} users)', 'success')
+        else:
+            email_utils.send_email(subject, message, recipient)
+            flash('Send email task created', 'success')
+    return render_template('send_email.html', recipient=recipient, subject=subject, message=message)
 
 @app.route('/test_ws', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
