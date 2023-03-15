@@ -116,6 +116,10 @@ class User(BaseModel, UserMixin):
     def from_email(cls, session, email) -> User | None:
         return session.query(cls).filter(cls.email == email).first()
 
+    @classmethod
+    def all_active(cls, session) -> list[User]:
+        return session.query(cls).filter(cls.active).all()
+
     def __str__(self):
         return f'{self.email}'
 
