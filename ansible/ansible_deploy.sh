@@ -26,16 +26,16 @@ display_usage() {
 }
 
 function validate_ssh_host() {
-  local input="$1"
-  if [[ "$input" =~ ^[^@]+@[^@]+$ ]]; then
-    return 0
-  else
-    return 1
-  fi
+    local input="$DEPLOY_TYPE"
+    if [[ "$input" =~ ^[^@]+@[^@]+$ ]]; then
+        echo 0
+    else
+        echo 1
+    fi
 }
 
 function parse_ssh_host() {
-  local input="$1"
+  local input="$DEPLOY_TYPE"
   DEPLOY_USER="${input%%@*}"
   DEPLOY_HOST="${input#*@}"
 }
@@ -55,7 +55,8 @@ then
 fi 
 
 # check whether user has a valid DEPLOY_TYPE
-if [[ ( $DEPLOY_TYPE != "test" ) &&  ( $DEPLOY_TYPE != "production" ) && (! validate_ssh_host $DEPLOY_TYPE) ]] 
+ssh_host_valid=`validate_ssh_host`
+if [[ ( $DEPLOY_TYPE != "test" ) &&  ( $DEPLOY_TYPE != "production" )  && ( $ssh_host_valid != 0 ) ]] 
 then
     display_usage
     echo !!\"$DEPLOY_TYPE\" is not valid
