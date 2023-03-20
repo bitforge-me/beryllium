@@ -4,6 +4,7 @@ set -e
 
 DEPLOY_TEST=test
 DEPLOY_PRODUCTION=production
+DEPLOY_CUSTOM='<user>@<host>'
 DEPLOY_TYPE=$1
 DEPLOY_LEVEL_BERYLLIUM_ONLY=beryllium_only
 DEPLOY_LEVEL=$2
@@ -12,17 +13,32 @@ DEPLOY_BRANCH=$3
 display_usage() { 
     echo -e "\nUsage:
 
-    ansible_deploy.sh <DEPLOY_TYPE ($DEPLOY_TEST | $DEPLOY_PRODUCTION)> 
+    ansible_deploy.sh <DEPLOY_TYPE ($DEPLOY_TEST | $DEPLOY_PRODUCTION | $DEPLOY_CUSTOM)> 
 
-    ansible_deploy.sh <DEPLOY_TYPE ($DEPLOY_TEST | $DEPLOY_PRODUCTION)> <DEPLOY_LEVEL ($DEPLOY_LEVEL_BERYLLIUM_ONLY)>
+    ansible_deploy.sh <DEPLOY_TYPE ($DEPLOY_TEST | $DEPLOY_PRODUCTION | $DEPLOY_CUSTOM)> <DEPLOY_LEVEL ($DEPLOY_LEVEL_BERYLLIUM_ONLY)>
 
-    ansible_deploy.sh <DEPLOY_TYPE ($DEPLOY_TEST | $DEPLOY_PRODUCTION)> <DEPLOY_LEVEL ($DEPLOY_LEVEL_BERYLLIUM_ONLY)> <DEPLOY_BRANCH (any git branch)>
+    ansible_deploy.sh <DEPLOY_TYPE ($DEPLOY_TEST | $DEPLOY_PRODUCTION | $DEPLOY_CUSTOM)> <DEPLOY_LEVEL ($DEPLOY_LEVEL_BERYLLIUM_ONLY)> <DEPLOY_BRANCH (any git branch)>
 
         This is a lesser deploy scenario:
 
         DEPLOY_LEVEL=$DEPLOY_LEVEL_BERYLLIUM_ONLY: only update the beryllium service
     "
-} 
+}
+
+function validate_ssh_host() {
+  local input="$1"
+  if [[ "$input" =~ ^[^@]+@[^@]+$ ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+function parse_ssh_host() {
+  local input="$1"
+  DEPLOY_USER="${input%%@*}"
+  DEPLOY_HOST="${input#*@}"
+}
 
 # if less than two arguments supplied, display usage 
 if [ $# -le 0 ]
@@ -39,8 +55,8 @@ then
 fi 
 
 # check whether user has a valid DEPLOY_TYPE
-if [[ ( $DEPLOY_TYPE != "test" ) &&  ( $DEPLOY_TYPE != "production" ) ]] 
-then 
+if [[ ( $DEPLOY_TYPE != "test" ) &&  ( $DEPLOY_TYPE != "production" ) && (! validate_ssh_host $DEPLOY_TYPE) ]] 
+then
     display_usage
     echo !!\"$DEPLOY_TYPE\" is not valid
     exit 2
@@ -71,17 +87,25 @@ else
 fi 
 
 ADMIN_EMAIL=admin@zap.me
-# set deploy variables for production
-DEPLOY_HOST=beryllium.zap.me
-DEPLOY_USER=root
-TESTNET=
-
-# set deploy variables for test
-if [[ ( $DEPLOY_TYPE == "test" ) ]]
+if [[ ( $DEPLOY_TYPE == $DEPLOY_PRODUCTION)]]
+then
+    # set deploy variables for production
+    DEPLOY_HOST=beryllium.zap.me
+    DEPLOY_USER=root
+    TESTNET=
+    SSH_DISALLOW_ROOT=true
+elif [[ ( $DEPLOY_TYPE == "test" ) ]]
 then 
+    # set deploy variables for test
     DEPLOY_HOST=beryllium-test.zap.me
     DEPLOY_USER=root
     TESTNET=true
+    SSH_DISALLOW_ROOT=
+else
+    # set deploy variables for custom host
+    parse_ssh_host
+    TESTNET=true
+    SSH_DISALLOW_ROOT=  
 fi 
 
 # print variables
@@ -101,6 +125,6 @@ then
     # do dangerous stuff
     echo ok lets go!!!
     ansible-playbook --inventory "$DEPLOY_HOST," --user "$DEPLOY_USER" -v \
-        --extra-vars "admin_email=$ADMIN_EMAIL deploy_host=$DEPLOY_HOST full_deploy=$FULL_DEPLOY testnet=$TESTNET DEPLOY_TYPE=$DEPLOY_TYPE deploy_branch=$DEPLOY_BRANCH" \
+        --extra-vars "admin_email=$ADMIN_EMAIL deploy_host=$DEPLOY_HOST full_deploy=$FULL_DEPLOY testnet=$TESTNET ssh_disallow_root=$SSH_DISALLOW_ROOT DEPLOY_TYPE=$DEPLOY_TYPE deploy_branch=$DEPLOY_BRANCH" \
         deploy.yml
 fi
