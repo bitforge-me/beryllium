@@ -14,7 +14,7 @@ import depwith
 logger = logging.getLogger(__name__)
 
 #TODO:
-# - does this need to be called on a timer? (remits_update() / Remit.all_active())?
+# - does this need to be called on a timer? (remits_update() / Remit.all_active())? yes! the remit items in the database are out of sync (maybe we could have a different update function if simpler too!)
 # - analyze the states and how they change
 # - how does user recover from failure state?
 # - how does admin recover from failure state?

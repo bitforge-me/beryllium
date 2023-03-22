@@ -629,29 +629,20 @@ def reprocess_bank_deposits():
 @app.route('/remit', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def remit():
-    INVOICE_CREATE = 'create'
     INVOICE_STATUS = 'status'
     INVOICE_REFUND = 'refund'
     # default values
-    actions = (INVOICE_CREATE, INVOICE_STATUS, INVOICE_REFUND)
-    action = INVOICE_CREATE
-    payment_methods = {}
-    ref_id = ''
-    paycode = ''
-    name = ''
-    acct = ''
-    mobile = ''
-    currency = 'SAT'
-    amount = ''
-    desc = ''
-    bolt11 = ''
+    actions = (INVOICE_STATUS, INVOICE_REFUND)
+    action = INVOICE_STATUS
+    token = ''
+    remit = None
     invoice = None
 
     # helper return functions
     def return_response(err_msg=None):
         if err_msg:
             flash(err_msg, 'danger')
-        return render_template('remit.html', actions=actions, action=action, payment_methods=payment_methods, ref_id=ref_id, paycode=paycode, name=name, acct=acct, mobile=mobile, currency=currency, amount=amount, desc=desc, bolt11=bolt11, invoice=invoice)
+        return render_template('remit.html', actions=actions, action=action, token=token, remit=remit, invoice=invoice)
 
     def return_pouch_err(err: pouch_core.PouchError):
         msg = err.message
@@ -659,81 +650,45 @@ def remit():
             msg = f'{msg} - {",".join(err.details)}'
         return return_response(msg)
 
-    # get payment methods
-    res = pouch_core.payment_methods(quiet=True)
-    if res.err:
-        return return_pouch_err(res.err)
-    payment_methods = res.methods
     # process command
     if request.method == 'POST':
         action = request.form['action']
-        if not action or action not in [INVOICE_CREATE, INVOICE_STATUS, INVOICE_REFUND]:
+        if not action or action not in [INVOICE_STATUS, INVOICE_REFUND]:
             return return_response(f'invalid action ({action})')
-        if action == INVOICE_CREATE:
-            paycode = request.form['paycode']
-            name = request.form['name']
-            if not name:
-                return return_response('empty name')
-            acct = request.form['acct']
-            mobile = request.form['mobile']
-            if not acct and not mobile:
-                return return_response('empty account/mobile number')
-            currency = request.form['currency']
-            amount = request.form['amount']
-            if not amount:
-                return return_response('invalid amount')
-            amount = int(amount)
-            desc = request.form['desc']
-            recipient = pouch_core.PouchRecipient(name, acct, mobile)
-            req = pouch_core.PouchInvoiceReq(desc, paycode, currency, amount, recipient)
-            res = pouch_core.invoice_create(req, quiet=True)
+        token = request.form['token']
+        remit = Remit.from_token(db.session, token)
+        if not remit:
+            return return_response(f'invalid token ({token})')
+        if action == INVOICE_STATUS:
+            res = pouch_core.invoice_status(remit.reference_id, quiet=True)
             if res.err:
                 return return_pouch_err(res.err)
             invoice = res.invoice
-            assert invoice
-            flash(f'created invoice {invoice.ref_id}')
-        elif action == INVOICE_STATUS:
-            ref_id = request.form['refId']
-            res = pouch_core.invoice_status(ref_id, quiet=True)
-            if res.err:
-                return return_pouch_err(res.err)
-            invoice = res.invoice
-            flash(f'retrieved invoice {ref_id}')
+            flash(f'retrieved invoice {remit.reference_id}')
         elif action == INVOICE_REFUND:
-            ref_id = request.form['refId']
-            res = pouch_core.invoice_status(ref_id, quiet=True)
+            res = pouch_core.invoice_status(remit.reference_id, quiet=True)
             if res.err:
                 return return_pouch_err(res.err)
             invoice = res.invoice
             assert invoice
             if invoice.status != pouch_core.PouchInvoiceStatus.failed.value:
                 return return_response('invalid invoice status')
-            bolt11 = request.form['bolt11']
-            if not bolt11:
-                remit = Remit.from_reference_id(db.session, ref_id)
-                if not remit:
-                    return return_response('remit not found')
-                # create BalanceUpdate deposit for user
-                res = pouch_core.invoice_refund_deposit(remit)
-                if res.err:
-                    return return_response(res.err)
-                crypto_deposit = res.deposit
-                assert crypto_deposit
-                db.session.add(crypto_deposit)
-                db.session.commit()
-                # make pouch refund
-                assert crypto_deposit.wallet_reference
-                res = pouch_core.invoice_refund(ref_id, crypto_deposit.wallet_reference, quiet=True)
-                if res.err:
-                    return return_pouch_err(res.err)
-                invoice = res.invoice
-                assert invoice
-            else:
-                res = pouch_core.invoice_refund(ref_id, bolt11, quiet=True)
-                if res.err:
-                    return return_pouch_err(res.err)
-                invoice = res.invoice
-            flash(f'refunded invoice {ref_id}')
+            # create BalanceUpdate deposit for user
+            res = pouch_core.invoice_refund_deposit(remit)
+            if res.err:
+                return return_response(res.err)
+            crypto_deposit = res.deposit
+            assert crypto_deposit
+            db.session.add(crypto_deposit)
+            db.session.commit()
+            # make pouch refund
+            assert crypto_deposit.wallet_reference
+            res = pouch_core.invoice_refund(remit.reference_id, crypto_deposit.wallet_reference, quiet=True)
+            if res.err:
+                return return_pouch_err(res.err)
+            invoice = res.invoice
+            assert invoice
+            flash(f'refunded invoice {remit.reference_id}')
     return return_response()
 
 #

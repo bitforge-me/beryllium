@@ -19,109 +19,30 @@
                     </select>
                     <small id="actionHelp" class="form-text text-muted">The selected action</small>
                 </div>
-                <div class="form-group" id="refId-group">
-                    <label for="refId">Reference Id</label>
+                <div class="form-group" id="token-group">
+                    <label for="token">Token</label>
                     <input type="text"
                            class="form-control"
-                           id="refId"
-                           name="refId"
-                           aria-describedby="emailHelp"
-                           value="{{ ref_id }}"/>
-                    <small id="emailHelp" class="form-text text-muted">Invoice reference id</small>
-                </div>
-                <div class="form-group" id="paycode-group">
-                    <label for="paycode">Payment Method</label>
-                    <select class="form-control"
-                            id="paycode"
-                            name="paycode"
-                            aria-describedby="paycodeHelp">
-                        {% for category, pms in payment_methods.items() %}
-                            {% for pm in pms %}
-                                <option {% if paycode == pm.code %}selected{% endif %}
-                                        x-cat="{{ category }}"
-                                        value="{{ pm.code }}">
-                                    {{ pm.name }}
-                                </option>
-                            {% endfor %}
-                        {% endfor %}
-                    </select>
-                    <small id="actionHelp" class="form-text text-muted">The selected payment method</small>
-                </div>
-                <div class="form-group" id="name-group">
-                    <label for="name">Recipient Name</label>
-                    <input type="text"
-                           class="form-control"
-                           id="name"
-                           name="name"
-                           aria-describedby="nameHelp"
-                           value="{{ name }}"/>
-                    <small id="nameHelp" class="form-text text-muted">The recipients full name</small>
-                </div>
-                <div class="form-group" id="acct-group">
-                    <label for="acct">Recipient Account Number</label>
-                    <input type="text"
-                           class="form-control"
-                           id="acct"
-                           name="acct"
-                           aria-describedby="acctHelp"
-                           value="{{ acct }}"/>
-                    <small id="acctHelp" class="form-text text-muted">The recipients account number</small>
-                </div>
-                <div class="form-group" id="mobile-group">
-                    <label for="mobile">Recipient Mobile Number</label>
-                    <input type="text"
-                           class="form-control"
-                           id="mobile"
-                           name="mobile"
-                           aria-describedby="mobileHelp"
-                           value="{{ mobile }}"/>
-                    <small id="mobileHelp" class="form-text text-muted">The recipients mobile number</small>
-                </div>
-                <div class="form-group" id="currency-group">
-                    <label for="currency">Currency</label>
-                    <input type="text"
-                           class="form-control"
-                           id="currency"
-                           name="currency"
-                           aria-describedby="currencyHelp"
-                           value="{{ currency }}"
-                           readonly/>
-                    <small id="currencyHelp" class="form-text text-muted">The currency</small>
-                </div>
-                <div class="form-group" id="amount-group">
-                    <label for="amount">Amount</label>
-                    <input type="number"
-                           class="form-control"
-                           id="amount"
-                           name="amount"
-                           aria-describedby="amountHelp"
-                           value="{{ amount }}"/>
-                    <small id="amountHelp" class="form-text text-muted">The amount</small>
-                </div>
-                <div class="form-group" id="desc-group">
-                    <label for="desc">Description</label>
-                    <input type="text"
-                           class="form-control"
-                           id="desc"
-                           name="desc"
-                           aria-describedby="descHelp"
-                           value="{{ desc }}"/>
-                    <small id="descHelp" class="form-text text-muted">The description</small>
-                </div>
-                <div class="form-group" id="bolt11-group">
-                    <label for="bolt11">Bolt 11 refund invoice</label>
-                    <input type="text"
-                           class="form-control"
-                           id="bolt11"
-                           name="bolt11"
-                           aria-describedby="bolt11Help"
-                           value="{{ bolt11 }}"/>
-                    <small id="bolt11Help" class="form-text text-muted">The bolt 11 refund invoice (leave empty to automatically refund to original user)</small>
+                           id="token"
+                           name="token"
+                           aria-describedby="tokenHelp"
+                           value="{{ token }}"/>
+                    <small id="tokenHelp" class="form-text text-muted">Remit token</small>
                 </div>
                 <button id="form-submit" type="submit" class="btn btn-primary">Submit</button>
             </form>
+            {% if remit %}
+                <pre>
+                    remit
+                    -----
+                    token: {{ remit.token }}
+                    status: {{ remit.status }}
+                </pre>
+            {% endif %}
             {% if invoice %}
                 <pre>
+                    invoice
+                    -------
                     ref id: {{ invoice.ref_id }}
                     status: {{ invoice.status }}
                     sender amount: {{ invoice.sender_amount }}, currency: {{ invoice.sender_currency }}
