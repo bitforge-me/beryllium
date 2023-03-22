@@ -57,77 +57,77 @@ def user_info_event(user: User, old_email: str | None = None):
     if old_email:
         email = old_email
     data = json.dumps(user_info_dict_ws(user))
-    socketio.emit('user_info_update', data, json=True, room=email, namespace=NS)
+    socketio.emit('user_info_update', data, room=email, namespace=NS)
     logger.info('user_info_update: %s (%s)', user.email, old_email)
 
 def broker_order_update_event(broker_order: BrokerOrder):
     data = json.dumps(broker_order.to_json())
-    socketio.emit('broker_order_update', data, json=True, room=broker_order.user.email, namespace=NS)
+    socketio.emit('broker_order_update', data, room=broker_order.user.email, namespace=NS)
     logger.info('broker_order_update: %s', broker_order.token)
 
 def broker_order_new_event(broker_order: BrokerOrder):
     data = json.dumps(broker_order.to_json())
-    socketio.emit('broker_order_new', data, json=True, room=broker_order.user.email, namespace=NS)
+    socketio.emit('broker_order_new', data, room=broker_order.user.email, namespace=NS)
     logger.info('broker_order_new: %s', broker_order.token)
 
 def crypto_deposit_update_event(crypto_deposit: BalanceUpdate):
     data = json.dumps(crypto_deposit.to_json())
-    socketio.emit('crypto_deposit_update', data, json=True, room=crypto_deposit.user.email, namespace=NS)
-    socketio.emit('deposit_update', data, json=True, room=crypto_deposit.user.email, namespace=NS)
+    socketio.emit('crypto_deposit_update', data, room=crypto_deposit.user.email, namespace=NS)
+    socketio.emit('deposit_update', data, room=crypto_deposit.user.email, namespace=NS)
     logger.info('crypto_deposit_update: %s', crypto_deposit.token)
 
 def crypto_deposit_new_event(crypto_deposit: BalanceUpdate):
     data = json.dumps(crypto_deposit.to_json())
-    socketio.emit('crypto_deposit_new', data, json=True, room=crypto_deposit.user.email, namespace=NS)
-    socketio.emit('deposit_new', data, json=True, room=crypto_deposit.user.email, namespace=NS)
+    socketio.emit('crypto_deposit_new', data, room=crypto_deposit.user.email, namespace=NS)
+    socketio.emit('deposit_new', data, room=crypto_deposit.user.email, namespace=NS)
     logger.info('crypto_deposit_new: %s', crypto_deposit.token)
 
 def crypto_withdrawal_update_event(crypto_withdrawal: BalanceUpdate):
     data = json.dumps(crypto_withdrawal.to_json())
-    socketio.emit('crypto_withdrawal_update', data, json=True, room=crypto_withdrawal.user.email, namespace=NS)
-    socketio.emit('withdrawal_update', data, json=True, room=crypto_withdrawal.user.email, namespace=NS)
+    socketio.emit('crypto_withdrawal_update', data, room=crypto_withdrawal.user.email, namespace=NS)
+    socketio.emit('withdrawal_update', data, room=crypto_withdrawal.user.email, namespace=NS)
     logger.info('crypto_withdrawal_update: %s', crypto_withdrawal.token)
 
 def crypto_withdrawal_new_event(crypto_withdrawal: BalanceUpdate):
     data = json.dumps(crypto_withdrawal.to_json())
-    socketio.emit('crypto_withdrawal_new', data, json=True, room=crypto_withdrawal.user.email, namespace=NS)
-    socketio.emit('withdrawal_new', data, json=True, room=crypto_withdrawal.user.email, namespace=NS)
+    socketio.emit('crypto_withdrawal_new', data, room=crypto_withdrawal.user.email, namespace=NS)
+    socketio.emit('withdrawal_new', data, room=crypto_withdrawal.user.email, namespace=NS)
     logger.info('crypto_withdrawal_new: %s', crypto_withdrawal.token)
 
 def fiat_deposit_update_event(fiat_deposit: BalanceUpdate):
     data = json.dumps(fiat_deposit.to_json())
-    socketio.emit('fiat_deposit_update', data, json=True, room=fiat_deposit.user.email, namespace=NS)
-    socketio.emit('deposit_update', data, json=True, room=fiat_deposit.user.email, namespace=NS)
+    socketio.emit('fiat_deposit_update', data, room=fiat_deposit.user.email, namespace=NS)
+    socketio.emit('deposit_update', data, room=fiat_deposit.user.email, namespace=NS)
     logger.info('fiat_deposit_update: %s', fiat_deposit.token)
 
 def fiat_deposit_new_event(fiat_deposit: BalanceUpdate):
     data = json.dumps(fiat_deposit.to_json())
-    socketio.emit('fiat_deposit_new', data, json=True, room=fiat_deposit.user.email, namespace=NS)
-    socketio.emit('deposit_new', data, json=True, room=fiat_deposit.user.email, namespace=NS)
+    socketio.emit('fiat_deposit_new', data, room=fiat_deposit.user.email, namespace=NS)
+    socketio.emit('deposit_new', data, room=fiat_deposit.user.email, namespace=NS)
     logger.info('fiat_deposit_new: %s', fiat_deposit.token)
 
 def fiat_withdrawal_update_event(fiat_withdrawal: BalanceUpdate):
     data = json.dumps(fiat_withdrawal.to_json())
-    socketio.emit('fiat_withdrawal_update', data, json=True, room=fiat_withdrawal.user.email, namespace=NS)
-    socketio.emit('withdrawal_update', data, json=True, room=fiat_withdrawal.user.email, namespace=NS)
+    socketio.emit('fiat_withdrawal_update', data, room=fiat_withdrawal.user.email, namespace=NS)
+    socketio.emit('withdrawal_update', data, room=fiat_withdrawal.user.email, namespace=NS)
     logger.info('fiat_withdrawal_update: %s', fiat_withdrawal.token)
 
 def fiat_withdrawal_new_event(fiat_withdrawal: BalanceUpdate):
     data = json.dumps(fiat_withdrawal.to_json())
-    socketio.emit('fiat_withdrawal_new', data, json=True, room=fiat_withdrawal.user.email, namespace=NS)
-    socketio.emit('withdrawal_new', data, json=True, room=fiat_withdrawal.user.email, namespace=NS)
+    socketio.emit('fiat_withdrawal_new', data, room=fiat_withdrawal.user.email, namespace=NS)
+    socketio.emit('withdrawal_new', data, room=fiat_withdrawal.user.email, namespace=NS)
     logger.info('fiat_withdrawal_new: %s', fiat_withdrawal.token)
 
 def ln_invoice_paid_event(label: str, payment_hash: str, bolt11: str, email: str | None, description: str, amount_sat: int):
     data = json.dumps(dict(label=label, payment_hash=payment_hash, bolt11=bolt11, description=description, amount_sat=amount_sat))
-    socketio.emit('ln_invoice_paid', data, json=True, room=f'ln-{label}', namespace=NS)
+    socketio.emit('ln_invoice_paid', data, room=f'ln-{label}', namespace=NS)
     if email:
-        socketio.emit('ln_invoice_paid', data, json=True, room=email, namespace=NS)
+        socketio.emit('ln_invoice_paid', data, room=email, namespace=NS)
     logger.info('ln_invoice_paid: %s, %s, %s, %s', label, email, description, amount_sat)
 
 def remit_update_event(remit: Remit, invoice: PouchInvoice):
     data = json.dumps(dict(remit=remit.to_json(), invoice=invoice.to_json()))
-    socketio.emit('remit_update', data, json=True, room=remit.user.email, namespace=NS)
+    socketio.emit('remit_update', data, room=remit.user.email, namespace=NS)
     logger.info('remit_update_event: %s', remit.token)
 
 class EventsNamespace(Namespace):
@@ -137,7 +137,7 @@ class EventsNamespace(Namespace):
 
     def on_connect(self):
         logger.info("connect sid: %s", request.sid)  # pyright: ignore [reportGeneralTypeIssues]
-        emit('version', json.dumps(dict(server_version=SERVER_VERSION, client_version_deployed=CLIENT_VERSION_DEPLOYED)), json=True, namespace=NS)
+        emit('version', json.dumps(dict(server_version=SERVER_VERSION, client_version_deployed=CLIENT_VERSION_DEPLOYED)), namespace=NS)
 
     def on_auth(self, auth: dict | str):
         if not isinstance(auth, dict):
