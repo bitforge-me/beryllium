@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import logging
 from typing import Dict, Tuple
+import decimal
 
 from sqlalchemy.orm.session import Session
 from ln_wallet_endpoint import sign_psbt
@@ -8,7 +9,7 @@ from ln_wallet_endpoint import sign_psbt
 import windcave
 import dasset
 import assets
-from models import BrokerOrder, FiatDepositCode, CryptoAddress, BalanceUpdate, FiatDbTransaction, User, CrownPayment, WithdrawalConfirmation
+from models import BrokerOrder, FiatDepositCode, CryptoAddress, BalanceUpdate, FiatDbTransaction, User, CrownPayment, WithdrawalConfirmation, RemitConfirmation
 import websocket
 import email_utils
 import fiatdb_core
@@ -19,6 +20,7 @@ import utils
 import crown_financial
 import payouts_core
 import broker
+import web_utils
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +37,40 @@ def withdrawal_cancel(withdrawal: BalanceUpdate, reason: str):
     ftx = fiatdb_core.tx_create(withdrawal.user, FiatDbTransaction.ACTION_CREDIT, asset, amount_plus_fee_int, f'{asset_type} withdrawal refund - {reason}: {withdrawal.token}')
     withdrawal.balance_tx_cancel = ftx
     return ftx
+
+def crypto_withdrawal_create(db_session: Session, user: User, asset: str, l2_network: str | None, amount_dec: decimal.Decimal, recipient: str, create_confirmation=True):
+    assert wallet.withdrawals_supported(asset, l2_network)
+    # check for any pre-existing withdrawals that might conflict
+    if wallet.withdrawal_l2_recipient_exists(asset, l2_network, recipient):
+        return None, web_utils.RECIPIENT_EXISTS
+    withdrawals = BalanceUpdate.where_active_with_recipient(db_session, BalanceUpdate.TYPE_WITHDRAWAL, True, recipient)
+    for withdrawal in withdrawals:
+        if withdrawal.asset == asset and withdrawal.l2_network and withdrawal.l2_network == l2_network:
+            return None, web_utils.RECIPIENT_EXISTS
+    # check funds available
+    fee_dec = assets.asset_withdraw_fee(asset, l2_network, amount_dec)
+    fee_dec = utils.round_dec(fee_dec, assets.asset_decimals(asset))
+    amount_plus_fee_dec = amount_dec + fee_dec
+    logger.info('amount plus withdraw fee: %s', amount_plus_fee_dec)
+    if not fiatdb_core.funds_available_user(db_session, user, asset, amount_plus_fee_dec):
+        return None, web_utils.INSUFFICIENT_BALANCE
+    # step 1) create CryptoWithdrawal and ftx and commit so that users balance is updated
+    amount_int = assets.asset_dec_to_int(asset, amount_dec)
+    fee_int = assets.asset_dec_to_int(asset, fee_dec)
+    amount_plus_fee_int = assets.asset_dec_to_int(asset, amount_plus_fee_dec)
+    crypto_withdrawal = BalanceUpdate.crypto_withdrawal(user, asset, l2_network, amount_int, fee_int, recipient)
+    ftx = fiatdb_core.tx_create(user, FiatDbTransaction.ACTION_DEBIT, asset, amount_plus_fee_int, f'crypto withdrawal: {crypto_withdrawal.token}')
+    crypto_withdrawal.balance_tx = ftx
+    db_session.add(crypto_withdrawal)
+    db_session.add(ftx)
+    db_session.commit()
+    # step 2) create / send withdrawal confirmation
+    if create_confirmation:
+        conf = WithdrawalConfirmation(crypto_withdrawal.user, crypto_withdrawal, None)
+        email_utils.email_withdrawal_confirmation(conf)
+        db_session.add(conf)
+        db_session.commit()
+    return crypto_withdrawal, None
 
 # -------------
 
@@ -463,7 +499,9 @@ def _crypto_withdrawal_update(crypto_withdrawal: BalanceUpdate):
         return updated_records
     # check status
     if crypto_withdrawal.status == crypto_withdrawal.STATUS_CREATED:
-        conf: WithdrawalConfirmation = crypto_withdrawal.withdrawal_confirmation
+        conf: WithdrawalConfirmation | RemitConfirmation | None = crypto_withdrawal.withdrawal_confirmation
+        if not conf and crypto_withdrawal.remit:
+            conf = crypto_withdrawal.remit.remit_confirmation
         if not conf:
             logger.error('crypto withdrawal (%s) does not have a confirmation record', crypto_withdrawal.token)
         elif conf.confirmed is None:

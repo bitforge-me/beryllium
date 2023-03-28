@@ -1,0 +1,56 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Remit</h5>
+            <form id="form" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="form-group" id="action-group">
+                    <label for="action">Action</label>
+                    <select class="form-control"
+                            id="action"
+                            name="action"
+                            aria-describedby="actionHelp">
+                        {% for a in actions %}
+                            <option {% if action == a %}selected{% endif %} value="{{a }}">
+                                {{a}}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <small id="actionHelp" class="form-text text-muted">The selected action</small>
+                </div>
+                <div class="form-group" id="token-group">
+                    <label for="token">Token</label>
+                    <input type="text"
+                           class="form-control"
+                           id="token"
+                           name="token"
+                           aria-describedby="tokenHelp"
+                           value="{{ token }}"/>
+                    <small id="tokenHelp" class="form-text text-muted">Remit token</small>
+                </div>
+                <button id="form-submit" type="submit" class="btn btn-primary">Submit</button>
+            </form>
+            {% if remit %}
+                <pre>
+                    remit
+                    -----
+                    token: {{ remit.token }}
+                    status: {{ remit.status }}
+                </pre>
+            {% endif %}
+            {% if invoice %}
+                <pre>
+                    invoice
+                    -------
+                    ref id: {{ invoice.ref_id }}
+                    status: {{ invoice.status }}
+                    sender amount: {{ invoice.sender_amount }}, currency: {{ invoice.sender_currency }}
+                    recipient amount: {{ invoice.recipient_amount }}, currency: {{ invoice.recipient_currency }}
+                    bolt11: {{ invoice.bolt11 }}
+                </pre>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static',filename='assets/js_custom/remit.js') }}"></script>{% endblock %}

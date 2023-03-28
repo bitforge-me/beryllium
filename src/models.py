@@ -504,6 +504,7 @@ class BalanceUpdateSchema(Schema):
     txid = fields.String()
     status = fields.String()
     payment_url = fields.Method('get_payment_url')
+    remit = fields.Method('get_remit')
 
     def get_amount_dec(self, obj):
         return str(assets.asset_int_to_dec(obj.asset, obj.amount))
@@ -516,6 +517,12 @@ class BalanceUpdateSchema(Schema):
         if obj.windcave_payment_request:
             payment_url = url_for('payments.payment_interstitial', token=obj.windcave_payment_request.token, _external=True)
         return payment_url
+
+    def get_remit(self, obj):
+        remit = None
+        if obj.remit:
+            remit = obj.remit.to_json()
+        return remit
 
 class BalanceUpdate(BaseModel, FromUserMixin, FromTokenMixin):
     TYPE_DEPOSIT = 'deposit'
@@ -1115,3 +1122,100 @@ class BtcTxIndex(BaseModel):
     @classmethod
     def clear(cls, session):
         session.query(cls).delete()
+
+class RemitSchema(Schema):
+    date = fields.DateTime()
+    token = fields.String()
+    provider = fields.String()
+    reference_id = fields.String()
+    payment_method_category = fields.String()
+    payment_method_code = fields.String()
+    payment_method_name = fields.String()
+    amount = fields.Integer()
+    bolt11 = fields.String()
+    recipient_amount = fields.Integer()
+    recipient_asset = fields.String()
+    status = fields.String()
+
+class Remit(BaseModel, FromTokenMixin):
+    STATUS_CREATED = 'created'
+    STATUS_EXCHANGING = 'exchanging'
+    STATUS_SENDING = 'sending'
+    STATUS_COMPLETED = 'completed'
+    STATUS_FAILED = 'failed'
+    STATUS_REFUNDED = 'refunded'
+    STATUS_EXPIRED = 'expired'
+
+    id = Column(Integer, primary_key=True)
+    date = Column(DateTime(), nullable=False, unique=False)
+    token = Column(String, nullable=False, unique=True)
+    provider = Column(String, nullable=False, unique=False)
+    reference_id = Column(String, nullable=False, unique=True)
+    payment_method_category = Column(String, nullable=False, unique=False)
+    payment_method_code = Column(String, nullable=False, unique=False)
+    payment_method_name = Column(String, nullable=False, unique=False)
+    amount = Column(BigInteger, nullable=False)
+    bolt11 = Column(String, nullable=False)
+    recipient_amount = Column(BigInteger, nullable=False)
+    recipient_asset = Column(String, nullable=False)
+    status = Column(String, nullable=False, unique=False)
+    user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
+    user: RelationshipProperty[User] = relationship('User', backref=backref('remits', lazy='dynamic'))
+    order_id = Column(Integer, ForeignKey('broker_order.id'))
+    order: RelationshipProperty[BrokerOrder | None] = relationship('BrokerOrder', backref=backref('remit', uselist=False))
+    withdrawal_id = Column(Integer, ForeignKey('balance_update.id'))
+    withdrawal: RelationshipProperty[BalanceUpdate | None] = relationship('BalanceUpdate', backref=backref('remit', uselist=False))
+
+    def __init__(self, user: User, provider: str, reference_id: str, payment_method_category: str, payment_method_code: str, payment_method_name: str, amount_int: int, bolt11: str, recipient_amount: int, recipient_asset: str):
+        self.date = datetime.now()
+        self.user = user
+        self.token = generate_key(8, True)
+        self.status = self.STATUS_CREATED
+        self.provider = provider
+        self.reference_id = reference_id
+        self.payment_method_category = payment_method_category
+        self.payment_method_code = payment_method_code
+        self.payment_method_name = payment_method_name
+        self.amount = amount_int
+        self.bolt11 = bolt11
+        self.recipient_amount = recipient_amount
+        self.recipient_asset = recipient_asset
+
+    def to_json(self):
+        ref_schema = RemitSchema()
+        return ref_schema.dump(self)
+
+    @classmethod
+    def from_reference_id(cls, session: Session, ref_id: str) -> Remit | None:
+        return session.query(cls).filter(cls.reference_id == ref_id).first()
+
+    @classmethod
+    def all_active(cls, session) -> list[Remit]:
+        return session.query(cls).filter(and_(and_(and_(cls.status != cls.STATUS_COMPLETED, cls.status != cls.STATUS_EXPIRED), cls.status != cls.STATUS_CREATED), cls.status != cls.STATUS_REFUNDED)).all()
+
+class RemitConfirmation(BaseModel, FromTokenMixin):
+    MINUTES_EXPIRY = 30
+
+    id = Column(Integer, primary_key=True)
+    token = Column(String(255), unique=True, nullable=False)
+    secret = Column(String(255), unique=True, nullable=False)
+    date = Column(DateTime(), nullable=False)
+    expiry = Column(DateTime(), nullable=False)
+    confirmed: bool | None | Column[bool] = Column(Boolean)
+    user_id = Column(Integer, ForeignKey('user.id'))
+    user: RelationshipProperty[User] = relationship('User')
+    remit_id = Column(Integer, ForeignKey('remit.id'))
+    remit: RelationshipProperty[Remit | None] = relationship('Remit', backref=backref('remit_confirmation', uselist=False))
+
+    def __init__(self, user: User, remit: Remit):
+        assert remit is not None
+        self.token = generate_key()
+        self.secret = generate_key(20)
+        self.date = datetime.now()
+        self.expiry = self.date + timedelta(minutes=self.MINUTES_EXPIRY)
+        self.confirmed = None
+        self.user = user
+        self.remit = remit
+
+    def expired(self):
+        return datetime.now() > self.expiry

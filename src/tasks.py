@@ -10,6 +10,7 @@ import assets
 import email_utils
 import depwith
 import broker
+import remit
 import utils
 from task_manager import TaskManager
 import wallet
@@ -86,6 +87,9 @@ def process_depwith_and_broker_orders():
     logger.info('process broker orders..')
     broker.broker_orders_update(db.session)
 
+def process_remits():
+    logger.info('process remits..')
+    remit.remits_update(db.session)
 
 def _process_btc_tx_index():
     logger.info('process btc tx index..')
@@ -101,7 +105,8 @@ def _tf_method_check():
     # it is difficult to debug because we dont know how or what causes it to start happening
     # this is a stop gap solution to send an email to the admin when it starts failing
     try:
-        security.tf_method()
+        with app.app_context():
+            security.tf_method()
     except Exception as e:
         logger.error('tf_method() failed: %s', e)
         email_utils.send_email('tf_method() failed', str(e))
@@ -111,13 +116,16 @@ def _tf_method_check():
 #
 
 def process_broker_order(token: str):
-    broker.broker_orders_update(db.session)
+    broker.broker_order_update(db.session, token)
 
 def update_withdrawal(asset: str, token: str):
     if assets.asset_is_crypto(asset):
         depwith.crypto_withdrawal_update(db.session, token)
     else:
         depwith.fiat_withdrawal_update(db.session, token)
+
+def update_remit(token: str):
+    remit.remit_update(db.session, token)
 
 def ln_rebalance_channels(oscid: str, iscid: str, amount: int):
     category = 'ln_rebalance_channels'
@@ -205,6 +213,7 @@ def _process_ln_invoices_loop():
 
 task_manager = TaskManager()
 task_manager.repeated('deposits, withdrawals, orders', process_depwith_and_broker_orders, 5)
+task_manager.repeated('remits', process_remits, 5)
 task_manager.repeated('btc tx index', _process_btc_tx_index, 60)
 task_manager.repeated('dasset cache', _process_dasset_cache, 0)
 task_manager.repeated('tf_method() check', _tf_method_check, 5)

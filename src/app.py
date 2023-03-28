@@ -14,7 +14,7 @@ import signal
 import traceback
 
 import gevent
-from flask_security.utils import encrypt_password
+from flask_security.utils import hash_password
 
 import payouts_core
 import web
@@ -36,35 +36,41 @@ def add_user(email, password):
         user = User.from_email(db.session, email)
         if user:
             logger.info('user already exists, updating password...')
-            user.password = encrypt_password(password)
+            user.password = hash_password(password)
         else:
-            user = user_datastore.create_user(email=email, password=encrypt_password(password))
+            user = user_datastore.create_user(email=email, password=hash_password(password))
         db.session.commit()
 
 def create_role(name, desc):
-    role = Role.from_name(db.session, name)
-    if not role:
-        role = Role(name=name, description=desc)  # pyright: ignore [reportGeneralTypeIssues]
-    else:
-        role.description = desc
-    db.session.add(role)
-    return role
+    with app.app_context():
+        role = Role.from_name(db.session, name)
+        if not role:
+            role = Role(name=name, description=desc)  # pyright: ignore [reportGeneralTypeIssues]
+        else:
+            role.description = desc
+        db.session.add(role)
+        db.session.commit()
+        return role
 
 def create_permission(name, desc):
-    permission = Permission.from_name(db.session, name)
-    if not permission:
-        permission = Permission(name=name, description=desc)
-    else:
-        permission.description = desc
-    db.session.add(permission)
-    return permission
+    with app.app_context():
+        permission = Permission.from_name(db.session, name)
+        if not permission:
+            permission = Permission(name=name, description=desc)
+        else:
+            permission.description = desc
+        db.session.add(permission)
+        db.session.commit()
+        return permission
 
 def create_topic(name):
-    topic = Topic.from_name(db.session, name)
-    if not topic:
-        topic = Topic(topic=name)
-    db.session.add(topic)
-    return topic
+    with app.app_context():
+        topic = Topic.from_name(db.session, name)
+        if not topic:
+            topic = Topic(topic=name)
+        db.session.add(topic)
+        db.session.commit()
+        return topic
 
 def add_role(email, role_name):
     with app.app_context():
@@ -114,7 +120,6 @@ if __name__ == "__main__":
             create_permission(Permission.PERMISSION_ISSUE, "issue funds")
             create_topic("test")
             create_topic("general")
-            db.session.commit()
         if sys.argv[1] == "add_user":
             add_user(sys.argv[2], sys.argv[3])
         if sys.argv[1] == "add_role":

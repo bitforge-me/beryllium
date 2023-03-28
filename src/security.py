@@ -79,6 +79,7 @@ def check_verify():
     # we need to manually send the two factor security token because we cant change the
     # 'verify' view in flask_security.views
     if current_user.is_active and current_user.is_authenticated and \
+       current_user.tf_primary_method and \
        request.path == url_for('security.verify') and request.method == 'GET':
         msg = current_user.tf_send_security_token(
             method=current_user.tf_primary_method,
@@ -96,58 +97,25 @@ def check_verify():
 
 class SecureVerifyForm(flask_security.forms.VerifyForm):
 
+    # we add the 2fa code checking to the verify form
     code = StringField(flask_security.forms.get_form_field_label("code"))
     submit = SubmitField("Verify")
 
-    def validate(self):
+    def validate(self, extra_validators=None):
         if not super().validate():
             return False
         if not self.user:
             return False
-        return tf_code_validate(self.user, self.code.data)
-
-class SecureTwoFactorSetupForm(flask_security.forms.TwoFactorSetupForm):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if hasattr(current_user, 'tf_primary_method') and current_user.tf_primary_method:
-            # only have the 'disable' option
-            self.setup.choices = self.setup.choices[-1]
-        else:
-            # remove the 'disable' option
-            self.setup.choices = self.setup.choices[:-1]
-
-    def validate(self):
-        # only allow a user to setup a new method if no current method enabled
-        data = self.data
-        if "setup" in data:
-            choice = data["setup"]
-            if current_user.tf_primary_method and choice != "disable":
-                return False
-            if not current_user.tf_primary_method and choice == "disable":
-                return False
-        return super().validate()
-
-class SecureTwoFactorRescueForm(flask_security.forms.TwoFactorRescueForm):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # remove the lost device option
-        self.help_setup.choices.pop(0)
-
-    def validate(self):
-        # do not allow the lost device option
-        data = self.data
-        if "help_setup" in data:
-            choice = data["help_setup"]
-            if choice == "lost_device":
-                return False
-        return super().validate()
+        if self.user.tf_primary_method:  # validate tf code if enabled
+            return tf_code_validate(self.user, self.code.data)
+        return True
 
 #
 # Setup Flask-Security
 #
 
 user_datastore = SQLAlchemyUserDatastore(db, User, Role)
-security = Security(app, user_datastore, verify_form=SecureVerifyForm, two_factor_setup_form=SecureTwoFactorSetupForm, two_factor_rescue_form=SecureTwoFactorRescueForm)
+security = Security(app, user_datastore, verify_form=SecureVerifyForm)
 # set rate limits for security endpoints
 limiter.limit('100/minute')(app.blueprints['security'])
 def _limit_view_function(view_name, limit_func):

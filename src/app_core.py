@@ -22,8 +22,8 @@ from flask_wtf.csrf import CSRFProtect
 from flask_talisman import Talisman
 from dotenv import load_dotenv
 
-SERVER_VERSION = 14
-CLIENT_VERSION_DEPLOYED = 14
+SERVER_VERSION = 15
+CLIENT_VERSION_DEPLOYED = 15
 
 MISSING_VITAL_SETTING = False
 
@@ -56,14 +56,14 @@ all_origins = {"origins": "*"}
 cors = CORS(app, resources={r"/apiv1/*": all_origins})
 csp = {
     'default-src': "'self'",
-    'img-src': "'self'",
+    'img-src': "'self' data:",
     'object-src': "'none'",
     'style-src': "'self' 'unsafe-hashes' 'sha256-aLM6kCMKBszYlopfUKTtpYd6xHtlR3jUaa4HNP1LLmI=' 'sha256-ZdHxw9eWtnxUb3mk6tBS+gIiVUPE3pGM470keHPDFlE=' 'sha256-0EZqoz+oBhx7gF4nvY2bSqoGyy4zLjNF+SDQXGp/ZrY='",
     'script-src': "'self' 'unsafe-hashes' 'sha256-rRMdkshZyJlCmDX27XnL7g3zXaxv7ei6Sg+yt4R3svU=' 'sha256-ftmTNsdfRKq6ZNyHL+p7dI9xRqueDTpseN1IaUUgQW4=' 'sha256-gikCNhEl+fhjSb8779qEr3zNPPm8nyTyg8MPyBYs+Tw=' 'sha256-2rvfFrggTCtyF5WOiTri1gDS8Boibj4Njn0e+VCBmDI='",
     'frame-src': "'self'",
     'font-src': "'self'",
     'frame-ancestors': "'none'",
-    'form-action': "'self'"
+    'form-action': "*"  # https://github.com/w3c/webappsec-csp/issues/8#issuecomment-810066954
 }
 talisman = Talisman(app, content_security_policy=csp, force_https=False)
 
@@ -177,6 +177,8 @@ set_vital_setting("CROWN_WITHDRAW_NAME")
 set_vital_setting("KYC_BUCKET")
 set_vital_setting("BITCOIN_DATADIR")
 set_vital_setting("BITCOIN_RPCCONNECT")
+set_vital_setting("POUCH_API_KEY")
+set_vital_setting("POUCH_API_SECRET")
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
@@ -185,5 +187,5 @@ if app.config["USE_SENDGRID"]:
 else:
     mail = Mail(app)
 socketio = SocketIO(app, cors_allowed_origins='*')
-limiter = Limiter(app, key_func=get_remote_address, headers_enabled=True, default_limits=["3000 per minute"])
+limiter = Limiter(get_remote_address, app=app, headers_enabled=True, default_limits=["3000 per minute"])
 csrf = CSRFProtect(app)

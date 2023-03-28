@@ -12,7 +12,7 @@ from flask.wrappers import Response
 from flask_security.decorators import roles_accepted
 
 from app_core import app, boolify, db, socketio
-from models import User, Role, Topic, PushNotificationLocation, BrokerOrder, BalanceUpdate, KycRequest, FiatDbTransaction, UserInvitation, CryptoAddress
+from models import User, Role, Topic, PushNotificationLocation, BrokerOrder, BalanceUpdate, KycRequest, FiatDbTransaction, UserInvitation, CryptoAddress, Remit
 import email_utils
 from fcm import FCM
 from web_utils import bad_request, get_json_params, get_json_params_optional
@@ -26,6 +26,7 @@ from kyc_endpoint import kyc
 from ln_wallet_endpoint import ln_wallet
 from monitor_endpoint import monitor
 from support_endpoint import support
+from pouch_endpoint import pouch
 import websocket
 import admin  # import to register flask admin endpoints
 import dasset
@@ -39,6 +40,7 @@ import tasks
 import utils
 import httpreq
 import wallet
+import pouch_core
 
 USER_BALANCE_SHOW = 'show balance'
 USER_BALANCE_CREDIT = 'credit'
@@ -68,6 +70,7 @@ app.register_blueprint(kyc, url_prefix='/kyc')
 app.register_blueprint(ln_wallet, url_prefix='/ln_wallet')
 app.register_blueprint(monitor, url_prefix='/monitor')
 app.register_blueprint(support, url_prefix='/support')
+app.register_blueprint(pouch, url_prefix='/pouch')
 
 #
 # Flask views
@@ -631,6 +634,71 @@ def reprocess_bank_deposits():
         new_fiat_deposits = depwith.fiat_deposits_new_check(db.session, start_date_dt, end_date_dt)
         flash(f'checked deposits ({start_date}, {interval})')
     return render_template('reprocess_bank_deposits.html', start_date=start_date, interval=interval, new_fiat_deposits=new_fiat_deposits)
+
+@app.route('/remit', methods=['GET', 'POST'])
+@roles_accepted(Role.ROLE_ADMIN)
+def remit():
+    INVOICE_STATUS = 'status'
+    INVOICE_REFUND = 'refund'
+    # default values
+    actions = (INVOICE_STATUS, INVOICE_REFUND)
+    action = INVOICE_STATUS
+    token = ''
+    remit = None
+    invoice = None
+
+    # helper return functions
+    def return_response(err_msg=None):
+        if err_msg:
+            flash(err_msg, 'danger')
+        return render_template('remit.html', actions=actions, action=action, token=token, remit=remit, invoice=invoice)
+
+    def return_pouch_err(err: pouch_core.PouchError):
+        msg = err.message
+        if err.details:
+            msg = f'{msg} - {",".join(err.details)}'
+        return return_response(msg)
+
+    # process command
+    if request.method == 'POST':
+        action = request.form['action']
+        if not action or action not in [INVOICE_STATUS, INVOICE_REFUND]:
+            return return_response(f'invalid action ({action})')
+        token = request.form['token']
+        remit = Remit.from_token(db.session, token)
+        if not remit:
+            return return_response(f'invalid token ({token})')
+        if action == INVOICE_STATUS:
+            res = pouch_core.invoice_status(remit.reference_id, quiet=True)
+            if res.err:
+                return return_pouch_err(res.err)
+            invoice = res.invoice
+            flash(f'retrieved invoice {remit.reference_id}')
+        elif action == INVOICE_REFUND:
+            res = pouch_core.invoice_status(remit.reference_id, quiet=True)
+            if res.err:
+                return return_pouch_err(res.err)
+            invoice = res.invoice
+            assert invoice
+            if invoice.status != pouch_core.PouchInvoiceStatus.failed.value:
+                return return_response('invalid invoice status')
+            # create BalanceUpdate deposit for user
+            res = pouch_core.invoice_refund_deposit(remit)
+            if res.err:
+                return return_response(res.err)
+            crypto_deposit = res.deposit
+            assert crypto_deposit
+            db.session.add(crypto_deposit)
+            db.session.commit()
+            # make pouch refund
+            assert crypto_deposit.wallet_reference
+            res = pouch_core.invoice_refund(remit.reference_id, crypto_deposit.wallet_reference, quiet=True)
+            if res.err:
+                return return_pouch_err(res.err)
+            invoice = res.invoice
+            assert invoice
+            flash(f'refunded invoice {remit.reference_id}')
+    return return_response()
 
 #
 # gevent class

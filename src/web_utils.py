@@ -87,10 +87,14 @@ def to_bytes(data: str | bytes | bytearray) -> bytes | bytearray:
         return data.encode("utf-8")
     return data
 
-def create_hmac_sig(api_secret: str, message: str | bytes) -> str:
+def create_hmac_sig(api_secret: str, message: str | bytes, format='base64') -> str:
     _hmac = hmac.new(to_bytes(api_secret), msg=to_bytes(message), digestmod=hashlib.sha256)
     sig_bytes = _hmac.digest()
-    return base64.b64encode(sig_bytes).decode("utf-8")
+    if format == 'base64':
+        return base64.b64encode(sig_bytes).decode("utf-8")
+    if format == 'hex':
+        return sig_bytes.hex()
+    raise Exception('invalid format type')
 
 def request_get_signature():
     return request.headers.get('X-Signature')

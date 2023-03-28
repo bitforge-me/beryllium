@@ -1,0 +1,31 @@
+{% set no_login = True %}
+{% extends "layout.html" %}
+{% block content %}
+    <div class="row justify-content-center">
+        <div class="col-sm-6">
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="card-title">Remit Confirmation</h4>
+                    <form method="POST">
+                        <input type="hidden"
+                               id="csrfToken"
+                               name="csrf_token"
+                               value="{{ csrf_token() }}"/>
+                        <h5>Recipient:</h5>
+                        <span><pre>{{ conf.remit.bolt11 }}</pre></span>
+                        {% if from_formatted_amount %}
+                            <h5>Converted From:</h5>
+                            <span>{{ from_formatted_amount }}</span>
+                        {% endif %}
+                        <h5>Amount:</h5>
+                        <span>{{ send_formatted_amount }}</span>
+                        <br/>
+                        <br/>
+                        <button type="submit" class="btn btn-primary" name="confirm" value="true">Approve Remit</button>
+                        <button type="submit" class="btn btn-primary" name="confirm" value="false">Cancel</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
