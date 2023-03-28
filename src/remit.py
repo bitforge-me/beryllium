@@ -14,7 +14,6 @@ import depwith
 logger = logging.getLogger(__name__)
 
 #TODO:
-# - does this need to be called on a timer? (remits_update() / Remit.all_active())? yes! the remit items in the database are out of sync (maybe we could have a different update function if simpler too!)
 # - analyze the states and how they change
 # - how does user recover from failure state?
 # - how does admin recover from failure state?
@@ -30,6 +29,7 @@ def _update_remit_and_commit(db_session: Session, remit: Remit) -> BalanceUpdate
     invoice = res.invoice
     recipient = invoice.recipient
     msg = f'Your remit of {recipient.amount} {recipient.currency} to {recipient.name} has changed status to "{invoice.status}"'
+    updated = False
     # check remit status
     if remit.status == remit.STATUS_EXCHANGING:
         if not remit.order:
@@ -42,27 +42,33 @@ def _update_remit_and_commit(db_session: Session, remit: Remit) -> BalanceUpdate
             logger.error(err_msg)
             email_utils.email_catastrophic_error(err_msg)
             return
-        remit.status = remit.STATUS_SENDING
-        # create withdrawal
-        amount_dec = assets.asset_int_to_dec(assets.BTC.symbol, remit.amount)
-        crypto_withdrawal, err_response = depwith.crypto_withdrawal_create(db_session, remit.user, assets.BTC.symbol, assets.BTCLN.symbol, amount_dec, invoice.bolt11, create_confirmation=False)
-        if err_response:
-            logger.error(err_response)
-        assert crypto_withdrawal
-        websocket.crypto_withdrawal_new_event(crypto_withdrawal)
-        # add withdrawal to remit
-        remit.withdrawal = crypto_withdrawal
-        db_session.add(remit)
-        db_session.commit()
+        remit.status = remit.STATUS_SENDING  # now we follow into next status
+        updated = True
+    if remit.status == remit.STATUS_SENDING:
+        if not remit.withdrawal:
+            # create withdrawal
+            amount_dec = assets.asset_int_to_dec(assets.BTC.symbol, remit.amount)
+            crypto_withdrawal, err_response = depwith.crypto_withdrawal_create(db_session, remit.user, assets.BTC.symbol, assets.BTCLN.symbol, amount_dec, invoice.bolt11, create_confirmation=False)
+            if err_response:
+                logger.error(err_response)
+            assert crypto_withdrawal
+            websocket.crypto_withdrawal_new_event(crypto_withdrawal)
+            # add withdrawal to remit
+            remit.withdrawal = crypto_withdrawal
+            db_session.add(remit)
+            db_session.commit()
     # check invoice status
     if invoice.status == pouch_core.PouchInvoiceStatus.completed.value:
         remit.status = remit.STATUS_COMPLETED
+        updated = True
     if invoice.status == pouch_core.PouchInvoiceStatus.expired.value:
         remit.status = remit.STATUS_EXPIRED
+        updated = True
     if invoice.status == pouch_core.PouchInvoiceStatus.failed.value:
         if remit.status != remit.STATUS_REFUNDED:
             remit.status = remit.STATUS_REFUNDED
             # automatically process refund
+            updated = True
             res = pouch_core.invoice_refund_deposit(remit)
             if res.err:
                 err_msg = f'failed to create pouch refund deposit for ({invoice.ref_id}) - {res.err}'
@@ -85,11 +91,12 @@ def _update_remit_and_commit(db_session: Session, remit: Remit) -> BalanceUpdate
                     assert invoice
                     # update msg to user
                     msg += '<br><br>Your funds are being refunded automatically'
-    # send events
-    websocket.remit_update_event(remit, invoice)
-    email_utils.send_email('Remit update', msg, remit.user.email)
     db_session.add(remit)
     db_session.commit()
+    # send events
+    if updated:
+        websocket.remit_update_event(remit, invoice)
+        email_utils.send_email('Remit update', msg, remit.user.email)
     return crypto_withdrawal
 
 def remit_update(db_session: Session, token: str):

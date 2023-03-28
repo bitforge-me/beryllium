@@ -37,7 +37,7 @@ def webhook():
                 event = request.json['event']
                 ref_id = request.json['payload']['referenceId']
                 invoice = pouch_core._parse_invoice(request.json['payload'])
-                logger.info('pouch webhook %s, %s', event, ref_id)
+                logger.info('pouch webhook "%s", %s', event, ref_id)
                 remit = Remit.from_reference_id(db.session, ref_id)
                 if not remit:
                     logger.error('invoice not found %s', ref_id)

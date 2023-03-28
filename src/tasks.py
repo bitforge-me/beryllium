@@ -87,6 +87,9 @@ def process_depwith_and_broker_orders():
     logger.info('process broker orders..')
     broker.broker_orders_update(db.session)
 
+def process_remits():
+    logger.info('process remits..')
+    remit.remits_update(db.session)
 
 def _process_btc_tx_index():
     logger.info('process btc tx index..')
@@ -210,6 +213,7 @@ def _process_ln_invoices_loop():
 
 task_manager = TaskManager()
 task_manager.repeated('deposits, withdrawals, orders', process_depwith_and_broker_orders, 5)
+task_manager.repeated('remits', process_remits, 5)
 task_manager.repeated('btc tx index', _process_btc_tx_index, 60)
 task_manager.repeated('dasset cache', _process_dasset_cache, 0)
 task_manager.repeated('tf_method() check', _tf_method_check, 5)
