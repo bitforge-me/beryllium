@@ -115,7 +115,7 @@ logger = logging.getLogger(__name__)
 PROVIDER = 'pouch'
 API_KEY = app.config['POUCH_API_KEY']
 API_SECRET = app.config['POUCH_API_SECRET']
-URL_BASE = 'https://remit.pouch.ph/api/v1/'
+URL_BASE = 'https://remit.pouch.ph/v1/'
 if app.config['TESTNET']:
     URL_BASE = 'https://remit-sandbox.pouch.ph/v1/'
 
