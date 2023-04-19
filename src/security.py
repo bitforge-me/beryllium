@@ -1,4 +1,6 @@
 import logging
+import io
+import base64
 
 from flask import redirect, url_for, request, flash
 from flask_security.core import Security
@@ -9,6 +11,8 @@ import flask_security.utils
 from flask_security.utils import config_value as cv
 from flask_security.proxies import _security
 from wtforms import StringField, SubmitField
+import qrcode
+import qrcode.image.pil
 
 from app_core import app, db, limiter
 from models import User, Role
@@ -31,7 +35,18 @@ def tf_enabled_check(user: User) -> bool:
 def tf_secret_init(user: User):
     totp_factory = _security._totp_factory
     user.tf_totp_secret = totp_factory.generate_totp_secret()
-    return totp_factory.fetch_setup_values(user.tf_totp_secret, user)
+    setup_values = totp_factory.fetch_setup_values(user.tf_totp_secret, user)
+
+    # make backup png image
+    image = qrcode.make(
+        totp_factory.get_totp_uri(user.calc_username(), user.tf_totp_secret),
+        image_factory=qrcode.image.pil.PilImage,
+    )
+    with io.BytesIO() as virtual_file:
+        image.save(virtual_file)
+        image_as_str = base64.b64encode(virtual_file.getvalue()).decode("ascii")
+    setup_values['image_png_base64'] = image_as_str
+    return setup_values
 
 def tf_method_set(user: User):
     user.tf_primary_method = tf_method()
