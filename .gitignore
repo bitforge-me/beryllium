@@ -3,8 +3,11 @@
 *.db
 .DS_Store
 
+.vscode/
+node_modules/
 src/__pycache__
 
 .env
 web/certbot
+web/nginx/log
 lightningd/replica
