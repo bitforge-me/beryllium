@@ -32,13 +32,16 @@ class Task:
             self.run()
 
     def run(self):
-        # ensure we have an app context and call task function
-        with app.app_context():
-            try:
-                self._func(*(self._params))
-            except Exception as e:
-                logger.error('exception in task (%s): %s', self._name, e)
-
+        # run task in its own greenlet so that malfunctioning tasks can not impact the
+        # overall task queue
+        def greenlet():
+            # ensure we have an app context and call task function
+            with app.app_context():
+                try:
+                    self._func(*(self._params))
+                except Exception as e:
+                    logger.error('exception in task (%s): %s', self._name, e)
+        gevent.spawn(greenlet)
 
 class TaskNonTerminating:
     _name: str
