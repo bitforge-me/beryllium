@@ -636,7 +636,7 @@ class BalanceUpdate(BaseModel, FromUserMixin, FromTokenMixin):
 
     @classmethod
     def active_deposit_of_wallet(cls, session) -> list[BalanceUpdate]:
-        return session.query(cls).filter(cls.wallet_reference is not None).filter(and_(cls.status != cls.STATUS_COMPLETED, cls.status != cls.STATUS_CANCELLED)).filter(cls.type == cls.TYPE_DEPOSIT).all()
+        return session.query(cls).filter(and_(cls.wallet_reference is not None, cls.wallet_reference != '')).filter(and_(cls.status != cls.STATUS_COMPLETED, cls.status != cls.STATUS_CANCELLED)).filter(cls.type == cls.TYPE_DEPOSIT).all()
 
     @classmethod
     def from_wallet_reference(cls, session, wallet_reference) -> BalanceUpdate | None:
