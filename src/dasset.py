@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 import logging
-import decimal
 from decimal import Decimal as Dec
 import json
 from enum import Enum
@@ -10,6 +9,7 @@ from typing import Any, Tuple
 import pyotp
 
 from app_core import app
+from log_utils import setup_logging
 import assets
 import utils
 import httpreq
@@ -716,3 +716,12 @@ def order_book_refresh_cache(margin: int):
                 continue
         #logger.info('refresh cache for %s', symbol)
         _order_book_req(symbol, quiet=True)
+
+if __name__ == '__main__':
+    setup_logging(logger, logging.DEBUG)
+
+    import sys
+    exch_order_id = sys.argv[1]
+    market = 'BTC-NZD'
+
+    print(order_status(exch_order_id, market))
