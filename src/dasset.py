@@ -320,7 +320,7 @@ def _orders_req(market, offset, limit):
     logger.error('request failed: %d, %s', r.status_code, r.text[:100])
     return None
 
-def _order_status_req(order_id: str, market: str):
+def _order_status_req(order_id: str, market: str, verbose=False):
     offset = 0
     limit = 50
     orders = _orders_req(market, offset, limit)
@@ -328,11 +328,17 @@ def _order_status_req(order_id: str, market: str):
         logger.error('failed to get closed exchange order count')
         return None
     total = orders['total']
+    if verbose:
+        logger.info('total closed orders: %d', total)
     offset = total - limit
     while True:
+        if verbose:
+            logger.info('closed orders request params: market %s, offset %d, limit %d', market, offset, limit)
         orders = _orders_req(market, offset, limit)
         if orders:
             for item in orders['results']:
+                if verbose:
+                    logger.info('order reference found: %s', item['id'])
                 if item['id'] == order_id:
                     return _parse_order(item)
             if offset == 0:
@@ -609,10 +615,10 @@ def order_create(market: str, side: assets.MarketSide, amount: Dec, price: Dec):
         return utils.generate_key()
     return _order_create_req(market, side, amount, price)
 
-def order_status(order_id: str, market: str):
+def order_status(order_id: str, market: str, verbose=False):
     if _account_mock():
         return DassetOrder(id=order_id, status='Completed', base_asset='', quote_asset='', date='', side=assets.MarketSide.ASK, base_amount='', quote_amount='', filled='')
-    return _order_status_req(order_id, market)
+    return _order_status_req(order_id, market, verbose)
 
 def order_status_check(order_id: str, market: str):
     order = order_status(order_id, market)
@@ -724,4 +730,4 @@ if __name__ == '__main__':
     exch_order_id = sys.argv[1]
     market = 'BTC-NZD'
 
-    print(order_status(exch_order_id, market))
+    print(order_status(exch_order_id, market, verbose=True))
