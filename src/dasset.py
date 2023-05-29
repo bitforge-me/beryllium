@@ -606,8 +606,7 @@ def order_status(order_id: str, market: str):
         return DassetOrder(id=order_id, status='Completed', base_asset='', quote_asset='', date='', side=assets.MarketSide.ASK, base_amount='', quote_amount='', filled='')
     return _order_status_req(order_id, market)
 
-def order_status_check(order_id: str, market: str):
-    order = order_status(order_id, market)
+def order_status_check(order: DassetOrder | None):
     if not order:
         return False
     return order.status == 'Completed'
