@@ -320,9 +320,11 @@ def _orders_req(market, offset, limit):
     logger.error('request failed: %d, %s', r.status_code, r.text[:100])
     return None
 
-def _order_status_req(order_id: str, market: str, verbose=False):
+def _order_status_req(order_id: str, market: str, verbose=False, limit_override=None):
     offset = 0
     limit = 50
+    if limit_override:
+        limit = limit_override
     orders = _orders_req(market, offset, limit)
     if not orders:
         logger.error('failed to get closed exchange order count')
@@ -615,10 +617,10 @@ def order_create(market: str, side: assets.MarketSide, amount: Dec, price: Dec):
         return utils.generate_key()
     return _order_create_req(market, side, amount, price)
 
-def order_status(order_id: str, market: str, verbose=False):
+def order_status(order_id: str, market: str, verbose=False, limit_override=None):
     if _account_mock():
         return DassetOrder(id=order_id, status='Completed', base_asset='', quote_asset='', date='', side=assets.MarketSide.ASK, base_amount='', quote_amount='', filled='')
-    return _order_status_req(order_id, market, verbose)
+    return _order_status_req(order_id, market, verbose, limit_override)
 
 def order_status_check(order_id: str, market: str):
     order = order_status(order_id, market)
@@ -731,3 +733,4 @@ if __name__ == '__main__':
     market = 'BTC-NZD'
 
     print(order_status(exch_order_id, market, verbose=True))
+    print(order_status(exch_order_id, market, verbose=True, limit_override=1000))
