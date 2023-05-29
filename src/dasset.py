@@ -322,16 +322,24 @@ def _orders_req(market, offset, limit):
 
 def _order_status_req(order_id: str, market: str):
     offset = 0
-    limit = 1000
+    limit = 50
+    orders = _orders_req(market, offset, limit)
+    if not orders:
+        logger.error('failed to get closed exchange order count')
+        return None
+    total = orders['total']
+    offset = total - limit
     while True:
         orders = _orders_req(market, offset, limit)
         if orders:
             for item in orders['results']:
                 if item['id'] == order_id:
                     return _parse_order(item)
-            offset += limit
-            if offset > orders['total']:
+            if offset == 0:
                 break
+            offset -= limit
+            if offset < 0:
+                offset = 0
         else:
             break
     logger.error('exchange order %s not found for market %s', order_id, market)
