@@ -386,7 +386,9 @@ def user_order():
             if not order:
                 return return_response('Order not found')
             if action == USER_ORDER_SHOW:
-                flash(f'order: {order.to_json()}, exch order id: {order.exchange_order_id}', 'primary')
+                flash(f'order: {order.to_json()}', 'primary')
+                if order.exchange_order:
+                    flash(f'exch ref: {order.exchange_order.exchange_reference}', 'primary')
             elif action == USER_ORDER_CANCEL:
                 if order.status not in (order.STATUS_READY,):
                     return return_response('invalid order status')
