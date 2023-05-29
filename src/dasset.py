@@ -336,9 +336,9 @@ def _order_status_req(order_id: str, market: str, verbose=False):
             logger.info('closed orders request params: market %s, offset %d, limit %d', market, offset, limit)
         orders = _orders_req(market, offset, limit)
         if orders:
+            if verbose:
+                logger.info('close orders response count: %d', len(orders['results']))
             for item in orders['results']:
-                if verbose:
-                    logger.info('order reference found: %s', item['id'])
                 if item['id'] == order_id:
                     return _parse_order(item)
             if offset == 0:
