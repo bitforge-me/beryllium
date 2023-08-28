@@ -55,6 +55,7 @@ WITHDRAWAL_TYPE_FIAT = 'fiat'
 
 USER_ORDER_SHOW = 'show'
 USER_ORDER_CANCEL = 'cancel'
+USER_ORDER_CANCEL_EXCHANGE = 'cancel (exchanging)'
 
 #jsonrpc = JSONRPC(app, "/api")
 logger = logging.getLogger(__name__)
@@ -374,6 +375,16 @@ def user_order():
         if err_msg:
             flash(err_msg, 'danger')
         return render_template('user_order.html', actions=actions, action=action, token=token)
+
+    def cancel_order(order):
+        ftx = broker.order_refund(order)
+        if not ftx:
+            return return_response('failed to create refund')
+        order.status = order.STATUS_CANCELLED
+        db.session.add(ftx)
+        db.session.add(order)
+        db.session.commit()
+        flash(f'canceled and refunded order {token}', 'success')
     if request.method == 'POST':
         action = request.form['action']
         token = request.form['token']
@@ -390,14 +401,15 @@ def user_order():
             elif action == USER_ORDER_CANCEL:
                 if order.status not in (order.STATUS_READY,):
                     return return_response('invalid order status')
-                ftx = broker.order_refund(order)
-                if not ftx:
-                    return return_response('failed to create refund')
-                order.status = order.STATUS_CANCELLED
-                db.session.add(ftx)
-                db.session.add(order)
-                db.session.commit()
-                flash(f'canceled and refunded order {token}', 'success')
+                resp = cancel_order(order)
+                if resp:
+                    return resp
+            elif action == USER_ORDER_CANCEL_EXCHANGE:
+                if order.status not in (order.STATUS_EXCHANGE,):
+                    return return_response('invalid order status')
+                resp = cancel_order(order)
+                if resp:
+                    return resp
     return return_response()
 
 @app.route('/config', methods=['GET'])

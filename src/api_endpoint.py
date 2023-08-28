@@ -960,6 +960,8 @@ def broker_order_validate():
 
 @api.route('/broker_order_create', methods=['POST'])
 def broker_order_create():
+    if not dasset._enabled():
+        return bad_request(web_utils.NOT_AVAILABLE)
     params, api_key, err_response = auth_request_get_params(db, ["market", "side", "amount_dec"])
     if err_response:
         return err_response
@@ -981,6 +983,8 @@ def broker_order_create():
 
 @api.route('/broker_order_status', methods=['POST'])
 def broker_order_status():
+    if not dasset._enabled():
+        return bad_request(web_utils.NOT_AVAILABLE)
     token, api_key, err_response = auth_request_get_single_param(db, 'token')
     if err_response:
         return err_response
@@ -992,6 +996,8 @@ def broker_order_status():
 
 @api.route('/broker_order_accept', methods=['POST'])
 def broker_order_accept():
+    if not dasset._enabled():
+        return bad_request(web_utils.NOT_AVAILABLE)
     token, api_key, err_response = auth_request_get_single_param(db, 'token')
     if err_response:
         return err_response
@@ -1041,6 +1047,8 @@ def remit_payment_methods():
 
 @api.route('/remit_invoice_create', methods=['POST'])
 def remit_invoice_create():
+    if not dasset._enabled():
+        return bad_request(web_utils.NOT_AVAILABLE)
     params, api_key, err_response = auth_request_get_params(db, ["payment_method_category", "payment_method_code", "payment_method_name", "name", "account_number", "mobile_number", "currency", "amount", "description"])
     if err_response:
         return err_response
@@ -1099,6 +1107,8 @@ def remit_invoice_status():
 @api_supplemental.route('/remit_invoice_confirm/<token>/<secret>', methods=['GET', 'POST'])
 @limiter.limit('20/minute')
 def remit_invoice_confirm(token=None, secret=None):
+    if not dasset._enabled():
+        return bad_request(web_utils.NOT_AVAILABLE)
     if not token or not secret:
         return _redirect_confirmation_result('Invalid request.', 'danger')
     conf = RemitConfirmation.from_token(db.session, token)
@@ -1149,6 +1159,8 @@ def remit_invoice_confirm(token=None, secret=None):
 
 @api.route('/remit_invoice_accept', methods=['POST'])
 def remit_invoice_accept():
+    if not dasset._enabled():
+        return bad_request(web_utils.NOT_AVAILABLE)
     params, api_key, err_response = auth_request_get_params(db, ["ref_id", "market", "side", "amount_dec", "tf_code"])
     if err_response:
         return err_response

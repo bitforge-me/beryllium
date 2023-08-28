@@ -128,6 +128,9 @@ CACHE_EXPIRY = 30
 # Helper functions
 #
 
+def _enabled():
+    return app.config['EXCHANGE_ENABLED']
+
 def _account_mock():
     return app.config['EXCHANGE_ACCOUNT_MOCK']
 

@@ -99,6 +99,7 @@ app.config["REFERRAL_SPEND_ASSET"] = strdef("REFERRAL_SPEND_ASSET", "NZD")
 app.config["BROKER_ORDER_FEE"] = strdef("BROKER_ORDER_FEE", "0.5")
 app.config["BROKER_ORDER_FEE_FIXED"] = strdef("BROKER_ORDER_FEE_FIXED", '{"NZD":"1"}')
 
+app.config['EXCHANGE_ENABLED'] = boolify(os.getenv('EXCHANGE_ENABLED', 'true'))
 app.config['EXCHANGE_ACCOUNT_MOCK'] = boolify(os.getenv('EXCHANGE_ACCOUNT_MOCK'))
 
 app.config['SECURITY_REGISTERABLE'] = not boolify(os.getenv('REGISTRATION_DISABLE'))
