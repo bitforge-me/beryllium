@@ -368,7 +368,7 @@ def user_withdrawal():
 @app.route('/user_order', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def user_order():
-    actions = (USER_ORDER_SHOW, USER_ORDER_CANCEL)
+    actions = (USER_ORDER_SHOW, USER_ORDER_CANCEL, USER_ORDER_CANCEL_EXCHANGE)
     action = token = ''
 
     def return_response(err_msg=None):
