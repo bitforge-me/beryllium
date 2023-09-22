@@ -1,0 +1,43 @@
+{% set no_login = True %}
+{% extends "layout.html" %}
+{% block content %}
+    <!-- Page Content -->
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-12">
+                <h3>Whatsapp Mock</h3>
+                <h4>!!!User input not sanitized!!!</h4>
+                <div id="output" class="border border-success overflow-auto vh-50"></div>
+                <form id="form" method="POST">
+                    <input type="hidden"
+                           id="csrfToken"
+                           name="csrf_token"
+                           value="{{ csrf_token() }}"/>
+                    <div class="form-group">
+                        <label for="tel">Phone Number</label>
+                        <input type="tel"
+                               class="form-control"
+                               id="tel"
+                               name="tel"
+                               aria-describedby="telelp"
+                               required/>
+                        <small id="telHelp" class="form-text text-muted">The whatsapp phone number</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="input">Input</label>
+                        <input type="text"
+                               class="form-control"
+                               id="input"
+                               name="input"
+                               aria-describedby="inputHelp"/>
+                        <small id="inputHelp" class="form-text text-muted">The input to send via whatsapp</small>
+                    </div>
+                    <button id="form-submit" type="submit" class="btn btn-primary">Submit</button>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block scripts %}
+    <script src="{{ url_for('static',filename='assets/js_custom/whatsapp_mock.js') }}"></script>
+{% endblock %}

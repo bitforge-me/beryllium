@@ -179,6 +179,7 @@ set_vital_setting("BITCOIN_DATADIR")
 set_vital_setting("BITCOIN_RPCCONNECT")
 set_vital_setting("POUCH_API_KEY")
 set_vital_setting("POUCH_API_SECRET")
+set_vital_setting("USER_INTERFACE", acceptable_values=('api', 'whatsapp'))
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)

@@ -12,6 +12,8 @@
         <!-- Custom CSS -->
         <link rel="stylesheet"
               href="{{ url_for('static', filename='css/custom_reporting.css') }}"/>
+        <link rel="stylesheet"
+              href="{{ url_for('static', filename='css/classes.css') }}"/>
         {% if config['CSS_THEME'] %}
             <link rel="stylesheet"
                   href="{{ url_for('static', filename=config['CSS_THEME']) }}"
