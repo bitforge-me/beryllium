@@ -1,6 +1,6 @@
 import logging
 
-from flask import Blueprint, request, render_template, flash, redirect, url_for
+from flask import Blueprint, request, render_template, flash, redirect, url_for, jsonify
 from flask_security.decorators import roles_accepted
 import shlex
 import argparse
@@ -12,6 +12,7 @@ import depwith
 import wallet
 import assets
 from ln import LnRpc, _msat_to_sat, make_json_friendly
+import utils
 
 logger = logging.getLogger(__name__)
 whatsapp_mock = Blueprint('whatsapp_mock', __name__, template_folder='templates')
@@ -24,12 +25,24 @@ ADDRESS = 'address'
 INVOICE = 'invoice'
 PAY = 'pay'
 
+# forward declear parser as the error method could be called by a child parser object
+parser = None
+
 class ErrorConsumingArgumentParser(argparse.ArgumentParser):
+    _err_msg = None
+    _num_errs = 0
+
     def exit(self, status=0, message=None):
         pass
 
     def error(self, message):
         logger.error(message)
+        parser._err_msg = message
+
+    def parse_args_return_error(self, args):
+        self._err_msg = None
+        res = self.parse_args(args)
+        return res, self._err_msg
 
 parser = ErrorConsumingArgumentParser()
 subparsers = parser.add_subparsers(dest='cmd')
@@ -76,55 +89,61 @@ def index():
 
 @whatsapp_mock.route('/send_msg', methods=['POST'])
 def send_msg():
+    def make_response(msg, qrcode_svg=None):
+        return jsonify(msg=msg, qrcode_svg=qrcode_svg)
     # get request parameters
-    tel = request.form['tel']
-    input = request.form['input']
+    content = request.json
+    tel = content['tel']
+    input = content['input']
     # parse the input the way a shell would
     shell_args = shlex.split(input)
     logger.info('send_msg - tel: %s, input: %s', tel, shell_args)
     # parse the shell arguments using our argument parser
-    args = parser.parse_args(shell_args)
+    args, err_msg = parser.parse_args_return_error(shell_args)
+    if err_msg:
+        return make_response(err_msg)
     logger.info('parsed args %s', args)
     # process the selected argument
     if args.cmd == HELP:
-        return _format_help()
+        return make_response(_format_help())
     if args.cmd == INFO:
         # show info
-        return _info()
+        return make_response(_info())
     if args.cmd == ADDRESS:
         # create a bitcoin address
         address, err_msg = wallet.address_create(assets.BTC.symbol, None)
         if not address:
-            return err_msg
-        return address
+            return make_response(err_msg)
+        return make_response(address, qrcode_svg=utils.qrcode_svg_create(address))
     if args.cmd == INVOICE:
         # create a lightning invoice
         try:
             res = LnRpc().invoice(args.sats, args.label, args.description)
-            return res['bolt11']
+            bolt11 = res['bolt11']
+            return make_response(bolt11, qrcode_svg=utils.qrcode_svg_create(bolt11))
         except Exception as e:
-            return f'Failed to create invoice: {e}'
+            return make_response(f'Failed to create invoice: {e}')
     if args.cmd == PAY:
         # pay a recipient
         if assets.asset_recipient_validate(assets.BTC.symbol, None, args.recipient):
             # bitcoin address
             if not args.sats:
-                return '"sats" argument is required when paying a bitcoin address'
+                return make_response('"sats" argument is required when paying a bitcoin address')
             outputs = [{args.recipient: f'{args.sats}sats'}]
             try:
                 res = LnRpc().multi_withdraw(outputs)
-                return res['txid']
+                return make_response(res['txid'])
             except Exception as e:
-                return f'Failed to pay address: {e.error}'
+                return make_response(f'Failed to pay address: {e.error}')
         elif assets.asset_recipient_validate(assets.BTC.symbol, assets.BTCLN.symbol, args.recipient):
             # lightning invoice
             if args.sats is not None:
-                return '"sats" argument is not used when paying a lightning invoice'
+                return make_response('"sats" argument is not used when paying a lightning invoice')
             try:
                 LnRpc().pay(bolt11)
                 email_utils.send_email('Paid Invoice', info_str)
                 store_task_info(category, task_uid, TaskInfo(TaskInfo.STATUS_SUCCESS, info_str))
             except Exception as e:
-                return f'Failed to pay invoice: {e}'
+                return make_response(f'Failed to pay invoice: {e}')
     # return dont understand
-    return 'I dont understand, try the "help" command'
+    return make_response('I dont understand, try the "help" command')
