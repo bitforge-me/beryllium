@@ -27,6 +27,7 @@ from ln_wallet_endpoint import ln_wallet
 from monitor_endpoint import monitor
 from support_endpoint import support
 from pouch_endpoint import pouch
+from whatsapp_endpoint import whatsapp_mock
 import websocket
 import admin  # import to register flask admin endpoints
 import dasset
@@ -61,8 +62,11 @@ logger = logging.getLogger(__name__)
 fcm = FCM(app.config["FIREBASE_CREDENTIALS"])
 
 # blueprints
-app.register_blueprint(api, url_prefix='/apiv1')
-app.register_blueprint(api_supplemental, url_prefix='/apis')
+if app.config['USER_INTERFACE'] == 'api':
+    app.register_blueprint(api, url_prefix='/apiv1')
+    app.register_blueprint(api_supplemental, url_prefix='/apis')
+if app.config['USER_INTERFACE'] == 'whatsapp' and app.config['TESTNET']:
+    app.register_blueprint(whatsapp_mock, url_prefix='/whatsapp_mock')
 app.register_blueprint(reward, url_prefix='/reward')
 app.register_blueprint(reporting, url_prefix='/reporting')
 app.register_blueprint(payments, url_prefix='/payments')
