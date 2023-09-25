@@ -4,6 +4,7 @@ from flask import Blueprint, request, render_template, flash, redirect, url_for,
 from flask_security.decorators import roles_accepted
 import shlex
 import argparse
+from typing import Any
 
 from app_core import db, limiter, csrf
 from models import PayoutRequest, PayoutGroup, WindcavePaymentRequest, Role
@@ -21,12 +22,13 @@ csrf.exempt(whatsapp_mock)
 
 HELP = 'help'
 INFO = 'info'
+PRICE = 'price'
 ADDRESS = 'address'
 INVOICE = 'invoice'
 PAY = 'pay'
 
 # forward declear parser as the error method could be called by a child parser object
-parser = None
+parser: Any = None
 
 class ErrorConsumingArgumentParser(argparse.ArgumentParser):
     _err_msg = None
@@ -48,6 +50,7 @@ parser = ErrorConsumingArgumentParser()
 subparsers = parser.add_subparsers(dest='cmd')
 parser_help = subparsers.add_parser(HELP, help='display help')
 parser_info = subparsers.add_parser(INFO, help='display info about the wallet')
+parser_price = subparsers.add_parser(PRICE, help='display the current bitcoin price')
 parser_address = subparsers.add_parser(ADDRESS, help='generate a bitcoin address')
 parser_invoice = subparsers.add_parser(INVOICE, help='generate a lightning invoice')
 parser_invoice.add_argument('sats', help='the amount of satoshis', type=int)
@@ -61,6 +64,7 @@ def _format_help():
     return f'''::Commands::
     {HELP} - display help
     {INFO} - display info about the wallet
+    {PRICE} - display the current bitcoin price
     {ADDRESS} - generate a bitcoin address
     {INVOICE} <sats> <label> <description> - generate a lightning invoice
     {PAY} <recipient> [sats] - pay an address or invoice
@@ -93,6 +97,8 @@ def send_msg():
         return jsonify(msg=msg, qrcode_svg=qrcode_svg)
     # get request parameters
     content = request.json
+    if content is None:
+        return web_utils.bad_request('invalid json body')
     tel = content['tel']
     input = content['input']
     # parse the input the way a shell would
@@ -109,6 +115,8 @@ def send_msg():
     if args.cmd == INFO:
         # show info
         return make_response(_info())
+    if args.cmd == PRICE:
+        return make_response('NOT YET IMPLEMENTED!!!')
     if args.cmd == ADDRESS:
         # create a bitcoin address
         address, err_msg = wallet.address_create(assets.BTC.symbol, None)
@@ -134,16 +142,15 @@ def send_msg():
                 res = LnRpc().multi_withdraw(outputs)
                 return make_response(res['txid'])
             except Exception as e:
-                return make_response(f'Failed to pay address: {e.error}')
+                return make_response(f'Failed to pay address: {e}')
         elif assets.asset_recipient_validate(assets.BTC.symbol, assets.BTCLN.symbol, args.recipient):
             # lightning invoice
             if args.sats is not None:
                 return make_response('"sats" argument is not used when paying a lightning invoice')
             try:
-                LnRpc().pay(bolt11)
-                email_utils.send_email('Paid Invoice', info_str)
-                store_task_info(category, task_uid, TaskInfo(TaskInfo.STATUS_SUCCESS, info_str))
+                LnRpc().pay(args.recipient)
             except Exception as e:
                 return make_response(f'Failed to pay invoice: {e}')
+        return make_response('paid')
     # return dont understand
     return make_response('I dont understand, try the "help" command')
