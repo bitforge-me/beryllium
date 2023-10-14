@@ -341,7 +341,7 @@ def addr_raw(addr):
 
 @ln_wallet.route('/tx_raw/<txid>', methods=['GET'])
 @roles_accepted(Role.ROLE_ADMIN)
-def tx_raw(txid):
+def tx_raw(txid=None):
     tx = BtcTxIndex.from_txid(db.session, txid)
     if tx:
         tx = bitcoind_rpc('decoderawtransaction', tx.hex)
@@ -358,3 +358,13 @@ def btc_tx_index_clear():
     BtcTxIndex.clear(db.session)
     db.session.commit()
     return 'ok'
+
+@ln_wallet.route('/btc_tx_index_remove/<txid>', methods=['GET'])
+@roles_accepted(Role.ROLE_ADMIN)
+def btc_tx_index_remove(txid=None):
+    tx = BtcTxIndex.from_txid(db.session, txid)
+    if tx:
+        db.session.delete(tx)
+        db.session.commit()
+        return 'ok'
+    return 'tx not found'
