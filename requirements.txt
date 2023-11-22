@@ -38,3 +38,4 @@ pyln-client==0.12.1
 pytz==2022.7.1
 python-dotenv==0.21.1
 marshmallow_dataclass==8.5.11
+pyindependentreserve==0.4.1

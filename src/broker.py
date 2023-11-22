@@ -5,7 +5,8 @@ import logging
 from sqlalchemy.orm.session import Session
 
 import fiatdb_core
-import dasset
+import exch
+import exch_provider
 import assets
 from assets import MarketSide
 from models import User, BrokerOrder, ExchangeOrder, FiatDbTransaction
@@ -45,7 +46,7 @@ def order_check_funds(db_session: Session, order: BrokerOrder, check_user: bool 
     asset, amount_int = order_required_asset(order, side)
     amount_dec = assets.asset_int_to_dec(asset, amount_int)
     # check funds on dasset
-    if not dasset.funds_available_us(asset, amount_dec):
+    if not exch_provider.exch_factory().funds_available_us(asset, amount_dec):
         return web_utils.INSUFFICIENT_LIQUIDITY
     # and funds user has with us
     if check_user and not fiatdb_core.funds_available_user(db_session, order.user, asset, amount_dec):
@@ -56,17 +57,17 @@ def order_validate(db_session: Session, user: User, market: str, side: assets.Ma
     if market not in assets.MARKETS:
         return web_utils.INVALID_MARKET, None
     if assets.market_side_is(side, MarketSide.BID):
-        quote = dasset.bid_quote_amount(market, amount_dec, use_cache)
+        quote = exch_provider.exch_factory().bid_quote_amount(market, amount_dec, use_cache)
     else:
-        quote = dasset.ask_quote_amount(market, amount_dec, use_cache)
-    if quote.err == dasset.QuoteResult.INSUFFICIENT_LIQUIDITY:
+        quote = exch_provider.exch_factory().ask_quote_amount(market, amount_dec, use_cache)
+    if quote.err == exch.QuoteResult.INSUFFICIENT_LIQUIDITY:
         return web_utils.INSUFFICIENT_LIQUIDITY, None
-    if quote.err == dasset.QuoteResult.AMOUNT_TOO_LOW:
+    if quote.err == exch.QuoteResult.AMOUNT_TOO_LOW:
         return web_utils.AMOUNT_TOO_LOW, None
-    if quote.err == dasset.QuoteResult.MARKET_API_FAIL:
+    if quote.err == exch.QuoteResult.MARKET_API_FAIL:
         logger.error('failled getting quote amount due to error in dasset market API')
         return web_utils.NOT_AVAILABLE, None
-    if quote.err != dasset.QuoteResult.OK:
+    if quote.err != exch.QuoteResult.OK:
         logger.error('failded getting quote amount due to unknown error')
         return web_utils.UNKNOWN_ERROR, None
     base_asset, quote_asset = assets.assets_from_market(market)
@@ -142,7 +143,7 @@ def _broker_order_action(db_session: Session, broker_order: BrokerOrder):
             updated_records.append(ftx)
             return updated_records
         # create exchange order
-        exchange_order_id = dasset.order_create(broker_order.market, side, base_amount_dec, price)
+        exchange_order_id = exch_provider.exch_factory().order_create(broker_order.market, side, base_amount_dec, price)
         if not exchange_order_id:
             msg = f'{broker_order.token}, {broker_order.market}, {broker_order.side}, {base_amount_dec}, {quote_amount_dec}, {price}'
             logger.error('failed to create exchange order - %s', msg)
@@ -158,7 +159,7 @@ def _broker_order_action(db_session: Session, broker_order: BrokerOrder):
     if broker_order.status == broker_order.STATUS_EXCHANGE:
         # check exchange order
         if broker_order.exchange_order:
-            if dasset.order_status_check(broker_order.exchange_order.exchange_reference, broker_order.market):
+            if exch_provider.exch_factory().order_status_check(broker_order.exchange_order.exchange_reference, broker_order.market):
                 if side is MarketSide.ASK:
                     asset = broker_order.quote_asset
                     amount_int = broker_order.quote_amount

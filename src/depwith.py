@@ -7,7 +7,8 @@ from sqlalchemy.orm.session import Session
 from ln_wallet_endpoint import sign_psbt
 
 import windcave
-import dasset
+import exch
+import exch_provider
 import assets
 from models import BrokerOrder, FiatDepositCode, CryptoAddress, BalanceUpdate, FiatDbTransaction, User, CrownPayment, WithdrawalConfirmation, RemitConfirmation
 import websocket
@@ -123,8 +124,8 @@ def _fiat_deposit_update(db_session: Session, fiat_deposit: BalanceUpdate):
                         if market in assets.MARKETS:
                             # create broker order of 'autobuy_asset'
                             amount_dec = assets.asset_int_to_dec(fiat_deposit.asset, fiat_deposit.amount)
-                            quote = dasset.bid_brute_force(market, amount_dec)
-                            if quote.err != dasset.QuoteResult.OK:
+                            quote = exch_provider.exch_factory().bid_brute_force(market, amount_dec)
+                            if quote.err != exch.QuoteResult.OK:
                                 logger.error('failed to make autobuy for deposit %s (QuoteResult: %s)', fiat_deposit.token, quote.err)
                                 _fiat_deposit_autobuy_failure_email(fiat_deposit, code)
                             else:
@@ -370,44 +371,6 @@ def _crypto_deposits_wallet_check(db_session: Session, new_crypto_deposits: list
             db_session.add(crypto_deposit)
             db_session.commit()
 
-def _crypto_deposits_dasset_check(db_session: Session, new_crypto_deposits: list[BalanceUpdate], updated_crypto_deposits: list[BalanceUpdate], user: User, asset: str):
-    if asset not in assets.ASSETS:
-        logger.error('dasset crypto deposit asset (%s) is not valid', asset)
-        return
-    if not user.dasset_subaccount:
-        logger.error('user %s dasset subaccount does not exist', user.email)
-        return
-    dasset_deposits = dasset.crypto_deposits(asset, user.dasset_subaccount.subaccount_id)
-    for dasset_deposit in dasset_deposits:
-        completed = dasset.crypto_deposit_completed(dasset_deposit)
-        crypto_deposit = BalanceUpdate.from_txid(db_session, dasset_deposit.txid)
-        if not crypto_deposit:
-            amount_int = assets.asset_dec_to_int(asset, dasset_deposit.amount)
-            crypto_deposit = BalanceUpdate.crypto_deposit(user, asset, None, amount_int, 0, dasset_deposit.address)
-            crypto_deposit.exchange_reference = dasset_deposit.id
-            crypto_deposit.txid = dasset_deposit.txid  # pyright: ignore [reportGeneralTypeIssues]  WTF pyright??
-            if completed:
-                crypto_deposit.status = crypto_deposit.STATUS_COMPLETED
-            new_crypto_deposits.append(crypto_deposit)
-        if (crypto_deposit in new_crypto_deposits or crypto_deposit.status != crypto_deposit.STATUS_COMPLETED) and completed:
-            # if deposit now completed transfer the funds to the master account
-            if not dasset.transfer(None, user.dasset_subaccount.subaccount_id, asset, dasset_deposit.amount):
-                logger.error('failed to transfer funds from subaccount to master %s', dasset_deposit.id)
-                continue
-            # and credit the users account
-            ftx = fiatdb_core.tx_create(user, FiatDbTransaction.ACTION_CREDIT, asset, crypto_deposit.amount, f'crypto deposit: {crypto_deposit.token}')
-            db_session.add(ftx)
-            # update crypto deposit
-            crypto_deposit.status = crypto_deposit.STATUS_COMPLETED
-            crypto_deposit.balance_tx = ftx
-            updated_crypto_deposits.append(crypto_deposit)
-        if not crypto_deposit.crypto_address:
-            addr = CryptoAddress.from_addr(db_session, dasset_deposit.address)
-            if addr:
-                crypto_deposit.crypto_address = addr
-        db_session.add(crypto_deposit)
-        db_session.commit()
-
 def _crypto_deposits_stale_addresses_check(db_session: Session, new_crypto_deposits: list[BalanceUpdate], updated_crypto_deposits: list[BalanceUpdate]):
     # query for list of addresses that need to be checked
     addrs = CryptoAddress.need_to_be_checked(db_session)
@@ -432,7 +395,8 @@ def _crypto_deposits_stale_addresses_check(db_session: Session, new_crypto_depos
             if wallet.deposits_supported(asset, None):
                 _crypto_deposits_wallet_check(db_session, new_crypto_deposits, updated_crypto_deposits, user, asset, addr_list)
             else:
-                _crypto_deposits_dasset_check(db_session, new_crypto_deposits, updated_crypto_deposits, user, asset)
+                # we no longer support depositing assets to the exchange
+                pass
 
 def _crypto_deposits_updated_wallet_check(db_session: Session, updated_crypto_deposits: list[BalanceUpdate]):
     for deposit in BalanceUpdate.active_deposit_of_wallet(db_session):
@@ -550,13 +514,9 @@ def _crypto_withdrawal_update(crypto_withdrawal: BalanceUpdate):
                     logger.error('wallet.withdrawal_create failed - %s', err_msg)
                     return updated_records
             else:
-                if not dasset.funds_available_us(asset, amount_dec):
-                    logger.error('dasset.funds_available_us failed')
-                    return updated_records
-                exchange_reference = dasset.crypto_withdrawal_create(asset, amount_dec, recipient)
-                if not exchange_reference:
-                    logger.error('dasset.crypto_withdrawal_create failed')
-                    return updated_records
+                # withdrawals via the exchange no longer supported
+                logger.error('crypto_withdrawal_create failed - asset not supported by wallet (%s, %s)', asset, l2_network)
+                return updated_records
             if wallet_reference:
                 crypto_withdrawal.wallet_reference = wallet_reference
             if exchange_reference:
@@ -570,17 +530,6 @@ def _crypto_withdrawal_update(crypto_withdrawal: BalanceUpdate):
             if wallet.withdrawal_completed(crypto_withdrawal.asset, crypto_withdrawal.l2_network, crypto_withdrawal.wallet_reference):
                 crypto_withdrawal.status = crypto_withdrawal.STATUS_COMPLETED
                 updated_records.append(crypto_withdrawal)
-        elif crypto_withdrawal.exchange_reference:
-            # check exchange withdrawal
-            status = dasset.crypto_withdrawal_status_check(crypto_withdrawal.exchange_reference)
-            if status == dasset.CRYPTO_WITHDRAWAL_STATUS_COMPLETED:
-                crypto_withdrawal.status = crypto_withdrawal.STATUS_COMPLETED
-                updated_records.append(crypto_withdrawal)
-            elif status == dasset.CRYPTO_WITHDRAWAL_STATUS_2FA:
-                if not dasset.crypto_withdrawal_confirm(crypto_withdrawal.exchange_reference):
-                    logger.error('failed to confirm crypto withdrawal %s', crypto_withdrawal.token)
-            elif status == dasset.CRYPTO_WITHDRAWAL_STATUS_UNKNOWN:
-                logger.error('failed to get crypto withdrawal %s status', crypto_withdrawal.token)
         return updated_records
     return updated_records
 

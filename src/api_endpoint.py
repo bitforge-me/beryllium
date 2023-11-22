@@ -12,12 +12,12 @@ import web_utils
 from web_utils import bad_request, get_json_params, auth_request, auth_request_get_single_param, auth_request_get_params
 import utils
 import email_utils
-from models import BalanceUpdate, FiatDbTransaction, FiatDepositCode, Role, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, CryptoAddress, DassetSubaccount, WithdrawalConfirmation, UserInvitation, Remit, RemitConfirmation
+from models import BalanceUpdate, FiatDbTransaction, FiatDepositCode, Role, User, UserCreateRequest, UserUpdateEmailRequest, Permission, ApiKey, ApiKeyRequest, BrokerOrder, KycRequest, AddressBook, CryptoAddress, WithdrawalConfirmation, UserInvitation, Remit, RemitConfirmation
 from app_core import app, db, limiter, csrf, SERVER_VERSION, CLIENT_VERSION_DEPLOYED
 from security import tf_enabled_check, tf_method, tf_code_send, tf_method_set, tf_method_unset, tf_secret_init, tf_code_validate, user_datastore
 import windcave
 import kyc_core
-import dasset
+import exch_provider
 import assets
 from assets import MarketSide, market_side_is
 import websocket
@@ -38,18 +38,6 @@ csrf.exempt(api)
 # blueprint for supplemental routes of the api (like user confirmations etc), we separate this out so it have CSRF restrictions applied etc
 api_supplemental = Blueprint('api_supplemental', __name__, template_folder='templates')
 limiter.limit('100/minute')(api_supplemental)
-
-def _user_subaccount_get_or_create(db_session, user):
-    # create subaccount for user
-    if not user.dasset_subaccount:
-        subaccount_id = dasset.subaccount_create(user.token)
-        if not subaccount_id:
-            logger.error('failed to create subaccount for %s', user.email)
-            return None
-        subaccount = DassetSubaccount(user, subaccount_id)
-        db_session.add(subaccount)
-        return subaccount
-    return user.dasset_subaccount
 
 def _tf_check_withdrawal(user, tf_code):
     if tf_enabled_check(user):
@@ -552,7 +540,7 @@ def markets_req():
     _, err_response = auth_request(db)
     if err_response:
         return err_response
-    return jsonify(markets=dasset.markets_data(use_cache=True))
+    return jsonify(markets=exch_provider.exch_factory().markets_data(use_cache=True))
 
 @api.route('/order_book', methods=['POST'])
 def order_book_req():
@@ -564,7 +552,7 @@ def order_book_req():
     base_asset, quote_asset = assets.assets_from_market(market)
     base_asset_withdraw_fee = assets.asset_withdraw_fee(base_asset, None)
     quote_asset_withdraw_fee = assets.asset_withdraw_fee(quote_asset, None)
-    order_book, broker_fee, broker_fee_fixed = dasset.order_book_data(market, use_cache=True)
+    order_book, broker_fee, broker_fee_fixed = exch_provider.exch_factory().order_book_data(market, use_cache=True)
     if not order_book:
         return bad_request(web_utils.FAILED_EXCHANGE)
     broker_fee_fixed_str = {}
@@ -686,27 +674,7 @@ def crypto_deposit_recipient_req():
         websocket.crypto_deposit_new_event(crypto_deposit)
         return jsonify(recipient=wallet_reference, asset=asset, l2_network=l2_network, amount_dec=amount_dec)
 
-    # otherwise use dasset
-    # get subaccount for user
-    if not api_key.user.dasset_subaccount:
-        logger.error('user %s dasset subaccount does not exist', api_key.user.email)
-        return bad_request(web_utils.FAILED_EXCHANGE)
-    subaccount = _user_subaccount_get_or_create(db.session, api_key.user)
-    if not subaccount:
-        return bad_request(web_utils.FAILED_EXCHANGE)
-    db.session.commit()  # commit early so we only create subaccount once
-    # create address
-    crypto_address = CryptoAddress.from_asset(db.session, api_key.user, asset)
-    if not crypto_address:
-        address = dasset.address_get_or_create(asset, subaccount.subaccount_id)
-        if not address:
-            return bad_request(web_utils.FAILED_EXCHANGE)
-        crypto_address = CryptoAddress(api_key.user, asset, address)
-    crypto_address.viewed_at = int(datetime.timestamp(datetime.now()))
-    crypto_address.check_interval = crypto_address.INITIAL_CHECK_INTERVAL  # type: ignore
-    db.session.add(crypto_address)
-    db.session.commit()
-    return jsonify(recipient=crypto_address.address, asset=asset, l2_network=l2_network, amount_dec=decimal.Decimal(0))
+    return bad_request(web_utils.UNSUPPORTED_WALLET)
 
 def _validate_crypto_asset_withdraw(asset: str, l2_network: str | None, recipient: str | None):
     if not assets.asset_is_crypto(asset):
@@ -965,7 +933,7 @@ def broker_order_create():
         return err_response
     assert params and api_key
     market, side, amount_dec = params
-    if not api_key.user.kyc_validated() and not dasset._account_mock():
+    if not api_key.user.kyc_validated() and not exch_provider.mock:
         return bad_request(web_utils.KYC_NOT_VALIDATED)
     side = MarketSide.parse(side)
     if not side:

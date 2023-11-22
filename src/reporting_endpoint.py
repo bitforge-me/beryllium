@@ -7,7 +7,8 @@ from flask import Blueprint, render_template, redirect
 from flask_security.decorators import roles_accepted
 
 from models import Role, User, BrokerOrder
-import dasset
+import exch
+import exch_provider
 import crown_financial
 import assets
 from ln import LnRpc
@@ -87,7 +88,7 @@ def dashboard():
 @reporting.route("/dashboard_general")
 @roles_accepted(Role.ROLE_ADMIN, Role.ROLE_FINANCE)
 def dashboard_general():
-    balances = dasset.account_balances(quiet=True)
+    balances = exch_provider.exch_factory().account_balances(quiet=True)
     exchange_balances_formatted = []
     if balances:
         for balance in balances:
