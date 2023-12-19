@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from flask import flash
 
 from app_core import app, db
-import dasset
+import exch_provider
 import assets
 import email_utils
 import depwith
@@ -97,8 +97,8 @@ def _process_btc_tx_index():
 
 def _process_dasset_cache():
     # logger.info('process dasset cache..')
-    dasset.order_book_refresh_cache(10)
-    dasset.markets_refresh_cache(10)
+    exch_provider.exch_factory().order_book_refresh_cache(10)
+    exch_provider.exch_factory().markets_refresh_cache(10)
 
 def _tf_method_check():
     # for some reason `security.tf_method()` randomly starts failing after some time

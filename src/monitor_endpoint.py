@@ -5,7 +5,8 @@ from flask import Blueprint, jsonify
 
 from app_core import app
 from ln import LnRpc, _msat_to_sat
-from dasset import account_balances
+from exch_provider import exch_factory
+import assets
 import crown_financial
 
 logger = logging.getLogger(__name__)
@@ -65,7 +66,7 @@ def monitor_info():
 
     ln_funds = LnRpc().list_funds()
     ln_info = LnRpc().get_info()
-    exchange_balances = account_balances(quiet=True)
+    exchange_balances = exch_factory().account_balances(quiet=True)
     crown_balance = crown_financial.balance_float(quiet=True)
     crown_currency = crown_financial.CURRENCY
     remote_height = requests.get(f'{BITCOIN_EXPLORER}/api/blocks/tip/height')
@@ -97,8 +98,8 @@ def monitor_info():
     info['num_pending_channels'] = ln_info['num_pending_channels']
     info['num_peers'] = ln_info['num_peers']
     for balance in exchange_balances or []:
-        info[f'exchange_{balance.symbol}_available'] = float(format(balance.available, f'.{balance.decimals}f'))
-        info[f'exchange_{balance.symbol}_total'] = float(format(balance.total, f'.{balance.decimals}f'))
+        info[f'exchange_{balance.symbol}_available'] = float(format(balance.available, f'.{assets.asset_decimals(balance.symbol)}f'))
+        info[f'exchange_{balance.symbol}_total'] = float(format(balance.total, f'.{assets.asset_decimals(balance.symbol)}f'))
         if balance.symbol in EXCHANGE_MIN:
             if balance.available < EXCHANGE_MIN[balance.symbol]:
                 info[f'exchange_{balance.symbol}_below_min'] = 1

@@ -93,8 +93,6 @@ class User(BaseModel, UserMixin):
     photo = Column(String())
     photo_type = Column(String(255))
 
-    dasset_subaccount = relationship('DassetSubaccount', uselist=False, back_populates='user')
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.token = generate_key()
@@ -454,29 +452,6 @@ class BrokerOrder(BaseModel, FromUserMixin, FromTokenMixin):
     @classmethod
     def all_active(cls, session) -> list[BrokerOrder]:
         return session.query(cls).filter(and_(cls.status != cls.STATUS_COMPLETED, and_(cls.status != cls.STATUS_EXPIRED, and_(cls.status != cls.STATUS_FAILED, cls.status != cls.STATUS_CANCELLED)))).all()
-
-class DassetSubaccount(BaseModel):
-    id = Column(Integer, primary_key=True)
-    date = Column(DateTime(), nullable=False, unique=False)
-    subaccount_id = Column(String, nullable=False)
-    user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
-    user: RelationshipProperty[User] = relationship('User', uselist=False, back_populates='dasset_subaccount')
-
-    def __init__(self, user, subaccount_id):
-        self.user = user
-        self.date = datetime.now()
-        self.subaccount_id = subaccount_id
-
-    @classmethod
-    def count(cls, session) -> int:
-        return session.query(cls).count()
-
-    @classmethod
-    def from_subaccount_id(cls, session, subaccount_id) -> DassetSubaccount | None:
-        return session.query(cls).filter(cls.subaccount_id == subaccount_id).first()
-
-    def __repr__(self):
-        return f'<DassetSubaccount {self.subaccount_id}>'
 
 class ExchangeOrder(BaseModel):
     id = Column(Integer, primary_key=True)

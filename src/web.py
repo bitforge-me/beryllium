@@ -29,7 +29,7 @@ from support_endpoint import support
 from pouch_endpoint import pouch
 import websocket
 import admin  # import to register flask admin endpoints
-import dasset
+import exch_provider
 import assets
 import kyc_core
 import fiatdb_core
@@ -45,7 +45,6 @@ import pouch_core
 USER_BALANCE_SHOW = 'show balance'
 USER_BALANCE_CREDIT = 'credit'
 USER_BALANCE_DEBIT = 'debit'
-USER_BALANCE_SWEEP = 'sweep'
 
 USER_WITHDRAWAL_SHOW = 'show'
 USER_WITHDRAWAL_CANCEL = 'cancel'
@@ -255,7 +254,7 @@ def user_kyc():
 @app.route('/user_balance', methods=['GET', 'POST'])
 @roles_accepted(Role.ROLE_ADMIN)
 def user_balance():
-    actions = (USER_BALANCE_SHOW, USER_BALANCE_CREDIT, USER_BALANCE_DEBIT, USER_BALANCE_SWEEP)
+    actions = (USER_BALANCE_SHOW, USER_BALANCE_CREDIT, USER_BALANCE_DEBIT)
     asset_names = assets.ASSETS.keys()
     action = email = asset = amount = desc = ''
 
@@ -305,19 +304,6 @@ def user_balance():
             balance = assets.asset_int_to_dec(asset, balance)
             balance = assets.asset_dec_to_str(asset, balance)
             flash(f'new balance: {balance} {asset}', 'success')
-        elif action == USER_BALANCE_SWEEP:
-            if not user.dasset_subaccount:
-                return return_response('user does not have dasset subaccount')
-            balances = dasset.account_balances(subaccount_id=user.dasset_subaccount.subaccount_id)
-            if not balances:
-                return return_response('failed to retreive dasset balances')
-            for balance in balances:
-                if balance.available > decimal.Decimal(0):
-                    if not dasset.transfer(None, user.dasset_subaccount.subaccount_id, balance.symbol, balance.available):
-                        return return_response(f'failed to transfer {balance.symbol} funds from {email} subaccount to master')
-                    flash(f'transfered {balance.available} of {balance.total} {balance.symbol} to master account', 'success')
-                else:
-                    flash(f'no available balance of {balance.total} {balance.symbol} to transfer', 'warning')
     return return_response()
 
 @app.route('/user_withdrawal', methods=['GET', 'POST'])
@@ -502,7 +488,7 @@ def bid_brute_force_test():
         market = request.form['market']
         quote_asset_amount = request.form['quote_asset_amount']
         quote_asset_amount = decimal.Decimal(quote_asset_amount)
-        quote = dasset.bid_brute_force(market, quote_asset_amount, log=True)
+        quote = exch_provider.exch_factory().bid_brute_force(market, quote_asset_amount, log=True)
         flash(str(quote))
     markets = assets.MARKETS.keys()
     return render_template('bid_brute_force_test.html', markets=markets)
